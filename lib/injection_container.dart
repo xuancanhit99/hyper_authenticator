@@ -24,8 +24,12 @@ Future<void> configureDependencies() async {
   // Register manual dependencies that might not work with @injectable
   _registerThemes();
 
-  // Register AppRouter after AuthBloc is available
-  sl.registerLazySingleton(() => AppRouter(sl<AuthBloc>()));
+  // Register AppRouter manually after its dependencies (Blocs) are registered by injectable
+  // Ensure AuthBloc is registered by injectable (e.g., add @injectable to AuthBloc class)
+  // For now, assuming AuthBloc is registered.
+  sl.registerLazySingleton(
+    () => AppRouter(sl(), sl()),
+  ); // Pass AuthBloc and LocalAuthBloc
 }
 
 // Removed _registerExternalDependencies function as it's handled by @module

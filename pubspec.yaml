@@ -50,6 +50,13 @@ dependencies:
   supabase_auth_ui: ^0.5.4
   flutter_native_splash: ^2.4.0
 
+  # Core Authenticator Features
+  flutter_secure_storage: ^9.0.0 # Secure storage for secret keys
+  otp: ^3.1.0                   # TOTP generation
+  mobile_scanner: ^5.1.0        # QR code scanning
+  local_auth: ^2.2.0            # Biometric/PIN lock
+  uuid: ^4.3.3                  # For generating unique IDs
+  # Removed otpauth_migration package. Will parse otpauth:// URI manually.
 dev_dependencies:
   flutter_test:
     sdk: flutter

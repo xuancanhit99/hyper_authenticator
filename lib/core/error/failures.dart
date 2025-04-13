@@ -23,6 +23,16 @@ class OcrParsingFailure extends Failure {
   const OcrParsingFailure(super.message);
 }
 
+// Failure for secure storage access errors
+class StorageFailure extends Failure {
+  const StorageFailure(super.message);
+}
+
+// Failure when a specific account is not found in storage
+class AccountNotFoundFailure extends Failure {
+  const AccountNotFoundFailure(super.message);
+}
+
 class NetworkFailure extends Failure {
   const NetworkFailure(super.message);
 }
@@ -34,4 +44,9 @@ class AuthCredentialsFailure extends Failure {
 
 class AuthServerFailure extends Failure {
   const AuthServerFailure(super.message);
+}
+
+// Failure for input validation errors
+class ValidationFailure extends Failure {
+  const ValidationFailure(super.message);
 }
