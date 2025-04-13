@@ -61,6 +61,7 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
+  flutter_launcher_icons: ^0.13.1 # Add this line
 
   # The "flutter_lints" package below contains a set of recommended lints to
   # encourage good coding practices. The lint set provided by the package is
@@ -70,6 +71,7 @@ dev_dependencies:
   flutter_lints: ^5.0.0
   build_runner: ^2.4.15
   injectable_generator: ^2.7.0
+  rename: ^3.0.2 # Add this line (check pub.dev for latest version if needed)
 
 
 
@@ -142,3 +144,16 @@ flutter:
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
 
+flutter_launcher_icons:
+  android: true
+  ios: true
+  remove_alpha_ios: true
+  image_path: "assets/logo/hyper-v-logo.png" # Make sure this path is correct
+  min_sdk_android: 21 # Optional: you can specify a minimum SDK level
+  windows:
+    generate: true
+    image_path: "assets/logo/hyper-v-logo.png"
+    icon_size: 256 # Or 48, depending on your needs
+  macos:
+    generate: true
+    image_path: "assets/logo/hyper-v-logo.png"

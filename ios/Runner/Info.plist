@@ -5,7 +5,7 @@
 		<key>CFBundleDevelopmentRegion</key>
 		<string>$(DEVELOPMENT_LANGUAGE)</string>
 		<key>CFBundleDisplayName</key>
-		<string>Hyper Authenticator</string>
+	<string>Hyper Authen</string>
 		<key>CFBundleExecutable</key>
 		<string>$(EXECUTABLE_NAME)</string>
 		<key>CFBundleIdentifier</key>
@@ -13,7 +13,7 @@
 		<key>CFBundleInfoDictionaryVersion</key>
 		<string>6.0</string>
 		<key>CFBundleName</key>
-		<string>hyper_authenticator</string>
+	<string>Hyper Authen</string>
 		<key>CFBundlePackageType</key>
 		<string>APPL</string>
 		<key>CFBundleShortVersionString</key>
@@ -49,5 +49,7 @@
 		<false/>
 		<key>NSFaceIDUsageDescription</key>
 		<string>Please authenticate to access your accounts securely.</string>
+		<key>NSCameraUsageDescription</key>
+		<string>Hyper Authenticator needs access to the camera to scan QR codes for adding accounts.</string>
 	</dict>
 </plist>
