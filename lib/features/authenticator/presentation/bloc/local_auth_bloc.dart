@@ -22,6 +22,8 @@ class LocalAuthBloc extends Bloc<LocalAuthEvent, LocalAuthState> {
   }) : super(LocalAuthInitial()) {
     on<CheckLocalAuth>(_onCheckLocalAuth);
     on<Authenticate>(_onAuthenticate);
+    on<RelockAppRequested>(_onRelockAppRequested);
+    on<ResetAuthStatus>(_onResetAuthStatus); // Register reset handler
   }
 
   Future<void> _onCheckLocalAuth(
@@ -97,4 +99,49 @@ class LocalAuthBloc extends Bloc<LocalAuthEvent, LocalAuthState> {
       );
     }
   }
-}
+
+  // Handler for the new event to force re-locking
+  Future<void> _onRelockAppRequested(
+    RelockAppRequested event,
+    Emitter<LocalAuthState> emit,
+  ) async {
+    // No guard for LocalAuthSuccess here, we explicitly want to re-lock
+    try {
+      final bool canAuthenticateWithBiometrics = await auth.canCheckBiometrics;
+      final bool canAuthenticate =
+          canAuthenticateWithBiometrics || await auth.isDeviceSupported();
+
+      final bool isBiometricEnabled =
+          sharedPreferences.getBool(_biometricPrefKey) ?? false;
+
+      if (canAuthenticate && isBiometricEnabled) {
+        print(
+          "[LocalAuthBloc] Relock requested and conditions met. Emitting LocalAuthRequired.",
+        );
+        emit(LocalAuthRequired());
+      } else {
+        // If conditions aren't met (e.g., user disabled biometrics while app was paused),
+        // ensure the state reflects that lock is not needed.
+        print(
+          "[LocalAuthBloc] Relock requested but conditions not met. Emitting LocalAuthSuccess.",
+        );
+        emit(LocalAuthSuccess());
+      }
+    } catch (e) {
+      emit(LocalAuthError('Error during relock request: ${e.toString()}'));
+    }
+  }
+
+  // Handler to reset the auth state, typically called when app pauses
+  void _onResetAuthStatus(ResetAuthStatus event, Emitter<LocalAuthState> emit) {
+    // Only reset if the state is not already initial or required (to avoid unnecessary emits)
+    if (state is! LocalAuthInitial && state is! LocalAuthRequired) {
+      print("[LocalAuthBloc] Resetting auth status to Initial.");
+      emit(LocalAuthInitial());
+    } else {
+      print(
+        "[LocalAuthBloc] Reset requested but state is already Initial/Required. No change.",
+      );
+    }
+  }
+} // Close the class definition here

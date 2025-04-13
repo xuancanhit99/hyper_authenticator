@@ -12,3 +12,9 @@ class CheckLocalAuth extends LocalAuthEvent {}
 
 /// Event to trigger the local authentication prompt (Biometric/PIN).
 class Authenticate extends LocalAuthEvent {}
+
+/// Event triggered on app resume (after delay) to force re-locking if needed.
+class RelockAppRequested extends LocalAuthEvent {}
+
+/// Event to reset the authentication status, typically used when app pauses.
+class ResetAuthStatus extends LocalAuthEvent {}

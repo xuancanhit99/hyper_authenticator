@@ -1,15 +1,90 @@
 // lib/app.dart
+import 'dart:async'; // Keep Timer import for potential future use if needed
 import 'package:flutter/material.dart';
-import 'package:flutter/material.dart'; // Keep existing imports
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:hyper_authenticator/core/router/app_router.dart';
 import 'package:hyper_authenticator/features/auth/presentation/bloc/auth_bloc.dart'; // Supabase Auth
 import 'package:hyper_authenticator/features/authenticator/presentation/bloc/accounts_bloc.dart'; // Accounts Bloc
 import 'package:hyper_authenticator/features/authenticator/presentation/bloc/local_auth_bloc.dart'; // Local Auth Bloc
 import 'package:hyper_authenticator/injection_container.dart'; // Import GetIt instance
+// SharedPreferences no longer needed directly here
+// import 'package:shared_preferences/shared_preferences.dart';
 
-class MyApp extends StatelessWidget {
+// Key must match the one used in SettingsBloc and LocalAuthBloc
+// const String _biometricPrefKey = 'biometric_enabled'; // No longer needed here
+
+class MyApp extends StatefulWidget {
   const MyApp({super.key});
+
+  @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
+  // Timer? _resumeLockTimer; // Timer logic removed
+  // StreamSubscription? _authSubscription; // Auth listener removed, handled by router/bloc
+  // bool _isResumed = false; // No longer needed
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    // No need to listen to AuthBloc here anymore
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    // _resumeLockTimer?.cancel(); // Timer removed
+    // _authSubscription?.cancel(); // Listener removed
+    super.dispose();
+  }
+
+  // Auth state changes are handled by the router's redirect logic
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    debugPrint("[AppLifecycle] State changed: $state");
+
+    if (state == AppLifecycleState.resumed) {
+      // App is resuming, always trigger a check
+      debugPrint("[AppLifecycle] Resumed. Requesting local auth check.");
+      try {
+        // Check if LocalAuthBloc is available before adding event
+        if (sl.isRegistered<LocalAuthBloc>()) {
+          sl<LocalAuthBloc>().add(CheckLocalAuth());
+        } else {
+          debugPrint(
+            "[AppLifecycle] LocalAuthBloc not registered yet on resume.",
+          );
+        }
+      } catch (e) {
+        debugPrint(
+          "[AppLifecycle] Error accessing LocalAuthBloc on resume: $e",
+        );
+      }
+    } else {
+      // App is pausing, detaching, etc. - reset auth status
+      debugPrint(
+        "[AppLifecycle] Paused/Inactive/Hidden/Detached. Requesting auth status reset.",
+      );
+      try {
+        // Check if LocalAuthBloc is available before adding event
+        if (sl.isRegistered<LocalAuthBloc>()) {
+          sl<LocalAuthBloc>().add(ResetAuthStatus());
+        } else {
+          debugPrint(
+            "[AppLifecycle] LocalAuthBloc not registered yet on pause.",
+          );
+        }
+      } catch (e) {
+        debugPrint("[AppLifecycle] Error accessing LocalAuthBloc on pause: $e");
+      }
+    }
+  }
+
+  // _checkAndStartLockTimerIfNeeded removed as logic is simplified
 
   @override
   Widget build(BuildContext context) {
@@ -22,6 +97,7 @@ class MyApp extends StatelessWidget {
         ),
         BlocProvider<LocalAuthBloc>(
           // Create LocalAuthBloc and trigger initial check
+          // Initial check is important for first app launch
           create: (_) => sl<LocalAuthBloc>()..add(CheckLocalAuth()),
         ),
         BlocProvider<AccountsBloc>(
