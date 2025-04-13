@@ -148,12 +148,12 @@ flutter_launcher_icons:
   android: true
   ios: true
   remove_alpha_ios: true
-  image_path: "assets/logo/hyper-v-logo.png" # Make sure this path is correct
+  image_path: "assets/logo/hyper-h-logo.png" # Make sure this path is correct
   min_sdk_android: 21 # Optional: you can specify a minimum SDK level
   windows:
     generate: true
-    image_path: "assets/logo/hyper-v-logo.png"
+    image_path: "assets/logo/hyper-h-logo.png"
     icon_size: 256 # Or 48, depending on your needs
   macos:
     generate: true
-    image_path: "assets/logo/hyper-v-logo.png"
+    image_path: "assets/logo/hyper-h-logo.png"
