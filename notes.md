@@ -11,4 +11,7 @@ dart run flutter_native_splash:create
 
 flutter pub run flutter_launcher_icons
 
-    
+
+flutter pub run rename setAppName --value "Hyper"
+
+flutter pub run rename setAppName --value "Hyper" --targets ios,android,macos,windows    
