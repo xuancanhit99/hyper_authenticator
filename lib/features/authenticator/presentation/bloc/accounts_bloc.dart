@@ -48,11 +48,15 @@ class AccountsBloc extends Bloc<AccountsEvent, AccountsState> {
   ) async {
     // Optionally emit a loading state specific to adding if needed
     // emit(AccountAdding());
+    // Pass all parameters from the event to the AddAccount use case params
     final failureOrAccount = await addAccount(
       AddAccountParams(
         issuer: event.issuer,
         accountName: event.accountName,
         secretKey: event.secretKey,
+        algorithm: event.algorithm, // Pass from event
+        digits: event.digits, // Pass from event
+        period: event.period, // Pass from event
       ),
     );
 

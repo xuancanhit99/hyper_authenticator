@@ -2,16 +2,24 @@ import 'package:bloc/bloc.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter/services.dart'; // For PlatformException
 import 'package:local_auth/local_auth.dart';
-import 'package:injectable/injectable.dart'; // Moved import here
+import 'package:shared_preferences/shared_preferences.dart'; // Import SharedPreferences
+import 'package:injectable/injectable.dart';
 
 part 'local_auth_event.dart';
 part 'local_auth_state.dart';
 
+// Key must match the one used in SettingsBloc
+const String _biometricPrefKey = 'biometric_enabled';
+
 @lazySingleton // Change to LazySingleton
 class LocalAuthBloc extends Bloc<LocalAuthEvent, LocalAuthState> {
   final LocalAuthentication auth;
+  final SharedPreferences sharedPreferences; // Add dependency
 
-  LocalAuthBloc({required this.auth}) : super(LocalAuthInitial()) {
+  LocalAuthBloc({
+    required this.auth,
+    required this.sharedPreferences, // Add to constructor
+  }) : super(LocalAuthInitial()) {
     on<CheckLocalAuth>(_onCheckLocalAuth);
     on<Authenticate>(_onAuthenticate);
   }
@@ -20,19 +28,28 @@ class LocalAuthBloc extends Bloc<LocalAuthEvent, LocalAuthState> {
     CheckLocalAuth event,
     Emitter<LocalAuthState> emit,
   ) async {
+    // Prevent re-checking if already successfully authenticated in this session
+    if (state is LocalAuthSuccess) {
+      print("[LocalAuthBloc] Already authenticated, skipping check.");
+      return; // Don't re-evaluate if already successfully authenticated
+    }
     try {
       final bool canAuthenticateWithBiometrics = await auth.canCheckBiometrics;
       final bool canAuthenticate =
           canAuthenticateWithBiometrics || await auth.isDeviceSupported();
 
-      if (canAuthenticate) {
-        // If auth is possible, assume it's required initially until passed
+      // Check both device capability AND user preference
+      final bool isBiometricEnabled =
+          sharedPreferences.getBool(_biometricPrefKey) ?? false;
+
+      if (canAuthenticate && isBiometricEnabled) {
+        // Require auth only if supported AND enabled by user
         emit(LocalAuthRequired());
       } else {
-        // If no auth method is available, treat as unavailable/success (no lock)
-        emit(LocalAuthUnavailable());
-        // Alternatively, emit LocalAuthSuccess() if unavailable means no lock needed
-        // emit(LocalAuthSuccess());
+        // If not supported OR not enabled, authentication is not required
+        emit(LocalAuthSuccess()); // Treat as success (no lock screen)
+        // Note: LocalAuthUnavailable might be emitted if canAuthenticate is false,
+        // but LocalAuthSuccess covers both cases where lock is not needed.
       }
     } catch (e) {
       emit(

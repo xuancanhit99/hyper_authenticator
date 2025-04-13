@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:hyper_authenticator/features/authenticator/presentation/bloc/local_auth_bloc.dart';
+// Imports no longer needed after removing listener
+// import 'package:go_router/go_router.dart';
+// import 'package:hyper_authenticator/core/router/app_router.dart';
 
 class LockScreenPage extends StatelessWidget {
   const LockScreenPage({super.key});
@@ -55,7 +58,7 @@ class LockScreenPage extends StatelessWidget {
             ),
           ],
         ),
-      ),
-    );
+      ), // Close Center
+    ); // Close Scaffold and return statement
   }
 }

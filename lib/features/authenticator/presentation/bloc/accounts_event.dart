@@ -15,15 +15,28 @@ class AddAccountRequested extends AccountsEvent {
   final String issuer;
   final String accountName;
   final String secretKey;
+  final String algorithm;
+  final int digits;
+  final int period;
 
   const AddAccountRequested({
     required this.issuer,
     required this.accountName,
     required this.secretKey,
+    required this.algorithm,
+    required this.digits,
+    required this.period,
   });
 
   @override
-  List<Object?> get props => [issuer, accountName, secretKey];
+  List<Object?> get props => [
+    issuer,
+    accountName,
+    secretKey,
+    algorithm,
+    digits,
+    period,
+  ];
 }
 
 /// Event to delete an existing account by its ID.

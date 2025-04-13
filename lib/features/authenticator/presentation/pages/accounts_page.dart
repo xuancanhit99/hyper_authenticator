@@ -72,8 +72,14 @@ class _AccountsPageState extends State<AccountsPage> {
 
   // Function to generate code for a specific account
   Future<String> _getCodeForAccount(AuthenticatorAccount account) async {
+    // Pass all necessary parameters from the account to the use case
     final result = await _generateTotpCode(
-      GenerateTotpCodeParams(secretKey: account.secretKey),
+      GenerateTotpCodeParams(
+        secretKey: account.secretKey,
+        algorithm: account.algorithm,
+        digits: account.digits,
+        period: account.period,
+      ),
     );
     return result.fold(
       (failure) => "Error", // Handle error display

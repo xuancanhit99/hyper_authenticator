@@ -16,6 +16,9 @@ abstract class AuthenticatorRepository {
     required String issuer,
     required String accountName,
     required String secretKey,
+    required String algorithm, // Added
+    required int digits, // Added
+    required int period, // Added
   });
 
   /// Deletes an authenticator account by its ID.

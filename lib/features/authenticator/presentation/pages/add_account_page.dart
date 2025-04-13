@@ -69,7 +69,32 @@ class _AddAccountPageState extends State<AddAccountPage> {
         throw const FormatException('Missing secret key in QR code.');
       }
 
-      // Dispatch event to add account
+      // Parse optional OTP parameters with defaults
+      final String algorithm =
+          uri.queryParameters['algorithm']?.toUpperCase() ?? 'SHA1';
+      final int digits =
+          int.tryParse(uri.queryParameters['digits'] ?? '6') ?? 6;
+      final int period =
+          int.tryParse(uri.queryParameters['period'] ?? '30') ?? 30;
+
+      // Basic validation for parameters (optional but recommended)
+      if (!['SHA1', 'SHA256', 'SHA512'].contains(algorithm)) {
+        _showError('Unsupported algorithm specified: $algorithm. Using SHA1.');
+        // Fallback or throw error - choosing fallback for now
+        // throw const FormatException('Unsupported algorithm specified in QR code.');
+      }
+      if (digits < 6 || digits > 8) {
+        _showError('Unsupported digits specified: $digits. Using 6.');
+        // Fallback or throw error
+        // throw const FormatException('Unsupported number of digits specified in QR code.');
+      }
+      if (period <= 0) {
+        _showError('Invalid period specified: $period. Using 30.');
+        // Fallback or throw error
+        // throw const FormatException('Invalid period specified in QR code.');
+      }
+
+      // Dispatch event to add account with all parameters
       context.read<AccountsBloc>().add(
         AddAccountRequested(
           issuer: issuer ?? '', // Use issuer from query or empty string
@@ -79,6 +104,13 @@ class _AddAccountPageState extends State<AddAccountPage> {
                   : (issuer ??
                       'Unknown Account'), // Use parsed label or issuer or default
           secretKey: secret, // Pass the secret directly
+          // Use validated/defaulted values
+          algorithm:
+              ['SHA1', 'SHA256', 'SHA512'].contains(algorithm)
+                  ? algorithm
+                  : 'SHA1',
+          digits: (digits >= 6 && digits <= 8) ? digits : 6,
+          period: (period > 0) ? period : 30,
         ),
       );
 
@@ -94,11 +126,16 @@ class _AddAccountPageState extends State<AddAccountPage> {
 
   void _submitManualEntry() {
     if (_formKey.currentState!.validate()) {
+      // Dispatch event with default OTP parameters for manual entry
       context.read<AccountsBloc>().add(
         AddAccountRequested(
           issuer: _issuerController.text.trim(),
           accountName: _accountNameController.text.trim(),
           secretKey: _secretController.text.trim(),
+          // Use standard defaults for manual entry
+          algorithm: 'SHA1',
+          digits: 6,
+          period: 30,
         ),
       );
       // Navigation and feedback are now handled by BlocListener

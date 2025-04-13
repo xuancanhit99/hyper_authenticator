@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:hyper_authenticator/core/theme/app_theme.dart';
 import 'package:hyper_authenticator/core/router/app_router.dart';
 import 'package:hyper_authenticator/features/auth/presentation/bloc/auth_bloc.dart';
+import 'package:hyper_authenticator/features/authenticator/presentation/bloc/local_auth_bloc.dart'; // Import LocalAuthBloc
 import 'injection_container.config.dart'; // Import the generated config file
 
 final sl = GetIt.instance;
@@ -28,7 +29,7 @@ Future<void> configureDependencies() async {
   // Ensure AuthBloc is registered by injectable (e.g., add @injectable to AuthBloc class)
   // For now, assuming AuthBloc is registered.
   sl.registerLazySingleton(
-    () => AppRouter(sl()), // Pass only AuthBloc now
+    () => AppRouter(sl<AuthBloc>(), sl<LocalAuthBloc>()), // Pass both Blocs
   );
 }
 
