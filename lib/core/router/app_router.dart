@@ -6,7 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:hyper_authenticator/features/auth/presentation/bloc/auth_bloc.dart'; // Import AuthBloc
 import 'package:hyper_authenticator/features/auth/presentation/pages/auth_page.dart';
 
-import 'package:hyper_authenticator/features/auth/presentation/pages/home_page.dart';// Import ChatbotPage
+import 'package:hyper_authenticator/features/auth/presentation/pages/home_page.dart'; // Import ChatbotPage
 import 'package:flutter_bloc/flutter_bloc.dart'; // Import BlocProvider// Import the Bloc
 import 'package:hyper_authenticator/injection_container.dart'; // Import sl
 // Removed import for reset_password_page.dart
@@ -73,20 +73,27 @@ class AppRouter {
         // If authenticated and trying to access login/signup, redirect to home
         if (isAuthenticated && isPublicRoute) {
           debugPrint(
-              "Redirecting authenticated user from public route to home");
+            "Redirecting authenticated user from public route to home",
+          );
           return AppRoutes.home;
         }
 
         // If unauthenticated and trying to access a protected route, redirect to login
-
+        if (!isAuthenticated && !isPublicRoute) {
+          debugPrint(
+            "Redirecting unauthenticated user from protected route to login",
+          );
+          return AppRoutes.login;
+        }
 
         // No redirect needed
         return null;
       },
-      errorBuilder: (context, state) => Scaffold(
-        // Basic error page
-        body: Center(child: Text('Page not found: ${state.error}')),
-      ),
+      errorBuilder:
+          (context, state) => Scaffold(
+            // Basic error page
+            body: Center(child: Text('Page not found: ${state.error}')),
+          ),
     );
   }
 }
@@ -98,8 +105,8 @@ class GoRouterRefreshStream extends ChangeNotifier {
   GoRouterRefreshStream(Stream<dynamic> stream) {
     notifyListeners();
     _subscription = stream.asBroadcastStream().listen(
-          (dynamic _) => notifyListeners(),
-        );
+      (dynamic _) => notifyListeners(),
+    );
   }
 
   @override
