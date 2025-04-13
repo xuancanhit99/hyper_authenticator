@@ -82,13 +82,7 @@ class _AddAccountPageState extends State<AddAccountPage> {
         ),
       );
 
-      // Navigate back after successful scan and dispatch
-      if (mounted) {
-        Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Account added successfully!')),
-        );
-      }
+      // Navigation and feedback are now handled by BlocListener
     } on FormatException catch (e) {
       debugPrint('Error parsing OTP Auth URI: $e');
       _showError('Failed to parse QR code: ${e.message}');
@@ -107,12 +101,7 @@ class _AddAccountPageState extends State<AddAccountPage> {
           secretKey: _secretController.text.trim(),
         ),
       );
-      if (mounted) {
-        Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Account added successfully!')),
-        );
-      }
+      // Navigation and feedback are now handled by BlocListener
     }
   }
 
@@ -149,7 +138,46 @@ class _AddAccountPageState extends State<AddAccountPage> {
           ),
         ],
       ),
-      body: _isScanning ? _buildScannerView() : _buildManualEntryForm(),
+      body: BlocListener<AccountsBloc, AccountsState>(
+        // Listen for state changes to handle navigation/feedback after add attempt
+        listener: (context, state) {
+          // We need to know the *previous* state to ensure we only pop
+          // after a successful add operation finishes loading.
+          // A simple check for AccountsLoaded might pop prematurely if the
+          // BLoC was already in that state when the page was pushed.
+          // However, the current BLoC reloads (Loading -> Loaded) after adding.
+          // So, listening for AccountsLoaded should be sufficient here.
+
+          if (state is AccountsLoaded) {
+            // Check if the page is still mounted before interacting with context
+            if (mounted) {
+              // Check if we were previously in a state indicating an add was in progress
+              // This logic might need refinement depending on exact state transitions.
+              // For now, assume AccountsLoaded after AddAccountRequested implies success.
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Account added successfully!')),
+              );
+            }
+          } else if (state is AccountsError) {
+            if (mounted) {
+              // Check if the error is relevant to the add operation.
+              // The current BLoC emits a generic AccountsError.
+              // We might need a more specific error state later if needed.
+              _showError('Failed to add account: ${state.message}');
+              // Optionally restart scanner or allow retry for QR scan
+              if (_isScanning && mounted) {
+                // Add a small delay before restarting scanner to avoid immediate re-scan issues
+                Future.delayed(const Duration(milliseconds: 500), () {
+                  if (mounted) scannerController.start();
+                });
+              }
+            }
+          }
+          // Consider adding handling for AccountsLoading if needed, e.g., show a spinner overlay
+        },
+        child: _isScanning ? _buildScannerView() : _buildManualEntryForm(),
+      ),
     );
   }
 
