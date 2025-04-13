@@ -58,6 +58,7 @@ dependencies:
   uuid: ^4.3.3                  # For generating unique IDs
   shared_preferences: ^2.2.3    # For storing settings like biometric toggle
   local_auth_windows: ^1.0.11
+  cryptography: ^2.7.0 # Added for encryption features (even if sync is simple now) - Updated version
 dev_dependencies:
   flutter_test:
     sdk: flutter
