@@ -21,6 +21,8 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
+  AppLifecycleState? _previousLifecycleState; // Store the previous state
+
   // Timer? _resumeLockTimer; // Timer logic removed
   // StreamSubscription? _authSubscription; // Auth listener removed, handled by router/bloc
   // bool _isResumed = false; // No longer needed
@@ -44,44 +46,47 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    super.didChangeAppLifecycleState(state);
-    debugPrint("[AppLifecycle] State changed: $state");
+    // It's generally better practice to update the state variable *after* using the previous value
+    final previousState = _previousLifecycleState;
+    super.didChangeAppLifecycleState(state); // Call super early
+    debugPrint(
+      "[AppLifecycle] State changed: $state (Previous: $previousState)",
+    );
 
-    if (state == AppLifecycleState.resumed) {
-      // App is resuming, always trigger a check
-      debugPrint("[AppLifecycle] Resumed. Requesting local auth check.");
-      try {
-        // Check if LocalAuthBloc is available before adding event
-        if (sl.isRegistered<LocalAuthBloc>()) {
-          sl<LocalAuthBloc>().add(CheckLocalAuth());
-        } else {
+    try {
+      // Check if LocalAuthBloc is available before adding events
+      if (sl.isRegistered<LocalAuthBloc>()) {
+        final localAuthBloc = sl<LocalAuthBloc>();
+
+        if (state == AppLifecycleState.resumed) {
+          // Always request a check when resuming.
+          // LocalAuthBloc internally handles whether to show prompt based on its current state
+          // (e.g., it won't prompt if already in LocalAuthSuccess and not reset).
+          debugPrint("[AppLifecycle] Resumed. Requesting local auth check.");
+          localAuthBloc.add(CheckLocalAuth());
+        } else if (state == AppLifecycleState.paused ||
+            state == AppLifecycleState.detached) {
+          // Reset auth status only when pausing or detaching.
+          // This prevents reset on inactive/hidden states.
           debugPrint(
-            "[AppLifecycle] LocalAuthBloc not registered yet on resume.",
+            "[AppLifecycle] State is $state. Requesting auth status reset.",
           );
+          localAuthBloc.add(ResetAuthStatus());
         }
-      } catch (e) {
+        // No action needed for inactive or hidden states regarding LocalAuthBloc.
+      } else {
         debugPrint(
-          "[AppLifecycle] Error accessing LocalAuthBloc on resume: $e",
+          "[AppLifecycle] LocalAuthBloc not registered yet during state change to $state.",
         );
       }
-    } else {
-      // App is pausing, detaching, etc. - reset auth status
+    } catch (e) {
       debugPrint(
-        "[AppLifecycle] Paused/Inactive/Hidden/Detached. Requesting auth status reset.",
+        "[AppLifecycle] Error accessing LocalAuthBloc during state change to $state: $e",
       );
-      try {
-        // Check if LocalAuthBloc is available before adding event
-        if (sl.isRegistered<LocalAuthBloc>()) {
-          sl<LocalAuthBloc>().add(ResetAuthStatus());
-        } else {
-          debugPrint(
-            "[AppLifecycle] LocalAuthBloc not registered yet on pause.",
-          );
-        }
-      } catch (e) {
-        debugPrint("[AppLifecycle] Error accessing LocalAuthBloc on pause: $e");
-      }
     }
+
+    // Store the current state for the next change detection
+    _previousLifecycleState = state;
   }
 
   // _checkAndStartLockTimerIfNeeded removed as logic is simplified

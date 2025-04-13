@@ -5,11 +5,52 @@ import 'package:hyper_authenticator/features/authenticator/presentation/bloc/loc
 // import 'package:go_router/go_router.dart';
 // import 'package:hyper_authenticator/core/router/app_router.dart';
 
-class LockScreenPage extends StatelessWidget {
+class LockScreenPage extends StatefulWidget {
   const LockScreenPage({super.key});
 
   @override
+  State<LockScreenPage> createState() => _LockScreenPageState();
+}
+
+class _LockScreenPageState extends State<LockScreenPage> {
+  bool _authTriggered = false; // Flag to prevent multiple triggers
+
+  @override
+  void initState() {
+    super.initState();
+    // Use addPostFrameCallback to ensure context is available and bloc is ready
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _triggerAuthenticationIfNeeded();
+    });
+  }
+
+  void _triggerAuthenticationIfNeeded() {
+    // Check if mounted before accessing context after async gap
+    if (!mounted) return;
+
+    final localAuthBloc = context.read<LocalAuthBloc>();
+    // Trigger auth automatically only if required and not already triggered
+    if (localAuthBloc.state is LocalAuthRequired && !_authTriggered) {
+      setState(() {
+        _authTriggered = true; // Mark as triggered
+      });
+      print(
+        "[LockScreenPage] State is LocalAuthRequired, triggering Authenticate event automatically.",
+      );
+      localAuthBloc.add(Authenticate());
+    } else {
+      print(
+        "[LockScreenPage] Initial state is ${localAuthBloc.state}, not triggering auto-auth.",
+      );
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    // Optional: Use BlocListener if you need to react to state changes *after* initial build
+    // For example, if auth fails and returns to LocalAuthRequired, you might want to re-trigger
+    // or show a message. For now, initState handles the initial trigger.
+
     return Scaffold(
       // Optionally add an AppBar
       // appBar: AppBar(title: const Text('App Locked')),
@@ -30,7 +71,10 @@ class LockScreenPage extends StatelessWidget {
               icon: const Icon(Icons.fingerprint), // Or appropriate icon
               label: const Text('Unlock App'),
               onPressed: () {
-                // Trigger authentication attempt
+                // Manually trigger authentication attempt if button is pressed
+                print(
+                  "[LockScreenPage] Manual Unlock button pressed. Triggering Authenticate.",
+                );
                 context.read<LocalAuthBloc>().add(Authenticate());
               },
               style: ElevatedButton.styleFrom(
@@ -44,6 +88,14 @@ class LockScreenPage extends StatelessWidget {
             BlocBuilder<LocalAuthBloc, LocalAuthState>(
               builder: (context, state) {
                 if (state is LocalAuthError) {
+                  // Reset the trigger flag if an error occurs, allowing retry
+                  // Note: This might cause immediate re-trigger if error state persists.
+                  // Consider more sophisticated retry logic if needed.
+                  // WidgetsBinding.instance.addPostFrameCallback((_) {
+                  //   if (mounted) {
+                  //     setState(() { _authTriggered = false; });
+                  //   }
+                  // });
                   return Padding(
                     padding: const EdgeInsets.only(top: 20.0),
                     child: Text(
