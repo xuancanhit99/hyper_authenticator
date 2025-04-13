@@ -6,7 +6,9 @@ import 'package:hyper_authenticator/core/usecases/usecase.dart'; // For NoParams
 import 'package:hyper_authenticator/features/authenticator/domain/entities/authenticator_account.dart';
 import 'package:hyper_authenticator/features/authenticator/domain/usecases/generate_totp_code.dart';
 import 'package:hyper_authenticator/features/authenticator/presentation/bloc/accounts_bloc.dart';
-import 'package:hyper_authenticator/injection_container.dart'; // Assuming GetIt setup for use cases/blocs
+import 'package:hyper_authenticator/injection_container.dart';
+import 'package:go_router/go_router.dart'; // Import GoRouter for navigation
+import 'package:hyper_authenticator/core/router/app_router.dart'; // Import AppRoutes
 
 // TODO: Define route for AddAccountPage
 // import 'add_account_page.dart'; // Will create this later
@@ -87,16 +89,10 @@ class _AccountsPageState extends State<AccountsPage> {
         actions: [
           IconButton(
             icon: const Icon(Icons.add),
+            tooltip: 'Add Account',
             onPressed: () {
-              // TODO: Navigate to AddAccountPage
-              // Navigator.push(context, MaterialPageRoute(builder: (_) => AddAccountPage()));
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text(
-                    'Add Account functionality not implemented yet.',
-                  ),
-                ),
-              );
+              // Use GoRouter to navigate to the add account page
+              context.push(AppRoutes.addAccount);
             },
           ),
         ],

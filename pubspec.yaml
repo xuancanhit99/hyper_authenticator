@@ -56,7 +56,7 @@ dependencies:
   mobile_scanner: ^5.1.0        # QR code scanning
   local_auth: ^2.2.0            # Biometric/PIN lock
   uuid: ^4.3.3                  # For generating unique IDs
-  # Removed otpauth_migration package. Will parse otpauth:// URI manually.
+  shared_preferences: ^2.2.3    # For storing settings like biometric toggle
 dev_dependencies:
   flutter_test:
     sdk: flutter

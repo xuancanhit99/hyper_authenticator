@@ -6,8 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:hyper_authenticator/core/theme/app_theme.dart';
 import 'package:hyper_authenticator/core/router/app_router.dart';
 import 'package:hyper_authenticator/features/auth/presentation/bloc/auth_bloc.dart';
-
-import 'injection_container.config.dart';
+import 'injection_container.config.dart'; // Import the generated config file
 
 final sl = GetIt.instance;
 
@@ -17,7 +16,8 @@ final sl = GetIt.instance;
   asExtension: true, // Thay đổi thành true
 )
 Future<void> configureDependencies() async {
-  sl.init();
+  // Use the generated extension method 'init'
+  await sl.init();
 
   // External dependencies are now handled by RegisterModule
 
@@ -28,8 +28,8 @@ Future<void> configureDependencies() async {
   // Ensure AuthBloc is registered by injectable (e.g., add @injectable to AuthBloc class)
   // For now, assuming AuthBloc is registered.
   sl.registerLazySingleton(
-    () => AppRouter(sl(), sl()),
-  ); // Pass AuthBloc and LocalAuthBloc
+    () => AppRouter(sl()), // Pass only AuthBloc now
+  );
 }
 
 // Removed _registerExternalDependencies function as it's handled by @module

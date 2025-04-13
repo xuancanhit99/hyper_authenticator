@@ -7,7 +7,7 @@ import 'package:injectable/injectable.dart'; // Moved import here
 part 'local_auth_event.dart';
 part 'local_auth_state.dart';
 
-@injectable // Register Bloc
+@lazySingleton // Change to LazySingleton
 class LocalAuthBloc extends Bloc<LocalAuthEvent, LocalAuthState> {
   final LocalAuthentication auth;
 
