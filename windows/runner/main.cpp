@@ -26,7 +26,8 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
 
   FlutterWindow window(project);
   Win32Window::Point origin(10, 10);
-  Win32Window::Size size(1280, 720);
+  // Set initial window size to resemble a smartphone (e.g., ~9:16 aspect ratio)
+  Win32Window::Size size(400, 711);
   if (!window.Create(L"Hyper", origin, size)) {
     return EXIT_FAILURE;
   }
