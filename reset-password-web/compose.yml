@@ -5,9 +5,10 @@ services:
     build:
       context: . # Build the image from the Dockerfile in the current directory (.)
       args:
+        # Docker Compose will automatically substitute these using the .env file in the same directory
         - SUPABASE_URL=${SUPABASE_URL}
         - SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
     container_name: hyper-authenticator-reset-web # Optional: Name the container
     ports:
-      - "8888:80" # Map port 8888 on the host to port 80 in the container
+      - "8888:80" # Map port 8888 on the host to port 80 in the container (Adjust host port if needed)
     restart: unless-stopped # Optional: Restart policy
