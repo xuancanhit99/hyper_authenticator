@@ -1,0 +1,13 @@
+version: '3.8' # Specify docker-compose version
+
+services:
+  reset-password-web:
+    build:
+      context: . # Build the image from the Dockerfile in the current directory (.)
+      args:
+        - SUPABASE_URL=${SUPABASE_URL}
+        - SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
+    container_name: hyper-authenticator-reset-web # Optional: Name the container
+    ports:
+      - "8888:80" # Map port 8888 on the host to port 80 in the container
+    restart: unless-stopped # Optional: Restart policy

@@ -1,0 +1,18 @@
+# Ignore environment variables file
+.env
+
+# Ignore IDE specific files/folders if any inside this project
+.idea/
+
+# IDE files
+.vscode/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS files
+.DS_Store
+Thumbs.db
