@@ -21,4 +21,9 @@ abstract class SyncRemoteDataSource {
   /// Returns `true` if data exists, `false` otherwise.
   /// Throws a [ServerException] for all error codes.
   Future<bool> hasRemoteData();
+
+  /// Fetches the timestamp of the last successful sync for the current user.
+  /// Returns [DateTime] or null if never synced.
+  /// Throws a [ServerException] for communication errors.
+  Future<DateTime?> getLastSyncTime();
 }

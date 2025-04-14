@@ -97,14 +97,16 @@ class AppRouter {
         final isGoingToLogin = location == AppRoutes.login;
         final isGoingToLockScreen = location == AppRoutes.lockScreen;
 
+        // Added timestamp for better tracing
+        final timestamp = DateTime.now().toIso8601String();
         debugPrint(
-          "[Redirect] Supabase State: ${supabaseAuthState.runtimeType}, LocalAuth State: ${localAuthState.runtimeType}, Location: $location",
+          "[$timestamp Redirect] Supabase State: ${supabaseAuthState.runtimeType}, LocalAuth State: ${localAuthState.runtimeType}, Location: $location",
         );
 
         // 1. Chờ Supabase Auth load xong
         if (supabaseAuthState is AuthInitial ||
             supabaseAuthState is AuthLoading) {
-          debugPrint("[Redirect] Waiting for Supabase Auth...");
+          debugPrint("[$timestamp Redirect] Waiting for Supabase Auth...");
           return null; // Wait for Supabase auth to settle
         }
 
@@ -112,7 +114,9 @@ class AppRouter {
 
         // 2. Nếu CHƯA đăng nhập Supabase và KHÔNG ở trang Login -> Về Login
         if (!isSupabaseAuthenticated && !isGoingToLogin) {
-          debugPrint("[Redirect] Unauthenticated & not on Login -> Go Login");
+          debugPrint(
+            "[$timestamp Redirect] Unauthenticated & not on Login -> Go Login",
+          );
           return AppRoutes.login;
         }
 
@@ -120,7 +124,9 @@ class AppRouter {
         // 4. Nếu ĐÃ đăng nhập Supabase VÀ ĐANG ở trang Login -> Vào Main
         //    (Logic kiểm tra Local Auth sẽ chạy sau nếu cần khi đã ở Main hoặc Lock)
         if (isSupabaseAuthenticated && isGoingToLogin) {
-          debugPrint("[Redirect] Authenticated & on Login -> Go Main");
+          debugPrint(
+            "[$timestamp Redirect] Authenticated & on Login -> Go Main",
+          );
           return AppRoutes.main; // Redirect away from login immediately
         }
 
@@ -128,7 +134,7 @@ class AppRouter {
         if (isSupabaseAuthenticated) {
           // 5. Chờ Local Auth load xong (nếu cần)
           if (localAuthState is LocalAuthInitial) {
-            debugPrint("[Redirect] Waiting for Local Auth check...");
+            debugPrint("[$timestamp Redirect] Waiting for Local Auth check...");
             // Dispatch check if not already done (though app.dart should do it)
             // localAuthBloc.add(CheckLocalAuth()); // Consider if needed here
             return null; // Wait
@@ -137,7 +143,7 @@ class AppRouter {
           // 6. Nếu Local Auth YÊU CẦU và KHÔNG ở màn hình khóa -> Tới màn hình khóa
           if (localAuthState is LocalAuthRequired && !isGoingToLockScreen) {
             debugPrint(
-              "[Redirect] Local Auth Required & not on Lock Screen -> Go Lock Screen",
+              "[$timestamp Redirect] Local Auth Required & not on Lock Screen -> Go Lock Screen",
             );
             return AppRoutes.lockScreen;
           }
@@ -145,7 +151,7 @@ class AppRouter {
           // 7. Nếu Local Auth THÀNH CÔNG và ĐANG ở màn hình khóa -> Vào Main
           if (localAuthState is LocalAuthSuccess && isGoingToLockScreen) {
             debugPrint(
-              "[Redirect] Local Auth Success & on Lock Screen -> Go Main",
+              "[$timestamp Redirect] Local Auth Success & on Lock Screen -> Go Main",
             );
             return AppRoutes.main;
           }
@@ -154,7 +160,7 @@ class AppRouter {
           // (Shouldn't happen if LocalAuthSuccess is emitted correctly, but as a safeguard)
           if (localAuthState is LocalAuthUnavailable && isGoingToLockScreen) {
             debugPrint(
-              "[Redirect] Local Auth Unavailable & on Lock Screen -> Go Main",
+              "[$timestamp Redirect] Local Auth Unavailable & on Lock Screen -> Go Main",
             );
             return AppRoutes.main;
           }
@@ -163,7 +169,7 @@ class AppRouter {
         // Các trường hợp khác (đã đăng nhập và ở trang main, chưa đăng nhập và ở trang login) -> không cần redirect
         // Các trường hợp khác không cần redirect
         debugPrint(
-          "[Redirect] No redirect needed for current states and location.",
+          "[$timestamp Redirect] No redirect needed for current states and location.",
         );
         return null;
       },

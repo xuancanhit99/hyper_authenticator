@@ -2,6 +2,7 @@ import 'package:fpdart/fpdart.dart';
 import 'package:hyper_authenticator/core/error/failures.dart';
 import 'package:hyper_authenticator/features/authenticator/domain/entities/authenticator_account.dart';
 
+// Removed import for non-existent EncryptedAccount
 /// Abstract class defining the contract for repositories
 /// responsible for synchronizing authenticator accounts.
 abstract class SyncRepository {
@@ -25,4 +26,14 @@ abstract class SyncRepository {
   /// Returns [Right(bool)] indicating if data exists,
   /// or [Left(Failure)] on error.
   Future<Either<Failure, bool>> hasRemoteData();
+
+  /// Fetches the timestamp of the last successful sync for the current user.
+  /// Returns [Right(DateTime?)] with the timestamp or null.
+  /// Returns [Left(Failure)] on communication error.
+  Future<Either<Failure, DateTime?>> getLastSyncTime();
+
+  /// Saves the user's generated salt for encryption remotely.
+  /// Returns [Right(unit)] on success, or [Left(Failure)] on error.
+  Future<Either<Failure, Unit>> saveUserSalt(String salt);
+  // Future<Either<Failure, List<EncryptedAccount>>> downloadEncryptedAccounts(); // Commented out as EncryptedAccount doesn't exist
 }

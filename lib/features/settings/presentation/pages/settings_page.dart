@@ -18,11 +18,9 @@ class SettingsPage extends StatelessWidget {
       providers: [
         BlocProvider(create: (_) => sl<SettingsBloc>()..add(LoadSettings())),
         BlocProvider(
-          create:
-              (_) =>
-                  sl<SyncBloc>()..add(
-                    CheckSyncStatus(),
-                  ), // Provide SyncBloc and check status
+          // Create the SyncBloc instance, but DO NOT add CheckSyncStatus here.
+          // The check should be triggered explicitly when the page is viewed or refreshed.
+          create: (_) => sl<SyncBloc>(),
         ),
         // AccountsBloc is likely provided higher up, but ensure it's accessible
         // If not provided higher up, add: BlocProvider.value(value: sl<AccountsBloc>()),
@@ -164,7 +162,25 @@ class SettingsPage extends StatelessWidget {
 }
 
 // Widget dedicated to the Sync section UI and logic
-class _SyncSection extends StatelessWidget {
+class _SyncSection extends StatefulWidget {
+  @override
+  _SyncSectionState createState() => _SyncSectionState();
+}
+
+class _SyncSectionState extends State<_SyncSection> {
+  @override
+  void initState() {
+    super.initState();
+    // Dispatch CheckSyncStatus when the widget is first initialized
+    // Ensure the bloc is available before adding the event
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        // Check if the widget is still mounted
+        context.read<SyncBloc>().add(CheckSyncStatus());
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     // Access AccountsBloc to get the current list for upload

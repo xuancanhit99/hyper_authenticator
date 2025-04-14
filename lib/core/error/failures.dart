@@ -50,3 +50,8 @@ class AuthServerFailure extends Failure {
 class ValidationFailure extends Failure {
   const ValidationFailure(super.message);
 }
+
+// Failure specific to sync operations (e.g., encryption/decryption issues)
+class SyncOperationFailure extends Failure {
+  const SyncOperationFailure(super.message);
+}

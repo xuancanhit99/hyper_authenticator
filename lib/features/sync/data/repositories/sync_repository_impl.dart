@@ -69,4 +69,49 @@ class SyncRepositoryImpl implements SyncRepository {
       );
     }
   }
+
+  @override
+  Future<Either<Failure, DateTime?>> getLastSyncTime() async {
+    // TODO: Implement network check if needed
+    try {
+      final lastSyncTime = await remoteDataSource.getLastSyncTime();
+      return Right(lastSyncTime);
+    } on ServerException catch (e) {
+      // Return failure only for critical communication errors, not if timestamp is just null
+      return Left(ServerFailure(e.message ?? 'Failed to get last sync time'));
+    } catch (e) {
+      return Left(
+        ServerFailure(
+          'An unexpected error occurred while getting last sync time: ${e.toString()}',
+        ),
+      );
+    }
+  }
+
+  // --- Added Placeholder Implementations ---
+
+  @override
+  Future<Either<Failure, Unit>> saveUserSalt(String salt) async {
+    // TODO: Implement actual logic to save salt via remoteDataSource
+    print(
+      "SyncRepositoryImpl: saveUserSalt called with salt: $salt (Not Implemented)",
+    );
+    // For now, return a failure or success based on expected behavior if implemented
+    // Assuming it should succeed if network is okay, but depends on data source impl.
+    // Let's return failure until implemented.
+    return Left(ServerFailure('saveUserSalt not implemented in repository'));
+  }
+
+  // @override // Commented out as the interface method is commented out
+  // Future<Either<Failure, List<EncryptedAccount>>>
+  // downloadEncryptedAccounts() async {
+  //   // TODO: Implement actual logic to download encrypted accounts via remoteDataSource
+  //   print(
+  //     "SyncRepositoryImpl: downloadEncryptedAccounts called (Not Implemented)",
+  //   );
+  //   // For now, return failure.
+  //   return Left(
+  //     ServerFailure('downloadEncryptedAccounts not implemented in repository'),
+  //   );
+  // }
 }
