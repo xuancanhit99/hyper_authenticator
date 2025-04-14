@@ -22,8 +22,9 @@ abstract class SyncRemoteDataSource {
   /// Throws a [ServerException] for all error codes.
   Future<bool> hasRemoteData();
 
-  /// Fetches the timestamp of the last successful sync for the current user.
-  /// Returns [DateTime] or null if never synced.
+  /// Fetches the timestamp of the last successful upload for the current user
+  /// by checking the latest 'updated_at' timestamp in their synced accounts.
+  /// Returns [DateTime] or null if no accounts have been uploaded.
   /// Throws a [ServerException] for communication errors.
-  Future<DateTime?> getLastSyncTime();
+  Future<DateTime?> getLastUploadTime();
 }

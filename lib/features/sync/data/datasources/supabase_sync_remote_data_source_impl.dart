@@ -52,9 +52,7 @@ class SupabaseSyncRemoteDataSourceImpl implements SyncRemoteDataSource {
             return AuthenticatorAccount.fromJson(json);
           }).toList();
 
-      // After successful download, update the last sync time
-      await _updateLastSyncTime(userId);
-
+      // No longer updating timestamp on download
       data.map((json) => AuthenticatorAccount.fromJson(json)).toList();
       return accounts;
     } on PostgrestException catch (e) {
@@ -97,9 +95,8 @@ class SupabaseSyncRemoteDataSourceImpl implements SyncRemoteDataSource {
 
         await supabaseClient.from(accountsTableName).insert(dataToInsert);
       }
-      // Update last sync time regardless of whether accounts were empty or not,
-      // as the operation (delete + potentially insert) completed successfully.
-      await _updateLastSyncTime(userId);
+      // The 'updated_at' column is automatically set by 'DEFAULT now()' during INSERT.
+      // No explicit update needed here anymore.
     } on PostgrestException catch (e) {
       print('Supabase Error uploading accounts: ${e.message}');
       throw ServerException(
@@ -138,61 +135,45 @@ class SupabaseSyncRemoteDataSourceImpl implements SyncRemoteDataSource {
     }
   }
 
-  // Helper method to update the last_synced_at timestamp
-  Future<void> _updateLastSyncTime(String userId) async {
-    try {
-      await supabaseClient
-          .from(profilesTableName)
-          .update({'last_synced_at': DateTime.now().toIso8601String()})
-          .eq(
-            'id',
-            userId,
-          ); // Assuming 'id' is the PK in user_profiles matching auth.users.id
-    } catch (e) {
-      // Log error but don't throw, as failing to update timestamp is not critical for sync operation itself
-      print('Warning: Failed to update last_synced_at for user $userId: $e');
-    }
-  }
-
+  // Removed _updateLastSyncTime helper method as it's no longer needed.
+  // The updated_at column in synced_accounts handles this automatically on insert.
   @override
-  Future<DateTime?> getLastSyncTime() async {
+  Future<DateTime?> getLastUploadTime() async {
+    // Get the most recent 'updated_at' timestamp from the user's synced accounts.
     final userId = _getCurrentUserId();
     try {
       final response =
           await supabaseClient
-              .from(profilesTableName)
-              .select('last_synced_at')
-              .eq('id', userId)
-              .maybeSingle(); // Use maybeSingle to handle null if profile doesn't exist yet
+              .from(accountsTableName)
+              .select('updated_at')
+              .eq('user_id', userId)
+              .order('updated_at', ascending: false) // Get the latest first
+              .limit(1) // Only need the latest one
+              .maybeSingle(); // Use maybeSingle as user might have no accounts yet
 
       print(
-        '[SyncDebug] Raw response for last_synced_at: $response',
-      ); // Added log
+        '[SyncDebug] Raw response for last_upload_time (max updated_at): $response',
+      );
 
-      if (response == null || response['last_synced_at'] == null) {
+      if (response == null || response['updated_at'] == null) {
         print(
-          '[SyncDebug] No profile or last_synced_at found, returning null.',
-        ); // Added log
+          '[SyncDebug] No accounts found or updated_at is null, returning null.',
+        );
         return null;
       }
-      final timestampString =
-          response['last_synced_at'] as String?; // Added null check
-      print(
-        '[SyncDebug] Timestamp string from Supabase: $timestampString',
-      ); // Added log
+
+      final timestampString = response['updated_at'] as String?;
+      print('[SyncDebug] Last upload timestamp string: $timestampString');
       if (timestampString == null) {
-        print(
-          '[SyncDebug] Timestamp string is null, returning null.',
-        ); // Added log
+        print('[SyncDebug] Timestamp string is null, returning null.');
         return null;
       }
+
       final parsedTime = DateTime.tryParse(timestampString);
-      print('[SyncDebug] Parsed DateTime: $parsedTime'); // Added log
+      print('[SyncDebug] Parsed last upload DateTime: $parsedTime');
       return parsedTime;
     } catch (e) {
-      print(
-        '[SyncDebug] Error fetching/parsing last_synced_at for user $userId: $e',
-      ); // Enhanced log
+      print('[SyncDebug] Error fetching last_upload_time for user $userId: $e');
       // Don't throw, just return null as it's informational
       return null;
     }

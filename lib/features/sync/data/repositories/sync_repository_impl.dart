@@ -71,18 +71,20 @@ class SyncRepositoryImpl implements SyncRepository {
   }
 
   @override
-  Future<Either<Failure, DateTime?>> getLastSyncTime() async {
+  Future<Either<Failure, DateTime?>> getLastUploadTime() async {
+    // Renamed method
     // TODO: Implement network check if needed
     try {
-      final lastSyncTime = await remoteDataSource.getLastSyncTime();
-      return Right(lastSyncTime);
+      // Call the renamed method on the data source
+      final lastUploadTime = await remoteDataSource.getLastUploadTime();
+      return Right(lastUploadTime);
     } on ServerException catch (e) {
       // Return failure only for critical communication errors, not if timestamp is just null
-      return Left(ServerFailure(e.message ?? 'Failed to get last sync time'));
+      return Left(ServerFailure(e.message ?? 'Failed to get last upload time'));
     } catch (e) {
       return Left(
         ServerFailure(
-          'An unexpected error occurred while getting last sync time: ${e.toString()}',
+          'An unexpected error occurred while getting last upload time: ${e.toString()}',
         ),
       );
     }

@@ -27,10 +27,11 @@ abstract class SyncRepository {
   /// or [Left(Failure)] on error.
   Future<Either<Failure, bool>> hasRemoteData();
 
-  /// Fetches the timestamp of the last successful sync for the current user.
-  /// Returns [Right(DateTime?)] with the timestamp or null.
+  /// Fetches the timestamp of the last successful upload for the current user
+  /// by checking the latest 'updated_at' timestamp in their synced accounts.
+  /// Returns [Right(DateTime?)] with the timestamp or null if no accounts uploaded.
   /// Returns [Left(Failure)] on communication error.
-  Future<Either<Failure, DateTime?>> getLastSyncTime();
+  Future<Either<Failure, DateTime?>> getLastUploadTime();
 
   /// Saves the user's generated salt for encryption remotely.
   /// Returns [Right(unit)] on success, or [Left(Failure)] on error.

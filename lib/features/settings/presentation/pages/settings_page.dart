@@ -209,14 +209,26 @@ class _SyncSectionState extends State<_SyncSection> {
             ],
           );
         } else if (state is SyncStatusChecked) {
-          String statusText =
-              state.hasRemoteData
-                  ? 'Remote data found.'
-                  : 'No remote data found.';
-          if (state.lastSyncTime != null) {
-            statusText +=
-                '\nLast sync: ${DateFormat.yMd().add_jm().format(state.lastSyncTime!)}';
+          // Build status text based on remote data and last sync time
+          List<String> statusParts = [];
+          if (state.hasRemoteData) {
+            statusParts.add('Remote data found.');
+          } else {
+            statusParts.add('No remote data found.');
           }
+
+          // Use the renamed state property: lastUploadTime
+          if (state.lastUploadTime != null) {
+            // Format the time nicely
+            final formattedTime = DateFormat.yMd().add_jm().format(
+              state.lastUploadTime!, // Use renamed property
+            );
+            // Update the display text
+            statusParts.add('Last upload: $formattedTime');
+          }
+
+          final statusText = statusParts.join(' '); // Join parts with a space
+
           statusWidget = Text(
             statusText,
             style: Theme.of(context).textTheme.bodySmall,

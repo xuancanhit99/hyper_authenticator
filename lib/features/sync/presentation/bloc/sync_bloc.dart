@@ -4,7 +4,7 @@ import 'package:hyper_authenticator/core/usecases/usecase.dart';
 import 'package:hyper_authenticator/features/authenticator/domain/entities/authenticator_account.dart';
 import 'package:hyper_authenticator/features/authenticator/presentation/bloc/accounts_bloc.dart'; // Needed to update accounts after download
 import 'package:hyper_authenticator/features/sync/domain/usecases/download_accounts_usecase.dart';
-import 'package:hyper_authenticator/features/sync/domain/usecases/get_last_sync_time_usecase.dart'; // Added
+import 'package:hyper_authenticator/features/sync/domain/usecases/get_last_sync_time_usecase.dart'; // Renamed to GetLastUploadTimeUseCase
 import 'package:hyper_authenticator/features/sync/domain/usecases/has_remote_data_usecase.dart';
 import 'package:hyper_authenticator/features/sync/domain/usecases/upload_accounts_usecase.dart';
 import 'package:injectable/injectable.dart';
@@ -17,14 +17,14 @@ class SyncBloc extends Bloc<SyncEvent, SyncState> {
   final HasRemoteDataUseCase _hasRemoteDataUseCase;
   final UploadAccountsUseCase _uploadAccountsUseCase;
   final DownloadAccountsUseCase _downloadAccountsUseCase;
-  final GetLastSyncTimeUseCase _getLastSyncTimeUseCase; // Added
+  final GetLastUploadTimeUseCase _getLastUploadTimeUseCase; // Renamed field
   final AccountsBloc _accountsBloc; // Inject AccountsBloc to update local data
 
   SyncBloc(
     this._hasRemoteDataUseCase,
     this._uploadAccountsUseCase,
     this._downloadAccountsUseCase,
-    this._getLastSyncTimeUseCase, // Added
+    this._getLastUploadTimeUseCase, // Renamed parameter
     this._accountsBloc, // Inject AccountsBloc
   ) : super(SyncInitial()) {
     on<CheckSyncStatus>(_onCheckSyncStatus);
@@ -41,13 +41,20 @@ class SyncBloc extends Bloc<SyncEvent, SyncState> {
     await result.fold(
       (failure) async => emit(SyncFailure(message: failure.message)),
       (hasData) async {
-        // If remote data exists or not, also fetch the last sync time
-        final timeResult = await _getLastSyncTimeUseCase(NoParams());
-        final lastSyncTime = timeResult.getOrElse(
+        // If remote data exists or not, also fetch the last upload time
+        final timeResult = await _getLastUploadTimeUseCase(
+          NoParams(),
+        ); // Use renamed use case
+        final lastUploadTime = timeResult.getOrElse(
+          // Renamed variable
           (_) => null,
         ); // Get time or null on failure
         emit(
-          SyncStatusChecked(hasRemoteData: hasData, lastSyncTime: lastSyncTime),
+          // Pass the renamed variable to the renamed state property
+          SyncStatusChecked(
+            hasRemoteData: hasData,
+            lastUploadTime: lastUploadTime, // Corrected parameter name
+          ),
         );
       },
     );

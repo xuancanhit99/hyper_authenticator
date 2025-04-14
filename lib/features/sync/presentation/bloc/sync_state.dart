@@ -16,13 +16,15 @@ class SyncInProgress extends SyncState {}
 /// State after checking the remote server status.
 class SyncStatusChecked extends SyncState {
   final bool hasRemoteData;
-  final DateTime?
-  lastSyncTime; // Optional: Could store last successful sync time
+  final DateTime? lastUploadTime; // Renamed property
 
-  const SyncStatusChecked({required this.hasRemoteData, this.lastSyncTime});
+  const SyncStatusChecked({
+    required this.hasRemoteData,
+    this.lastUploadTime,
+  }); // Updated constructor
 
   @override
-  List<Object?> get props => [hasRemoteData, lastSyncTime];
+  List<Object?> get props => [hasRemoteData, lastUploadTime]; // Updated props
 }
 
 /// State indicating a sync operation (upload or download) completed successfully.
