@@ -1,3 +1,5 @@
+import 'dart:async'; // Added for StreamSubscription
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:hyper_authenticator/features/auth/presentation/bloc/auth_bloc.dart'; // For logout
@@ -168,17 +170,45 @@ class _SyncSection extends StatefulWidget {
 }
 
 class _SyncSectionState extends State<_SyncSection> {
+  StreamSubscription<AuthState>? _authSubscription; // Add subscription variable
+
   @override
   void initState() {
     super.initState();
-    // Dispatch CheckSyncStatus when the widget is first initialized
-    // Ensure the bloc is available before adding the event
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
-        // Check if the widget is still mounted
+    // Listen to AuthBloc state changes
+    _authSubscription = context.read<AuthBloc>().stream.listen((authState) {
+      // Trigger check only when authenticated and widget is mounted
+      if (mounted && authState is AuthAuthenticated) {
+        print(
+          "[_SyncSectionState] AuthAuthenticated detected, dispatching CheckSyncStatus.",
+        );
         context.read<SyncBloc>().add(CheckSyncStatus());
+      } else {
+        print(
+          "[_SyncSectionState] Auth state is not AuthAuthenticated (${authState.runtimeType}), not dispatching CheckSyncStatus.",
+        );
       }
     });
+
+    // Also trigger an initial check if already authenticated when widget builds
+    // (Handles cases where settings page is visited after initial auth)
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        final currentAuthState = context.read<AuthBloc>().state;
+        if (currentAuthState is AuthAuthenticated) {
+          print(
+            "[_SyncSectionState] Already authenticated on build, dispatching CheckSyncStatus.",
+          );
+          context.read<SyncBloc>().add(CheckSyncStatus());
+        }
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _authSubscription?.cancel(); // Cancel subscription on dispose
+    super.dispose();
   }
 
   @override
