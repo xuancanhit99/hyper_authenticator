@@ -211,11 +211,11 @@ class _SyncSectionState extends State<_SyncSection> {
         } else if (state is SyncStatusChecked) {
           // Build status text based on remote data and last sync time
           List<String> statusParts = [];
-          if (state.hasRemoteData) {
-            statusParts.add('Remote data found.');
-          } else {
-            statusParts.add('No remote data found.');
-          }
+          // if (state.hasRemoteData) {
+          //   statusParts.add('Remote data found.');
+          // } else {
+          //   statusParts.add('No remote data found.');
+          // }
 
           // Use the renamed state property: lastUploadTime
           if (state.lastUploadTime != null) {
@@ -247,11 +247,51 @@ class _SyncSectionState extends State<_SyncSection> {
               onPressed:
                   (!isSyncing && canSync && currentAccounts.isNotEmpty)
                       ? () {
-                        context.read<SyncBloc>().add(
-                          UploadAccountsRequested(
-                            accountsToUpload: currentAccounts,
-                          ),
-                        );
+                        // Check if remote data exists before uploading
+                        if (state is SyncStatusChecked && state.hasRemoteData) {
+                          // Show warning dialog
+                          showDialog(
+                            context: context,
+                            builder:
+                                (dialogContext) => AlertDialog(
+                                  title: const Text('Confirm Upload'),
+                                  content: const Text(
+                                    'Remote data already exists. Uploading will overwrite it with your current local data.\n\nConsider Downloading first if other devices might have newer data.',
+                                  ),
+                                  actions: [
+                                    TextButton(
+                                      onPressed:
+                                          () => Navigator.pop(dialogContext),
+                                      child: const Text('Cancel'),
+                                    ),
+                                    TextButton(
+                                      onPressed: () {
+                                        Navigator.pop(
+                                          dialogContext,
+                                        ); // Close dialog
+                                        // Proceed with upload
+                                        context.read<SyncBloc>().add(
+                                          UploadAccountsRequested(
+                                            accountsToUpload: currentAccounts,
+                                          ),
+                                        );
+                                      },
+                                      child: const Text(
+                                        'Upload Anyway',
+                                        style: TextStyle(color: Colors.red),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                          );
+                        } else {
+                          // No remote data or status not checked yet, upload directly
+                          context.read<SyncBloc>().add(
+                            UploadAccountsRequested(
+                              accountsToUpload: currentAccounts,
+                            ),
+                          );
+                        }
                       }
                       : null, // Disable if syncing, no accounts loaded, or no accounts exist
               style: ElevatedButton.styleFrom(
@@ -268,35 +308,10 @@ class _SyncSectionState extends State<_SyncSection> {
               onPressed:
                   (!isSyncing && state.hasRemoteData)
                       ? () {
-                        // Optional: Add confirmation dialog before overwriting local data
-                        showDialog(
-                          context: context,
-                          builder:
-                              (dialogContext) => AlertDialog(
-                                title: const Text('Confirm Download'),
-                                content: const Text(
-                                  'This will overwrite your local accounts with the data from the server. Continue?',
-                                ),
-                                actions: [
-                                  TextButton(
-                                    onPressed:
-                                        () => Navigator.pop(dialogContext),
-                                    child: const Text('Cancel'),
-                                  ),
-                                  TextButton(
-                                    onPressed: () {
-                                      Navigator.pop(dialogContext);
-                                      context.read<SyncBloc>().add(
-                                        DownloadAccountsRequested(),
-                                      );
-                                    },
-                                    child: const Text(
-                                      'Download',
-                                      style: TextStyle(color: Colors.orange),
-                                    ),
-                                  ),
-                                ],
-                              ),
+                        // Removed the confirmation dialog wrapper as requested.
+                        // Dispatch the download event directly.
+                        context.read<SyncBloc>().add(
+                          DownloadAccountsRequested(),
                         );
                       }
                       : null, // Disable if syncing or no remote data
