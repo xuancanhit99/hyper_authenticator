@@ -170,7 +170,8 @@ class _SyncSection extends StatefulWidget {
 }
 
 class _SyncSectionState extends State<_SyncSection> {
-  StreamSubscription<AuthState>? _authSubscription; // Add subscription variable
+  StreamSubscription<AuthState>? _authSubscription;
+  // Removed local _isSyncEnabled state. Will rely solely on SyncBloc state.
 
   @override
   void initState() {
@@ -199,10 +200,13 @@ class _SyncSectionState extends State<_SyncSection> {
           print(
             "[_SyncSectionState] Already authenticated on build, dispatching CheckSyncStatus.",
           );
+          // Request initial status including enabled state and last sync time
           context.read<SyncBloc>().add(CheckSyncStatus());
+          // Initial CheckSyncStatus is dispatched. UI will update via BlocBuilder.
         }
       }
     });
+    // No need for a separate listener, BlocBuilder handles UI updates based on state.
   }
 
   @override
@@ -222,184 +226,340 @@ class _SyncSectionState extends State<_SyncSection> {
 
     return BlocBuilder<SyncBloc, SyncState>(
       builder: (context, state) {
-        Widget statusWidget;
-        List<Widget> actions = [];
+        // Determine state variables directly from SyncBloc's state
+        bool isCurrentlySyncEnabled = false; // Default to false
+        DateTime? lastSyncTime;
+        bool hasRemoteData = false;
+        bool isSyncing = state is SyncInProgress;
+        String syncProgressMessage = '';
+
+        if (state is SyncStatusChecked) {
+          isCurrentlySyncEnabled = state.isSyncEnabled;
+          lastSyncTime = state.lastSyncTime;
+          hasRemoteData = state.hasRemoteData;
+        } else if (state is SyncFailure) {
+          isCurrentlySyncEnabled = state.isSyncEnabled;
+          // Potentially retrieve last known sync time if needed, but error state takes precedence
+        } else if (state is SyncSuccess) {
+          // After success, we might not know the enabled status without another check,
+          // but we can assume it's enabled if a sync just happened.
+          // Let's rely on the subsequent CheckSyncStatus triggered by the BLoC.
+          // For immediate UI feedback, we can infer:
+          isCurrentlySyncEnabled = true; // Assume enabled after success
+          lastSyncTime = state.lastSyncTime;
+        } else if (state is SyncInProgress) {
+          syncProgressMessage = state.message;
+          // Infer enabled status from previous state if possible, or default
+          // This requires more complex state management or passing previous state.
+          // Simplification: Assume it's enabled if syncing is in progress.
+          isCurrentlySyncEnabled = true;
+        }
+        // If state is SyncInitial, isCurrentlySyncEnabled remains false.
+
+        Widget statusWidget = const Text(
+          'Sync status unknown.',
+        ); // Default status
 
         if (state is SyncInitial ||
-            state is SyncInProgress && state is! SyncStatusChecked) {
-          statusWidget = const Row(
+            state is SyncInProgress &&
+                state.message == 'Checking sync status...') {
+          statusWidget = Row(
+            // Keep the checking status indicator
+            mainAxisSize: MainAxisSize.min,
             children: [
-              SizedBox(
-                width: 18,
-                height: 18,
+              const SizedBox(
+                width: 16, // Slightly smaller
+                height: 16,
                 child: CircularProgressIndicator(strokeWidth: 2),
               ),
-              SizedBox(width: 8),
-              Text('Checking sync status...'),
+              const SizedBox(width: 8),
+              Text(
+                'Checking status...',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
             ],
           );
         } else if (state is SyncStatusChecked) {
-          // Build status text based on remote data and last sync time
-          List<String> statusParts = [];
-          // if (state.hasRemoteData) {
-          //   statusParts.add('Remote data found.');
-          // } else {
-          //   statusParts.add('No remote data found.');
-          // }
+          // isCurrentlySyncEnabled, lastSyncTime, hasRemoteData already set above
 
-          // Use the renamed state property: lastUploadTime
-          if (state.lastUploadTime != null) {
-            // Format the time nicely
+          // Display last sync time if available and sync is enabled
+          if (isCurrentlySyncEnabled && lastSyncTime != null) {
             final formattedTime = DateFormat.yMd().add_jm().format(
-              state.lastUploadTime!, // Use renamed property
+              lastSyncTime,
             );
-            // Update the display text
-            statusParts.add('Last upload: $formattedTime');
+            statusWidget = Text(
+              'Last sync: $formattedTime',
+              style: Theme.of(context).textTheme.bodySmall,
+            );
+          } else if (isCurrentlySyncEnabled) {
+            statusWidget = Text(
+              'Sync enabled. Ready to sync.', // Or 'No previous sync found.'
+              style: Theme.of(context).textTheme.bodySmall,
+            );
+          } else {
+            statusWidget = Text(
+              'Sync is disabled.',
+              style: Theme.of(context).textTheme.bodySmall,
+            );
           }
 
-          final statusText = statusParts.join(' '); // Join parts with a space
-
-          statusWidget = Text(
-            statusText,
-            style: Theme.of(context).textTheme.bodySmall,
-          );
-
-          // Enable buttons only when not syncing and accounts are loaded
-          final bool canSync = accountsState is AccountsLoaded;
-          final bool isSyncing = context.select(
-            (SyncBloc bloc) => bloc.state is SyncInProgress,
-          );
-
-          actions = [
-            ElevatedButton.icon(
-              icon: const Icon(Icons.upload, size: 18),
-              label: const Text('Upload'),
-              onPressed:
-                  (!isSyncing && canSync && currentAccounts.isNotEmpty)
-                      ? () {
-                        // Check if remote data exists before uploading
-                        if (state is SyncStatusChecked && state.hasRemoteData) {
-                          // Show warning dialog
-                          showDialog(
-                            context: context,
-                            builder:
-                                (dialogContext) => AlertDialog(
-                                  title: const Text('Confirm Upload'),
-                                  content: const Text(
-                                    'Remote data already exists. Uploading will overwrite it with your current local data.\n\nConsider Downloading first if other devices might have newer data.',
-                                  ),
-                                  actions: [
-                                    TextButton(
-                                      onPressed:
-                                          () => Navigator.pop(dialogContext),
-                                      child: const Text('Cancel'),
-                                    ),
-                                    TextButton(
-                                      onPressed: () {
-                                        Navigator.pop(
-                                          dialogContext,
-                                        ); // Close dialog
-                                        // Proceed with upload
-                                        context.read<SyncBloc>().add(
-                                          UploadAccountsRequested(
-                                            accountsToUpload: currentAccounts,
-                                          ),
-                                        );
-                                      },
-                                      child: const Text(
-                                        'Upload Anyway',
-                                        style: TextStyle(color: Colors.red),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                          );
-                        } else {
-                          // No remote data or status not checked yet, upload directly
-                          context.read<SyncBloc>().add(
-                            UploadAccountsRequested(
-                              accountsToUpload: currentAccounts,
-                            ),
-                          );
-                        }
-                      }
-                      : null, // Disable if syncing, no accounts loaded, or no accounts exist
-              style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 8,
-                ),
-              ),
-            ),
-            const SizedBox(width: 8),
-            ElevatedButton.icon(
-              icon: const Icon(Icons.download, size: 18),
-              label: const Text('Download'),
-              onPressed:
-                  (!isSyncing && state.hasRemoteData)
-                      ? () {
-                        // Removed the confirmation dialog wrapper as requested.
-                        // Dispatch the download event directly.
-                        context.read<SyncBloc>().add(
-                          DownloadAccountsRequested(),
-                        );
-                      }
-                      : null, // Disable if syncing or no remote data
-              style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 8,
-                ),
-              ),
-            ),
-          ];
+          // Actions (Sync Now button) are only relevant if sync is enabled
+          // No separate actions list needed anymore
         } else if (state is SyncFailure) {
-          statusWidget = Text(
-            'Sync Error: ${state.message}',
-            style: TextStyle(color: Theme.of(context).colorScheme.error),
+          statusWidget = Row(
+            // Show error with a retry button inline
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.error_outline,
+                color: Theme.of(context).colorScheme.error,
+                size: 16,
+              ),
+              const SizedBox(width: 4),
+              Expanded(
+                // Allow text to wrap if needed
+                child: Text(
+                  'Error: ${state.message}',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.error,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              // Optionally add a small retry button here if desired
+              // TextButton(onPressed: () => context.read<SyncBloc>().add(CheckSyncStatus()), child: Text('Retry'))
+            ],
           );
-          // Allow retrying status check
-          actions = [
-            OutlinedButton(
-              onPressed: () => context.read<SyncBloc>().add(CheckSyncStatus()),
-              child: const Text('Retry Check'),
-            ),
-          ];
-        } else {
-          // Default/fallback view (e.g., SyncInitial after an operation)
-          statusWidget = const Text('Sync status unknown.');
-          actions = [
-            OutlinedButton(
-              onPressed: () => context.read<SyncBloc>().add(CheckSyncStatus()),
-              child: const Text('Check Status'),
-            ),
-          ];
+        } else if (state is SyncSuccess) {
+          // isCurrentlySyncEnabled, lastSyncTime already set above
+          if (isCurrentlySyncEnabled && lastSyncTime != null) {
+            final formattedTime = DateFormat.yMd().add_jm().format(
+              lastSyncTime,
+            );
+            statusWidget = Text(
+              'Last sync: $formattedTime',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: Colors.green,
+              ), // Indicate success
+            );
+          } else if (isCurrentlySyncEnabled) {
+            statusWidget = Text(
+              'Sync successful.',
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(color: Colors.green),
+            );
+          }
         }
+        // Handle other states like SyncInitial if needed
+
+        // Determine if "Sync Now" should be enabled
+        final bool canSyncNow =
+            isCurrentlySyncEnabled &&
+            !isSyncing &&
+            accountsState is AccountsLoaded;
 
         return Column(
+          mainAxisSize: MainAxisSize.min, // Take minimum vertical space
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             ListTile(
               leading: const Icon(Icons.sync),
               title: const Text('Sync Accounts'),
-              subtitle: statusWidget, // Display dynamic status
+              subtitle:
+                  isSyncing &&
+                          syncProgressMessage !=
+                              'Checking sync status...' // Show progress only during actual sync
+                      ? Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            syncProgressMessage, // Show specific progress message
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                        ],
+                      )
+                      : statusWidget, // Otherwise show the determined status
+              trailing: IconButton(
+                icon: Icon(
+                  isCurrentlySyncEnabled
+                      ? Icons.cloud_queue
+                      : Icons
+                          .cloud_off_outlined, // Use filled cloud when enabled
+                  color:
+                      isCurrentlySyncEnabled
+                          ? Theme.of(context).colorScheme.primary
+                          : null,
+                ),
+                tooltip:
+                    isCurrentlySyncEnabled ? 'Disable Sync' : 'Enable Sync',
+                onPressed: () {
+                  // Dispatch event to BLoC to toggle the state
+                  context.read<SyncBloc>().add(
+                    ToggleSyncEnabled(
+                      isEnabled: !isCurrentlySyncEnabled,
+                    ), // Send the opposite of the current state
+                  );
+                  // UI will update automatically via BlocBuilder when state changes
+                },
+              ),
               contentPadding: const EdgeInsets.only(
                 left: 16.0,
-                right: 0,
-              ), // Adjust padding
+                right: 4.0,
+              ), // Reduce right padding for IconButton
             ),
-            if (actions.isNotEmpty)
+            // Conditionally display the "Sync Now" button and last sync time
+            if (isCurrentlySyncEnabled)
               Padding(
                 padding: const EdgeInsets.only(
-                  left: 72.0,
+                  left: 72.0, // Indent to align with ListTile content
                   right: 16.0,
                   bottom: 8.0,
-                ), // Align with ListTile content
-                child: Wrap(spacing: 8.0, runSpacing: 4.0, children: actions),
+                  top: 0, // Reduce top padding
+                ),
+                child: ElevatedButton.icon(
+                  icon: const Icon(Icons.sync, size: 18),
+                  label: const Text('Sync Now'),
+                  onPressed:
+                      canSyncNow
+                          ? () {
+                            // Show confirmation dialog before syncing
+                            showDialog(
+                              context: context,
+                              builder:
+                                  (dialogContext) => AlertDialog(
+                                    title: const Text('Choose Sync Option'),
+                                    // Use content to explain the options briefly or remove if buttons are clear enough
+                                    content: SingleChildScrollView(
+                                      // Use SingleChildScrollView if content might overflow
+                                      child: ListBody(
+                                        children: <Widget>[
+                                          Text(
+                                            'Select how you want to synchronize your accounts:',
+                                          ),
+                                          SizedBox(
+                                            height: 16,
+                                          ), // Add some spacing
+                                          _buildSyncOption(
+                                            context:
+                                                dialogContext, // Pass dialog context
+                                            title: 'Sync and Merge',
+                                            description:
+                                                'Adds new local/cloud accounts, updates existing ones based on cloud data, then uploads the merged result.',
+                                            icon: Icons.merge_type,
+                                            color: Colors.blue,
+                                            onPressed: () {
+                                              Navigator.pop(
+                                                dialogContext,
+                                              ); // Close dialog
+                                              // Dispatch the original SyncNowRequested event for merge logic
+                                              context.read<SyncBloc>().add(
+                                                SyncNowRequested(
+                                                  accountsToUpload:
+                                                      currentAccounts,
+                                                ),
+                                              );
+                                            },
+                                          ),
+                                          SizedBox(height: 12),
+                                          _buildSyncOption(
+                                            context:
+                                                dialogContext, // Pass dialog context
+                                            title: 'Sync and Overwrite Cloud',
+                                            description:
+                                                'Replaces ALL cloud data with your current local data. Use with caution!',
+                                            icon:
+                                                Icons
+                                                    .cloud_upload_outlined, // Or Icons.warning_amber_rounded
+                                            color: Colors.red,
+                                            onPressed: () {
+                                              Navigator.pop(
+                                                dialogContext,
+                                              ); // Close dialog
+                                              // Dispatch the new event for overwrite logic
+                                              context.read<SyncBloc>().add(
+                                                SyncOverwriteCloudRequested(
+                                                  // Use the new event
+                                                  accountsToUpload:
+                                                      currentAccounts,
+                                                ),
+                                              );
+                                            },
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    actions: [
+                                      TextButton(
+                                        onPressed:
+                                            () => Navigator.pop(dialogContext),
+                                        child: const Text('Cancel'),
+                                      ),
+                                    ],
+                                  ),
+                            );
+                          }
+                          : null, // Disable if not enabled, syncing, or no accounts
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
+                  ),
+                ),
               ),
           ],
         );
       },
+    );
+  }
+
+  // Helper widget to build sync option buttons in the dialog
+  Widget _buildSyncOption({
+    required BuildContext context, // Dialog context
+    required String title,
+    required String description,
+    required IconData icon,
+    required Color color,
+    required VoidCallback onPressed,
+  }) {
+    return OutlinedButton.icon(
+      icon: Icon(icon, color: color, size: 20),
+      label: Padding(
+        padding: const EdgeInsets.symmetric(
+          vertical: 8.0,
+        ), // Add vertical padding
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min, // Take minimum space
+          children: [
+            Text(
+              title,
+              style: TextStyle(color: color, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              description,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                fontSize: 11,
+              ), // Smaller font for description
+            ),
+          ],
+        ),
+      ),
+      style: OutlinedButton.styleFrom(
+        foregroundColor: color,
+        side: BorderSide(color: color.withOpacity(0.5)),
+        alignment: Alignment.centerLeft, // Align icon and text to the left
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      ),
+      onPressed: onPressed,
     );
   }
 }
