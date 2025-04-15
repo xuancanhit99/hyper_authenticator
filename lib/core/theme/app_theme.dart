@@ -94,7 +94,7 @@ class AppTheme {
     // Set color cDarkColor for background bottomNavigationBar
     bottomNavigationBarTheme: BottomNavigationBarThemeData(
       backgroundColor: AppColors.cDarkColor,
-      selectedItemColor: AppColors.cBlueColor,
+      selectedItemColor: AppColors.cBlueColor ,
     ),
 
     textTheme: CTextTheme.darkTextTheme,

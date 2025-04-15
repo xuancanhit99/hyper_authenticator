@@ -58,7 +58,22 @@ class _LockScreenPageState extends State<LockScreenPage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.lock_outline, size: 80, color: Colors.grey),
+            // Replace Icon with Image.asset
+            Image.asset(
+              'assets/logos/hyper-logo-green-non-bg.png', // Assuming this is the correct path
+              height: 80, // Set height similar to the original icon size
+              // Optional: Add width, fit, errorBuilder etc. if needed
+              // width: 80,
+              // fit: BoxFit.contain,
+              errorBuilder: (context, error, stackTrace) {
+                // Fallback if logo fails to load
+                return const Icon(
+                  Icons.lock_outline,
+                  size: 80,
+                  color: Colors.grey,
+                );
+              },
+            ),
             const SizedBox(height: 20),
             const Text(
               'App Locked',

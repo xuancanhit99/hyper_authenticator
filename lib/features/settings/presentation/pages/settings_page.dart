@@ -31,7 +31,12 @@ class SettingsPage extends StatelessWidget {
         // If not provided higher up, add: BlocProvider.value(value: sl<AccountsBloc>()),
       ],
       child: Scaffold(
-        appBar: AppBar(title: const Text('Settings')),
+        appBar: AppBar(
+          backgroundColor:
+              Theme.of(context).scaffoldBackgroundColor, // Set background color
+          elevation: 0, // Remove shadow
+          title: const Text('Settings'),
+        ),
         body: BlocListener<SyncBloc, SyncState>(
           // Listen for sync success/failure messages
           listener: (context, state) {
@@ -116,91 +121,107 @@ class SettingsPage extends StatelessWidget {
                         // subtitle: Text(currentUser.email ?? 'No email'), // Remove subtitle or display something else
                       ),
                     ),
-                  // --- Biometric Login Section ---
-                  ListTile(
-                    leading: const Icon(Icons.fingerprint),
-                    title: const Text('Biometric Login'),
-                    subtitle: Text(
-                      canCheckBiometrics
-                          ? 'Use FaceID / Fingerprint to unlock the app'
-                          : 'Biometrics not available on this device',
-                    ),
-                    trailing:
-                        canCheckBiometrics
-                            ? Switch(
-                              value: isBiometricEnabled,
-                              activeTrackColor:
-                                  Colors.green, // Changed to activeTrackColor
-                              onChanged: (value) {
-                                context.read<SettingsBloc>().add(
-                                  ToggleBiometric(isEnabled: value),
-                                );
-                              },
-                            )
-                            : null, // Disable switch if not supported
-                    onTap:
-                        canCheckBiometrics
-                            ? () {
-                              // Allow tapping row to toggle
-                              context.read<SettingsBloc>().add(
-                                ToggleBiometric(isEnabled: !isBiometricEnabled),
-                              );
-                            }
-                            : null,
-                  ),
-                  const Divider(),
-
-                  // --- Sync Accounts Section ---
-                  _SyncSection(), // Use the dedicated widget
-                  const Divider(),
-
-                  // --- Account Section (Moved to bottom) ---
-                  // Add other settings here later
-
-                  // --- Logout Section ---
-                  ListTile(
-                    leading: const Icon(Icons.logout, color: Colors.red),
-                    title: const Text(
-                      'Logout',
-                      style: TextStyle(color: Colors.red),
-                    ),
-                    onTap: () {
-                      // Show confirmation dialog before logging out
-                      showDialog(
-                        context: context,
-                        builder:
-                            (dialogContext) => AlertDialog(
-                              title: const Text('Confirm Logout'),
-                              content: const Text(
-                                'Are you sure you want to log out?',
-                              ),
-                              actions: [
-                                TextButton(
-                                  onPressed: () => Navigator.pop(dialogContext),
-                                  child: const Text('Cancel'),
-                                ),
-                                TextButton(
-                                  onPressed: () {
-                                    Navigator.pop(
-                                      dialogContext,
-                                    ); // Close dialog
-                                    context.read<AuthBloc>().add(
-                                      AuthSignOutRequested(), // Removed const
+                  // --- Settings Card ---
+                  Card(
+                    color: Theme.of(context).cardColor, // Use theme card color
+                    margin: const EdgeInsets.only(
+                      bottom: 16.0,
+                    ), // Add margin below the card
+                    child: Column(
+                      // Wrap settings in a Column inside the Card
+                      children: [
+                        // --- Biometric Login Section ---
+                        ListTile(
+                          leading: const Icon(Icons.fingerprint),
+                          title: const Text('Biometric Login'),
+                          subtitle: Text(
+                            canCheckBiometrics
+                                ? 'Use FaceID / Fingerprint to unlock the app'
+                                : 'Biometrics not available on this device',
+                          ),
+                          trailing:
+                              canCheckBiometrics
+                                  ? Switch(
+                                    value: isBiometricEnabled,
+                                    activeTrackColor:
+                                        Colors
+                                            .green, // Changed to activeTrackColor
+                                    onChanged: (value) {
+                                      context.read<SettingsBloc>().add(
+                                        ToggleBiometric(isEnabled: value),
+                                      );
+                                    },
+                                  )
+                                  : null, // Disable switch if not supported
+                          onTap:
+                              canCheckBiometrics
+                                  ? () {
+                                    // Allow tapping row to toggle
+                                    context.read<SettingsBloc>().add(
+                                      ToggleBiometric(
+                                        isEnabled: !isBiometricEnabled,
+                                      ),
                                     );
-                                    // Router redirect logic will handle navigation to login
-                                  },
-                                  child: const Text(
-                                    'Logout',
-                                    style: TextStyle(color: Colors.red),
+                                  }
+                                  : null,
+                        ),
+                        const Divider(),
+
+                        // --- Sync Accounts Section ---
+                        _SyncSection(), // Use the dedicated widget
+                        const Divider(),
+
+                        // --- Account Section (Moved to bottom) ---
+                        // Add other settings here later
+
+                        // --- Logout Section ---
+                        ListTile(
+                          leading: const Icon(Icons.logout, color: Colors.red),
+                          title: const Text(
+                            'Logout',
+                            style: TextStyle(color: Colors.red),
+                          ),
+                          onTap: () {
+                            // Show confirmation dialog before logging out
+                            showDialog(
+                              context: context,
+                              builder:
+                                  (dialogContext) => AlertDialog(
+                                    title: const Text('Confirm Logout'),
+                                    content: const Text(
+                                      'Are you sure you want to log out?',
+                                    ),
+                                    actions: [
+                                      TextButton(
+                                        onPressed:
+                                            () => Navigator.pop(dialogContext),
+                                        child: const Text('Cancel'),
+                                      ),
+                                      TextButton(
+                                        onPressed: () {
+                                          Navigator.pop(
+                                            dialogContext,
+                                          ); // Close dialog
+                                          context.read<AuthBloc>().add(
+                                            AuthSignOutRequested(), // Removed const
+                                          );
+                                          // Router redirect logic will handle navigation to login
+                                        },
+                                        child: const Text(
+                                          'Logout',
+                                          style: TextStyle(color: Colors.red),
+                                        ),
+                                      ),
+                                    ],
                                   ),
-                                ),
-                              ],
-                            ),
-                      );
-                    },
+                            );
+                          },
+                        ),
+                        // const Divider(),
+                      ],
+                    ),
                   ),
-                  const Divider(),
-                  // Add other settings here later
+                  // Add other settings here later (outside the card)
                 ],
               );
             },

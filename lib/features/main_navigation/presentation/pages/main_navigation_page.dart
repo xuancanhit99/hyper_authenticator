@@ -64,6 +64,12 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
         children: _widgetOptions,
       ),
       bottomNavigationBar: BottomNavigationBar(
+        backgroundColor:
+            Theme.of(context).scaffoldBackgroundColor, // Set background color
+        elevation: 0, // Remove shadow
+        type:
+            BottomNavigationBarType
+                .fixed, // Optional: Ensure labels are always visible
         items: const <BottomNavigationBarItem>[
           BottomNavigationBarItem(
             icon: Icon(Icons.shield_outlined), // Or Icons.vpn_key_outlined

@@ -154,6 +154,9 @@ class _AddAccountPageState extends State<AddAccountPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        backgroundColor:
+            Theme.of(context).scaffoldBackgroundColor, // Set background color
+        elevation: 0, // Remove shadow
         title: Text(_isScanning ? 'Scan QR Code' : 'Add Account'),
         actions: [
           // Toggle Button
