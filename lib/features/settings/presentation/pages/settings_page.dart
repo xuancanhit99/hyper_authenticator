@@ -8,7 +8,9 @@ import 'package:hyper_authenticator/features/sync/presentation/bloc/sync_bloc.da
 import 'package:hyper_authenticator/features/authenticator/presentation/bloc/accounts_bloc.dart'; // Added
 import 'package:hyper_authenticator/injection_container.dart';
 import 'package:intl/intl.dart'; // Added for date formatting
-import 'package:hyper_authenticator/features/authenticator/domain/entities/authenticator_account.dart'; // Added for _SyncSection
+import 'package:hyper_authenticator/features/authenticator/domain/entities/authenticator_account.dart';
+
+import 'package:hyper_authenticator/core/constants/app_colors.dart'; // Added for _SyncSection
 
 class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key});
@@ -83,6 +85,8 @@ class SettingsPage extends StatelessWidget {
                         canCheckBiometrics
                             ? Switch(
                               value: isBiometricEnabled,
+                              activeTrackColor:
+                                  Colors.green, // Changed to activeTrackColor
                               onChanged: (value) {
                                 context.read<SettingsBloc>().add(
                                   ToggleBiometric(isEnabled: value),
@@ -387,14 +391,17 @@ class _SyncSectionState extends State<_SyncSection> {
                       )
                       : statusWidget, // Otherwise show the determined status
               trailing: IconButton(
+                iconSize: 32.0, // Increased icon size
                 icon: Icon(
                   isCurrentlySyncEnabled
-                      ? Icons.cloud_queue
+                      ? Icons
+                          .cloud_done // Kept user's icon
                       : Icons
                           .cloud_off_outlined, // Use filled cloud when enabled
                   color:
                       isCurrentlySyncEnabled
-                          ? Theme.of(context).colorScheme.primary
+                          ? AppColors
+                              .cWhiteColor // Kept user's color
                           : null,
                 ),
                 tooltip:
@@ -408,11 +415,7 @@ class _SyncSectionState extends State<_SyncSection> {
                   );
                   // UI will update automatically via BlocBuilder when state changes
                 },
-              ),
-              contentPadding: const EdgeInsets.only(
-                left: 16.0,
-                right: 4.0,
-              ), // Reduce right padding for IconButton
+              ), // Removed custom contentPadding
             ),
             // Conditionally display the "Sync Now" button and last sync time
             if (isCurrentlySyncEnabled)
@@ -453,7 +456,7 @@ class _SyncSectionState extends State<_SyncSection> {
                                             description:
                                                 'Adds new local/cloud accounts, updates existing ones based on cloud data, then uploads the merged result.',
                                             icon: Icons.merge_type,
-                                            color: Colors.blue,
+                                            color: AppColors.cPrimaryColor,
                                             onPressed: () {
                                               Navigator.pop(
                                                 dialogContext,
@@ -531,33 +534,30 @@ class _SyncSectionState extends State<_SyncSection> {
   }) {
     return OutlinedButton.icon(
       icon: Icon(icon, color: color, size: 20),
-      label: Padding(
-        padding: const EdgeInsets.symmetric(
-          vertical: 8.0,
-        ), // Add vertical padding
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min, // Take minimum space
-          children: [
-            Text(
-              title,
-              style: TextStyle(color: color, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              description,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                fontSize: 11,
-              ), // Smaller font for description
-            ),
-          ],
-        ),
+      label: Column(
+        // Removed Padding widget
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min, // Take minimum space
+        children: [
+          Text(
+            title,
+            style: TextStyle(color: color, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            description,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              fontSize: 11,
+            ), // Smaller font for description
+          ),
+        ],
       ),
       style: OutlinedButton.styleFrom(
         foregroundColor: color,
         side: BorderSide(color: color.withOpacity(0.5)),
         alignment: Alignment.centerLeft, // Align icon and text to the left
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        padding: const EdgeInsets.all(12.0), // Added padding here
       ),
       onPressed: onPressed,
     );

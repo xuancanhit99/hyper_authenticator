@@ -81,7 +81,8 @@ class AppTheme {
         AppColors.darkBackground, // Use defined dark background
     fontFamily: 'Averta', // Set default font
     appBarTheme: AppBarTheme(
-      backgroundColor: AppColors.darkSurface, // Use defined dark surface
+      // backgroundColor: AppColors.darkSurface, // Use defined dark surface
+      backgroundColor: AppColors.cDarkColor, // Use defined dark surface
       foregroundColor: AppColors.textPrimaryDark, // Light title and icons
       elevation: 0.5, // Subtle elevation or 0
       titleTextStyle: TextStyle(
@@ -90,6 +91,12 @@ class AppTheme {
           fontWeight: FontWeight.bold),
       iconTheme: IconThemeData(color: AppColors.textPrimaryDark),
     ),
+    // Set color cDarkColor for background bottomNavigationBar
+    bottomNavigationBarTheme: BottomNavigationBarThemeData(
+      backgroundColor: AppColors.cDarkColor,
+      selectedItemColor: AppColors.cBlueColor,
+    ),
+
     textTheme: CTextTheme.darkTextTheme,
     outlinedButtonTheme: COutlinedButtonTheme.darkOutlinedButtonTheme,
     elevatedButtonTheme: CElevatedButtonTheme.darkElevatedButtonTheme,
