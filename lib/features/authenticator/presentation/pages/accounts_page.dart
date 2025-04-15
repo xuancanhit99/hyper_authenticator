@@ -9,6 +9,7 @@ import 'package:hyper_authenticator/features/authenticator/presentation/bloc/acc
 import 'package:hyper_authenticator/injection_container.dart';
 import 'package:go_router/go_router.dart'; // Import GoRouter for navigation
 import 'package:hyper_authenticator/core/router/app_router.dart'; // Import AppRoutes
+import 'package:hyper_authenticator/core/constants/app_colors.dart'; // Import AppColors
 
 // TODO: Define route for AddAccountPage
 // import 'add_account_page.dart'; // Will create this later
@@ -135,99 +136,119 @@ class _AccountsPageState extends State<AccountsPage> {
                 ),
               );
             }
-            // Build the list view with Pull-to-Refresh
-            return RefreshIndicator(
-              // Start RefreshIndicator
-              onRefresh: () async {
-                // Dispatch LoadAccounts event when pulled
-                context.read<AccountsBloc>().add(LoadAccounts());
-              },
-              child: ListView.builder(
-                // Start ListView.builder (child of RefreshIndicator)
-                itemCount: state.accounts.length,
-                itemBuilder: (context, index) {
-                  final account = state.accounts[index];
-                  return Dismissible(
-                    // Add swipe-to-delete
-                    key: Key(account.id),
-                    direction: DismissDirection.endToStart,
-                    onDismissed: (_) {
-                      context.read<AccountsBloc>().add(
-                        DeleteAccountRequested(accountId: account.id),
-                      );
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(
-                            'Deleted ${account.issuer} (${account.accountName})',
-                          ),
-                        ),
-                      );
-                    },
-                    background: Container(
-                      color: Colors.red,
-                      alignment: Alignment.centerRight,
-                      padding: const EdgeInsets.symmetric(horizontal: 20.0),
-                      child: const Icon(Icons.delete, color: Colors.white),
-                    ),
-                    child: FutureBuilder<String>(
-                      // Use future builder to get the code asynchronously
-                      future: _getCodeForAccount(account),
-                      builder: (context, snapshot) {
-                        String displayCode = "------"; // Placeholder
-                        if (snapshot.connectionState == ConnectionState.done &&
-                            snapshot.hasData) {
-                          displayCode = snapshot.data!;
-                          // Format code with space
-                          if (displayCode.length == 6) {
-                            displayCode =
-                                '${displayCode.substring(0, 3)} ${displayCode.substring(3)}';
-                          }
-                          _currentCodes[account.id] = displayCode; // Cache code
-                        } else if (_currentCodes.containsKey(account.id)) {
-                          displayCode =
-                              _currentCodes[account
-                                  .id]!; // Use cached code during refresh
-                        }
-
-                        return ListTile(
-                          leading: CircleAvatar(
-                            // Simple countdown indicator
-                            radius: 15,
-                            child: Text(
-                              '$_secondsRemaining',
-                              style: const TextStyle(fontSize: 12),
-                            ),
-                            // TODO: Replace with a proper CircularProgressIndicator based on _secondsRemaining/30
-                          ),
-                          title: Text(account.issuer),
-                          subtitle: Text(account.accountName),
-                          trailing: Text(
-                            displayCode,
-                            style: const TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: 2.0,
-                            ),
-                          ),
-                          onTap: () {
-                            Clipboard.setData(
-                              ClipboardData(
-                                text: displayCode.replaceAll(' ', ''),
-                              ),
-                            );
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Code copied to clipboard'),
-                              ),
-                            );
-                          },
+            // Build the list view with Pull-to-Refresh inside a Card
+            return Card(
+              // Wrap with Card
+              color: AppColors.cCardDarkColor, // Set card color
+              margin: const EdgeInsets.all(
+                8.0,
+              ), // Add some margin around the card
+              clipBehavior:
+                  Clip.antiAlias, // Optional: Improves corner clipping
+              child: RefreshIndicator(
+                // Start RefreshIndicator
+                onRefresh: () async {
+                  // Dispatch LoadAccounts event when pulled
+                  context.read<AccountsBloc>().add(LoadAccounts());
+                },
+                child: ListView.separated(
+                  // Change to ListView.separated
+                  // Start ListView.separated (child of RefreshIndicator)
+                  itemCount: state.accounts.length,
+                  separatorBuilder:
+                      (context, index) => const Divider(
+                        height: 1, // Make divider thin
+                        thickness: 1, // Explicit thickness
+                        // Optional: Add indent or endIndent if needed
+                        // indent: 16.0,
+                        // endIndent: 16.0,
+                      ),
+                  itemBuilder: (context, index) {
+                    final account = state.accounts[index];
+                    return Dismissible(
+                      // Add swipe-to-delete
+                      key: Key(account.id),
+                      direction: DismissDirection.endToStart,
+                      onDismissed: (_) {
+                        context.read<AccountsBloc>().add(
+                          DeleteAccountRequested(accountId: account.id),
                         );
-                      }, // End FutureBuilder builder
-                    ), // End FutureBuilder
-                  ); // End Dismissible
-                }, // End itemBuilder
-              ), // End ListView.builder
-            ); // End RefreshIndicator
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              'Deleted ${account.issuer} (${account.accountName})',
+                            ),
+                          ),
+                        );
+                      },
+                      background: Container(
+                        color: Colors.red,
+                        alignment: Alignment.centerRight,
+                        padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                        child: const Icon(Icons.delete, color: Colors.white),
+                      ),
+                      child: FutureBuilder<String>(
+                        // Use future builder to get the code asynchronously
+                        future: _getCodeForAccount(account),
+                        builder: (context, snapshot) {
+                          String displayCode = "------"; // Placeholder
+                          if (snapshot.connectionState ==
+                                  ConnectionState.done &&
+                              snapshot.hasData) {
+                            displayCode = snapshot.data!;
+                            // Format code with space
+                            if (displayCode.length == 6) {
+                              displayCode =
+                                  '${displayCode.substring(0, 3)} ${displayCode.substring(3)}';
+                            }
+                            _currentCodes[account.id] =
+                                displayCode; // Cache code
+                          } else if (_currentCodes.containsKey(account.id)) {
+                            displayCode =
+                                _currentCodes[account
+                                    .id]!; // Use cached code during refresh
+                          }
+
+                          return ListTile(
+                            leading: CircleAvatar(
+                              // Simple countdown indicator
+                              radius: 15,
+                              child: Text(
+                                '$_secondsRemaining',
+                                style: const TextStyle(fontSize: 12),
+                              ),
+                              // TODO: Replace with a proper CircularProgressIndicator based on _secondsRemaining/30
+                            ),
+                            title: Text(account.issuer),
+                            subtitle: Text(account.accountName),
+                            trailing: Text(
+                              displayCode,
+                              style: const TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 2.0,
+                              ),
+                            ),
+                            onTap: () {
+                              Clipboard.setData(
+                                ClipboardData(
+                                  text: displayCode.replaceAll(' ', ''),
+                                ),
+                              );
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Code copied to clipboard'),
+                                ),
+                              );
+                            },
+                          );
+                        }, // End FutureBuilder builder
+                      ), // End FutureBuilder
+                    ); // End Dismissible
+                  }, // End itemBuilder
+                ), // End ListView.separated
+              ), // End RefreshIndicator
+            ); // End Card
           } // End of `if (state is AccountsLoaded)`
           // Should not happen if states are handled, but provide fallback
           return const Center(child: Text('An unexpected state occurred.'));

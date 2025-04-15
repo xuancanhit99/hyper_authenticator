@@ -400,8 +400,7 @@ class _SyncSectionState extends State<_SyncSection> {
                           .cloud_off_outlined, // Use filled cloud when enabled
                   color:
                       isCurrentlySyncEnabled
-                          ? AppColors
-                              .cWhiteColor // Kept user's color
+                          ? Colors.green // Kept user's color
                           : null,
                 ),
                 tooltip:

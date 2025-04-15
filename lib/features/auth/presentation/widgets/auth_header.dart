@@ -13,7 +13,7 @@ class AuthHeader extends StatelessWidget {
       children: [
         // Logo
         Image.asset(
-          'assets/logo/hyper-logo-green-non-bg-alt.png', // Ensure this path is correct
+          'assets/logos/hyper-logo-green-non-bg-alt.png', // Ensure this path is correct
           height: 80, // Adjust height as needed
           errorBuilder: (context, error, stackTrace) {
             // Fallback if image fails to load

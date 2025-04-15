@@ -37,6 +37,7 @@ class AppColors {
   static const cBlueColor = Color(0xFF1575ee);
   static const cSkyBlue = Color(0xFF83c8e4);
   static const cCardBgColor = Color(0xFFF7F6F1);
+  static const cCardDarkColor = Color(0xFF171717);
   static const cWhiteColor = Color(0xFFFFFFFF);
   static const cDarkColor = Color(0xFF000000);
 }

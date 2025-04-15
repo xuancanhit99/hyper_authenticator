@@ -78,16 +78,16 @@ dev_dependencies:
 
 flutter_native_splash:
   color: "#ffffff"
-  image: assets/logo/hyper-logo-green-non-bg-alt.png
+  image: assets/logos/hyper-logo-green-non-bg-alt.png
   #  branding: assets/images/email-service.png
   color_dark: "#000000"
-  image_dark: assets/logo/hyper-logo-green-non-bg-alt.png
+  image_dark: assets/logos/hyper-logo-green-non-bg-alt.png
   #  branding_dark: assets/images/email-service.png
 
   android_12:
-    image: assets/logo/android12splash-hyper-alt.png
+    image: assets/logos/android12splash-hyper-alt.png
     # icon_background_color: "#ffffff" # Removed, usually not needed with image
-    image_dark: assets/logo/android12splash-hyper-alt.png
+    image_dark: assets/logos/android12splash-hyper-alt.png
     # icon_background_color_dark: "#000000" # Removed, usually not needed with image_dark
 
   web: false
@@ -108,7 +108,7 @@ flutter:
   assets:
     - .env
     - assets/images/
-    - assets/logo/
+    - assets/logos/
 
   # To add assets to your application, add an assets section, like this:
   # assets:
@@ -149,12 +149,12 @@ flutter_launcher_icons:
   android: true
   ios: true
   remove_alpha_ios: true
-  image_path: "assets/logo/hyper-logo-green-black.png" # Make sure this path is correct
+  image_path: "assets/logos/hyper-logo-green-black.png" # Make sure this path is correct
   min_sdk_android: 21 # Optional: you can specify a minimum SDK level
   windows:
     generate: true
-    image_path: "assets/logo/hyper-logo-green-black.png"
+    image_path: "assets/logos/hyper-logo-green-black.png"
     icon_size: 256 # Or 48, depending on your needs
   macos:
     generate: true
-    image_path: "assets/logo/hyper-logo-green-black.png"
+    image_path: "assets/logos/hyper-logo-green-black.png"
