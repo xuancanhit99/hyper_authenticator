@@ -1,5 +1,6 @@
 import 'package:bloc/bloc.dart';
 import 'package:equatable/equatable.dart';
+import 'package:flutter/material.dart'; // Added for ThemeMode
 import 'package:injectable/injectable.dart';
 import 'package:local_auth/local_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -34,6 +35,7 @@ class SettingsBloc extends Bloc<SettingsEvent, SettingsState> {
       final bool isEnabled =
           sharedPreferences.getBool(_biometricPrefKey) ?? false;
       final bool canCheck = await _checkBiometricSupport();
+
       emit(
         SettingsLoaded(
           isBiometricEnabled:
@@ -53,11 +55,13 @@ class SettingsBloc extends Bloc<SettingsEvent, SettingsState> {
     // Get current state to access canCheckBiometrics
     final currentState = state;
     bool canCheck = false;
-    bool previousIsEnabled = false; // Store previous state in case of error
+    bool previousIsEnabled = false;
+    // ThemeMode previousThemeMode = ThemeMode.system; // Removed
 
     if (currentState is SettingsLoaded) {
       canCheck = currentState.canCheckBiometrics;
       previousIsEnabled = currentState.isBiometricEnabled;
+      // previousThemeMode = currentState.themeMode; // Removed
     } else {
       // If state is not loaded, re-check support (or handle error)
       canCheck = await _checkBiometricSupport();
@@ -78,6 +82,7 @@ class SettingsBloc extends Bloc<SettingsEvent, SettingsState> {
         SettingsLoaded(
           isBiometricEnabled: event.isEnabled,
           canCheckBiometrics: canCheck,
+          // themeMode: previousThemeMode, // Removed
         ),
       );
       // Then save to preferences
@@ -90,6 +95,7 @@ class SettingsBloc extends Bloc<SettingsEvent, SettingsState> {
         SettingsLoaded(
           isBiometricEnabled: previousIsEnabled,
           canCheckBiometrics: canCheck,
+          // themeMode: previousThemeMode, // Removed
         ),
       );
     }

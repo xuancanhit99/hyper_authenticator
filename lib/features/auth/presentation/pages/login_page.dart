@@ -17,7 +17,15 @@ class _LoginPageState extends State<LoginPage> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   // bool _isLoading = false; // Replaced by Bloc state
-  bool _obscurePassword = true; // For password visibility
+  bool _obscurePassword = true;
+  bool _rememberMe = false; // State for Remember Me checkbox
+
+  @override
+  void initState() {
+    super.initState();
+    // Dispatch event to load remembered user when the page initializes
+    context.read<AuthBloc>().add(LoadRememberedUser());
+  }
 
   @override
   void dispose() {
@@ -34,6 +42,7 @@ class _LoginPageState extends State<LoginPage> {
         AuthSignInRequested(
           email: _emailController.text.trim(),
           password: _passwordController.text.trim(),
+          rememberMe: _rememberMe, // Pass rememberMe value
         ),
       );
     }
@@ -62,8 +71,18 @@ class _LoginPageState extends State<LoginPage> {
   Widget build(BuildContext context) {
     // Wrap with BlocListener to show errors
     return BlocListener<AuthBloc, AuthState>(
+      // Listen for AuthInitial state to pre-fill email
+      listenWhen:
+          (previous, current) =>
+              current is AuthInitial || current is AuthFailure,
       listener: (context, state) {
-        if (state is AuthFailure) {
+        if (state is AuthInitial && state.rememberedEmail != null) {
+          _emailController.text = state.rememberedEmail!;
+          // Optionally set _rememberMe to true if email is pre-filled
+          // setState(() {
+          //   _rememberMe = true;
+          // });
+        } else if (state is AuthFailure) {
           ScaffoldMessenger.of(context)
             ..hideCurrentSnackBar()
             ..showSnackBar(SnackBar(content: Text(state.message)));
@@ -121,14 +140,27 @@ class _LoginPageState extends State<LoginPage> {
                       // Pass context to _login
                       onFieldSubmitted: (_) => _login(context),
                     ),
-                    const SizedBox(height: 8),
+                    // --- Remember Me Checkbox ---
+                    CheckboxListTile(
+                      title: const Text("Remember Me"),
+                      value: _rememberMe,
+                      onChanged: (newValue) {
+                        setState(() {
+                          _rememberMe = newValue ?? false;
+                        });
+                      },
+                      controlAffinity:
+                          ListTileControlAffinity
+                              .leading, // Checkbox on the left
+                      contentPadding: EdgeInsets.zero, // Remove default padding
+                      dense: true, // Make it more compact
+                    ),
+                    // --- Forgot Password Button ---
                     Align(
                       alignment: Alignment.centerRight,
                       child: TextButton(
                         onPressed: () {
-                          // Navigate to Forgot Password page
                           context.push(AppRoutes.forgotPassword);
-                          // print('Navigate to Forgot Password'); // Keep for debugging if needed
                         },
                         child: const Text('Forgot Password?'),
                       ),

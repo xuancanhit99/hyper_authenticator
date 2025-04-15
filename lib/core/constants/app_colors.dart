@@ -40,4 +40,6 @@ class AppColors {
   static const cCardDarkColor = Color(0xFF171717);
   static const cWhiteColor = Color(0xFFFFFFFF);
   static const cDarkColor = Color(0xFF000000);
+  static const cDarkIconBg = Color(0xFF294675);
+  static const cLightIconBg = Color(0xFFd5e0fd);
 }

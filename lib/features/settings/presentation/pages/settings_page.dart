@@ -2,6 +2,7 @@ import 'dart:async'; // Added for StreamSubscription
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:provider/provider.dart'; // Import Provider
 import 'package:hyper_authenticator/features/auth/presentation/bloc/auth_bloc.dart'; // For logout
 import 'package:hyper_authenticator/features/settings/presentation/bloc/settings_bloc.dart';
 import 'package:hyper_authenticator/features/sync/presentation/bloc/sync_bloc.dart'; // Added
@@ -10,7 +11,7 @@ import 'package:hyper_authenticator/injection_container.dart';
 import 'package:intl/intl.dart'; // Added for date formatting
 import 'package:hyper_authenticator/features/authenticator/domain/entities/authenticator_account.dart';
 import 'package:hyper_authenticator/features/auth/domain/entities/user_entity.dart'; // Import UserEntity
-
+import 'package:hyper_authenticator/core/theme/theme_provider.dart'; // Import ThemeProvider
 import 'package:hyper_authenticator/core/constants/app_colors.dart'; // Added for _SyncSection
 
 class SettingsPage extends StatelessWidget {
@@ -36,6 +37,61 @@ class SettingsPage extends StatelessWidget {
               Theme.of(context).scaffoldBackgroundColor, // Set background color
           elevation: 0, // Remove shadow
           title: const Text('Settings'),
+          actions: [
+            // Use Consumer<ThemeProvider> for theme switching UI
+            Consumer<ThemeProvider>(
+              builder: (context, themeProvider, _) {
+                IconData iconData;
+                switch (themeProvider.themeMode) {
+                  case ThemeMode.light:
+                    iconData = Icons.light_mode_outlined;
+                    break;
+                  case ThemeMode.dark:
+                    iconData = Icons.dark_mode_outlined;
+                    break;
+                  case ThemeMode.system:
+                  default: // Default to system icon
+                    iconData = Icons.brightness_auto_outlined;
+                    break;
+                }
+                return PopupMenuButton<ThemeMode>(
+                  icon: Icon(iconData),
+                  tooltip: 'Change Theme',
+                  onSelected: (ThemeMode result) {
+                    // Use ThemeProvider to set the theme
+                    Provider.of<ThemeProvider>(
+                      context,
+                      listen: false,
+                    ).setThemeMode(result);
+                  },
+                  itemBuilder:
+                      (BuildContext context) => <PopupMenuEntry<ThemeMode>>[
+                        const PopupMenuItem<ThemeMode>(
+                          value: ThemeMode.system,
+                          child: ListTile(
+                            leading: Icon(Icons.brightness_auto_outlined),
+                            title: Text('System'),
+                          ),
+                        ),
+                        const PopupMenuItem<ThemeMode>(
+                          value: ThemeMode.light,
+                          child: ListTile(
+                            leading: Icon(Icons.light_mode_outlined),
+                            title: Text('Light'),
+                          ),
+                        ),
+                        const PopupMenuItem<ThemeMode>(
+                          value: ThemeMode.dark,
+                          child: ListTile(
+                            leading: Icon(Icons.dark_mode_outlined),
+                            title: Text('Dark'),
+                          ),
+                        ),
+                      ],
+                );
+              },
+            ),
+          ],
         ),
         body: BlocListener<SyncBloc, SyncState>(
           // Listen for sync success/failure messages
@@ -62,6 +118,8 @@ class SettingsPage extends StatelessWidget {
           },
           child: BlocBuilder<SettingsBloc, SettingsState>(
             builder: (context, settingsState) {
+              final isDarkMode =
+                  Theme.of(context).brightness == Brightness.dark;
               // Renamed state to settingsState
               // Access AuthBloc state to get user info
               final authState = context.watch<AuthBloc>().state;
@@ -82,16 +140,22 @@ class SettingsPage extends StatelessWidget {
               // Handle SettingsError state if needed
 
               return ListView(
-                padding: const EdgeInsets.all(
-                  8.0,
-                ), // Reduced padding to accommodate Card margin
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16.0,
+                  vertical: 8.0,
+                ),
                 children: [
                   // --- User Info Card ---
                   if (currentUser !=
                       null) // Only show card if user is logged in
                     Card(
                       color:
-                          Theme.of(context).cardColor, // Use theme card color
+                          isDarkMode
+                              ? AppColors
+                                  .cCardDarkColor // Use custom dark color
+                              : Theme.of(
+                                context,
+                              ).cardColor, // Use default theme color for light mode
                       margin: const EdgeInsets.only(
                         bottom: 16.0,
                       ), // Add margin below the card
@@ -123,7 +187,13 @@ class SettingsPage extends StatelessWidget {
                     ),
                   // --- Settings Card ---
                   Card(
-                    color: Theme.of(context).cardColor, // Use theme card color
+                    color:
+                        isDarkMode
+                            ? AppColors
+                                .cCardDarkColor // Use custom dark color
+                            : Theme.of(
+                              context,
+                            ).cardColor, // Use default theme color for light mode
                     margin: const EdgeInsets.only(
                       bottom: 16.0,
                     ), // Add margin below the card

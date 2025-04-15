@@ -110,6 +110,7 @@ class _AccountsPageState extends State<AccountsPage> {
 
   @override
   Widget build(BuildContext context) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
       appBar: AppBar(
         backgroundColor:
@@ -117,13 +118,31 @@ class _AccountsPageState extends State<AccountsPage> {
         elevation: 0, // Remove shadow for a flatter look if desired
         title: const Text('Authenticator'),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.add),
-            tooltip: 'Add Account',
-            onPressed: () {
-              // Use GoRouter to navigate to the add account page
-              context.push(AppRoutes.addAccount);
-            },
+          // Apply background color directly to IconButton using style
+          Padding(
+            // Add padding to prevent button touching edge
+            padding: const EdgeInsets.only(right: 8.0),
+            child: IconButton(
+              icon: const Icon(Icons.add, size: 20), // Reduced icon size
+              color:
+                  isDarkMode
+                      ? Colors
+                          .white // Light icon on dark background
+                      : Colors.black87, // Darker icon on light background
+              tooltip: 'Add Account',
+              style: IconButton.styleFrom(
+                backgroundColor:
+                    isDarkMode
+                        ? AppColors
+                            .cDarkIconBg // Dark background for dark mode
+                        : AppColors
+                            .cLightIconBg, // Light background for light mode
+                shape: const CircleBorder(), // Slightly reduced padding for smaller icon
+              ),
+              onPressed: () {
+                context.push(AppRoutes.addAccount);
+              },
+            ),
           ),
           // Optional: Add a search icon button here if preferred over a persistent text field
           // IconButton(icon: Icon(Icons.search), onPressed: () { /* Toggle search bar visibility */ }),
@@ -137,18 +156,34 @@ class _AccountsPageState extends State<AccountsPage> {
           children: [
             // Search Bar
             Padding(
-              padding: const EdgeInsets.all(8.0),
+              padding: const EdgeInsets.symmetric(
+                horizontal: 16.0,
+                vertical: 8.0,
+              ), // Increased horizontal padding
               child: TextField(
                 controller: _searchController,
                 decoration: InputDecoration(
                   hintText: 'Search service or app...',
                   prefixIcon: const Icon(Icons.search),
+                  // Define consistent border radius
                   border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(100),
-                    borderSide: BorderSide.none, // Optional: remove border
+                    borderRadius: BorderRadius.circular(
+                      12.0,
+                    ), // Match Card radius (adjust if needed)
+                    borderSide: BorderSide.none,
                   ),
-                  filled: true, // Optional: add background color
-                  // fillColor: Colors.grey[200], // Optional: background color
+                  // Ensure focused border also uses the same radius and no visible border side
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12.0),
+                    borderSide:
+                        BorderSide.none, // Keep border invisible on focus
+                  ),
+                  filled: true,
+                  fillColor:
+                      isDarkMode
+                          ? AppColors
+                              .cCardDarkColor // Use custom dark color
+                          : null, // Use default theme fill color for light mode (or specify one)
                   contentPadding: const EdgeInsets.symmetric(
                     vertical: 0,
                     horizontal: 16,
@@ -225,12 +260,18 @@ class _AccountsPageState extends State<AccountsPage> {
                       // Wrap with Card
                       elevation: 1,
                       color:
-                          Theme.of(
-                            context,
-                          ).cardColor, // Use theme card color for light/dark mode compatibility
-                      margin: const EdgeInsets.all(
-                        8.0,
-                      ), // Add some margin around the card
+                          isDarkMode
+                              ? AppColors
+                                  .cCardDarkColor // Use custom dark color
+                              : Theme.of(
+                                context,
+                              ).cardColor, // Use default theme color for light mode
+                      margin: const EdgeInsets.only(
+                        top: 8.0,
+                        left: 16.0,
+                        right: 16.0,
+                        bottom: 16.0,
+                      ), // Increased margin
                       clipBehavior:
                           Clip.antiAlias, // Optional: Improves corner clipping
                       child: RefreshIndicator(

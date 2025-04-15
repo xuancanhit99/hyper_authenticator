@@ -14,6 +14,8 @@ part 'auth_state.dart';
 
 // Key must match the one used in SettingsBloc and LocalAuthBloc
 const String _biometricPrefKey = 'biometric_enabled';
+const String _rememberedEmailKey =
+    'remembered_email'; // Key for remembered email
 
 @injectable
 class AuthBloc extends Bloc<AuthEvent, AuthState> {
@@ -37,9 +39,8 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     on<AuthSignOutRequested>(_onSignOutRequested);
     on<_AuthUserChanged>(_onAuthUserChanged);
     on<AuthRecoverPasswordRequested>(_onRecoverPasswordRequested);
-    on<AuthPasswordUpdateRequested>(
-      _onPasswordUpdateRequested,
-    ); // Add handler registration
+    on<AuthPasswordUpdateRequested>(_onPasswordUpdateRequested);
+    on<LoadRememberedUser>(_onLoadRememberedUser); // Add handler for new event
   }
 
   @override
@@ -85,6 +86,12 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       debugPrint(
         "Sign In successful for ${userEntity.email}, waiting for stream update.",
       );
+      // Handle Remember Me
+      if (event.rememberMe) {
+        _sharedPreferences.setString(_rememberedEmailKey, event.email);
+      } else {
+        _sharedPreferences.remove(_rememberedEmailKey);
+      }
     });
   }
 
@@ -140,6 +147,8 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         // Clear secure storage on successful sign out
         await _secureStorage.deleteAll();
         debugPrint("Cleared secure storage.");
+        // Also clear remembered email on sign out
+        await _sharedPreferences.remove(_rememberedEmailKey);
         // The stream update will handle the state change to AuthUnauthenticated
       },
     );
@@ -162,5 +171,27 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       // emit(AuthPasswordUpdateSuccess());
       // Or rely on the user stream update if the session changes/refreshes.
     });
+  }
+
+  Future<void> _onLoadRememberedUser(
+    LoadRememberedUser event,
+    Emitter<AuthState> emit,
+  ) async {
+    // Only load if the current state is initial (or unauthenticated)
+    if (state is AuthInitial || state is AuthUnauthenticated) {
+      final rememberedEmail = _sharedPreferences.getString(_rememberedEmailKey);
+      if (rememberedEmail != null) {
+        // Emit AuthInitial with the remembered email
+        // This allows the LoginPage to pre-fill the email field
+        emit(AuthInitial(rememberedEmail: rememberedEmail));
+      } else {
+        // If no email is remembered, just stay in the current state or emit default AuthInitial
+        if (state is! AuthInitial) {
+          emit(
+            const AuthInitial(),
+          ); // Ensure it's AuthInitial if nothing is loaded
+        }
+      }
+    }
   }
 }
