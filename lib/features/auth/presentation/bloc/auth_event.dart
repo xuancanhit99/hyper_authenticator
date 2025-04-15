@@ -21,13 +21,20 @@ class AuthSignInRequested extends AuthEvent {
 }
 
 class AuthSignUpRequested extends AuthEvent {
+  final String name; // Added
   final String email;
   final String password;
+  // final String? phone; // REMOVED
 
-  const AuthSignUpRequested({required this.email, required this.password});
+  const AuthSignUpRequested({
+    required this.name,
+    required this.email,
+    required this.password,
+    // this.phone, // REMOVED
+  });
 
   @override
-  List<Object> get props => [email, password];
+  List<Object?> get props => [name, email, password]; // REMOVED phone from props
 }
 
 class AuthRecoverPasswordRequested extends AuthEvent {
@@ -39,6 +46,16 @@ class AuthRecoverPasswordRequested extends AuthEvent {
 }
 
 class AuthSignOutRequested extends AuthEvent {}
+
+// Event for updating password from UpdatePasswordPage
+class AuthPasswordUpdateRequested extends AuthEvent {
+  final String newPassword;
+
+  const AuthPasswordUpdateRequested({required this.newPassword});
+
+  @override
+  List<Object> get props => [newPassword];
+}
 
 // Internal event now carries UserEntity?
 class _AuthUserChanged extends AuthEvent {

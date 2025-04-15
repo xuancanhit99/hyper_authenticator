@@ -16,14 +16,18 @@ class AuthRepositoryImpl implements AuthRepository {
   AuthRepositoryImpl({required this.remoteDataSource});
 
   UserEntity? _mapSupabaseUserToEntity(User? supabaseUser) {
-    return supabaseUser == null ? null : UserEntity.fromSupabaseUser(supabaseUser);
+    return supabaseUser == null
+        ? null
+        : UserEntity.fromSupabaseUser(supabaseUser);
   }
 
   @override
-  UserEntity? get currentUserEntity => _mapSupabaseUserToEntity(remoteDataSource.currentUser);
+  UserEntity? get currentUserEntity =>
+      _mapSupabaseUserToEntity(remoteDataSource.currentUser);
 
   @override
-  Stream<UserEntity?> get authEntityChanges => remoteDataSource.authStateChanges.map(_mapSupabaseUserToEntity);
+  Stream<UserEntity?> get authEntityChanges =>
+      remoteDataSource.authStateChanges.map(_mapSupabaseUserToEntity);
 
   @override
   Future<Either<Failure, UserEntity?>> getCurrentUserEntity() async {
@@ -31,8 +35,14 @@ class AuthRepositoryImpl implements AuthRepository {
       final userEntity = _mapSupabaseUserToEntity(remoteDataSource.currentUser);
       return Right(userEntity);
     } catch (e, s) {
-      debugPrint('Unexpected error in getCurrentUserEntity: $e\nStackTrace: $s');
-      return Left(ServerFailure('Failed to get current user info. Please try again later.'));
+      debugPrint(
+        'Unexpected error in getCurrentUserEntity: $e\nStackTrace: $s',
+      );
+      return Left(
+        ServerFailure(
+          'Failed to get current user info. Please try again later.',
+        ),
+      );
     }
   }
 
@@ -49,34 +59,52 @@ class AuthRepositoryImpl implements AuthRepository {
       return Right(UserEntity.fromSupabaseUser(supabaseUser));
     } on AuthServerException catch (e) {
       return Left(AuthCredentialsFailure(e.message));
-    } on ServerException catch(e) {
+    } on ServerException catch (e) {
       return Left(AuthCredentialsFailure(e.message));
     } catch (e, s) {
       debugPrint('Unexpected error in signInWithPassword: $e\nStackTrace: $s');
-      return Left(AuthCredentialsFailure('An unexpected error occurred during sign in. Please check your connection or try again later.'));
+      return Left(
+        AuthCredentialsFailure(
+          'An unexpected error occurred during sign in. Please check your connection or try again later.',
+        ),
+      );
     }
   }
 
   @override
+  // Updated signature (removed phone)
   Future<Either<Failure, UserEntity>> signUpWithPassword({
+    required String name,
     required String email,
     required String password,
-    Map<String, dynamic>? data,
+    // String? phone, // REMOVED phone
   }) async {
     try {
+      // Construct data map for user_metadata
+      final Map<String, dynamic> userData = {'name': name};
+      // If phone is provided and not empty, add it.
+      // Note: Supabase signUp might take phone at top level, adjust if remoteDataSource expects that.
+      // Assuming remoteDataSource handles phone separately or within data for now.
+      // Let's assume remoteDataSource.signUpWithPassword is updated to take name/phone or uses data map correctly.
+      // For simplicity, passing name in data. Phone handling might need adjustment in DataSource.
       final supabaseUser = await remoteDataSource.signUpWithPassword(
         email: email,
         password: password,
-        data: data,
+        data: userData, // Pass name in data map
+        // phone: phone, // REMOVE phone from the call
       );
       return Right(UserEntity.fromSupabaseUser(supabaseUser));
     } on AuthServerException catch (e) {
       return Left(AuthServerFailure(e.message));
-    } on ServerException catch(e) {
+    } on ServerException catch (e) {
       return Left(AuthServerFailure(e.message));
     } catch (e, s) {
       debugPrint('Unexpected error in signUpWithPassword: $e\nStackTrace: $s');
-      return Left(AuthServerFailure('An unexpected error occurred during sign up. Please try again later.'));
+      return Left(
+        AuthServerFailure(
+          'An unexpected error occurred during sign up. Please try again later.',
+        ),
+      );
     }
   }
 
@@ -91,7 +119,11 @@ class AuthRepositoryImpl implements AuthRepository {
       return Left(ServerFailure(e.message));
     } catch (e, s) {
       debugPrint('Unexpected error in recoverPassword: $e\nStackTrace: $s');
-      return Left(ServerFailure('An unexpected error occurred while recovering password. Please try again later.'));
+      return Left(
+        ServerFailure(
+          'An unexpected error occurred while recovering password. Please try again later.',
+        ),
+      );
     }
   }
 
@@ -102,7 +134,32 @@ class AuthRepositoryImpl implements AuthRepository {
       return const Right(null);
     } catch (e, s) {
       debugPrint('Unexpected error in signOut: $e\nStackTrace: $s');
-      return Left(ServerFailure('Failed to sign out. Please check your connection or try again later.'));
+      return Left(
+        ServerFailure(
+          'Failed to sign out. Please check your connection or try again later.',
+        ),
+      );
+    }
+  }
+
+  // Implementation for the new updatePassword method
+  @override
+  Future<Either<Failure, void>> updatePassword(String newPassword) async {
+    try {
+      // Assuming remoteDataSource has an updatePassword method
+      await remoteDataSource.updatePassword(newPassword);
+      return const Right(null);
+    } on AuthServerException catch (e) {
+      return Left(AuthServerFailure(e.message));
+    } on ServerException catch (e) {
+      return Left(ServerFailure(e.message));
+    } catch (e, s) {
+      debugPrint('Unexpected error in updatePassword: $e\nStackTrace: $s');
+      return Left(
+        ServerFailure(
+          'An unexpected error occurred while updating password. Please try again later.',
+        ),
+      );
     }
   }
 }

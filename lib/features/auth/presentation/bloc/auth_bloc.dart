@@ -34,6 +34,9 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     on<AuthSignOutRequested>(_onSignOutRequested);
     on<_AuthUserChanged>(_onAuthUserChanged);
     on<AuthRecoverPasswordRequested>(_onRecoverPasswordRequested);
+    on<AuthPasswordUpdateRequested>(
+      _onPasswordUpdateRequested,
+    ); // Add handler registration
   }
 
   @override
@@ -87,9 +90,12 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     Emitter<AuthState> emit,
   ) async {
     emit(AuthLoading());
+    // Updated (removed phone)
     final result = await _authRepository.signUpWithPassword(
+      name: event.name,
       email: event.email,
       password: event.password,
+      // phone: event.phone, // REMOVE phone from the call
     );
     result.fold((failure) => emit(AuthFailure(failure.message)), (userEntity) {
       debugPrint(
@@ -131,5 +137,24 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         // The stream update will handle the state change to AuthUnauthenticated
       },
     );
+  }
+
+  // Handler for password update
+  Future<void> _onPasswordUpdateRequested(
+    AuthPasswordUpdateRequested event,
+    Emitter<AuthState> emit,
+  ) async {
+    emit(AuthLoading());
+    // Assuming a new method in the repository
+    final result = await _authRepository.updatePassword(event.newPassword);
+    result.fold((failure) => emit(AuthFailure(failure.message)), (_) {
+      // Password updated successfully. We might rely on AuthUserChanged
+      // or emit a specific success state if needed for UI feedback before navigation.
+      // For now, just print and assume navigation happens in UI based on state change.
+      debugPrint("Password update successful.");
+      // Optionally emit a specific state like AuthPasswordUpdateSuccess
+      // emit(AuthPasswordUpdateSuccess());
+      // Or rely on the user stream update if the session changes/refreshes.
+    });
   }
 }

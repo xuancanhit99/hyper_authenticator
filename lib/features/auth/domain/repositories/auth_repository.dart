@@ -4,7 +4,6 @@ import 'package:hyper_authenticator/core/error/failures.dart'; // Your custom Fa
 import 'package:hyper_authenticator/features/auth/domain/entities/user_entity.dart'; // Import UserEntity
 
 abstract class AuthRepository {
-
   UserEntity? get currentUserEntity;
 
   Stream<UserEntity?> get authEntityChanges;
@@ -17,12 +16,16 @@ abstract class AuthRepository {
   });
 
   Future<Either<Failure, UserEntity>> signUpWithPassword({
+    required String name, // Keep name for metadata
     required String email,
     required String password,
-    Map<String, dynamic>? data,
+    // String? phone, // REMOVE phone from initial sign up
   });
 
   Future<Either<Failure, void>> recoverPassword(String email);
 
   Future<Either<Failure, void>> signOut();
+
+  // Added method for updating password
+  Future<Either<Failure, void>> updatePassword(String newPassword);
 }

@@ -14,14 +14,18 @@ abstract class AuthRemoteDataSource {
   });
 
   Future<User> signUpWithPassword({
-    required String email,
+    required String email, // Keep email
     required String password,
-    Map<String, dynamic>? data,
+    // String? phone, // REMOVE phone from initial sign up interface
+    Map<String, dynamic>? data, // Keep data for metadata like name
   });
 
   Future<void> recoverPassword(String email);
 
   Future<void> signOut();
+
+  // Added method for updating password
+  Future<void> updatePassword(String newPassword);
 }
 
 @LazySingleton(as: AuthRemoteDataSource)
@@ -48,7 +52,9 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
         password: password,
       );
       if (response.user == null) {
-        throw const AuthServerException('Sign in failed: Invalid credentials or user not found.');
+        throw const AuthServerException(
+          'Sign in failed: Invalid credentials or user not found.',
+        );
       }
       return response.user!;
     } on AuthException catch (e) {
@@ -61,40 +67,45 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   }
 
   @override
+  // Updated signature (removed phone)
   Future<User> signUpWithPassword({
     required String email,
     required String password,
+    // String? phone, // REMOVED phone
     Map<String, dynamic>? data,
   }) async {
     try {
       final response = await _supabaseClient.auth.signUp(
         email: email,
         password: password,
+        // phone: phone, // REMOVE phone from the call
         data: data,
       );
 
       if (response.user == null && response.session == null) {
-         throw const AuthServerException('Sign up process failed unexpectedly.');
+        throw const AuthServerException('Sign up process failed unexpectedly.');
       }
-       if (response.user == null) {
-         if (response.session != null) {
-            debugPrint('SignUp successful (session created), but user object is null. Email verification likely required.');
-             throw const AuthServerException('Sign up completed but user data is missing in response.');
-
-         } else {
-            throw const AuthServerException('Sign up process failed: No user or session returned.');
-         }
-
+      if (response.user == null) {
+        if (response.session != null) {
+          debugPrint(
+            'SignUp successful (session created), but user object is null. Email verification likely required.',
+          );
+          throw const AuthServerException(
+            'Sign up completed but user data is missing in response.',
+          );
+        } else {
+          throw const AuthServerException(
+            'Sign up process failed: No user or session returned.',
+          );
+        }
       }
-       return response.user!;
-
-
+      return response.user!;
     } on AuthException catch (e) {
-       debugPrint('Supabase SignUp AuthException: ${e.message}');
-       throw AuthServerException(e.message);
+      debugPrint('Supabase SignUp AuthException: ${e.message}');
+      throw AuthServerException(e.message);
     } catch (e, s) {
-       debugPrint('Unknown SignUp Error: $e\nStackTrace: $s');
-       throw ServerException('An unexpected error occurred during sign up.');
+      debugPrint('Unknown SignUp Error: $e\nStackTrace: $s');
+      throw ServerException('An unexpected error occurred during sign up.');
     }
   }
 
@@ -107,7 +118,9 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       throw AuthServerException(e.message);
     } catch (e, s) {
       debugPrint("Unknown RecoverPassword Error: $e\nStackTrace: $s");
-      throw ServerException('An unexpected error occurred during password recovery.');
+      throw ServerException(
+        'An unexpected error occurred during password recovery.',
+      );
     }
   }
 
@@ -116,8 +129,26 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
     try {
       await _supabaseClient.auth.signOut();
     } catch (e, s) {
-       debugPrint("Supabase SignOut Error: $e\nStackTrace: $s");
-       throw ServerException('An error occurred during sign out.');
+      debugPrint("Supabase SignOut Error: $e\nStackTrace: $s");
+      throw ServerException('An error occurred during sign out.');
+    }
+  }
+
+  // Implementation for updatePassword
+  @override
+  Future<void> updatePassword(String newPassword) async {
+    try {
+      await _supabaseClient.auth.updateUser(
+        UserAttributes(password: newPassword),
+      );
+    } on AuthException catch (e) {
+      debugPrint("Supabase UpdatePassword Error: ${e.message}");
+      throw AuthServerException(e.message);
+    } catch (e, s) {
+      debugPrint("Unknown UpdatePassword Error: $e\nStackTrace: $s");
+      throw ServerException(
+        'An unexpected error occurred while updating password.',
+      );
     }
   }
 }

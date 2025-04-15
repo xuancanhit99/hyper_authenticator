@@ -5,18 +5,25 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hyper_authenticator/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:hyper_authenticator/features/authenticator/presentation/bloc/local_auth_bloc.dart'; // Import LocalAuthBloc
-import 'package:hyper_authenticator/features/auth/presentation/pages/auth_page.dart'; // LoginPage
+import 'package:hyper_authenticator/features/auth/presentation/pages/login_page.dart'; // Renamed auth_page to login_page
+import 'package:hyper_authenticator/features/auth/presentation/pages/register_page.dart'; // Added import
+import 'package:hyper_authenticator/features/auth/presentation/pages/forgot_password_page.dart'; // Added import
+import 'package:hyper_authenticator/features/auth/presentation/pages/update_password_page.dart'; // Added import
 import 'package:hyper_authenticator/features/authenticator/presentation/pages/add_account_page.dart';
-import 'package:hyper_authenticator/features/authenticator/presentation/pages/lock_screen_page.dart'; // Keep for potential future use? Or remove if not handled by router
+import 'package:hyper_authenticator/features/authenticator/presentation/pages/lock_screen_page.dart';
 import 'package:hyper_authenticator/features/main_navigation/presentation/pages/main_navigation_page.dart';
-import 'package:hyper_authenticator/injection_container.dart'; // Import sl (nếu cần) - Hiện tại không cần trực tiếp
+// import 'package:hyper_authenticator/injection_container.dart'; // Not directly needed here
 
 // --- Define Route Paths ---
 class AppRoutes {
   static const login = '/login';
   static const main = '/'; // Main screen (wrapper with bottom nav)
   static const addAccount = '/add-account';
-  static const lockScreen = '/lock-screen'; // Bỏ comment để sử dụng
+  static const lockScreen = '/lock-screen';
+  static const register = '/register'; // Added
+  static const forgotPassword = '/forgot-password'; // Added
+  static const updatePassword =
+      '/update-password'; // Added for deep link handling
 }
 
 // Helper class to trigger GoRouter refresh on multiple Bloc stream changes
@@ -65,8 +72,25 @@ class AppRouter {
         // Public route
         GoRoute(
           path: AppRoutes.login,
-          name: AppRoutes.login,
-          builder: (context, state) => const LoginPage(),
+          name: AppRoutes.login, // Use name for easier navigation if needed
+          builder: (context, state) => const LoginPage(), // Existing Login Page
+        ),
+        // --- New Auth Routes ---
+        GoRoute(
+          path: AppRoutes.register,
+          name: AppRoutes.register,
+          builder: (context, state) => const RegisterPage(),
+        ),
+        GoRoute(
+          path: AppRoutes.forgotPassword,
+          name: AppRoutes.forgotPassword,
+          builder: (context, state) => const ForgotPasswordPage(),
+        ),
+        GoRoute(
+          path: AppRoutes.updatePassword,
+          name: AppRoutes.updatePassword,
+          // This page might receive parameters from deep link in the future
+          builder: (context, state) => const UpdatePasswordPage(),
         ),
         // Main App Shell Route (protected by redirect)
         GoRoute(
@@ -86,6 +110,7 @@ class AppRouter {
           name: AppRoutes.lockScreen,
           builder: (context, state) => const LockScreenPage(),
         ),
+        // --- End New Auth Routes ---
       ],
 
       // --- REDIRECT LOGIC (Simplified, based on original working version) ---
@@ -96,6 +121,11 @@ class AppRouter {
 
         final isGoingToLogin = location == AppRoutes.login;
         final isGoingToLockScreen = location == AppRoutes.lockScreen;
+        // Add checks for other public routes
+        final isGoingToRegister = location == AppRoutes.register;
+        final isGoingToForgotPassword = location == AppRoutes.forgotPassword;
+        // UpdatePassword might need special handling (only via deep link)
+        // final isGoingToUpdatePassword = location == AppRoutes.updatePassword;
 
         // Added timestamp for better tracing
         final timestamp = DateTime.now().toIso8601String();
@@ -113,9 +143,14 @@ class AppRouter {
         final isSupabaseAuthenticated = supabaseAuthState is AuthAuthenticated;
 
         // 2. Nếu CHƯA đăng nhập Supabase và KHÔNG ở trang Login -> Về Login
-        if (!isSupabaseAuthenticated && !isGoingToLogin) {
+        // 2. If NOT Supabase authenticated and NOT going to an allowed public route -> Go Login
+        // Allowed public routes: login, register, forgotPassword
+        if (!isSupabaseAuthenticated &&
+            !isGoingToLogin &&
+            !isGoingToRegister &&
+            !isGoingToForgotPassword) {
           debugPrint(
-            "[$timestamp Redirect] Unauthenticated & not on Login -> Go Login",
+            "[$timestamp Redirect] Unauthenticated & not on allowed public route ($location) -> Go Login",
           );
           return AppRoutes.login;
         }

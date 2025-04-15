@@ -46,3 +46,4 @@ app.*.map.json
 
 .env
 lib/injection_container.config.dart
+reset-password-web/.env
