@@ -5,6 +5,7 @@ import 'package:equatable/equatable.dart';
 import 'package:flutter/foundation.dart';
 import 'package:injectable/injectable.dart';
 import 'package:shared_preferences/shared_preferences.dart'; // Import SharedPreferences
+import 'package:flutter_secure_storage/flutter_secure_storage.dart'; // Import FlutterSecureStorage
 import 'package:hyper_authenticator/features/auth/domain/entities/user_entity.dart';
 import 'package:hyper_authenticator/features/auth/domain/repositories/auth_repository.dart';
 
@@ -18,11 +19,13 @@ const String _biometricPrefKey = 'biometric_enabled';
 class AuthBloc extends Bloc<AuthEvent, AuthState> {
   final AuthRepository _authRepository;
   final SharedPreferences _sharedPreferences; // Add dependency
+  final FlutterSecureStorage _secureStorage; // Add dependency
   StreamSubscription<UserEntity?>? _authEntitySubscription;
 
   AuthBloc(
     this._authRepository,
     this._sharedPreferences, // Add to constructor
+    this._secureStorage, // Add to constructor
   ) : super(AuthInitial()) {
     _authEntitySubscription = _authRepository.authEntityChanges.listen(
       (userEntity) => add(_AuthUserChanged(userEntity)),
@@ -134,6 +137,9 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         );
         // Disable biometric preference on successful sign out
         await _sharedPreferences.setBool(_biometricPrefKey, false);
+        // Clear secure storage on successful sign out
+        await _secureStorage.deleteAll();
+        debugPrint("Cleared secure storage.");
         // The stream update will handle the state change to AuthUnauthenticated
       },
     );
