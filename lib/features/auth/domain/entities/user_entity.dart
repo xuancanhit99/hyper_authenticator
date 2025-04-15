@@ -6,12 +6,12 @@ import 'package:supabase_flutter/supabase_flutter.dart' show User;
 class UserEntity extends Equatable {
   final String id;
   final String? email;
-  // final String? displayName; // Example: Add if needed
+  final String? name; // Add name field
 
   const UserEntity({
     required this.id,
     this.email,
-    // this.displayName, // Example
+    this.name, // Add to constructor
   });
 
   // Optional: Factory constructor for easy mapping from Supabase User
@@ -19,11 +19,12 @@ class UserEntity extends Equatable {
     return UserEntity(
       id: supabaseUser.id,
       email: supabaseUser.email,
-      // displayName: supabaseUser.userMetadata?['display_name'], // Example
+      name:
+          supabaseUser.userMetadata?['name']
+              as String?, // Extract name from metadata
     );
   }
 
-
   @override
-  List<Object?> get props => [id, email /*, displayName */];
+  List<Object?> get props => [id, email, name]; // Add name to props
 }

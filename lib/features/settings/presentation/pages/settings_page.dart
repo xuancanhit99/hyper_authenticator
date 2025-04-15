@@ -9,6 +9,7 @@ import 'package:hyper_authenticator/features/authenticator/presentation/bloc/acc
 import 'package:hyper_authenticator/injection_container.dart';
 import 'package:intl/intl.dart'; // Added for date formatting
 import 'package:hyper_authenticator/features/authenticator/domain/entities/authenticator_account.dart';
+import 'package:hyper_authenticator/features/auth/domain/entities/user_entity.dart'; // Import UserEntity
 
 import 'package:hyper_authenticator/core/constants/app_colors.dart'; // Added for _SyncSection
 
@@ -55,23 +56,66 @@ class SettingsPage extends StatelessWidget {
             }
           },
           child: BlocBuilder<SettingsBloc, SettingsState>(
-            builder: (context, state) {
-              bool isBiometricEnabled = false;
-              bool canCheckBiometrics =
-                  false; // Check if device supports biometrics
+            builder: (context, settingsState) {
+              // Renamed state to settingsState
+              // Access AuthBloc state to get user info
+              final authState = context.watch<AuthBloc>().state;
+              UserEntity? currentUser;
+              if (authState is AuthAuthenticated) {
+                currentUser = authState.user;
+              }
 
-              if (state is SettingsLoaded) {
-                isBiometricEnabled = state.isBiometricEnabled;
-                canCheckBiometrics = state.canCheckBiometrics;
-              } else if (state is SettingsLoading) {
-                // Optionally show loading indicator while checking biometrics support
+              bool isBiometricEnabled = false;
+              bool canCheckBiometrics = false;
+
+              if (settingsState is SettingsLoaded) {
+                isBiometricEnabled = settingsState.isBiometricEnabled;
+                canCheckBiometrics = settingsState.canCheckBiometrics;
+              } else if (settingsState is SettingsLoading) {
                 return const Center(child: CircularProgressIndicator());
               }
               // Handle SettingsError state if needed
 
               return ListView(
-                padding: const EdgeInsets.all(16.0),
+                padding: const EdgeInsets.all(
+                  8.0,
+                ), // Reduced padding to accommodate Card margin
                 children: [
+                  // --- User Info Card ---
+                  if (currentUser !=
+                      null) // Only show card if user is logged in
+                    Card(
+                      color:
+                          Theme.of(context).cardColor, // Use theme card color
+                      margin: const EdgeInsets.only(
+                        bottom: 16.0,
+                      ), // Add margin below the card
+                      child: ListTile(
+                        leading: CircleAvatar(
+                          // Simple avatar
+                          // backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+                          child: Text(
+                            // Use first letter of name for avatar
+                            currentUser.name?.isNotEmpty == true
+                                ? currentUser.name![0].toUpperCase()
+                                : (currentUser.email?.isNotEmpty == true
+                                    ? currentUser.email![0].toUpperCase()
+                                    : '?'), // Fallback to email initial
+                            // style: TextStyle(color: Theme.of(context).colorScheme.onPrimaryContainer),
+                          ),
+                        ),
+                        title: Text(
+                          // Display name as title
+                          currentUser.name ??
+                              'N/A', // Use name, fallback to N/A
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                        subtitle: Text(
+                          currentUser.email ?? 'No email',
+                        ), // Display email as subtitle
+                        // subtitle: Text(currentUser.email ?? 'No email'), // Remove subtitle or display something else
+                      ),
+                    ),
                   // --- Biometric Login Section ---
                   ListTile(
                     leading: const Icon(Icons.fingerprint),
@@ -400,7 +444,8 @@ class _SyncSectionState extends State<_SyncSection> {
                           .cloud_off_outlined, // Use filled cloud when enabled
                   color:
                       isCurrentlySyncEnabled
-                          ? Colors.green // Kept user's color
+                          ? Colors
+                              .green // Kept user's color
                           : null,
                 ),
                 tooltip:
