@@ -16,6 +16,8 @@ part 'auth_state.dart';
 const String _biometricPrefKey = 'biometric_enabled';
 const String _rememberedEmailKey =
     'remembered_email'; // Key for remembered email
+const String _rememberedMeStateKey =
+    'remembered_me_state'; // Key for remember me checkbox state
 
 @injectable
 class AuthBloc extends Bloc<AuthEvent, AuthState> {
@@ -88,9 +90,13 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       );
       // Handle Remember Me
       if (event.rememberMe) {
+        // Save both email and the state (true)
         _sharedPreferences.setString(_rememberedEmailKey, event.email);
+        _sharedPreferences.setBool(_rememberedMeStateKey, true);
       } else {
+        // Remove both email and the state
         _sharedPreferences.remove(_rememberedEmailKey);
+        _sharedPreferences.remove(_rememberedMeStateKey);
       }
     });
   }
@@ -147,8 +153,9 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         // Clear secure storage on successful sign out
         await _secureStorage.deleteAll();
         debugPrint("Cleared secure storage.");
-        // Also clear remembered email on sign out
+        // Also clear remembered email and state on sign out
         await _sharedPreferences.remove(_rememberedEmailKey);
+        await _sharedPreferences.remove(_rememberedMeStateKey);
         // The stream update will handle the state change to AuthUnauthenticated
       },
     );
@@ -180,16 +187,27 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     // Only load if the current state is initial (or unauthenticated)
     if (state is AuthInitial || state is AuthUnauthenticated) {
       final rememberedEmail = _sharedPreferences.getString(_rememberedEmailKey);
-      if (rememberedEmail != null) {
-        // Emit AuthInitial with the remembered email
-        // This allows the LoginPage to pre-fill the email field
-        emit(AuthInitial(rememberedEmail: rememberedEmail));
+      final rememberedMeState = _sharedPreferences.getBool(
+        _rememberedMeStateKey,
+      );
+
+      // Only emit if we have at least an email or a state saved
+      // (Though typically they should be saved/removed together)
+      if (rememberedEmail != null || rememberedMeState != null) {
+        // Emit AuthInitial with both remembered email and state
+        // Default rememberedMeState to false if null (e.g., older version)
+        emit(
+          AuthInitial(
+            rememberedEmail: rememberedEmail,
+            rememberedMeState: rememberedMeState ?? false,
+          ),
+        );
       } else {
-        // If no email is remembered, just stay in the current state or emit default AuthInitial
-        if (state is! AuthInitial) {
-          emit(
-            const AuthInitial(),
-          ); // Ensure it's AuthInitial if nothing is loaded
+        // If nothing is remembered, ensure state is default AuthInitial
+        if (state is! AuthInitial ||
+            (state as AuthInitial).rememberedEmail != null ||
+            (state as AuthInitial).rememberedMeState != null) {
+          emit(const AuthInitial()); // Reset to default initial state
         }
       }
     }

@@ -222,7 +222,8 @@ class SettingsPage extends StatelessWidget {
                                       );
                                     },
                                   )
-                                  : null, // Disable switch if not supported
+                                  : null,
+                          // Disable switch if not supported
                           onTap:
                               canCheckBiometrics
                                   ? () {
@@ -310,6 +311,7 @@ class _SyncSection extends StatefulWidget {
 
 class _SyncSectionState extends State<_SyncSection> {
   StreamSubscription<AuthState>? _authSubscription;
+
   // Removed local _isSyncEnabled state. Will rely solely on SyncBloc state.
 
   @override
@@ -366,6 +368,7 @@ class _SyncSectionState extends State<_SyncSection> {
     return BlocBuilder<SyncBloc, SyncState>(
       builder: (context, state) {
         // Determine state variables directly from SyncBloc's state
+        final isDarkMode = Theme.of(context).brightness == Brightness.dark;
         bool isCurrentlySyncEnabled = false; // Default to false
         DateTime? lastSyncTime;
         bool hasRemoteData = false;
@@ -534,10 +537,9 @@ class _SyncSectionState extends State<_SyncSection> {
                       : Icons
                           .cloud_off_outlined, // Use filled cloud when enabled
                   color:
-                      isCurrentlySyncEnabled
-                          ? Colors
-                              .green // Kept user's color
-                          : null,
+                      isDarkMode
+                          ? AppColors.cDarkIconBg
+                          : AppColors.cLightIconBg,
                 ),
                 tooltip:
                     isCurrentlySyncEnabled ? 'Disable Sync' : 'Enable Sync',
@@ -585,8 +587,8 @@ class _SyncSectionState extends State<_SyncSection> {
                                             height: 16,
                                           ), // Add some spacing
                                           _buildSyncOption(
-                                            context:
-                                                dialogContext, // Pass dialog context
+                                            context: dialogContext,
+                                            // Pass dialog context
                                             title: 'Sync and Merge',
                                             description:
                                                 'Adds new local/cloud accounts, updates existing ones based on cloud data, then uploads the merged result.',
@@ -607,14 +609,13 @@ class _SyncSectionState extends State<_SyncSection> {
                                           ),
                                           SizedBox(height: 12),
                                           _buildSyncOption(
-                                            context:
-                                                dialogContext, // Pass dialog context
+                                            context: dialogContext,
+                                            // Pass dialog context
                                             title: 'Sync and Overwrite Cloud',
                                             description:
                                                 'Replaces ALL cloud data with your current local data. Use with caution!',
-                                            icon:
-                                                Icons
-                                                    .cloud_upload_outlined, // Or Icons.warning_amber_rounded
+                                            icon: Icons.cloud_upload_outlined,
+                                            // Or Icons.warning_amber_rounded
                                             color: Colors.red,
                                             onPressed: () {
                                               Navigator.pop(
@@ -690,7 +691,8 @@ class _SyncSectionState extends State<_SyncSection> {
       style: OutlinedButton.styleFrom(
         foregroundColor: color,
         side: BorderSide(color: color.withOpacity(0.5)),
-        alignment: Alignment.centerLeft, // Align icon and text to the left
+        alignment: Alignment.centerLeft,
+        // Align icon and text to the left
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         padding: const EdgeInsets.all(12.0), // Added padding here
       ),

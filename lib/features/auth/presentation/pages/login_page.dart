@@ -76,12 +76,17 @@ class _LoginPageState extends State<LoginPage> {
           (previous, current) =>
               current is AuthInitial || current is AuthFailure,
       listener: (context, state) {
-        if (state is AuthInitial && state.rememberedEmail != null) {
-          _emailController.text = state.rememberedEmail!;
-          // Optionally set _rememberMe to true if email is pre-filled
-          // setState(() {
-          //   _rememberMe = true;
-          // });
+        if (state is AuthInitial) {
+          // Pre-fill email if available
+          if (state.rememberedEmail != null) {
+            _emailController.text = state.rememberedEmail!;
+          }
+          // Set remember me checkbox state if available
+          if (state.rememberedMeState != null) {
+            setState(() {
+              _rememberMe = state.rememberedMeState!;
+            });
+          }
         } else if (state is AuthFailure) {
           ScaffoldMessenger.of(context)
             ..hideCurrentSnackBar()
@@ -140,30 +145,62 @@ class _LoginPageState extends State<LoginPage> {
                       // Pass context to _login
                       onFieldSubmitted: (_) => _login(context),
                     ),
-                    // --- Remember Me Checkbox ---
-                    CheckboxListTile(
-                      title: const Text("Remember Me"),
-                      value: _rememberMe,
-                      onChanged: (newValue) {
-                        setState(() {
-                          _rememberMe = newValue ?? false;
-                        });
-                      },
-                      controlAffinity:
-                          ListTileControlAffinity
-                              .leading, // Checkbox on the left
-                      contentPadding: EdgeInsets.zero, // Remove default padding
-                      dense: true, // Make it more compact
-                    ),
-                    // --- Forgot Password Button ---
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: TextButton(
-                        onPressed: () {
-                          context.push(AppRoutes.forgotPassword);
-                        },
-                        child: const Text('Forgot Password?'),
-                      ),
+                    const SizedBox(height: 16),
+                    // --- Remember Me & Forgot Password Row ---
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        // Remember Me part
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            SizedBox(
+                              height: 24.0, // Constrain height
+                              width: 24.0, // Constrain width
+                              child: Checkbox(
+                                value: _rememberMe,
+                                onChanged: (newValue) {
+                                  setState(() {
+                                    _rememberMe = newValue ?? false;
+                                  });
+                                },
+                                visualDensity:
+                                    VisualDensity
+                                        .compact, // Make checkbox smaller
+                                materialTapTargetSize:
+                                    MaterialTapTargetSize
+                                        .shrinkWrap, // Reduce tap area
+                              ),
+                            ),
+                            const SizedBox(
+                              width: 4,
+                            ), // Small space between checkbox and text
+                            InkWell(
+                              onTap: () {
+                                setState(() {
+                                  _rememberMe = !_rememberMe;
+                                });
+                              },
+                              child: const Text("Remember Me"),
+                            ),
+                          ],
+                        ),
+                        // Forgot Password part
+                        TextButton(
+                          onPressed: () {
+                            context.push(AppRoutes.forgotPassword);
+                          },
+                          style: TextButton.styleFrom(
+                            padding: EdgeInsets.zero, // Remove default padding
+                            minimumSize:
+                                Size.zero, // Remove minimum size constraint
+                            tapTargetSize:
+                                MaterialTapTargetSize
+                                    .shrinkWrap, // Reduce tap area
+                          ),
+                          child: const Text('Forgot Password?'),
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 24),
                     // Use BlocBuilder to handle loading state
@@ -171,22 +208,28 @@ class _LoginPageState extends State<LoginPage> {
                       builder: (context, state) {
                         final isLoading = state is AuthLoading;
                         return ElevatedButton(
-                          onPressed:
-                              isLoading
-                                  ? null
-                                  : () => _login(context), // Pass context
+                          // Keep onPressed active, let Bloc handle loading state internally
+                          onPressed: () => _login(context), // Pass context
                           style: ElevatedButton.styleFrom(
                             padding: const EdgeInsets.symmetric(vertical: 16),
                             textStyle: Theme.of(context).textTheme.titleMedium,
                           ),
                           child:
                               isLoading
-                                  ? const SizedBox(
+                                  ? SizedBox(
+                                    // Remove const here
                                     width: 24,
                                     height: 24,
                                     child: CircularProgressIndicator(
                                       strokeWidth: 2,
-                                      color: Colors.white,
+                                      // Set indicator color based on theme brightness
+                                      color:
+                                          Theme.of(context).brightness ==
+                                                  Brightness.dark
+                                              ? Colors
+                                                  .black // Black indicator in dark mode
+                                              : Colors
+                                                  .white, // White indicator in light mode
                                     ),
                                   )
                                   : const Text('Login'),
@@ -204,6 +247,14 @@ class _LoginPageState extends State<LoginPage> {
                             context.push(AppRoutes.register);
                             // print('Navigate to Register'); // Keep for debugging if needed
                           },
+                          style: TextButton.styleFrom(
+                            padding: EdgeInsets.zero, // Remove default padding
+                            // minimumSize:
+                            // Size.zero, // Remove minimum size constraint
+                            tapTargetSize:
+                                MaterialTapTargetSize
+                                    .shrinkWrap, // Reduce tap area
+                          ),
                           child: const Text('Sign Up'),
                         ),
                       ],
