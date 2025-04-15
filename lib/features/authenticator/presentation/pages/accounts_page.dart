@@ -148,6 +148,7 @@ class _AccountsPageState extends State<AccountsPage> {
             // Build the list view with Pull-to-Refresh inside a Card
             return Card(
               // Wrap with Card
+              elevation: 1,
               color:
                   Theme.of(
                     context,
@@ -318,7 +319,7 @@ class _AccountsPageState extends State<AccountsPage> {
                                   Text(
                                     displayCode,
                                     style: const TextStyle(
-                                      fontSize: 18, // Slightly smaller code?
+                                      fontSize: 22, // Slightly smaller code?
                                       fontWeight: FontWeight.bold,
                                       letterSpacing: 1.5, // Adjust spacing
                                       fontFeatures: [
@@ -333,7 +334,8 @@ class _AccountsPageState extends State<AccountsPage> {
                                     size: 18, // Smaller size?
                                     backgroundColor: Colors.transparent,
                                     progressColor:
-                                        Colors.grey, // Set progress color to green
+                                        Colors
+                                            .grey, // Set progress color to green
                                     // strokeWidth: 2.0, // Removed as it's no longer a parameter
                                   ),
                                 ],
