@@ -2,10 +2,13 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart'; // For Clipboard
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:hyper_authenticator/core/constants/app_colors.dart'; // Import AppColors (needed for Card)
 import 'package:hyper_authenticator/core/usecases/usecase.dart'; // For NoParams
 import 'package:hyper_authenticator/features/authenticator/domain/entities/authenticator_account.dart';
 import 'package:hyper_authenticator/features/authenticator/domain/usecases/generate_totp_code.dart';
 import 'package:hyper_authenticator/features/authenticator/presentation/bloc/accounts_bloc.dart';
+import 'package:hyper_authenticator/features/authenticator/presentation/utils/logo_service.dart'; // Import LogoService
+import 'package:hyper_authenticator/features/authenticator/presentation/widgets/circular_countdown_timer.dart'; // Import Countdown Timer
 import 'package:hyper_authenticator/injection_container.dart';
 import 'package:go_router/go_router.dart'; // Import GoRouter for navigation
 import 'package:hyper_authenticator/core/router/app_router.dart'; // Import AppRoutes
@@ -32,8 +35,14 @@ class _AccountsPageState extends State<AccountsPage> {
   @override
   void initState() {
     super.initState();
-    // Load accounts when the page initializes
-    context.read<AccountsBloc>().add(LoadAccounts());
+    // Load logo map first (async)
+    LogoService.instance.loadLogoMap().then((_) {
+      // Then load accounts
+      if (mounted) {
+        // Check if widget is still mounted after async operation
+        context.read<AccountsBloc>().add(LoadAccounts());
+      }
+    });
     _startTimer();
   }
 
@@ -139,7 +148,10 @@ class _AccountsPageState extends State<AccountsPage> {
             // Build the list view with Pull-to-Refresh inside a Card
             return Card(
               // Wrap with Card
-              color: AppColors.cCardDarkColor, // Set card color
+              color:
+                  Theme.of(
+                    context,
+                  ).cardColor, // Use theme card color for light/dark mode compatibility
               margin: const EdgeInsets.all(
                 8.0,
               ), // Add some margin around the card
@@ -209,26 +221,12 @@ class _AccountsPageState extends State<AccountsPage> {
                                     .id]!; // Use cached code during refresh
                           }
 
-                          return ListTile(
-                            leading: CircleAvatar(
-                              // Simple countdown indicator
-                              radius: 15,
-                              child: Text(
-                                '$_secondsRemaining',
-                                style: const TextStyle(fontSize: 12),
-                              ),
-                              // TODO: Replace with a proper CircularProgressIndicator based on _secondsRemaining/30
-                            ),
-                            title: Text(account.issuer),
-                            subtitle: Text(account.accountName),
-                            trailing: Text(
-                              displayCode,
-                              style: const TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold,
-                                letterSpacing: 2.0,
-                              ),
-                            ),
+                          final String logoPath = LogoService.instance
+                              .getLogoPath(account.issuer);
+
+                          // --- Start New Row Layout ---
+                          return InkWell(
+                            // Wrap with InkWell for onTap
                             onTap: () {
                               Clipboard.setData(
                                 ClipboardData(
@@ -238,10 +236,111 @@ class _AccountsPageState extends State<AccountsPage> {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(
                                   content: Text('Code copied to clipboard'),
+                                  duration: Duration(
+                                    seconds: 1,
+                                  ), // Shorter duration
                                 ),
                               );
                             },
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16.0,
+                                vertical: 12.0,
+                              ), // Padding for the row
+                              child: Row(
+                                children: [
+                                  // 1. Logo (Square with rounded corners)
+                                  // 1. Logo (Cropped with rounded corners) - Updated
+                                  SizedBox(
+                                    // Constrain the size
+                                    width: 40,
+                                    height: 40,
+                                    child: ClipRRect(
+                                      // Apply rounded corners directly to the image
+                                      borderRadius: BorderRadius.circular(4.0),
+                                      child: Image.asset(
+                                        logoPath,
+                                        fit:
+                                            BoxFit
+                                                .contain, // Use contain to avoid stretching
+                                        errorBuilder: (
+                                          context,
+                                          error,
+                                          stackTrace,
+                                        ) {
+                                          // Fallback icon if image fails to load
+                                          return Container(
+                                            // Add a background for the fallback icon
+                                            // color: Colors.grey.shade200, // Optional: Light grey background
+                                            alignment: Alignment.center,
+                                            child: const Icon(
+                                              Icons.shield_outlined,
+                                              size: 24,
+                                              color:
+                                                  Colors
+                                                      .grey, // Grey icon color
+                                            ),
+                                          );
+                                        },
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12), // Spacing
+                                  // 2. Issuer / Account Name
+                                  Expanded(
+                                    // Takes available space
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          account.issuer ?? 'Unknown Issuer',
+                                          style: Theme.of(
+                                            context,
+                                          ).textTheme.bodyMedium?.copyWith(
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                        Text(
+                                          account.accountName,
+                                          style:
+                                              Theme.of(
+                                                context,
+                                              ).textTheme.bodySmall,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8), // Spacing
+                                  // 3. TOTP Code
+                                  Text(
+                                    displayCode,
+                                    style: const TextStyle(
+                                      fontSize: 18, // Slightly smaller code?
+                                      fontWeight: FontWeight.bold,
+                                      letterSpacing: 1.5, // Adjust spacing
+                                      fontFeatures: [
+                                        FontFeature.tabularFigures(),
+                                      ], // Ensure fixed width for digits
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12), // Spacing
+                                  // 4. Countdown Timer (Pacman style - no number)
+                                  CircularCountdownTimer(
+                                    secondsRemaining: _secondsRemaining,
+                                    size: 18, // Smaller size?
+                                    backgroundColor: Colors.transparent,
+                                    progressColor:
+                                        Colors.grey, // Set progress color to green
+                                    // strokeWidth: 2.0, // Removed as it's no longer a parameter
+                                  ),
+                                ],
+                              ),
+                            ),
                           );
+                          // --- End New Row Layout ---
                         }, // End FutureBuilder builder
                       ), // End FutureBuilder
                     ); // End Dismissible

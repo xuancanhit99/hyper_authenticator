@@ -109,6 +109,8 @@ flutter:
     - .env
     - assets/images/
     - assets/logos/
+    - assets/logos/authenticators/
+    - assets/data/authenticator_logo_map.json
 
   # To add assets to your application, add an assets section, like this:
   # assets:
