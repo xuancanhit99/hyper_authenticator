@@ -16,7 +16,6 @@ class _RegisterPageState extends State<RegisterPage> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
-  // final _phoneController = TextEditingController(); // Ensure it's removed
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
   // bool _isLoading = false; // Replaced by Bloc state
@@ -27,7 +26,6 @@ class _RegisterPageState extends State<RegisterPage> {
   void dispose() {
     _nameController.dispose();
     _emailController.dispose();
-    // _phoneController.dispose(); // Ensure it's removed
     _passwordController.dispose();
     _confirmPasswordController.dispose();
     super.dispose();
@@ -36,14 +34,12 @@ class _RegisterPageState extends State<RegisterPage> {
   void _register(BuildContext context) {
     // Pass context
     if (_formKey.currentState!.validate()) {
-      // final phone = _phoneController.text.trim(); // REMOVE this line
-      // Dispatch event to Bloc (without phone)
+      // Dispatch event to Bloc
       context.read<AuthBloc>().add(
         AuthSignUpRequested(
           name: _nameController.text.trim(),
           email: _emailController.text.trim(),
           password: _passwordController.text.trim(),
-          // phone parameter removed from event
         ),
       );
     }
@@ -129,10 +125,10 @@ class _RegisterPageState extends State<RegisterPage> {
                     ),
                     TextFormField(
                       controller: _nameController,
+                      keyboardType: TextInputType.name,
                       decoration: const InputDecoration(
-                        labelText: 'Name*',
+                        labelText: 'Name',
                         prefixIcon: Icon(Icons.person_outline),
-                        border: OutlineInputBorder(),
                       ),
                       validator: _validateName,
                       textInputAction: TextInputAction.next,
@@ -141,9 +137,8 @@ class _RegisterPageState extends State<RegisterPage> {
                     TextFormField(
                       controller: _emailController,
                       decoration: const InputDecoration(
-                        labelText: 'Email*',
+                        labelText: 'Email',
                         prefixIcon: Icon(Icons.email_outlined),
-                        border: OutlineInputBorder(),
                       ),
                       keyboardType: TextInputType.emailAddress,
                       validator: _validateEmail,
@@ -154,9 +149,8 @@ class _RegisterPageState extends State<RegisterPage> {
                     TextFormField(
                       controller: _passwordController,
                       decoration: InputDecoration(
-                        labelText: 'Password*',
+                        labelText: 'Password',
                         prefixIcon: const Icon(Icons.lock_outline),
-                        border: const OutlineInputBorder(),
                         suffixIcon: IconButton(
                           icon: Icon(
                             _obscurePassword
@@ -178,9 +172,8 @@ class _RegisterPageState extends State<RegisterPage> {
                     TextFormField(
                       controller: _confirmPasswordController,
                       decoration: InputDecoration(
-                        labelText: 'Confirm Password*',
+                        labelText: 'Confirm Password',
                         prefixIcon: const Icon(Icons.lock_outline),
-                        border: const OutlineInputBorder(),
                         suffixIcon: IconButton(
                           icon: Icon(
                             _obscureConfirmPassword

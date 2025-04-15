@@ -1,6 +1,10 @@
 // lib/core/theme/app_theme.dart
 import 'package:flutter/material.dart';
-import 'package:hyper_authenticator/core/constants/app_colors.dart'; // Import custom colors
+import 'package:hyper_authenticator/core/constants/app_colors.dart';
+import 'package:hyper_authenticator/core/theme/widget_themes/elevated_button_theme.dart';
+import 'package:hyper_authenticator/core/theme/widget_themes/outlined_button_theme.dart';
+import 'package:hyper_authenticator/core/theme/widget_themes/text_field_theme.dart';
+import 'package:hyper_authenticator/core/theme/widget_themes/text_theme.dart'; // Import custom colors
 
 class AppTheme {
   // Prevent instantiation
@@ -25,31 +29,35 @@ class AppTheme {
           fontWeight: FontWeight.bold),
       iconTheme: IconThemeData(color: AppColors.textPrimaryLight),
     ),
-    elevatedButtonTheme: ElevatedButtonThemeData(
-      style: ElevatedButton.styleFrom(
-        backgroundColor: AppColors.facebookBlue, // Facebook blue button
-        foregroundColor: Colors.white, // White text on button
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8.0),
-        ),
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-      ),
-    ),
-    inputDecorationTheme: InputDecorationTheme(
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8.0),
-        borderSide: BorderSide(color: Colors.grey[400]!),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8.0),
-        borderSide: BorderSide(
-            color: AppColors.facebookBlue,
-            width: 2.0), // Facebook blue focus border
-      ),
-      labelStyle: TextStyle(
-          color:
-              AppColors.textSecondaryLight), // Use defined secondary text color
-    ),
+    textTheme: CTextTheme.lightTextTheme,
+    outlinedButtonTheme: COutlinedButtonTheme.lightOutlinedButtonTheme,
+    elevatedButtonTheme: CElevatedButtonTheme.lightElevatedButtonTheme,
+    inputDecorationTheme: CTextFormFieldTheme.lightInputDecorationTheme,
+    // elevatedButtonTheme: ElevatedButtonThemeData(
+    //   style: ElevatedButton.styleFrom(
+    //     backgroundColor: AppColors.facebookBlue, // Facebook blue button
+    //     foregroundColor: Colors.white, // White text on button
+    //     shape: RoundedRectangleBorder(
+    //       borderRadius: BorderRadius.circular(8.0),
+    //     ),
+    //     padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+    //   ),
+    // ),
+    // inputDecorationTheme: InputDecorationTheme(
+    //   border: OutlineInputBorder(
+    //     borderRadius: BorderRadius.circular(8.0),
+    //     borderSide: BorderSide(color: Colors.grey[400]!),
+    //   ),
+    //   focusedBorder: OutlineInputBorder(
+    //     borderRadius: BorderRadius.circular(8.0),
+    //     borderSide: BorderSide(
+    //         color: AppColors.facebookBlue,
+    //         width: 2.0), // Facebook blue focus border
+    //   ),
+    //   labelStyle: TextStyle(
+    //       color:
+    //           AppColors.textSecondaryLight), // Use defined secondary text color
+    // ),
     // Add other theme properties as needed (textTheme, cardTheme, etc.)
     colorScheme: ColorScheme.fromSeed(
       seedColor: AppColors.facebookBlue, // Use Facebook blue as seed
@@ -82,36 +90,40 @@ class AppTheme {
           fontWeight: FontWeight.bold),
       iconTheme: IconThemeData(color: AppColors.textPrimaryDark),
     ),
-    elevatedButtonTheme: ElevatedButtonThemeData(
-      style: ElevatedButton.styleFrom(
-        backgroundColor: AppColors.facebookBlue, // Facebook blue button
-        foregroundColor: Colors.white, // White text on button
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8.0),
-        ),
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-      ),
-    ),
-    inputDecorationTheme: InputDecorationTheme(
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8.0),
-        borderSide: BorderSide(color: Colors.grey[700]!),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8.0),
-        borderSide: BorderSide(
-            color: AppColors.facebookBlue,
-            width: 2.0), // Facebook blue focus border
-      ),
-      labelStyle: TextStyle(
-          color:
-              AppColors.textSecondaryDark), // Use defined secondary text color
-      hintStyle: TextStyle(color: AppColors.textSecondaryDark.withOpacity(0.7)),
-      // Ensure prefix/suffix icon colors contrast well
-      iconColor: AppColors.textSecondaryDark,
-      prefixIconColor: AppColors.textSecondaryDark,
-      suffixIconColor: AppColors.textSecondaryDark,
-    ),
+    textTheme: CTextTheme.darkTextTheme,
+    outlinedButtonTheme: COutlinedButtonTheme.darkOutlinedButtonTheme,
+    elevatedButtonTheme: CElevatedButtonTheme.darkElevatedButtonTheme,
+    inputDecorationTheme: CTextFormFieldTheme.darkInputDecorationTheme,
+    // elevatedButtonTheme: ElevatedButtonThemeData(
+    //   style: ElevatedButton.styleFrom(
+    //     backgroundColor: AppColors.facebookBlue, // Facebook blue button
+    //     foregroundColor: Colors.white, // White text on button
+    //     shape: RoundedRectangleBorder(
+    //       borderRadius: BorderRadius.circular(8.0),
+    //     ),
+    //     padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+    //   ),
+    // ),
+    // inputDecorationTheme: InputDecorationTheme(
+    //   border: OutlineInputBorder(
+    //     borderRadius: BorderRadius.circular(8.0),
+    //     borderSide: BorderSide(color: Colors.grey[700]!),
+    //   ),
+    //   focusedBorder: OutlineInputBorder(
+    //     borderRadius: BorderRadius.circular(8.0),
+    //     borderSide: BorderSide(
+    //         color: AppColors.facebookBlue,
+    //         width: 2.0), // Facebook blue focus border
+    //   ),
+    //   labelStyle: TextStyle(
+    //       color:
+    //           AppColors.textSecondaryDark), // Use defined secondary text color
+    //   hintStyle: TextStyle(color: AppColors.textSecondaryDark.withOpacity(0.7)),
+    //   // Ensure prefix/suffix icon colors contrast well
+    //   iconColor: AppColors.textSecondaryDark,
+    //   prefixIconColor: AppColors.textSecondaryDark,
+    //   suffixIconColor: AppColors.textSecondaryDark,
+    // ),
     // Add other theme properties
     colorScheme: ColorScheme.fromSeed(
       seedColor: AppColors.facebookBlue, // Use Facebook blue as seed

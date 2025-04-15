@@ -26,5 +26,15 @@ class AppColors {
       Color(0xFFB0B3B8); // Gray text on dark bg
 
   // Add other colors as needed (e.g., error, success, warning)
-  static const Color error = Colors.red; // Example
+  static const Color error = Colors.red;
+
+
+  // static const cPrimaryColor = Color(0xFFFFE400);
+  static const cPrimaryColor = Color(0xFF3cc88b);
+  static const cSecondaryColor= Color(0xFF272727);
+  static const cAccentColor = Color(0xFF001BFF);
+
+  static const cCardBgColor = Color(0xFFF7F6F1);
+  static const cWhiteColor = Color(0xFFFFFFFF);
+  static const cDarkColor = Color(0xFF000000);
 }
