@@ -1,7 +1,7 @@
 // --- Configuration ---
 // Get environment variables from window.ENV object created by env-config.js (injected by Dockerfile)
-const SUPABASE_URL = window.ENV?.SUPABASE_URL;
-const SUPABASE_ANON_KEY = window.ENV?.SUPABASE_ANON_KEY;
+const SUPABASE_URL = '';
+const SUPABASE_ANON_KEY = '';
 
 // Basic check if variables were loaded
 if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
