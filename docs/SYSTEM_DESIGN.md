@@ -1,9 +1,9 @@
-# Hyper Authenticator: System Design Document
+# <img src="../assets/logos/hyper-logo-green-non-bg-alt.png" alt="Hyper Authenticator Logo" width="30"/> Hyper Authenticator: System Design Document 📄
 
 ## 1. Introduction
 This document outlines the system design and architecture for Hyper Authenticator, a cross-platform two-factor authentication (2FA) application built with Flutter. It details the architectural choices, components, data flow, and security considerations, aligning with the project's goal of providing a robust and secure TOTP-based 2FA solution across multiple platforms (Android, iOS, Web, Windows, macOS) with biometric integration.
 
-## 2. System Architecture: Client-Server Model
+## 2. 🏗️ System Architecture: Client-Server Model
 Hyper Authenticator primarily operates as a client-side application but utilizes a Client-Server model for optional features like user authentication and cloud synchronization.
 
 *   **Client (Flutter Application):** The core application runs on the user's device (Android, iOS, Web, Windows, macOS). It handles:
@@ -27,7 +27,7 @@ graph LR
     Server -- Auth_DB --> Server;
 ```
 
-## 3. Flutter Application Architecture: Clean Architecture
+## 3. 🧱 Flutter Application Architecture: Clean Architecture
 
 **Layer Diagram (Simplified for GitHub Rendering):**
 
@@ -60,7 +60,7 @@ The Flutter application adheres to the principles of Clean Architecture to ensur
 *   **Cross-Platform Considerations:** Flutter's framework allows building for multiple platforms from a single codebase. Platform-specific integrations (like `local_auth` for biometrics) are handled using plugins that abstract platform differences. The architecture remains consistent across platforms.
 *   **Directory Structure:** Organized by features (`auth`, `authenticator`, `sync`, `settings`) with internal `data`, `domain`, `presentation` layers, promoting modularity.
 
-## 4. Key Technology Deep Dive
+## 4. ⚙️ Key Technology Deep Dive
 *   **TOTP Algorithm (RFC 6238):**
     *   The `otp` package is used, which implements the standard TOTP algorithm.
     *   It takes a Base32 encoded secret key, the current time, and parameters (period, digits, algorithm - SHA1, SHA256, SHA512) to generate a time-based one-time password.
@@ -81,7 +81,7 @@ The Flutter application adheres to the principles of Clean Architecture to ensur
         *   `FlutterSecureStorage` is chosen for sensitive data (TOTP secrets, potentially E2EE keys) because it utilizes platform-specific secure storage (Keystore/Keychain), offering hardware-backed protection where available.
         *   `SharedPreferences` is used for non-sensitive user preferences (like theme settings, sync enabled status) as it's simpler and sufficient for non-critical data.
 
-## 5. Security Considerations
+## 5. 🛡️ Security Considerations
 *   **Local Storage:**
     *   **Sensitive Data (TOTP Secrets):** Stored using `FlutterSecureStorage`, which leverages platform-specific secure storage mechanisms (Keystore on Android, Keychain on iOS).
     *   **Non-Sensitive Data (Settings):** Stored using `SharedPreferences`.
@@ -90,7 +90,7 @@ The Flutter application adheres to the principles of Clean Architecture to ensur
     *   **Authentication:** User authentication via Supabase ensures only authorized users can access their sync data.
     *   **Transport Security:** Communication with Supabase occurs over HTTPS.
     *   **Data-at-Rest (Supabase - Current State):** Currently, data synchronized to Supabase relies on Supabase's built-in security features and potentially server-side encryption options provided by the platform. The raw TOTP secrets might be stored directly if E2EE is not yet implemented.
-    *   **Planned End-to-End Encryption (E2EE):**
+    *   **Planned End-to-End Encryption (E2EE) 🔐:**
         *   **Goal:** To ensure that sensitive TOTP secrets are encrypted *before* leaving the client device, making them unreadable by the backend provider (Supabase) or any intermediary.
         *   **Approach:**
             1.  **Key Generation:** Generate a strong, unique encryption key per user on the client-side. Options include:
@@ -104,7 +104,7 @@ The Flutter application adheres to the principles of Clean Architecture to ensur
             *   **Recovery:** If the key (or master password) is lost, encrypted data becomes inaccessible. Implementing a secure recovery mechanism (e.g., recovery codes stored by the user) is complex but necessary.
             *   **Cross-Device Access:** The key must be available on all devices where the user wants to access synced data. This might involve securely transferring the key or requiring the user to re-enter the master password on each new device.
 
-## 6. Data Flow Examples
+## 6. 🌊 Data Flow Examples
 
 ### 6.1. Adding Account via QR Scan/Image
 
@@ -289,7 +289,7 @@ sequenceDiagram
 
 ```
 
-## 7. Error Handling
+## 7. ⚠️ Error Handling
 The application uses the `Either<Failure, SuccessType>` pattern (from the `dartz` package) extensively in the Domain and Data layers to handle expected failures gracefully without throwing exceptions for common issues.
 
 *   **`Failure` Types:** Specific `Failure` subclasses represent different error categories:

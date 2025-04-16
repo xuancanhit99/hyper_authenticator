@@ -1,23 +1,23 @@
-# Hyper Authenticator
+# <img src="assets/logos/hyper-logo-green-non-bg-alt.png" alt="Hyper Authenticator Logo" width="30"/> Hyper Authenticator
 
-**Repository:** [https://github.com/xuancanhit99/hyper_authenticator](https://github.com/xuancanhit99/hyper_authenticator)
+**Repository:** [https://github.com/xuancanhit99/hyper_authenticator](https://github.com/xuancanhit99/hyper_authenticator) 💻
 
-A cross-platform Flutter application providing Time-based One-Time Password (TOTP) two-factor authentication (2FA). This project focuses on delivering a secure 2FA experience across multiple platforms (Android, iOS, Web, Windows, macOS) leveraging biometric technologies and offering optional secure cloud synchronization.
+A cross-platform Flutter application providing Time-based One-Time Password (TOTP) two-factor authentication (2FA). This project focuses on delivering a secure 2FA experience 🛡️ across multiple platforms (📱 Android, 🍎 iOS, 🌐 Web, 🪟 Windows, 🍏 macOS) leveraging biometric technologies and offering optional secure cloud synchronization ☁️.
 
-## Key Features
-*   **Cross-Platform:** Designed to run on Android, iOS, Web, Windows, and macOS.
-*   **TOTP Generation:** Implements the standard TOTP algorithm (RFC 6238) for generating time-based codes.
-*   **Account Management:** Add accounts easily via:
-    *   QR code scanning.
-    *   Manual entry of secret keys.
-    *   Selecting QR code images from the device gallery.
-*   **Biometric App Lock:** Secure the application using device biometrics (fingerprint, face ID) or PIN via `local_auth`.
-*   **Secure Cloud Sync (Optional):** Synchronize accounts across devices using Supabase backend. (End-to-end encryption is planned for future implementation).
-*   **User Authentication:** Optional user accounts via Supabase for enabling sync features.
-*   **Customizable UI:** Light and Dark mode support.
-*   **Service Logo Recognition:** Displays logos for many common online services.
+## ✨ Key Features
+*   **📱 Cross-Platform:** Designed to run on Android, iOS, Web, Windows, and macOS.
+*   **⏱️ TOTP Generation:** Implements the standard TOTP algorithm (RFC 6238) for generating time-based codes.
+*   **➕ Account Management:** Add accounts easily via:
+    *   📷 QR code scanning.
+    *   ⌨️ Manual entry of secret keys.
+    *   🖼️ Selecting QR code images from the device gallery.
+*   **🔒 Biometric App Lock:** Secure the application using device biometrics (fingerprint, face ID) or PIN via `local_auth`.
+*   **☁️ Secure Cloud Sync (Optional):** Synchronize accounts across devices using Supabase backend. (End-to-end encryption 🔐 is planned for future implementation).
+*   **👤 User Authentication:** Optional user accounts via Supabase for enabling sync features.
+*   **🎨 Customizable UI:** Light and Dark mode support.
+*   **🖼️ Service Logo Recognition:** Displays logos for many common online services.
 
-## Getting Started
+## 🚀 Getting Started
 
 ### Prerequisites
 *   Flutter SDK (version specified in `pubspec.yaml`)
@@ -34,7 +34,7 @@ A cross-platform Flutter application providing Time-based One-Time Password (TOT
 *   Select your target device/platform.
 *   Run the application: `flutter run`
 
-## Technology Stack
+## 🛠️ Technology Stack
 *   **Framework:** Flutter (for cross-platform UI)
 *   **Language:** Dart
 *   **Architecture:** Clean Architecture
@@ -49,5 +49,5 @@ A cross-platform Flutter application providing Time-based One-Time Password (TOT
 *   **Image Picking:** image_picker
 *   **Encryption (Planned for Sync):** cryptography
 
-## License
+## 📄 License
 MIT License - Copyright (c) 2025 Hyper

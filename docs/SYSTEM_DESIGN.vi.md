@@ -1,9 +1,9 @@
-# Hyper Authenticator: Tài liệu Thiết kế Hệ thống
+# <img src="../assets/logos/hyper-logo-green-non-bg-alt.png" alt="Hyper Authenticator Logo" width="30"/> Hyper Authenticator: Tài liệu Thiết kế Hệ thống 📄
 
 ## 1. Giới thiệu
 Tài liệu này phác thảo thiết kế hệ thống và kiến trúc cho Hyper Authenticator, một ứng dụng xác thực hai yếu tố (2FA) đa nền tảng được xây dựng bằng Flutter. Nó trình bày chi tiết các lựa chọn kiến trúc, thành phần, luồng dữ liệu và các cân nhắc về bảo mật, phù hợp với mục tiêu của dự án là cung cấp giải pháp 2FA dựa trên TOTP mạnh mẽ và an toàn trên nhiều nền tảng (Android, iOS, Web, Windows, macOS) với tích hợp sinh trắc học.
 
-## 2. Kiến trúc Hệ thống: Mô hình Client-Server
+## 2. 🏗️ Kiến trúc Hệ thống: Mô hình Client-Server
 Hyper Authenticator chủ yếu hoạt động như một ứng dụng phía máy khách nhưng sử dụng mô hình Client-Server cho các tính năng tùy chọn như xác thực người dùng và đồng bộ hóa đám mây.
 
 *   **Client (Ứng dụng Flutter):** Ứng dụng cốt lõi chạy trên thiết bị của người dùng (Android, iOS, Web, Windows, macOS). Nó xử lý:
@@ -27,7 +27,7 @@ graph LR
     Server -- Auth_DB --> Server;
 ```
 
-## 3. Kiến trúc Ứng dụng Flutter: Clean Architecture
+## 3. 🧱 Kiến trúc Ứng dụng Flutter: Clean Architecture
 
 **Sơ đồ phân lớp (Đơn giản hóa cho GitHub Rendering):**
 
@@ -60,7 +60,7 @@ graph LR
 *   **Cân nhắc Đa nền tảng:** Framework Flutter cho phép xây dựng cho nhiều nền tảng từ một cơ sở mã duy nhất. Các tích hợp cụ thể cho nền tảng (như `local_auth` cho sinh trắc học) được xử lý bằng các plugin trừu tượng hóa sự khác biệt giữa các nền tảng. Kiến trúc vẫn nhất quán trên các nền tảng.
 *   **Cấu trúc thư mục:** Được tổ chức theo tính năng (`auth`, `authenticator`, `sync`, `settings`) với các lớp `data`, `domain`, `presentation` bên trong, thúc đẩy tính mô-đun.
 
-## 4. Phân tích sâu về Công nghệ chính
+## 4. ⚙️ Phân tích sâu về Công nghệ chính
 *   **Thuật toán TOTP (RFC 6238):**
     *   Sử dụng package `otp`, triển khai thuật toán TOTP tiêu chuẩn.
     *   Nó nhận một khóa bí mật được mã hóa Base32, thời gian hiện tại và các tham số (khoảng thời gian, số chữ số, thuật toán - SHA1, SHA256, SHA512) để tạo mật khẩu dùng một lần dựa trên thời gian.
@@ -81,7 +81,7 @@ graph LR
         *   `FlutterSecureStorage` được chọn cho dữ liệu nhạy cảm (khóa bí mật TOTP, có thể là khóa E2EE) vì nó sử dụng bộ nhớ an toàn dành riêng cho nền tảng (Keystore/Keychain), cung cấp bảo vệ dựa trên phần cứng nếu có.
         *   `SharedPreferences` được sử dụng cho các tùy chọn người dùng không nhạy cảm (như cài đặt theme, trạng thái bật/tắt đồng bộ hóa) vì nó đơn giản hơn và đủ dùng cho dữ liệu không quan trọng.
 
-## 5. Cân nhắc về Bảo mật
+## 5. 🛡️ Cân nhắc về Bảo mật
 *   **Lưu trữ cục bộ:**
     *   **Dữ liệu nhạy cảm (Khóa bí mật TOTP):** Được lưu trữ bằng `FlutterSecureStorage`, tận dụng các cơ chế lưu trữ an toàn cụ thể của nền tảng (Keystore trên Android, Keychain trên iOS).
     *   **Dữ liệu không nhạy cảm (Cài đặt):** Được lưu trữ bằng `SharedPreferences`.
@@ -90,7 +90,7 @@ graph LR
     *   **Xác thực:** Xác thực người dùng qua Supabase đảm bảo chỉ người dùng được ủy quyền mới có thể truy cập dữ liệu đồng bộ hóa của họ.
     *   **Bảo mật truyền tải:** Giao tiếp với Supabase diễn ra qua HTTPS.
     *   **Dữ liệu khi lưu trữ (Supabase - Trạng thái hiện tại):** Hiện tại, dữ liệu được đồng bộ hóa lên Supabase dựa vào các tính năng bảo mật tích hợp của Supabase và có thể là các tùy chọn mã hóa phía máy chủ do nền tảng cung cấp. Các khóa bí mật TOTP thô có thể được lưu trữ trực tiếp nếu E2EE chưa được triển khai.
-    *   **Kế hoạch Mã hóa Đầu cuối (E2EE):**
+    *   **Kế hoạch Mã hóa Đầu cuối (E2EE) 🔐:**
         *   **Mục tiêu:** Đảm bảo rằng các khóa bí mật TOTP nhạy cảm được mã hóa *trước khi* rời khỏi thiết bị khách, khiến chúng không thể đọc được bởi nhà cung cấp backend (Supabase) hoặc bất kỳ bên trung gian nào.
         *   **Phương pháp:**
             1.  **Tạo khóa:** Tạo một khóa mã hóa mạnh, duy nhất cho mỗi người dùng ở phía máy khách. Các tùy chọn bao gồm:
@@ -104,7 +104,7 @@ graph LR
             *   **Khôi phục:** Nếu khóa (hoặc mật khẩu chính) bị mất, dữ liệu đã mã hóa sẽ không thể truy cập được. Việc triển khai cơ chế khôi phục an toàn (ví dụ: mã khôi phục do người dùng lưu trữ) rất phức tạp nhưng cần thiết.
             *   **Truy cập Đa thiết bị:** Khóa phải có sẵn trên tất cả các thiết bị mà người dùng muốn truy cập dữ liệu đã đồng bộ hóa. Điều này có thể liên quan đến việc chuyển khóa một cách an toàn hoặc yêu cầu người dùng nhập lại mật khẩu chính trên mỗi thiết bị mới.
 
-## 6. Ví dụ về Luồng dữ liệu
+## 6. 🌊 Ví dụ về Luồng dữ liệu
 
 ### 6.1. Thêm tài khoản qua Quét/Chọn ảnh QR
 
@@ -288,7 +288,7 @@ sequenceDiagram
     end
 ```
 
-## 7. Xử lý lỗi
+## 7. ⚠️ Xử lý lỗi
 Ứng dụng sử dụng rộng rãi mẫu `Either<Failure, SuccessType>` (từ package `dartz`) trong các lớp Domain và Data để xử lý các lỗi dự kiến một cách nhẹ nhàng mà không ném ngoại lệ cho các vấn đề phổ biến.
 
 *   **Các loại `Failure`:** Các lớp con `Failure` cụ thể đại diện cho các loại lỗi khác nhau:
