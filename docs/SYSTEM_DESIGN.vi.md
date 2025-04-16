@@ -90,7 +90,9 @@ graph LR
 
 ## 6. Ví dụ về Luồng dữ liệu
 
-### Thêm tài khoản qua Quét/Chọn ảnh QR
+### 6.1. Thêm tài khoản qua Quét/Chọn ảnh QR
+
+**Mô tả:** Luồng này minh họa cách người dùng thêm tài khoản 2FA mới bằng cách quét mã QR hoặc chọn hình ảnh chứa mã đó. Ứng dụng phân tích URI `otpauth://`, lưu chi tiết tài khoản một cách an toàn vào bộ nhớ cục bộ thông qua các lớp BLoC và Repository.
 
 ```mermaid
 sequenceDiagram
@@ -114,7 +116,9 @@ sequenceDiagram
     AccountsBloc (Presentation)-->>AddAccountPage (UI): Cập nhật UI (Thông báo/Điều hướng)
 ```
 
-### Luồng Đồng bộ hóa (Tải lên với E2EE dự kiến)
+### 6.2. Luồng Đồng bộ hóa (Tải lên với E2EE dự kiến)
+
+**Mô tả:** Sơ đồ này cho thấy quá trình tải dữ liệu tài khoản cục bộ lên backend Supabase để đồng bộ hóa. Nó bao gồm bước Mã hóa Đầu cuối (E2EE) dự kiến, nơi dữ liệu được mã hóa phía máy khách trước khi gửi đi, đảm bảo máy chủ không thể truy cập các khóa bí mật thô.
 
 ```mermaid
  sequenceDiagram
@@ -144,7 +148,70 @@ sequenceDiagram
     SyncBloc (Presentation)-->>SettingsPage (UI): Cập nhật UI (Thông báo)
 ```
 
-(Các luồng tương tự áp dụng cho các tính năng khác như tạo mã và xác thực.)
+### 6.3. Tạo mã TOTP
+
+**Mô tả:** Luồng này trình bày chi tiết cách ứng dụng tạo Mật khẩu dùng một lần dựa trên thời gian (TOTP) cho một tài khoản đã chọn. Nó bao gồm việc truy xuất khóa bí mật của tài khoản từ bộ nhớ an toàn và sử dụng thư viện `otp` để tính toán mã hiện tại dựa trên thời gian.
+
+```mermaid
+sequenceDiagram
+    participant User [Người dùng]
+    participant AccountsPage (UI)
+    participant AccountsBloc (Presentation)
+    participant GetAccountsUseCase (Domain)
+    participant GenerateTotpCodeUseCase (Domain)
+    participant AuthRepository (Domain/Data)
+    participant LocalDataSource (Data)
+    participant OTP_Library [Thư viện OTP]
+
+    User->>AccountsPage (UI): Xem danh sách tài khoản
+    AccountsPage (UI)->>AccountsBloc (Presentation): Yêu cầu tài khoản (khi khởi tạo/làm mới)
+    AccountsBloc (Presentation)->>GetAccountsUseCase (Domain): execute()
+    GetAccountsUseCase (Domain)->>AuthRepository (Domain/Data): getAccounts()
+    AuthRepository (Domain/Data)->>LocalDataSource (Data): fetchAccounts()
+    LocalDataSource (Data)-->>AuthRepository (Domain/Data): Trả về List<Account>
+    AuthRepository (Domain/Data)-->>GetAccountsUseCase (Domain): Trả về List<Account>
+    GetAccountsUseCase (Domain)-->>AccountsBloc (Presentation): Trả về Either<Failure, List<Account>>
+    AccountsBloc (Presentation)-->>AccountsPage (UI): Hiển thị tài khoản
+
+    loop Cứ sau 30 giây / Theo yêu cầu
+        AccountsPage (UI)->>AccountsBloc (Presentation): Yêu cầu Tạo mã cho Tài khoản X
+        AccountsBloc (Presentation)->>GenerateTotpCodeUseCase (Domain): execute(accountX.secretKey, time)
+        GenerateTotpCodeUseCase (Domain)->>OTP_Library [Thư viện OTP]: generateTOTP(secret, time, ...)
+        OTP_Library [Thư viện OTP]-->>GenerateTotpCodeUseCase (Domain): Trả về Mã TOTP
+        GenerateTotpCodeUseCase (Domain)-->>AccountsBloc (Presentation): Trả về Either<Failure, TOTP Code>
+        AccountsBloc (Presentation)->>AccountsBloc (Presentation): Phát ra trạng thái mới với mã cập nhật
+        AccountsBloc (Presentation)-->>AccountsPage (UI): Cập nhật mã hiển thị cho Tài khoản X
+    end
+```
+
+### 6.4. Xác thực Người dùng (Đăng nhập)
+
+**Mô tả:** Sơ đồ này phác thảo quy trình đăng nhập người dùng bằng xác thực Supabase. Người dùng nhập thông tin đăng nhập, thông tin này được chuyển qua các lớp BLoC và UseCase đến Repository, cuối cùng gọi dịch vụ Supabase Auth để xác minh.
+
+```mermaid
+sequenceDiagram
+    participant User [Người dùng]
+    participant LoginPage (UI)
+    participant AuthBloc (Presentation)
+    participant LoginUseCase (Domain)
+    participant AuthRepository (Domain/Data)
+    participant RemoteDataSource (Data)
+    participant Supabase [Server - Auth]
+
+    User->>LoginPage (UI): Nhập Email & Mật khẩu
+    User->>LoginPage (UI): Nhấn nút Đăng nhập
+    LoginPage (UI)->>AuthBloc (Presentation): Gửi LoginRequested Event (email, password)
+    AuthBloc (Presentation)->>LoginUseCase (Domain): execute(email, password)
+    LoginUseCase (Domain)->>AuthRepository (Domain/Data): login(email, password)
+    AuthRepository (Domain/Data)->>RemoteDataSource (Data): signInWithPassword(email, password)
+    RemoteDataSource (Data)->>Supabase [Server - Auth]: Thử Đăng nhập
+    Supabase [Server - Auth]-->>RemoteDataSource (Data): Trả về AuthResponse (Thành công/Lỗi)
+    RemoteDataSource (Data)-->>AuthRepository (Domain/Data): Trả về UserEntity hoặc Failure
+    AuthRepository (Domain/Data)-->>LoginUseCase (Domain): Trả về UserEntity hoặc Failure
+    LoginUseCase (Domain)-->>AuthBloc (Presentation): Trả về Either<Failure, UserEntity>
+    AuthBloc (Presentation)->>AuthBloc (Presentation): Phát ra State (Đã xác thực / Chưa xác thực với lỗi)
+    AuthBloc (Presentation)-->>LoginPage (UI): Cập nhật UI (Điều hướng đến Tài khoản / Hiển thị Lỗi)
+```
 
 ## 7. Xử lý lỗi
 Sử dụng `Either<Failure, SuccessType>` và các loại `Failure` cụ thể.

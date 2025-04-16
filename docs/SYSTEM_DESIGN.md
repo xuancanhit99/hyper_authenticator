@@ -90,7 +90,9 @@ The Flutter application adheres to the principles of Clean Architecture to ensur
 
 ## 6. Data Flow Examples
 
-### Adding Account via QR Scan/Image
+### 6.1. Adding Account via QR Scan/Image
+
+**Description:** This flow illustrates how a user adds a new 2FA account by scanning a QR code or selecting an image containing one. The application parses the `otpauth://` URI, saves the account details securely to local storage via the BLoC and Repository layers.
 
 ```mermaid
 sequenceDiagram
@@ -114,7 +116,9 @@ sequenceDiagram
     AccountsBloc (Presentation)-->>AddAccountPage (UI): Update UI (Feedback/Navigation)
 ```
 
-### Synchronization Flow (Upload with Planned E2EE)
+### 6.2. Synchronization Flow (Upload with Planned E2EE)
+
+**Description:** This diagram shows the process of uploading local account data to the Supabase backend for synchronization. It includes the planned End-to-End Encryption step where data is encrypted client-side before being sent, ensuring the server cannot access the raw secrets.
 
 ```mermaid
  sequenceDiagram
@@ -144,7 +148,70 @@ sequenceDiagram
     SyncBloc (Presentation)-->>SettingsPage (UI): Update UI (Feedback)
 ```
 
-(Similar flows apply to other features like code generation and authentication.)
+### 6.3. TOTP Code Generation
+
+**Description:** This flow details how the application generates a Time-based One-Time Password (TOTP) for a selected account. It involves retrieving the account's secret key from secure storage and using the `otp` library to compute the current code based on the time.
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant AccountsPage (UI)
+    participant AccountsBloc (Presentation)
+    participant GetAccountsUseCase (Domain)
+    participant GenerateTotpCodeUseCase (Domain)
+    participant AuthRepository (Domain/Data)
+    participant LocalDataSource (Data)
+    participant OTP_Library
+
+    User->>AccountsPage (UI): Views account list
+    AccountsPage (UI)->>AccountsBloc (Presentation): Requests accounts (on init/refresh)
+    AccountsBloc (Presentation)->>GetAccountsUseCase (Domain): execute()
+    GetAccountsUseCase (Domain)->>AuthRepository (Domain/Data): getAccounts()
+    AuthRepository (Domain/Data)->>LocalDataSource (Data): fetchAccounts()
+    LocalDataSource (Data)-->>AuthRepository (Domain/Data): Return List<Account>
+    AuthRepository (Domain/Data)-->>GetAccountsUseCase (Domain): Return List<Account>
+    GetAccountsUseCase (Domain)-->>AccountsBloc (Presentation): Return Either<Failure, List<Account>>
+    AccountsBloc (Presentation)-->>AccountsPage (UI): Display accounts
+
+    loop Every 30 seconds / On Demand
+        AccountsPage (UI)->>AccountsBloc (Presentation): Request Code Generation for Account X
+        AccountsBloc (Presentation)->>GenerateTotpCodeUseCase (Domain): execute(accountX.secretKey, time)
+        GenerateTotpCodeUseCase (Domain)->>OTP_Library: generateTOTP(secret, time, ...)
+        OTP_Library-->>GenerateTotpCodeUseCase (Domain): Return TOTP Code
+        GenerateTotpCodeUseCase (Domain)-->>AccountsBloc (Presentation): Return Either<Failure, TOTP Code>
+        AccountsBloc (Presentation)->>AccountsBloc (Presentation): Emit new state with updated code
+        AccountsBloc (Presentation)-->>AccountsPage (UI): Update displayed code for Account X
+    end
+```
+
+### 6.4. User Authentication (Login)
+
+**Description:** This diagram outlines the user login process using Supabase authentication. The user enters credentials, which are passed through the BLoC and UseCase layers to the Repository, ultimately calling the Supabase Auth service for verification.
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant LoginPage (UI)
+    participant AuthBloc (Presentation)
+    participant LoginUseCase (Domain)
+    participant AuthRepository (Domain/Data)
+    participant RemoteDataSource (Data)
+    participant Supabase (Server - Auth)
+
+    User->>LoginPage (UI): Enters Email & Password
+    User->>LoginPage (UI): Taps Login Button
+    LoginPage (UI)->>AuthBloc (Presentation): Dispatch LoginRequested Event (email, password)
+    AuthBloc (Presentation)->>LoginUseCase (Domain): execute(email, password)
+    LoginUseCase (Domain)->>AuthRepository (Domain/Data): login(email, password)
+    AuthRepository (Domain/Data)->>RemoteDataSource (Data): signInWithPassword(email, password)
+    RemoteDataSource (Data)->>Supabase (Server - Auth): Attempt Sign In
+    Supabase (Server - Auth)-->>RemoteDataSource (Data): Return AuthResponse (Success/Error)
+    RemoteDataSource (Data)-->>AuthRepository (Domain/Data): Return UserEntity or Failure
+    AuthRepository (Domain/Data)-->>LoginUseCase (Domain): Return UserEntity or Failure
+    LoginUseCase (Domain)-->>AuthBloc (Presentation): Return Either<Failure, UserEntity>
+    AuthBloc (Presentation)->>AuthBloc (Presentation): Emit State (Authenticated / Unauthenticated with error)
+    AuthBloc (Presentation)-->>LoginPage (UI): Update UI (Navigate to Accounts / Show Error)
+```
 
 ## 7. Error Handling
 Uses `Either<Failure, SuccessType>` and specific `Failure` types.

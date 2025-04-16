@@ -90,7 +90,9 @@ graph LR
 
 ## 6. Примеры потока данных
 
-### Добавление учетной записи через сканирование/выбор QR-изображения
+### 6.1. Добавление учетной записи через сканирование/выбор QR-изображения
+
+**Описание:** Этот поток иллюстрирует, как пользователь добавляет новую учетную запись 2FA путем сканирования QR-кода или выбора изображения, содержащего его. Приложение разбирает URI `otpauth://`, безопасно сохраняет данные учетной записи в локальное хранилище через слои BLoC и Repository.
 
 ```mermaid
 sequenceDiagram
@@ -114,7 +116,9 @@ sequenceDiagram
     AccountsBloc (Presentation)-->>AddAccountPage (UI): Обновить UI (Обратная связь/Навигация)
 ```
 
-### Поток синхронизации (Загрузка с планируемым E2EE)
+### 6.2. Поток синхронизации (Загрузка с планируемым E2EE)
+
+**Описание:** Эта диаграмма показывает процесс загрузки локальных данных учетной записи в бэкенд Supabase для синхронизации. Она включает планируемый шаг сквозного шифрования (E2EE), где данные шифруются на стороне клиента перед отправкой, гарантируя, что сервер не сможет получить доступ к необработанным секретам.
 
 ```mermaid
  sequenceDiagram
@@ -144,7 +148,70 @@ sequenceDiagram
     SyncBloc (Presentation)-->>SettingsPage (UI): Обновить UI (Обратная связь)
 ```
 
-(Аналогичные потоки применяются к другим функциям, таким как генерация кода и аутентификация.)
+### 6.3. Генерация кода TOTP
+
+**Описание:** Этот поток подробно описывает, как приложение генерирует Одноразовый Пароль на Основе Времени (TOTP) для выбранной учетной записи. Он включает извлечение секретного ключа учетной записи из безопасного хранилища и использование библиотеки `otp` для вычисления текущего кода на основе времени.
+
+```mermaid
+sequenceDiagram
+    participant User [Пользователь]
+    participant AccountsPage (UI)
+    participant AccountsBloc (Presentation)
+    participant GetAccountsUseCase (Domain)
+    participant GenerateTotpCodeUseCase (Domain)
+    participant AuthRepository (Domain/Data)
+    participant LocalDataSource (Data)
+    participant OTP_Library [Библиотека OTP]
+
+    User->>AccountsPage (UI): Просматривает список учетных записей
+    AccountsPage (UI)->>AccountsBloc (Presentation): Запрашивает учетные записи (при инициализации/обновлении)
+    AccountsBloc (Presentation)->>GetAccountsUseCase (Domain): execute()
+    GetAccountsUseCase (Domain)->>AuthRepository (Domain/Data): getAccounts()
+    AuthRepository (Domain/Data)->>LocalDataSource (Data): fetchAccounts()
+    LocalDataSource (Data)-->>AuthRepository (Domain/Data): Вернуть List<Account>
+    AuthRepository (Domain/Data)-->>GetAccountsUseCase (Domain): Вернуть List<Account>
+    GetAccountsUseCase (Domain)-->>AccountsBloc (Presentation): Вернуть Either<Failure, List<Account>>
+    AccountsBloc (Presentation)-->>AccountsPage (UI): Отобразить учетные записи
+
+    loop Каждые 30 секунд / По требованию
+        AccountsPage (UI)->>AccountsBloc (Presentation): Запросить генерацию кода для Учетной записи X
+        AccountsBloc (Presentation)->>GenerateTotpCodeUseCase (Domain): execute(accountX.secretKey, time)
+        GenerateTotpCodeUseCase (Domain)->>OTP_Library [Библиотека OTP]: generateTOTP(secret, time, ...)
+        OTP_Library [Библиотека OTP]-->>GenerateTotpCodeUseCase (Domain): Вернуть Код TOTP
+        GenerateTotpCodeUseCase (Domain)-->>AccountsBloc (Presentation): Вернуть Either<Failure, TOTP Code>
+        AccountsBloc (Presentation)->>AccountsBloc (Presentation): Выдать новое состояние с обновленным кодом
+        AccountsBloc (Presentation)-->>AccountsPage (UI): Обновить отображаемый код для Учетной записи X
+    end
+```
+
+### 6.4. Аутентификация пользователя (Вход)
+
+**Описание:** Эта диаграмма описывает процесс входа пользователя с использованием аутентификации Supabase. Пользователь вводит учетные данные, которые передаются через слои BLoC и UseCase в Repository, в конечном итоге вызывая службу Supabase Auth для проверки.
+
+```mermaid
+sequenceDiagram
+    participant User [Пользователь]
+    participant LoginPage (UI)
+    participant AuthBloc (Presentation)
+    participant LoginUseCase (Domain)
+    participant AuthRepository (Domain/Data)
+    participant RemoteDataSource (Data)
+    participant Supabase [Server - Auth]
+
+    User->>LoginPage (UI): Вводит Email и Пароль
+    User->>LoginPage (UI): Нажимает кнопку Вход
+    LoginPage (UI)->>AuthBloc (Presentation): Отправить LoginRequested Event (email, password)
+    AuthBloc (Presentation)->>LoginUseCase (Domain): execute(email, password)
+    LoginUseCase (Domain)->>AuthRepository (Domain/Data): login(email, password)
+    AuthRepository (Domain/Data)->>RemoteDataSource (Data): signInWithPassword(email, password)
+    RemoteDataSource (Data)->>Supabase [Server - Auth]: Попытка входа
+    Supabase [Server - Auth]-->>RemoteDataSource (Data): Вернуть AuthResponse (Успех/Ошибка)
+    RemoteDataSource (Data)-->>AuthRepository (Domain/Data): Вернуть UserEntity или Failure
+    AuthRepository (Domain/Data)-->>LoginUseCase (Domain): Вернуть UserEntity или Failure
+    LoginUseCase (Domain)-->>AuthBloc (Presentation): Вернуть Either<Failure, UserEntity>
+    AuthBloc (Presentation)->>AuthBloc (Presentation): Выдать State (Аутентифицирован / Не аутентифицирован с ошибкой)
+    AuthBloc (Presentation)-->>LoginPage (UI): Обновить UI (Перейти к Учетным записям / Показать ошибку)
+```
 
 ## 7. Обработка ошибок
 Использует `Either<Failure, SuccessType>` и специфичные типы `Failure`.
