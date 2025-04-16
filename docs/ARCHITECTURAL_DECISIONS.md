@@ -66,6 +66,12 @@ This document provides justifications for the key architectural and technologica
 *   **Justification:**
     *   Official Flutter Favorite plugin, providing a unified API for accessing native biometric (fingerprint, face ID) and device credential (PIN, pattern, password) authentication.
     *   Abstracts platform differences.
-*   **Trade-offs:** Relies on the underlying OS implementation and security; potential inconsistencies or limitations across different OS versions or devices. Provides authentication status, not direct access to biometric data itself.
+*   **Trade-offs & Security Considerations:**
+    *   **Reliance on OS Security:** The plugin acts as a bridge to the native OS authentication mechanisms. Its security fundamentally depends on the security of the underlying platform (Android Keystore, iOS Secure Enclave, etc.) and the OS's implementation of biometric handling. Vulnerabilities in the OS could potentially compromise the authentication.
+    *   **No Direct Biometric Access:** The plugin does *not* provide the application with raw biometric data (e.g., fingerprint image). It only returns a boolean success/failure status from the OS, which is a good security practice (least privilege).
+    *   **Platform Inconsistencies:** Behavior and available options (e.g., specific biometric types, error messages, UI presentation) can vary significantly between Android versions, iOS versions, and different device manufacturers. Requires careful testing across target devices.
+    *   **Rooted/Jailbroken Devices:** On compromised devices (rooted Android, jailbroken iOS), the OS-level security guarantees might be bypassed, potentially allowing attackers to tamper with the authentication mechanism or bypass the lock screen. Detecting rooted/jailbroken status is complex and often unreliable.
+    *   **Fallback Mechanism:** Relies on the device's PIN/pattern/password as a fallback. The security of this fallback depends on the strength of the user's chosen credential.
+    *   **Limited Context:** The plugin primarily confirms the *presence* of the authenticated user at the time of the check, but doesn't guarantee continuous presence or prevent the app from being backgrounded and later resumed by an unauthorized user if the OS lock screen isn't triggered immediately. (The app lifecycle listener helps mitigate this by re-prompting on resume).
 
 *(This section should be expanded with more detailed comparisons and specific project constraints that influenced the decisions.)*
