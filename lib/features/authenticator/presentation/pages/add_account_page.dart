@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'dart:io'; // Needed for File path
+
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:image_picker/image_picker.dart'; // Import image_picker
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:hyper_authenticator/features/authenticator/presentation/bloc/accounts_bloc.dart';
 
@@ -150,6 +153,39 @@ class _AddAccountPageState extends State<AddAccountPage> {
     }
   }
 
+  // --- Function to pick image and analyze QR code ---
+  Future<void> _pickAndAnalyzeImage() async {
+    final ImagePicker picker = ImagePicker();
+    // Pick an image
+    final XFile? image = await picker.pickImage(source: ImageSource.gallery);
+
+    if (image == null) {
+      // User cancelled the picker
+      debugPrint('Image picking cancelled.');
+      return;
+    }
+
+    debugPrint('Analyzing image: ${image.path}');
+    // Analyze the image
+    try {
+      // analyzeImage returns BarcodeCapture? not bool
+      final BarcodeCapture? barcodeCapture = await scannerController
+          .analyzeImage(image.path);
+
+      if (barcodeCapture != null && barcodeCapture.barcodes.isNotEmpty) {
+        // Barcode found, manually call the handler
+        _handleBarcode(barcodeCapture);
+      } else {
+        // No barcode found in the image
+        _showError('No QR code found in the selected image.');
+      }
+      // If a barcode is found, the onDetect listener (_handleBarcode) will be called automatically.
+    } catch (e) {
+      debugPrint('Error analyzing image: $e');
+      _showError('Could not analyze the selected image.');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -159,7 +195,14 @@ class _AddAccountPageState extends State<AddAccountPage> {
         elevation: 0, // Remove shadow
         title: Text(_isScanning ? 'Scan QR Code' : 'Add Account'),
         actions: [
-          // Toggle Button
+          // Add "Select Image" button first (only when not scanning)
+          if (!_isScanning)
+            IconButton(
+              icon: const Icon(Icons.image_outlined),
+              tooltip: 'Select QR Code Image',
+              onPressed: _pickAndAnalyzeImage, // Call the new function
+            ),
+          // Toggle Button second
           IconButton(
             icon: Icon(_isScanning ? Icons.edit : Icons.qr_code_scanner),
             tooltip: _isScanning ? 'Enter Manually' : 'Scan QR Code',
