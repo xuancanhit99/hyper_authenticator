@@ -156,6 +156,10 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         // Also clear remembered email and state on sign out
         await _sharedPreferences.remove(_rememberedEmailKey);
         await _sharedPreferences.remove(_rememberedMeStateKey);
+        // Also clear sync enabled state on sign out
+        await _sharedPreferences.remove(
+          'sync_enabled',
+        ); // Use the key defined in SyncBloc
         // The stream update will handle the state change to AuthUnauthenticated
       },
     );
