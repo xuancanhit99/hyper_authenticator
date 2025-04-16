@@ -46,9 +46,17 @@ graph LR
 The Flutter application adheres to the principles of Clean Architecture to ensure separation of concerns, testability, and maintainability.
 
 *   **Core Principles:**
-    *   **Presentation Layer:** UI (Widgets, Pages) and State Management (BLoC). Responsible for displaying data and handling user input. Uses `flutter_bloc` for state management and `provider` for theme management.
-    *   **Domain Layer:** Core business logic (UseCases, Entities) and Repository interfaces. Defines *what* the application does, independent of implementation details. Contains `AuthenticatorAccount` entity and use cases like `AddAccount`, `GenerateTotpCode`, `GetAccounts`.
-    *   **Data Layer:** Implementation of Repositories, Data Sources (local and remote), and data mapping. Responsible for *how* data is fetched and stored. Includes `AuthenticatorRepositoryImpl`, `AuthenticatorLocalDataSource`, `SyncRemoteDataSource`, etc.
+    *   **Presentation Layer:** Handles UI (Widgets, Pages) and State Management. Responsible for displaying data and handling user input.
+        *   **UI:** Built with Flutter widgets.
+        *   **State Management:** Primarily uses `flutter_bloc` (`AccountsBloc`, `AuthBloc`, `SyncBloc`, `LocalAuthBloc`, `SettingsBloc`) for managing feature states and `provider` for theme management (`ThemeProvider`).
+    *   **Domain Layer:** Contains the core business logic, independent of UI and data storage details.
+        *   **Entities:** Represent core business objects (e.g., `AuthenticatorAccount`, `UserEntity`).
+        *   **UseCases:** Encapsulate specific application tasks (e.g., `AddAccountUseCase`, `GetAccountsUseCase`, `GenerateTotpCodeUseCase`, `DeleteAccountUseCase`, `LoginUseCase`, `LogoutUseCase`, `UploadAccountsUseCase`, `DownloadAccountsUseCase`, `CheckAuthStatusUseCase`, `AuthenticateWithBiometricsUseCase`).
+        *   **Repository Interfaces:** Define contracts for data operations, implemented by the Data Layer.
+    *   **Data Layer:** Implements the repository interfaces defined in the Domain Layer. Responsible for retrieving data from and storing data to various sources.
+        *   **Repositories:** Concrete implementations (e.g., `AuthenticatorRepositoryImpl`, `SyncRepositoryImpl`).
+        *   **Data Sources:** Abstract interactions with specific storage mechanisms (e.g., `AuthenticatorLocalDataSource`, `SyncRemoteDataSource`, `AuthRemoteDataSource`). Concrete implementations interact with Supabase, `FlutterSecureStorage`, `SharedPreferences`.
+        *   **Data Models/DTOs:** Data transfer objects used for remote communication or local storage (e.g., `SyncedAccountDto`). Often include mapping logic to/from Domain Entities.
 *   **Cross-Platform Considerations:** Flutter's framework allows building for multiple platforms from a single codebase. Platform-specific integrations (like `local_auth` for biometrics) are handled using plugins that abstract platform differences. The architecture remains consistent across platforms.
 *   **Directory Structure:** Organized by features (`auth`, `authenticator`, `sync`, `settings`) with internal `data`, `domain`, `presentation` layers, promoting modularity.
 
@@ -69,6 +77,9 @@ The Flutter application adheres to the principles of Clean Architecture to ensur
 *   **Routing (`GoRouter`):**
     *   Provides a declarative routing solution suitable for complex navigation scenarios.
     *   The router configuration (`AppRouter`) depends on `AuthBloc` and `LocalAuthBloc` states to handle redirects (e.g., redirecting to login if not authenticated, redirecting to lock screen if app lock is enabled and triggered).
+    *   **Local Storage (`FlutterSecureStorage` / `SharedPreferences`):**
+        *   `FlutterSecureStorage` is chosen for sensitive data (TOTP secrets, potentially E2EE keys) because it utilizes platform-specific secure storage (Keystore/Keychain), offering hardware-backed protection where available.
+        *   `SharedPreferences` is used for non-sensitive user preferences (like theme settings, sync enabled status) as it's simpler and sufficient for non-critical data.
 
 ## 5. Security Considerations
 *   **Local Storage:**
@@ -78,15 +89,20 @@ The Flutter application adheres to the principles of Clean Architecture to ensur
 *   **Cloud Synchronization Security (Current & Planned):**
     *   **Authentication:** User authentication via Supabase ensures only authorized users can access their sync data.
     *   **Transport Security:** Communication with Supabase occurs over HTTPS.
-    *   **Data-at-Rest (Supabase):** Supabase provides server-side encryption options.
+    *   **Data-at-Rest (Supabase - Current State):** Currently, data synchronized to Supabase relies on Supabase's built-in security features and potentially server-side encryption options provided by the platform. The raw TOTP secrets might be stored directly if E2EE is not yet implemented.
     *   **Planned End-to-End Encryption (E2EE):**
-        *   **Goal:** To ensure that even the backend provider (Supabase) cannot read the user's sensitive TOTP secrets stored for synchronization.
+        *   **Goal:** To ensure that sensitive TOTP secrets are encrypted *before* leaving the client device, making them unreadable by the backend provider (Supabase) or any intermediary.
         *   **Approach:**
-            1.  **Key Generation:** Generate a strong encryption key on the client-side. This key could be derived from the user's master password (requiring the user to set one) or generated randomly and stored securely (e.g., in `FlutterSecureStorage`, potentially protected by biometrics). *Managing this key securely is critical.*
-            2.  **Encryption:** Before uploading account data (`AuthenticatorAccount` details) via `UploadAccountsUseCase`, encrypt the sensitive fields (especially `secretKey`) using the client-side key and the `cryptography` package (e.g., AES-GCM).
-            3.  **Storage:** Store the *encrypted* data in Supabase.
-            4.  **Decryption:** When downloading data via `DownloadAccountsUseCase`, retrieve the encrypted data and decrypt it on the client-side using the same client-side key.
-        *   **Challenges:** Secure key management, key recovery (if the user forgets the master password or loses the key), and ensuring the key is available across devices if needed for decryption after a fresh install.
+            1.  **Key Generation:** Generate a strong, unique encryption key per user on the client-side. Options include:
+                *   Deriving from a user-defined master password (using a KDF like Argon2 or PBKDF2).
+                *   Generating a random key and storing it securely in `FlutterSecureStorage`.
+            2.  **Encryption:** Before uploading via `UploadAccountsUseCase`, encrypt sensitive fields (especially `secretKey`) using the client-side key (e.g., AES-GCM via `cryptography` package).
+            3.  **Storage:** Store only the *encrypted* ciphertext in Supabase.
+            4.  **Decryption:** When downloading via `DownloadAccountsUseCase`, retrieve the ciphertext and decrypt it on the client-side using the user's key.
+        *   **Key Management Challenges:**
+            *   **Security:** The client-side key is the root of trust. If stored directly, `FlutterSecureStorage` is essential. If derived, the master password must be strong.
+            *   **Recovery:** If the key (or master password) is lost, encrypted data becomes inaccessible. Implementing a secure recovery mechanism (e.g., recovery codes stored by the user) is complex but necessary.
+            *   **Cross-Device Access:** The key must be available on all devices where the user wants to access synced data. This might involve securely transferring the key or requiring the user to re-enter the master password on each new device.
 
 ## 6. Data Flow Examples
 
@@ -212,6 +228,80 @@ sequenceDiagram
     AuthBloc (Presentation)->>AuthBloc (Presentation): Emit State (Authenticated / Unauthenticated with error)
     AuthBloc (Presentation)-->>LoginPage (UI): Update UI (Navigate to Accounts / Show Error)
 ```
+### 6.5. Deleting an Account
+
+**Description:** This flow shows how a user deletes an existing 2FA account. The request goes through the BLoC and UseCase to the Repository, which then instructs the Local Data Source to remove the account from secure storage.
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant AccountsPage (UI)
+    participant AccountsBloc (Presentation)
+    participant DeleteAccountUseCase (Domain)
+    participant AuthRepository (Domain/Data)
+    participant LocalDataSource (Data)
+
+    User->>AccountsPage (UI): Long-presses/Selects Account Y
+    User->>AccountsPage (UI): Taps Delete Button/Confirms Deletion
+    AccountsPage (UI)->>AccountsBloc (Presentation): Dispatch DeleteAccountRequested Event (accountY.id)
+    AccountsBloc (Presentation)->>DeleteAccountUseCase (Domain): execute(accountY.id)
+    DeleteAccountUseCase (Domain)->>AuthRepository (Domain/Data): deleteAccount(accountId)
+    AuthRepository (Domain/Data)->>LocalDataSource (Data): removeAccount(accountId)
+    LocalDataSource (Data)-->>AuthRepository (Domain/Data): Return success/failure
+    AuthRepository (Domain/Data)-->>DeleteAccountUseCase (Domain): Return success/failure
+    DeleteAccountUseCase (Domain)-->>AccountsBloc (Presentation): Return Either<Failure, Success>
+    AccountsBloc (Presentation)->>AccountsBloc (Presentation): Emit State (Account Deleted, Refresh List)
+    AccountsBloc (Presentation)-->>AccountsPage (UI): Update UI (Remove Account from List, Show Feedback)
+```
+
+### 6.6. App Lock Authentication (On App Resume)
+
+**Description:** This diagram illustrates the process when the app resumes from the background and the App Lock feature is enabled. The `WidgetsBindingObserver` triggers the `LocalAuthBloc` to check if authentication is needed, which then interacts with the `local_auth` plugin to prompt the user for biometrics/PIN.
+
+```mermaid
+sequenceDiagram
+    participant OS [Operating System]
+    participant AppLifecycleObserver (app.dart)
+    participant LocalAuthBloc (Presentation)
+    participant GoRouter (Navigation)
+    participant LocalAuthPlugin [local_auth Plugin]
+    participant User
+
+    OS->>AppLifecycleObserver (app.dart): App Resumed (didChangeAppLifecycleState)
+    AppLifecycleObserver (app.dart)->>LocalAuthBloc (Presentation): Dispatch CheckAuthenticationStatus Event
+    LocalAuthBloc (Presentation)->>LocalAuthBloc (Presentation): Check if lock enabled & timeout exceeded
+    alt Lock Required
+        LocalAuthBloc (Presentation)->>GoRouter (Navigation): Navigate to Lock Screen
+        LocalAuthBloc (Presentation)->>LocalAuthPlugin [local_auth Plugin]: authenticate()
+        LocalAuthPlugin [local_auth Plugin]->>User: Prompt for Biometrics/PIN
+        User->>LocalAuthPlugin [local_auth Plugin]: Provides Biometrics/PIN
+        LocalAuthPlugin [local_auth Plugin]-->>LocalAuthBloc (Presentation): Return Authentication Result (Success/Failure)
+        alt Authentication Success
+            LocalAuthBloc (Presentation)->>LocalAuthBloc (Presentation): Emit Authenticated State
+            LocalAuthBloc (Presentation)->>GoRouter (Navigation): Navigate back / to intended page
+        else Authentication Failure
+            LocalAuthBloc (Presentation)->>LocalAuthBloc (Presentation): Emit Unauthenticated State (Show Error on Lock Screen)
+            User->>LocalAuthBloc (Presentation): Can Retry Authentication
+        end
+    else Lock Not Required
+        LocalAuthBloc (Presentation)->>LocalAuthBloc (Presentation): Emit Authenticated State (No UI change needed)
+    end
+
+```
 
 ## 7. Error Handling
+The application uses the `Either<Failure, SuccessType>` pattern (from the `dartz` package) extensively in the Domain and Data layers to handle expected failures gracefully without throwing exceptions for common issues.
+
+*   **`Failure` Types:** Specific `Failure` subclasses represent different error categories:
+    *   `ServerFailure`: Errors from the backend (e.g., Supabase API errors, 5xx status codes).
+    *   `CacheFailure`: Errors related to local storage (e.g., `FlutterSecureStorage` read/write errors).
+    *   `NetworkFailure`: Issues with network connectivity.
+    *   `AuthenticationFailure`: Errors during login, registration, or token issues.
+    *   `EncryptionFailure`: Errors during E2EE encryption/decryption.
+    *   `PermissionFailure`: Errors related to missing permissions (e.g., camera for QR scan).
+    *   `InvalidInputFailure`: Errors due to invalid user input (though often handled via form validation in Presentation).
+*   **Presentation Layer Handling:** BLoCs receive the `Either` type from UseCases.
+    *   On `Left(Failure)`, the BLoC emits an error state (e.g., `AccountsLoadFailure`, `SyncFailure`).
+    *   The UI layer listens to these states and displays appropriate user feedback (e.g., Snackbars, error messages within widgets, specific error pages). The feedback aims to be user-friendly, explaining the issue simply (e.g., "Could not connect to server", "Invalid login details", "Failed to save account").
+    *   On `Right(SuccessType)`, the BLoC emits a success state with the required data.
 Uses `Either<Failure, SuccessType>` and specific `Failure` types.
