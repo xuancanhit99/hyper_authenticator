@@ -17,7 +17,7 @@ Hyper Authenticator primarily operates as a client-side application but utilizes
     *   **User Authentication:** Manages user registration and login, allowing users to have an account associated with their synchronized data.
     *   **Database/Storage:** Securely stores encrypted user account data (TOTP secrets, issuer, account name, etc.) when cloud sync is enabled. Supabase provides database and storage solutions suitable for this purpose.
 
-**Diagram:**
+**Diagram (Simplified for GitHub Rendering):**
 
 ```mermaid
 graph LR
@@ -29,7 +29,7 @@ graph LR
 
 ## 3. Flutter Application Architecture: Clean Architecture
 
-**Layer Diagram:**
+**Layer Diagram (Simplified for GitHub Rendering):**
 
 ```mermaid
  graph TD
@@ -95,23 +95,23 @@ The Flutter application adheres to the principles of Clean Architecture to ensur
 ```mermaid
 sequenceDiagram
     participant User
-    participant AddAccountPageUI [AddAccountPage (UI)]
-    participant AccountsBloc [AccountsBloc (Presentation)]
-    participant AddAccountUseCase [AddAccountUseCase (Domain)]
-    participant AuthRepository [AuthRepository (Domain/Data)]
-    participant LocalDataSource [LocalDataSource (Data)]
+    participant AddAccountPage (UI)
+    participant AccountsBloc (Presentation)
+    participant AddAccountUseCase (Domain)
+    participant AuthRepository (Domain/Data)
+    participant LocalDataSource (Data)
 
-    User->>AddAccountPageUI: Scan/Select QR Image
-    AddAccountPageUI->>AddAccountPageUI: Parse otpauth:// URI
-    AddAccountPageUI->>AccountsBloc: Dispatch AddAccountRequested Event
-    AccountsBloc->>AddAccountUseCase: Call execute(params)
-    AddAccountUseCase->>AuthRepository: Call addAccount(account)
-    AuthRepository->>LocalDataSource: Call saveAccount(account)
-    LocalDataSource-->>AuthRepository: Return success/failure
-    AuthRepository-->>AddAccountUseCase: Return success/failure
-    AddAccountUseCase-->>AccountsBloc: Return Either<Failure, Success>
-    AccountsBloc->>AccountsBloc: Emit State (Loading -> Loaded/Error)
-    AccountsBloc-->>AddAccountPageUI: Update UI (Feedback/Navigation)
+    User->>AddAccountPage (UI): Scan/Select QR Image
+    AddAccountPage (UI)->>AddAccountPage (UI): Parse otpauth:// URI
+    AddAccountPage (UI)->>AccountsBloc (Presentation): Dispatch AddAccountRequested Event
+    AccountsBloc (Presentation)->>AddAccountUseCase (Domain): Call execute(params)
+    AddAccountUseCase (Domain)->>AuthRepository (Domain/Data): Call addAccount(account)
+    AuthRepository (Domain/Data)->>LocalDataSource (Data): Call saveAccount(account)
+    LocalDataSource (Data)-->>AuthRepository (Domain/Data): Return success/failure
+    AuthRepository (Domain/Data)-->>AddAccountUseCase (Domain): Return success/failure
+    AddAccountUseCase (Domain)-->>AccountsBloc (Presentation): Return Either<Failure, Success>
+    AccountsBloc (Presentation)->>AccountsBloc (Presentation): Emit State (Loading -> Loaded/Error)
+    AccountsBloc (Presentation)-->>AddAccountPage (UI): Update UI (Feedback/Navigation)
 ```
 
 ### Synchronization Flow (Upload with Planned E2EE)
@@ -119,29 +119,29 @@ sequenceDiagram
 ```mermaid
  sequenceDiagram
     participant User
-    participant SettingsPageUI [SettingsPage (UI)]
-    participant SyncBloc [SyncBloc (Presentation)]
-    participant EncryptService [EncryptService (Core/Domain?)]
-    participant UploadUseCase [UploadUseCase (Domain)]
-    participant SyncRepository [SyncRepository (Domain/Data)]
-    participant RemoteDataSource [RemoteDataSource (Data)]
-    participant SupabaseServer [Supabase (Server)]
+    participant SettingsPage (UI)
+    participant SyncBloc (Presentation)
+    participant EncryptService (Core/Domain?)
+    participant UploadUseCase (Domain)
+    participant SyncRepository (Domain/Data)
+    participant RemoteDataSource (Data)
+    participant Supabase (Server)
 
-    User->>SettingsPageUI: Tap "Sync Now" / "Overwrite Cloud"
-    SettingsPageUI->>SyncBloc: Dispatch SyncNowRequested / OverwriteCloudRequested Event
-    SyncBloc->>EncryptService: Get encryption key
-    SyncBloc->>EncryptService: Encrypt account data (E2EE)
-    EncryptService-->>SyncBloc: Return encrypted data
-    SyncBloc->>UploadUseCase: Call execute(encryptedData)
-    UploadUseCase->>SyncRepository: Call uploadAccounts(encryptedData)
-    SyncRepository->>RemoteDataSource: Call uploadToSupabase(encryptedData)
-    RemoteDataSource->>SupabaseServer: Send HTTPS request
-    SupabaseServer-->>RemoteDataSource: Respond
-    RemoteDataSource-->>SyncRepository: Return success/failure
-    SyncRepository-->>UploadUseCase: Return success/failure
-    UploadUseCase-->>SyncBloc: Return Either<Failure, Success>
-    SyncBloc->>SyncBloc: Emit State (InProgress -> Success/Failure)
-    SyncBloc-->>SettingsPageUI: Update UI (Feedback)
+    User->>SettingsPage (UI): Tap "Sync Now" / "Overwrite Cloud"
+    SettingsPage (UI)->>SyncBloc (Presentation): Dispatch SyncNowRequested / OverwriteCloudRequested Event
+    SyncBloc (Presentation)->>EncryptService (Core/Domain?): Get encryption key
+    SyncBloc (Presentation)->>EncryptService (Core/Domain?): Encrypt account data (E2EE)
+    EncryptService (Core/Domain?)-->>SyncBloc (Presentation): Return encrypted data
+    SyncBloc (Presentation)->>UploadUseCase (Domain): Call execute(encryptedData)
+    UploadUseCase (Domain)->>SyncRepository (Domain/Data): Call uploadAccounts(encryptedData)
+    SyncRepository (Domain/Data)->>RemoteDataSource (Data): Call uploadToSupabase(encryptedData)
+    RemoteDataSource (Data)->>Supabase (Server): Send HTTPS request
+    Supabase (Server)-->>RemoteDataSource (Data): Respond
+    RemoteDataSource (Data)-->>SyncRepository (Domain/Data): Return success/failure
+    SyncRepository (Domain/Data)-->>UploadUseCase (Domain): Return success/failure
+    UploadUseCase (Domain)-->>SyncBloc (Presentation): Return Either<Failure, Success>
+    SyncBloc (Presentation)->>SyncBloc (Presentation): Emit State (InProgress -> Success/Failure)
+    SyncBloc (Presentation)-->>SettingsPage (UI): Update UI (Feedback)
 ```
 
 (Similar flows apply to other features like code generation and authentication.)

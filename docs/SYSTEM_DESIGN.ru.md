@@ -17,7 +17,7 @@ Hyper Authenticator в основном работает как клиентск
     *   **Аутентификации пользователя:** Управляет регистрацией и входом пользователей, позволяя им иметь учетную запись, связанную с их синхронизированными данными.
     *   **Базы данных/Хранилища:** Безопасно хранит зашифрованные данные учетных записей пользователей (секреты TOTP, издатель, имя учетной записи и т. д.), когда включена облачная синхронизация. Supabase предоставляет подходящие решения для баз данных и хранения.
 
-**Диаграмма:**
+**Диаграмма (Упрощенная для GitHub Rendering):**
 
 ```mermaid
 graph LR
@@ -29,7 +29,7 @@ graph LR
 
 ## 3. Архитектура Приложения Flutter: Clean Architecture
 
-**Диаграмма слоев:**
+**Диаграмма слоев (Упрощенная для GitHub Rendering):**
 
 ```mermaid
  graph TD
@@ -95,23 +95,23 @@ graph LR
 ```mermaid
 sequenceDiagram
     participant User [Пользователь]
-    participant AddAccountPageUI [AddAccountPage (UI)]
-    participant AccountsBloc [AccountsBloc (Presentation)]
-    participant AddAccountUseCase [AddAccountUseCase (Domain)]
-    participant AuthRepository [AuthRepository (Domain/Data)]
-    participant LocalDataSource [LocalDataSource (Data)]
+    participant AddAccountPage (UI)
+    participant AccountsBloc (Presentation)
+    participant AddAccountUseCase (Domain)
+    participant AuthRepository (Domain/Data)
+    participant LocalDataSource (Data)
 
-    User->>AddAccountPageUI: Сканировать/Выбрать QR-изображение
-    AddAccountPageUI->>AddAccountPageUI: Разобрать URI otpauth://
-    AddAccountPageUI->>AccountsBloc: Отправить AddAccountRequested Event
-    AccountsBloc->>AddAccountUseCase: Вызвать execute(params)
-    AddAccountUseCase->>AuthRepository: Вызвать addAccount(account)
-    AuthRepository->>LocalDataSource: Вызвать saveAccount(account)
-    LocalDataSource-->>AuthRepository: Вернуть успех/ошибку
-    AuthRepository-->>AddAccountUseCase: Вернуть успех/ошибку
-    AddAccountUseCase-->>AccountsBloc: Вернуть Either<Failure, Success>
-    AccountsBloc->>AccountsBloc: Выдать State (Loading -> Loaded/Error)
-    AccountsBloc-->>AddAccountPageUI: Обновить UI (Обратная связь/Навигация)
+    User->>AddAccountPage (UI): Сканировать/Выбрать QR-изображение
+    AddAccountPage (UI)->>AddAccountPage (UI): Разобрать URI otpauth://
+    AddAccountPage (UI)->>AccountsBloc (Presentation): Отправить AddAccountRequested Event
+    AccountsBloc (Presentation)->>AddAccountUseCase (Domain): Вызвать execute(params)
+    AddAccountUseCase (Domain)->>AuthRepository (Domain/Data): Вызвать addAccount(account)
+    AuthRepository (Domain/Data)->>LocalDataSource (Data): Вызвать saveAccount(account)
+    LocalDataSource (Data)-->>AuthRepository (Domain/Data): Вернуть успех/ошибку
+    AuthRepository (Domain/Data)-->>AddAccountUseCase (Domain): Вернуть успех/ошибку
+    AddAccountUseCase (Domain)-->>AccountsBloc (Presentation): Вернуть Either<Failure, Success>
+    AccountsBloc (Presentation)->>AccountsBloc (Presentation): Выдать State (Loading -> Loaded/Error)
+    AccountsBloc (Presentation)-->>AddAccountPage (UI): Обновить UI (Обратная связь/Навигация)
 ```
 
 ### Поток синхронизации (Загрузка с планируемым E2EE)
@@ -119,29 +119,29 @@ sequenceDiagram
 ```mermaid
  sequenceDiagram
     participant User [Пользователь]
-    participant SettingsPageUI [SettingsPage (UI)]
-    participant SyncBloc [SyncBloc (Presentation)]
+    participant SettingsPage (UI)
+    participant SyncBloc (Presentation)
     participant EncryptService [Сервис шифрования (Core/Domain?)]
-    participant UploadUseCase [UploadUseCase (Domain)]
-    participant SyncRepository [SyncRepository (Domain/Data)]
-    participant RemoteDataSource [RemoteDataSource (Data)]
-    participant SupabaseServer [Supabase (Server)]
+    participant UploadUseCase (Domain)
+    participant SyncRepository (Domain/Data)
+    participant RemoteDataSource (Data)
+    participant Supabase (Server)
 
-    User->>SettingsPageUI: Нажать "Sync Now" / "Overwrite Cloud"
-    SettingsPageUI->>SyncBloc: Отправить SyncNowRequested / OverwriteCloudRequested Event
-    SyncBloc->>EncryptService: Получить ключ шифрования
-    SyncBloc->>EncryptService: Зашифровать данные учетной записи (E2EE)
-    EncryptService-->>SyncBloc: Вернуть зашифрованные данные
-    SyncBloc->>UploadUseCase: Вызвать execute(encryptedData)
-    UploadUseCase->>SyncRepository: Вызвать uploadAccounts(encryptedData)
-    SyncRepository->>RemoteDataSource: Вызвать uploadToSupabase(encryptedData)
-    RemoteDataSource->>SupabaseServer: Отправить HTTPS запрос
-    SupabaseServer-->>RemoteDataSource: Ответить
-    RemoteDataSource-->>SyncRepository: Вернуть успех/ошибку
-    SyncRepository-->>UploadUseCase: Вернуть успех/ошибку
-    UploadUseCase-->>SyncBloc: Вернуть Either<Failure, Success>
-    SyncBloc->>SyncBloc: Выдать State (InProgress -> Success/Failure)
-    SyncBloc-->>SettingsPageUI: Обновить UI (Обратная связь)
+    User->>SettingsPage (UI): Нажать "Sync Now" / "Overwrite Cloud"
+    SettingsPage (UI)->>SyncBloc (Presentation): Отправить SyncNowRequested / OverwriteCloudRequested Event
+    SyncBloc (Presentation)->>EncryptService [Сервис шифрования (Core/Domain?)]: Получить ключ шифрования
+    SyncBloc (Presentation)->>EncryptService [Сервис шифрования (Core/Domain?)]: Зашифровать данные учетной записи (E2EE)
+    EncryptService [Сервис шифрования (Core/Domain?)]-->>SyncBloc (Presentation): Вернуть зашифрованные данные
+    SyncBloc (Presentation)->>UploadUseCase (Domain): Вызвать execute(encryptedData)
+    UploadUseCase (Domain)->>SyncRepository (Domain/Data): Вызвать uploadAccounts(encryptedData)
+    SyncRepository (Domain/Data)->>RemoteDataSource (Data): Вызвать uploadToSupabase(encryptedData)
+    RemoteDataSource (Data)->>Supabase (Server): Отправить HTTPS запрос
+    Supabase (Server)-->>RemoteDataSource (Data): Ответить
+    RemoteDataSource (Data)-->>SyncRepository (Domain/Data): Вернуть успех/ошибку
+    SyncRepository (Domain/Data)-->>UploadUseCase (Domain): Вернуть успех/ошибку
+    UploadUseCase (Domain)-->>SyncBloc (Presentation): Вернуть Either<Failure, Success>
+    SyncBloc (Presentation)->>SyncBloc (Presentation): Выдать State (InProgress -> Success/Failure)
+    SyncBloc (Presentation)-->>SettingsPage (UI): Обновить UI (Обратная связь)
 ```
 
 (Аналогичные потоки применяются к другим функциям, таким как генерация кода и аутентификация.)

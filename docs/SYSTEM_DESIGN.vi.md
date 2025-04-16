@@ -17,7 +17,7 @@ Hyper Authenticator chủ yếu hoạt động như một ứng dụng phía má
     *   **Xác thực người dùng:** Quản lý đăng ký và đăng nhập người dùng, cho phép người dùng có tài khoản liên kết với dữ liệu được đồng bộ hóa của họ.
     *   **Cơ sở dữ liệu/Lưu trữ:** Lưu trữ an toàn dữ liệu tài khoản người dùng đã được mã hóa (khóa bí mật TOTP, nhà phát hành, tên tài khoản, v.v.) khi đồng bộ hóa đám mây được bật. Supabase cung cấp các giải pháp cơ sở dữ liệu và lưu trữ phù hợp cho mục đích này.
 
-**Sơ đồ:**
+**Sơ đồ (Đơn giản hóa cho GitHub Rendering):**
 
 ```mermaid
 graph LR
@@ -29,7 +29,7 @@ graph LR
 
 ## 3. Kiến trúc Ứng dụng Flutter: Clean Architecture
 
-**Sơ đồ phân lớp:**
+**Sơ đồ phân lớp (Đơn giản hóa cho GitHub Rendering):**
 
 ```mermaid
  graph TD
@@ -95,23 +95,23 @@ graph LR
 ```mermaid
 sequenceDiagram
     participant User [Người dùng]
-    participant AddAccountPageUI [AddAccountPage (UI)]
-    participant AccountsBloc [AccountsBloc (Presentation)]
-    participant AddAccountUseCase [AddAccountUseCase (Domain)]
-    participant AuthRepository [AuthRepository (Domain/Data)]
-    participant LocalDataSource [LocalDataSource (Data)]
+    participant AddAccountPage (UI)
+    participant AccountsBloc (Presentation)
+    participant AddAccountUseCase (Domain)
+    participant AuthRepository (Domain/Data)
+    participant LocalDataSource (Data)
 
-    User->>AddAccountPageUI: Quét/Chọn ảnh QR
-    AddAccountPageUI->>AddAccountPageUI: Phân tích URI otpauth://
-    AddAccountPageUI->>AccountsBloc: Gửi AddAccountRequested Event
-    AccountsBloc->>AddAccountUseCase: Gọi execute(params)
-    AddAccountUseCase->>AuthRepository: Gọi addAccount(account)
-    AuthRepository->>LocalDataSource: Gọi saveAccount(account)
-    LocalDataSource-->>AuthRepository: Trả về thành công/lỗi
-    AuthRepository-->>AddAccountUseCase: Trả về thành công/lỗi
-    AddAccountUseCase-->>AccountsBloc: Trả về Either<Failure, Success>
-    AccountsBloc->>AccountsBloc: Phát ra State (Loading -> Loaded/Error)
-    AccountsBloc-->>AddAccountPageUI: Cập nhật UI (Thông báo/Điều hướng)
+    User->>AddAccountPage (UI): Quét/Chọn ảnh QR
+    AddAccountPage (UI)->>AddAccountPage (UI): Phân tích URI otpauth://
+    AddAccountPage (UI)->>AccountsBloc (Presentation): Gửi AddAccountRequested Event
+    AccountsBloc (Presentation)->>AddAccountUseCase (Domain): Gọi execute(params)
+    AddAccountUseCase (Domain)->>AuthRepository (Domain/Data): Gọi addAccount(account)
+    AuthRepository (Domain/Data)->>LocalDataSource (Data): Gọi saveAccount(account)
+    LocalDataSource (Data)-->>AuthRepository (Domain/Data): Trả về thành công/lỗi
+    AuthRepository (Domain/Data)-->>AddAccountUseCase (Domain): Trả về thành công/lỗi
+    AddAccountUseCase (Domain)-->>AccountsBloc (Presentation): Trả về Either<Failure, Success>
+    AccountsBloc (Presentation)->>AccountsBloc (Presentation): Phát ra State (Loading -> Loaded/Error)
+    AccountsBloc (Presentation)-->>AddAccountPage (UI): Cập nhật UI (Thông báo/Điều hướng)
 ```
 
 ### Luồng Đồng bộ hóa (Tải lên với E2EE dự kiến)
@@ -119,29 +119,29 @@ sequenceDiagram
 ```mermaid
  sequenceDiagram
     participant User [Người dùng]
-    participant SettingsPageUI [SettingsPage (UI)]
-    participant SyncBloc [SyncBloc (Presentation)]
+    participant SettingsPage (UI)
+    participant SyncBloc (Presentation)
     participant EncryptService [Dịch vụ Mã hóa (Core/Domain?)]
-    participant UploadUseCase [UploadUseCase (Domain)]
-    participant SyncRepository [SyncRepository (Domain/Data)]
-    participant RemoteDataSource [RemoteDataSource (Data)]
-    participant SupabaseServer [Supabase (Server)]
+    participant UploadUseCase (Domain)
+    participant SyncRepository (Domain/Data)
+    participant RemoteDataSource (Data)
+    participant Supabase (Server)
 
-    User->>SettingsPageUI: Nhấn "Sync Now" / "Overwrite Cloud"
-    SettingsPageUI->>SyncBloc: Gửi SyncNowRequested / OverwriteCloudRequested Event
-    SyncBloc->>EncryptService: Lấy khóa mã hóa
-    SyncBloc->>EncryptService: Mã hóa dữ liệu tài khoản (E2EE)
-    EncryptService-->>SyncBloc: Trả về dữ liệu đã mã hóa
-    SyncBloc->>UploadUseCase: Gọi execute(encryptedData)
-    UploadUseCase->>SyncRepository: Gọi uploadAccounts(encryptedData)
-    SyncRepository->>RemoteDataSource: Gọi uploadToSupabase(encryptedData)
-    RemoteDataSource->>SupabaseServer: Gửi yêu cầu HTTPS
-    SupabaseServer-->>RemoteDataSource: Phản hồi
-    RemoteDataSource-->>SyncRepository: Trả về thành công/lỗi
-    SyncRepository-->>UploadUseCase: Trả về thành công/lỗi
-    UploadUseCase-->>SyncBloc: Trả về Either<Failure, Success>
-    SyncBloc->>SyncBloc: Phát ra State (InProgress -> Success/Failure)
-    SyncBloc-->>SettingsPageUI: Cập nhật UI (Thông báo)
+    User->>SettingsPage (UI): Nhấn "Sync Now" / "Overwrite Cloud"
+    SettingsPage (UI)->>SyncBloc (Presentation): Gửi SyncNowRequested / OverwriteCloudRequested Event
+    SyncBloc (Presentation)->>EncryptService [Dịch vụ Mã hóa (Core/Domain?)]: Lấy khóa mã hóa
+    SyncBloc (Presentation)->>EncryptService [Dịch vụ Mã hóa (Core/Domain?)]: Mã hóa dữ liệu tài khoản (E2EE)
+    EncryptService [Dịch vụ Mã hóa (Core/Domain?)]-->>SyncBloc (Presentation): Trả về dữ liệu đã mã hóa
+    SyncBloc (Presentation)->>UploadUseCase (Domain): Gọi execute(encryptedData)
+    UploadUseCase (Domain)->>SyncRepository (Domain/Data): Gọi uploadAccounts(encryptedData)
+    SyncRepository (Domain/Data)->>RemoteDataSource (Data): Gọi uploadToSupabase(encryptedData)
+    RemoteDataSource (Data)->>Supabase (Server): Gửi yêu cầu HTTPS
+    Supabase (Server)-->>RemoteDataSource (Data): Phản hồi
+    RemoteDataSource (Data)-->>SyncRepository (Domain/Data): Trả về thành công/lỗi
+    SyncRepository (Domain/Data)-->>UploadUseCase (Domain): Trả về thành công/lỗi
+    UploadUseCase (Domain)-->>SyncBloc (Presentation): Trả về Either<Failure, Success>
+    SyncBloc (Presentation)->>SyncBloc (Presentation): Phát ra State (InProgress -> Success/Failure)
+    SyncBloc (Presentation)-->>SettingsPage (UI): Cập nhật UI (Thông báo)
 ```
 
 (Các luồng tương tự áp dụng cho các tính năng khác như tạo mã và xác thực.)
