@@ -21,7 +21,7 @@ Hyper Authenticator primarily operates as a client-side application but utilizes
 
 ```mermaid
 graph LR
-    subgraph User Device
+    subgraph UserDevice [User Device]
         A[Flutter App (Client)]
         A -- TOTP Generation --> A
         A -- Local Storage --> B((Secure Storage / SharedPreferences))

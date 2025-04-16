@@ -21,20 +21,20 @@ Hyper Authenticator chủ yếu hoạt động như một ứng dụng phía má
 
 ```mermaid
 graph LR
-    subgraph User Device [Thiết bị người dùng]
-        A[Ứng dụng Flutter (Client)]
-        A -- Tạo TOTP --> A
-        A -- Lưu trữ cục bộ --> B((Secure Storage / SharedPreferences))
-        A -- Sinh trắc học/PIN --> C{Bảo mật thiết bị}
+    subgraph UserDevice [User Device]
+        A[Flutter App (Client)]
+        A -- TOTP Generation --> A
+        A -- Local Storage --> B((Secure Storage / SharedPreferences))
+        A -- Biometrics/PIN --> C{Device Security}
     end
 
     subgraph Cloud
         D[Supabase (Server)]
-        D -- Xác thực --> D
-        D -- Database/Storage --> E((Kho dữ liệu mã hóa))
+        D -- Authentication --> D
+        D -- Database/Storage --> E((Encrypted Data Store))
     end
 
-    A -- Đồng bộ hóa tùy chọn (HTTPS) --> D
+    A -- Optional Sync (HTTPS) --> D
 ```
 
 ## 3. Kiến trúc Ứng dụng Flutter: Clean Architecture

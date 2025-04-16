@@ -21,20 +21,20 @@ Hyper Authenticator в основном работает как клиентск
 
 ```mermaid
 graph LR
-    subgraph User Device [Устройство пользователя]
-        A[Приложение Flutter (Клиент)]
-        A -- Генерация TOTP --> A
-        A -- Локальное хранилище --> B((Secure Storage / SharedPreferences))
-        A -- Биометрия/PIN --> C{Безопасность устройства}
+    subgraph UserDevice [User Device]
+        A[Flutter App (Client)]
+        A -- TOTP Generation --> A
+        A -- Local Storage --> B((Secure Storage / SharedPreferences))
+        A -- Biometrics/PIN --> C{Device Security}
     end
 
-    subgraph Cloud [Облако]
-        D[Supabase (Сервер)]
-        D -- Аутентификация --> D
-        D -- База данных/Хранилище --> E((Зашифрованное хранилище данных))
+    subgraph Cloud
+        D[Supabase (Server)]
+        D -- Authentication --> D
+        D -- Database/Storage --> E((Encrypted Data Store))
     end
 
-    A -- Опциональная синхронизация (HTTPS) --> D
+    A -- Optional Sync (HTTPS) --> D
 ```
 
 ## 3. Архитектура Приложения Flutter: Clean Architecture
