@@ -21,20 +21,10 @@ Hyper Authenticator primarily operates as a client-side application but utilizes
 
 ```mermaid
 graph LR
-    subgraph UserDevice [User Device]
-        A[Flutter App (Client)]
-        A -- TOTP Generation --> A
-        A -- Local Storage --> B((Secure Storage / SharedPreferences))
-        A -- Biometrics/PIN --> C{Device Security}
-    end
-
-    subgraph Cloud
-        D[Supabase (Server)]
-        D -- Authentication --> D
-        D -- Database/Storage --> E((Encrypted Data Store))
-    end
-
-    A -- Optional Sync (HTTPS) --> D
+    Client[Flutter App] -- HTTPS_Sync --> Server(Supabase);
+    Client -- Local_Storage --> Storage((SecureStorage / SharedPreferences));
+    Client -- Biometrics_PIN --> Client;
+    Server -- Auth_DB --> Server;
 ```
 
 ## 3. Flutter Application Architecture: Clean Architecture
@@ -43,39 +33,24 @@ graph LR
 
 ```mermaid
  graph TD
-    A[UI Layer (Widgets, Pages)] --> B(Presentation Layer / BLoC);
-    B --> C{Domain Layer (UseCases, Entities, Repo Interfaces)};
-    C --> D[Data Layer (Repo Impl, DataSources)];
-    D --> E(Remote Data Source);
-    D --> F(Local Data Source);
-    E --> G[Supabase API];
-    F --> H[Secure Storage];
-    F --> I[Shared Preferences];
-
-    subgraph Flutter App
-        A
-        B
-        C
-        D
-        F
-        H
-        I
-    end
-
-    subgraph External Services
-     E
-     G
-    end
+    UI --> Presentation;
+    Presentation --> Domain;
+    Domain --> Data;
+    Data --> RemoteDS(Remote DS);
+    Data --> LocalDS(Local DS);
+    RemoteDS --> Supabase;
+    LocalDS --> SecureStorage;
+    LocalDS --> SharedPreferences;
 ```
 
 The Flutter application adheres to the principles of Clean Architecture to ensure separation of concerns, testability, and maintainability.
 
-*   **Core Principles:** (Refer to the diagram in section 2 of the previous ARCHITECTURE.md draft)
+*   **Core Principles:**
     *   **Presentation Layer:** UI (Widgets, Pages) and State Management (BLoC). Responsible for displaying data and handling user input. Uses `flutter_bloc` for state management and `provider` for theme management.
     *   **Domain Layer:** Core business logic (UseCases, Entities) and Repository interfaces. Defines *what* the application does, independent of implementation details. Contains `AuthenticatorAccount` entity and use cases like `AddAccount`, `GenerateTotpCode`, `GetAccounts`.
     *   **Data Layer:** Implementation of Repositories, Data Sources (local and remote), and data mapping. Responsible for *how* data is fetched and stored. Includes `AuthenticatorRepositoryImpl`, `AuthenticatorLocalDataSource`, `SyncRemoteDataSource`, etc.
 *   **Cross-Platform Considerations:** Flutter's framework allows building for multiple platforms from a single codebase. Platform-specific integrations (like `local_auth` for biometrics) are handled using plugins that abstract platform differences. The architecture remains consistent across platforms.
-*   **Directory Structure:** (Refer to section 4 of the previous ARCHITECTURE.md draft) Organized by features (`auth`, `authenticator`, `sync`, `settings`) with internal `data`, `domain`, `presentation` layers, promoting modularity.
+*   **Directory Structure:** Organized by features (`auth`, `authenticator`, `sync`, `settings`) with internal `data`, `domain`, `presentation` layers, promoting modularity.
 
 ## 4. Key Technology Deep Dive
 *   **TOTP Algorithm (RFC 6238):**
@@ -120,23 +95,23 @@ The Flutter application adheres to the principles of Clean Architecture to ensur
 ```mermaid
 sequenceDiagram
     participant User
-    participant AddAccountPage (UI)
-    participant AccountsBloc (Presentation)
-    participant AddAccountUseCase (Domain)
-    participant AuthRepository (Domain/Data)
-    participant LocalDataSource (Data)
+    participant AddAccountPageUI [AddAccountPage (UI)]
+    participant AccountsBloc [AccountsBloc (Presentation)]
+    participant AddAccountUseCase [AddAccountUseCase (Domain)]
+    participant AuthRepository [AuthRepository (Domain/Data)]
+    participant LocalDataSource [LocalDataSource (Data)]
 
-    User->>AddAccountPage (UI): Scan/Select QR Image
-    AddAccountPage (UI)->>AddAccountPage (UI): Parse otpauth:// URI
-    AddAccountPage (UI)->>AccountsBloc (Presentation): Dispatch AddAccountRequested Event
-    AccountsBloc (Presentation)->>AddAccountUseCase (Domain): Call execute(params)
-    AddAccountUseCase (Domain)->>AuthRepository (Domain/Data): Call addAccount(account)
-    AuthRepository (Domain/Data)->>LocalDataSource (Data): Call saveAccount(account)
-    LocalDataSource (Data)-->>AuthRepository (Domain/Data): Return success/failure
-    AuthRepository (Domain/Data)-->>AddAccountUseCase (Domain): Return success/failure
-    AddAccountUseCase (Domain)-->>AccountsBloc (Presentation): Return Either<Failure, Success>
-    AccountsBloc (Presentation)->>AccountsBloc (Presentation): Emit State (Loading -> Loaded/Error)
-    AccountsBloc (Presentation)-->>AddAccountPage (UI): Update UI (Feedback/Navigation)
+    User->>AddAccountPageUI: Scan/Select QR Image
+    AddAccountPageUI->>AddAccountPageUI: Parse otpauth:// URI
+    AddAccountPageUI->>AccountsBloc: Dispatch AddAccountRequested Event
+    AccountsBloc->>AddAccountUseCase: Call execute(params)
+    AddAccountUseCase->>AuthRepository: Call addAccount(account)
+    AuthRepository->>LocalDataSource: Call saveAccount(account)
+    LocalDataSource-->>AuthRepository: Return success/failure
+    AuthRepository-->>AddAccountUseCase: Return success/failure
+    AddAccountUseCase-->>AccountsBloc: Return Either<Failure, Success>
+    AccountsBloc->>AccountsBloc: Emit State (Loading -> Loaded/Error)
+    AccountsBloc-->>AddAccountPageUI: Update UI (Feedback/Navigation)
 ```
 
 ### Synchronization Flow (Upload with Planned E2EE)
@@ -144,32 +119,32 @@ sequenceDiagram
 ```mermaid
  sequenceDiagram
     participant User
-    participant SettingsPage (UI)
-    participant SyncBloc (Presentation)
-    participant EncryptService (Core/Domain?)
-    participant UploadUseCase (Domain)
-    participant SyncRepository (Domain/Data)
-    participant RemoteDataSource (Data)
-    participant Supabase (Server)
+    participant SettingsPageUI [SettingsPage (UI)]
+    participant SyncBloc [SyncBloc (Presentation)]
+    participant EncryptService [EncryptService (Core/Domain?)]
+    participant UploadUseCase [UploadUseCase (Domain)]
+    participant SyncRepository [SyncRepository (Domain/Data)]
+    participant RemoteDataSource [RemoteDataSource (Data)]
+    participant SupabaseServer [Supabase (Server)]
 
-    User->>SettingsPage (UI): Tap "Sync Now" / "Overwrite Cloud"
-    SettingsPage (UI)->>SyncBloc (Presentation): Dispatch SyncNowRequested / OverwriteCloudRequested Event
-    SyncBloc (Presentation)->>EncryptService (Core/Domain?): Get encryption key
-    SyncBloc (Presentation)->>EncryptService (Core/Domain?): Encrypt account data (E2EE)
-    EncryptService (Core/Domain?)-->>SyncBloc (Presentation): Return encrypted data
-    SyncBloc (Presentation)->>UploadUseCase (Domain): Call execute(encryptedData)
-    UploadUseCase (Domain)->>SyncRepository (Domain/Data): Call uploadAccounts(encryptedData)
-    SyncRepository (Domain/Data)->>RemoteDataSource (Data): Call uploadToSupabase(encryptedData)
-    RemoteDataSource (Data)->>Supabase (Server): Send HTTPS request
-    Supabase (Server)-->>RemoteDataSource (Data): Respond
-    RemoteDataSource (Data)-->>SyncRepository (Domain/Data): Return success/failure
-    SyncRepository (Domain/Data)-->>UploadUseCase (Domain): Return success/failure
-    UploadUseCase (Domain)-->>SyncBloc (Presentation): Return Either<Failure, Success>
-    SyncBloc (Presentation)->>SyncBloc (Presentation): Emit State (InProgress -> Success/Failure)
-    SyncBloc (Presentation)-->>SettingsPage (UI): Update UI (Feedback)
+    User->>SettingsPageUI: Tap "Sync Now" / "Overwrite Cloud"
+    SettingsPageUI->>SyncBloc: Dispatch SyncNowRequested / OverwriteCloudRequested Event
+    SyncBloc->>EncryptService: Get encryption key
+    SyncBloc->>EncryptService: Encrypt account data (E2EE)
+    EncryptService-->>SyncBloc: Return encrypted data
+    SyncBloc->>UploadUseCase: Call execute(encryptedData)
+    UploadUseCase->>SyncRepository: Call uploadAccounts(encryptedData)
+    SyncRepository->>RemoteDataSource: Call uploadToSupabase(encryptedData)
+    RemoteDataSource->>SupabaseServer: Send HTTPS request
+    SupabaseServer-->>RemoteDataSource: Respond
+    RemoteDataSource-->>SyncRepository: Return success/failure
+    SyncRepository-->>UploadUseCase: Return success/failure
+    UploadUseCase-->>SyncBloc: Return Either<Failure, Success>
+    SyncBloc->>SyncBloc: Emit State (InProgress -> Success/Failure)
+    SyncBloc-->>SettingsPageUI: Update UI (Feedback)
 ```
 
 (Similar flows apply to other features like code generation and authentication.)
 
 ## 7. Error Handling
-(Refer to section 6 of the previous ARCHITECTURE.md draft. Uses `Either<Failure, SuccessType>` and specific `Failure` types.)
+Uses `Either<Failure, SuccessType>` and specific `Failure` types.

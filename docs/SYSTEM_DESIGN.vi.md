@@ -21,20 +21,10 @@ Hyper Authenticator chủ yếu hoạt động như một ứng dụng phía má
 
 ```mermaid
 graph LR
-    subgraph UserDevice [User Device]
-        A[Flutter App (Client)]
-        A -- TOTP Generation --> A
-        A -- Local Storage --> B((Secure Storage / SharedPreferences))
-        A -- Biometrics/PIN --> C{Device Security}
-    end
-
-    subgraph Cloud
-        D[Supabase (Server)]
-        D -- Authentication --> D
-        D -- Database/Storage --> E((Encrypted Data Store))
-    end
-
-    A -- Optional Sync (HTTPS) --> D
+    Client[Flutter App] -- HTTPS_Sync --> Server(Supabase);
+    Client -- Local_Storage --> Storage((SecureStorage / SharedPreferences));
+    Client -- Biometrics_PIN --> Client;
+    Server -- Auth_DB --> Server;
 ```
 
 ## 3. Kiến trúc Ứng dụng Flutter: Clean Architecture
@@ -43,39 +33,24 @@ graph LR
 
 ```mermaid
  graph TD
-    A[UI Layer (Widgets, Pages)] --> B(Presentation Layer / BLoC);
-    B --> C{Domain Layer (UseCases, Entities, Repo Interfaces)};
-    C --> D[Data Layer (Repo Impl, DataSources)];
-    D --> E(Remote Data Source);
-    D --> F(Local Data Source);
-    E --> G[Supabase API];
-    F --> H[Secure Storage];
-    F --> I[Shared Preferences];
-
-    subgraph Flutter App
-        A
-        B
-        C
-        D
-        F
-        H
-        I
-    end
-
-    subgraph External Services [Dịch vụ bên ngoài]
-     E
-     G
-    end
+    UI --> Presentation;
+    Presentation --> Domain;
+    Domain --> Data;
+    Data --> RemoteDS(Remote DS);
+    Data --> LocalDS(Local DS);
+    RemoteDS --> Supabase;
+    LocalDS --> SecureStorage;
+    LocalDS --> SharedPreferences;
 ```
 
 Ứng dụng Flutter tuân thủ các nguyên tắc của Clean Architecture để đảm bảo sự tách biệt các mối quan tâm, khả năng kiểm thử và bảo trì.
 
-*   **Nguyên tắc cốt lõi:** (Tham khảo sơ đồ ở mục 2 của bản nháp ARCHITECTURE.md trước đó)
+*   **Nguyên tắc cốt lõi:**
     *   **Presentation Layer:** UI (Widgets, Pages) và Quản lý trạng thái (BLoC). Chịu trách nhiệm hiển thị dữ liệu và xử lý đầu vào của người dùng. Sử dụng `flutter_bloc` để quản lý trạng thái và `provider` để quản lý theme.
     *   **Domain Layer:** Logic nghiệp vụ cốt lõi (UseCases, Entities) và các interface Repository. Xác định *cái gì* ứng dụng làm, độc lập với chi tiết triển khai. Chứa entity `AuthenticatorAccount` và các use case như `AddAccount`, `GenerateTotpCode`, `GetAccounts`.
     *   **Data Layer:** Triển khai các Repository, Data Sources (local và remote), và ánh xạ dữ liệu. Chịu trách nhiệm *cách thức* dữ liệu được lấy và lưu trữ. Bao gồm `AuthenticatorRepositoryImpl`, `AuthenticatorLocalDataSource`, `SyncRemoteDataSource`, v.v.
 *   **Cân nhắc Đa nền tảng:** Framework Flutter cho phép xây dựng cho nhiều nền tảng từ một cơ sở mã duy nhất. Các tích hợp cụ thể cho nền tảng (như `local_auth` cho sinh trắc học) được xử lý bằng các plugin trừu tượng hóa sự khác biệt giữa các nền tảng. Kiến trúc vẫn nhất quán trên các nền tảng.
-*   **Cấu trúc thư mục:** (Tham khảo mục 4 của bản nháp ARCHITECTURE.md trước đó) Được tổ chức theo tính năng (`auth`, `authenticator`, `sync`, `settings`) với các lớp `data`, `domain`, `presentation` bên trong, thúc đẩy tính mô-đun.
+*   **Cấu trúc thư mục:** Được tổ chức theo tính năng (`auth`, `authenticator`, `sync`, `settings`) với các lớp `data`, `domain`, `presentation` bên trong, thúc đẩy tính mô-đun.
 
 ## 4. Phân tích sâu về Công nghệ chính
 *   **Thuật toán TOTP (RFC 6238):**
@@ -120,23 +95,23 @@ graph LR
 ```mermaid
 sequenceDiagram
     participant User [Người dùng]
-    participant AddAccountPage (UI)
-    participant AccountsBloc (Presentation)
-    participant AddAccountUseCase (Domain)
-    participant AuthRepository (Domain/Data)
-    participant LocalDataSource (Data)
+    participant AddAccountPageUI [AddAccountPage (UI)]
+    participant AccountsBloc [AccountsBloc (Presentation)]
+    participant AddAccountUseCase [AddAccountUseCase (Domain)]
+    participant AuthRepository [AuthRepository (Domain/Data)]
+    participant LocalDataSource [LocalDataSource (Data)]
 
-    User->>AddAccountPage (UI): Quét/Chọn ảnh QR
-    AddAccountPage (UI)->>AddAccountPage (UI): Phân tích URI otpauth://
-    AddAccountPage (UI)->>AccountsBloc (Presentation): Gửi AddAccountRequested Event
-    AccountsBloc (Presentation)->>AddAccountUseCase (Domain): Gọi execute(params)
-    AddAccountUseCase (Domain)->>AuthRepository (Domain/Data): Gọi addAccount(account)
-    AuthRepository (Domain/Data)->>LocalDataSource (Data): Gọi saveAccount(account)
-    LocalDataSource (Data)-->>AuthRepository (Domain/Data): Trả về thành công/lỗi
-    AuthRepository (Domain/Data)-->>AddAccountUseCase (Domain): Trả về thành công/lỗi
-    AddAccountUseCase (Domain)-->>AccountsBloc (Presentation): Trả về Either<Failure, Success>
-    AccountsBloc (Presentation)->>AccountsBloc (Presentation): Phát ra State (Loading -> Loaded/Error)
-    AccountsBloc (Presentation)-->>AddAccountPage (UI): Cập nhật UI (Thông báo/Điều hướng)
+    User->>AddAccountPageUI: Quét/Chọn ảnh QR
+    AddAccountPageUI->>AddAccountPageUI: Phân tích URI otpauth://
+    AddAccountPageUI->>AccountsBloc: Gửi AddAccountRequested Event
+    AccountsBloc->>AddAccountUseCase: Gọi execute(params)
+    AddAccountUseCase->>AuthRepository: Gọi addAccount(account)
+    AuthRepository->>LocalDataSource: Gọi saveAccount(account)
+    LocalDataSource-->>AuthRepository: Trả về thành công/lỗi
+    AuthRepository-->>AddAccountUseCase: Trả về thành công/lỗi
+    AddAccountUseCase-->>AccountsBloc: Trả về Either<Failure, Success>
+    AccountsBloc->>AccountsBloc: Phát ra State (Loading -> Loaded/Error)
+    AccountsBloc-->>AddAccountPageUI: Cập nhật UI (Thông báo/Điều hướng)
 ```
 
 ### Luồng Đồng bộ hóa (Tải lên với E2EE dự kiến)
@@ -144,32 +119,32 @@ sequenceDiagram
 ```mermaid
  sequenceDiagram
     participant User [Người dùng]
-    participant SettingsPage (UI)
-    participant SyncBloc (Presentation)
+    participant SettingsPageUI [SettingsPage (UI)]
+    participant SyncBloc [SyncBloc (Presentation)]
     participant EncryptService [Dịch vụ Mã hóa (Core/Domain?)]
-    participant UploadUseCase (Domain)
-    participant SyncRepository (Domain/Data)
-    participant RemoteDataSource (Data)
-    participant Supabase (Server)
+    participant UploadUseCase [UploadUseCase (Domain)]
+    participant SyncRepository [SyncRepository (Domain/Data)]
+    participant RemoteDataSource [RemoteDataSource (Data)]
+    participant SupabaseServer [Supabase (Server)]
 
-    User->>SettingsPage (UI): Nhấn "Sync Now" / "Overwrite Cloud"
-    SettingsPage (UI)->>SyncBloc (Presentation): Gửi SyncNowRequested / OverwriteCloudRequested Event
-    SyncBloc (Presentation)->>EncryptService [Dịch vụ Mã hóa (Core/Domain?)]: Lấy khóa mã hóa
-    SyncBloc (Presentation)->>EncryptService [Dịch vụ Mã hóa (Core/Domain?)]: Mã hóa dữ liệu tài khoản (E2EE)
-    EncryptService [Dịch vụ Mã hóa (Core/Domain?)]-->>SyncBloc (Presentation): Trả về dữ liệu đã mã hóa
-    SyncBloc (Presentation)->>UploadUseCase (Domain): Gọi execute(encryptedData)
-    UploadUseCase (Domain)->>SyncRepository (Domain/Data): Gọi uploadAccounts(encryptedData)
-    SyncRepository (Domain/Data)->>RemoteDataSource (Data): Gọi uploadToSupabase(encryptedData)
-    RemoteDataSource (Data)->>Supabase (Server): Gửi yêu cầu HTTPS
-    Supabase (Server)-->>RemoteDataSource (Data): Phản hồi
-    RemoteDataSource (Data)-->>SyncRepository (Domain/Data): Trả về thành công/lỗi
-    SyncRepository (Domain/Data)-->>UploadUseCase (Domain): Trả về thành công/lỗi
-    UploadUseCase (Domain)-->>SyncBloc (Presentation): Trả về Either<Failure, Success>
-    SyncBloc (Presentation)->>SyncBloc (Presentation): Phát ra State (InProgress -> Success/Failure)
-    SyncBloc (Presentation)-->>SettingsPage (UI): Cập nhật UI (Thông báo)
+    User->>SettingsPageUI: Nhấn "Sync Now" / "Overwrite Cloud"
+    SettingsPageUI->>SyncBloc: Gửi SyncNowRequested / OverwriteCloudRequested Event
+    SyncBloc->>EncryptService: Lấy khóa mã hóa
+    SyncBloc->>EncryptService: Mã hóa dữ liệu tài khoản (E2EE)
+    EncryptService-->>SyncBloc: Trả về dữ liệu đã mã hóa
+    SyncBloc->>UploadUseCase: Gọi execute(encryptedData)
+    UploadUseCase->>SyncRepository: Gọi uploadAccounts(encryptedData)
+    SyncRepository->>RemoteDataSource: Gọi uploadToSupabase(encryptedData)
+    RemoteDataSource->>SupabaseServer: Gửi yêu cầu HTTPS
+    SupabaseServer-->>RemoteDataSource: Phản hồi
+    RemoteDataSource-->>SyncRepository: Trả về thành công/lỗi
+    SyncRepository-->>UploadUseCase: Trả về thành công/lỗi
+    UploadUseCase-->>SyncBloc: Trả về Either<Failure, Success>
+    SyncBloc->>SyncBloc: Phát ra State (InProgress -> Success/Failure)
+    SyncBloc-->>SettingsPageUI: Cập nhật UI (Thông báo)
 ```
 
 (Các luồng tương tự áp dụng cho các tính năng khác như tạo mã và xác thực.)
 
 ## 7. Xử lý lỗi
-(Tham khảo mục 6 của bản nháp ARCHITECTURE.md trước đó. Sử dụng `Either<Failure, SuccessType>` và các loại `Failure` cụ thể.)
+Sử dụng `Either<Failure, SuccessType>` và các loại `Failure` cụ thể.
