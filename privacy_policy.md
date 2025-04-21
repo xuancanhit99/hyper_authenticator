@@ -29,4 +29,4 @@ We may update our Privacy Policy from time to time. We will notify you of any ch
 
 **Contact Us**
 
-If you have any questions about this Privacy Policy, please contact us at [Your Contact Email Address - **xuancanhit99@gmail.com**].
+If you have any questions about this Privacy Policy, please contact us at [**xuancanhit99@gmail.com**].
