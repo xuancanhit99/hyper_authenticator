@@ -119,9 +119,26 @@ class AppRouter {
           path: AppRoutes.editAccount,
           name: AppRoutes.editAccount,
           builder: (context, state) {
-            final account = state.extra as AuthenticatorAccount?;
+            AuthenticatorAccount? account;
+            if (state.extra is AuthenticatorAccount) {
+              account = state.extra as AuthenticatorAccount?;
+            } else if (state.extra is Map<String, dynamic>) {
+              // Attempt to deserialize from Map if it's not already an AuthenticatorAccount
+              // This can happen when the app resumes and go_router restores state.
+              try {
+                account = AuthenticatorAccount.fromJson(
+                  state.extra as Map<String, dynamic>,
+                );
+              } catch (e) {
+                debugPrint(
+                  'Error deserializing AuthenticatorAccount from Map: $e',
+                );
+                // Handle error, perhaps redirect or show an error page
+              }
+            }
+
             if (account == null) {
-              // Handle error or redirect if account is not passed
+              // Handle error or redirect if account is not passed or deserialization fails
               // For now, returning a simple error page or redirecting to main
               // This should ideally not happen if navigation is done correctly
               return Scaffold(
