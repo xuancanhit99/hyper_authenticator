@@ -1,4 +1,4 @@
-package vn.io.xuancanhit.hyperauthen.hyper_authenticator
+package app.hyperz.authenticator
 
 import io.flutter.embedding.android.FlutterFragmentActivity // Change import
 

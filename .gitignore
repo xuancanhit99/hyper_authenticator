@@ -46,3 +46,4 @@ app.*.map.json
 
 .env
 reset-password-web/.env
+android/app/upload-keystore.jks

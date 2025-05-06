@@ -28,7 +28,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
   Win32Window::Point origin(10, 10);
   // Set initial window size to resemble a smartphone (e.g., ~9:16 aspect ratio)
   Win32Window::Size size(400, 711);
-  if (!window.Create(L"Hyper", origin, size)) {
+  if (!window.Create(L"HyperZ", origin, size)) {
     return EXIT_FAILURE;
   }
   window.SetQuitOnClose(true);

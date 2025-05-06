@@ -89,11 +89,11 @@ BEGIN
     BEGIN
         BLOCK "040904e4"
         BEGIN
-            VALUE "CompanyName", "vn.io.xuancanhit.hyperauthen" "\0"
+            VALUE "CompanyName", "app.hyperz.authenticator" "\0"
             VALUE "FileDescription", "hyper_authenticator" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
             VALUE "InternalName", "hyper_authenticator" "\0"
-            VALUE "LegalCopyright", "Copyright (C) 2025 vn.io.xuancanhit.hyperauthen. All rights reserved." "\0"
+            VALUE "LegalCopyright", "Copyright (C) 2025 app.hyperz.authenticator. All rights reserved." "\0"
             VALUE "OriginalFilename", "hyper_authenticator.exe" "\0"
             VALUE "ProductName", "hyper_authenticator" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
