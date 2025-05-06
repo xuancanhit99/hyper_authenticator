@@ -375,7 +375,7 @@ class _AccountsPageState extends State<AccountsPage> {
                                     },
                                     child: Padding(
                                       padding: const EdgeInsets.symmetric(
-                                        horizontal: 14.0,
+                                        horizontal: 8.0,
                                         vertical: 10.0,
                                       ), // Padding for the row
                                       child: Row(
@@ -445,35 +445,30 @@ class _AccountsPageState extends State<AccountsPage> {
                                                       ).textTheme.bodySmall,
                                                   overflow:
                                                       TextOverflow.ellipsis,
+                                                  maxLines: 1,
                                                 ),
                                               ],
                                             ),
                                           ),
                                           const SizedBox(width: 8), // Spacing
-                                          // 3. TOTP Code
+                                          // 3. TOTP Code và 4. Countdown Timer trong hàng ngang với căn giữa theo trục dọc
                                           Text(
                                             displayCode,
                                             style: const TextStyle(
-                                              fontSize:
-                                                  22, // Slightly smaller code?
+                                              fontSize: 21,
                                               fontWeight: FontWeight.bold,
-                                              letterSpacing:
-                                                  1.5, // Adjust spacing
+                                              letterSpacing: 1.3,
                                               fontFeatures: [
                                                 FontFeature.tabularFigures(),
-                                              ], // Ensure fixed width for digits
+                                              ],
                                             ),
                                           ),
-                                          const SizedBox(width: 12), // Spacing
-                                          // 4. Countdown Timer (Pacman style - no number)
+                                          const SizedBox(width: 8), // Spacing
                                           CircularCountdownTimer(
                                             secondsRemaining: _secondsRemaining,
-                                            size: 18, // Smaller size?
+                                            size: 18,
                                             backgroundColor: Colors.transparent,
-                                            progressColor:
-                                                Colors
-                                                    .grey, // Set progress color to green
-                                            // strokeWidth: 2.0, // Removed as it's no longer a parameter
+                                            progressColor: Colors.grey,
                                           ),
                                         ],
                                       ),
