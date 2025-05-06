@@ -10,8 +10,10 @@ import 'package:hyper_authenticator/features/auth/presentation/pages/register_pa
 import 'package:hyper_authenticator/features/auth/presentation/pages/forgot_password_page.dart'; // Added import
 import 'package:hyper_authenticator/features/auth/presentation/pages/update_password_page.dart'; // Added import
 import 'package:hyper_authenticator/features/authenticator/presentation/pages/add_account_page.dart';
+import 'package:hyper_authenticator/features/authenticator/presentation/pages/edit_account_page.dart'; // Added import for EditAccountPage
 import 'package:hyper_authenticator/features/authenticator/presentation/pages/lock_screen_page.dart';
 import 'package:hyper_authenticator/features/main_navigation/presentation/pages/main_navigation_page.dart';
+import 'package:hyper_authenticator/features/authenticator/domain/entities/authenticator_account.dart'; // Added import for AuthenticatorAccount
 // import 'package:hyper_authenticator/injection_container.dart'; // Not directly needed here
 
 // --- Define Route Paths ---
@@ -24,6 +26,7 @@ class AppRoutes {
   static const forgotPassword = '/forgot-password'; // Added
   static const updatePassword =
       '/update-password'; // Added for deep link handling
+  static const editAccount = '/edit-account'; // Added for EditAccountPage
 }
 
 // Helper class to trigger GoRouter refresh on multiple Bloc stream changes
@@ -111,6 +114,26 @@ class AppRouter {
           builder: (context, state) => const LockScreenPage(),
         ),
         // --- End New Auth Routes ---
+        // Edit Account Route (protected by redirect)
+        GoRoute(
+          path: AppRoutes.editAccount,
+          name: AppRoutes.editAccount,
+          builder: (context, state) {
+            final account = state.extra as AuthenticatorAccount?;
+            if (account == null) {
+              // Handle error or redirect if account is not passed
+              // For now, returning a simple error page or redirecting to main
+              // This should ideally not happen if navigation is done correctly
+              return Scaffold(
+                appBar: AppBar(title: const Text('Error')),
+                body: const Center(
+                  child: Text('Account data not found for editing.'),
+                ),
+              );
+            }
+            return EditAccountPage(account: account);
+          },
+        ),
       ],
 
       // --- REDIRECT LOGIC (Simplified, based on original working version) ---

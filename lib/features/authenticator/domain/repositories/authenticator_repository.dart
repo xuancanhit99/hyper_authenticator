@@ -26,6 +26,11 @@ abstract class AuthenticatorRepository {
   /// Returns [Left] with a [Failure] if the account is not found or deletion fails.
   Future<Either<Failure, Unit>> deleteAccount(String id);
 
+  /// Updates an existing authenticator account.
+  /// Returns [Right(unit)] on successful update.
+  /// Returns [Left] with a [Failure] if the account is not found or update fails.
+  Future<Either<Failure, Unit>> updateAccount(AuthenticatorAccount account);
+
   // Note: Generating the TOTP code itself is often considered a domain/usecase logic
   // rather than a repository function, as it doesn't involve data persistence.
   // We will create a separate use case for that later.

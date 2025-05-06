@@ -98,4 +98,26 @@ class AuthenticatorRepositoryImpl implements AuthenticatorRepository {
       );
     }
   }
+
+  @override
+  Future<Either<Failure, Unit>> updateAccount(
+    AuthenticatorAccount account,
+  ) async {
+    try {
+      await localDataSource.updateAccount(account);
+      return const Right(unit);
+    } on AccountNotFoundException {
+      return const Left(
+        AccountNotFoundFailure('Account not found in storage for update.'),
+      );
+    } on StorageWriteException {
+      return const Left(StorageFailure('Failed to update account in storage.'));
+    } catch (e) {
+      return Left(
+        StorageFailure(
+          'An unexpected error occurred while updating account: ${e.toString()}',
+        ),
+      );
+    }
+  }
 }

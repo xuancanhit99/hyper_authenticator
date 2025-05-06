@@ -33,6 +33,12 @@ abstract class AuthenticatorLocalDataSource {
   /// Throws [StorageDeleteException] if deletion fails.
   /// Throws [AccountNotFoundException] if the account doesn't exist.
   Future<void> deleteAccount(String id);
+
+  /// Updates an existing [AuthenticatorAccount].
+  ///
+  /// Throws [StorageWriteException] if saving fails.
+  /// Throws [AccountNotFoundException] if the account with the given ID doesn't exist.
+  Future<void> updateAccount(AuthenticatorAccount account);
 }
 
 @LazySingleton(as: AuthenticatorLocalDataSource) // Register as implementation
@@ -146,6 +152,29 @@ class AuthenticatorLocalDataSourceImpl implements AuthenticatorLocalDataSource {
     } catch (e) {
       // Consider logging the error e
       throw StorageDeleteException();
+    }
+  }
+
+  @override
+  Future<void> updateAccount(AuthenticatorAccount account) async {
+    try {
+      // First, check if the account exists by trying to read it.
+      // This ensures we don't create a new entry if an update is intended for a non-existent ID.
+      final existingAccountJson = await secureStorage.read(key: account.id);
+      if (existingAccountJson == null) {
+        throw AccountNotFoundException(); // Account to update not found
+      }
+
+      // If it exists, overwrite it with the new data.
+      final accountJson = jsonEncode(account.toJson());
+      await secureStorage.write(key: account.id, value: accountJson);
+      // The index of account IDs does not need to be changed for an update,
+      // as the ID remains the same and is already in the index.
+    } on AccountNotFoundException {
+      rethrow; // Re-throw to be caught by the repository
+    } catch (e) {
+      // Consider logging the error e
+      throw StorageWriteException(); // Use StorageWriteException for update failures too
     }
   }
 }

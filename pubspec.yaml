@@ -60,6 +60,8 @@ dependencies:
   local_auth_windows: ^1.0.11
   cryptography: ^2.7.0 # Added for encryption features (even if sync is simple now) - Updated version
   provider: ^6.1.2             # For state management (e.g., ThemeProvider)
+  qr_flutter: ^4.1.0
+  flutter_slidable: ^4.0.0
 dev_dependencies:
   flutter_test:
     sdk: flutter

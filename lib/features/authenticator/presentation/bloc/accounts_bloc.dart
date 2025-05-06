@@ -7,6 +7,7 @@ import 'package:hyper_authenticator/features/authenticator/domain/entities/authe
 import 'package:hyper_authenticator/features/authenticator/domain/usecases/add_account.dart';
 import 'package:hyper_authenticator/features/authenticator/domain/usecases/delete_account.dart';
 import 'package:hyper_authenticator/features/authenticator/domain/usecases/get_accounts.dart';
+import 'package:hyper_authenticator/features/authenticator/domain/usecases/update_account.dart'; // Import UpdateAccount use case
 import 'package:injectable/injectable.dart'; // Moved import here
 
 part 'accounts_event.dart';
@@ -17,6 +18,7 @@ class AccountsBloc extends Bloc<AccountsEvent, AccountsState> {
   final GetAccounts getAccounts;
   final AddAccount addAccount;
   final DeleteAccount deleteAccount;
+  final UpdateAccount updateAccount; // Added UpdateAccount use case
   // Note: GenerateTotpCode use case is not needed directly in the Bloc state management.
   // It will be called directly from the UI when displaying codes.
 
@@ -24,11 +26,15 @@ class AccountsBloc extends Bloc<AccountsEvent, AccountsState> {
     required this.getAccounts,
     required this.addAccount,
     required this.deleteAccount,
+    required this.updateAccount, // Added to constructor
   }) : super(AccountsInitial()) {
     on<LoadAccounts>(_onLoadAccounts);
     on<AddAccountRequested>(_onAddAccountRequested);
     on<DeleteAccountRequested>(_onDeleteAccountRequested);
     on<ReplaceAccountsEvent>(_onReplaceAccounts); // Added handler
+    on<UpdateAccountRequested>(
+      _onUpdateAccountRequested,
+    ); // Added handler for update
   }
 
   Future<void> _onLoadAccounts(
@@ -191,6 +197,7 @@ class AccountsBloc extends Bloc<AccountsEvent, AccountsState> {
               'Skipping account ${downloadedAccount.accountName} as it already exists locally.',
             );
           }
+          // Method _onUpdateAccountRequested was moved out of this loop
         }
 
         if (hasAddError) {
@@ -204,6 +211,28 @@ class AccountsBloc extends Bloc<AccountsEvent, AccountsState> {
 
         // 3. Finally, reload the accounts to reflect the merged state
         add(LoadAccounts());
+      },
+    );
+  }
+
+  Future<void> _onUpdateAccountRequested(
+    UpdateAccountRequested event,
+    Emitter<AccountsState> emit,
+  ) async {
+    // Optionally emit a loading state specific to updating
+    // emit(AccountUpdating());
+    final failureOrSuccess = await updateAccount(
+      UpdateAccountParams(account: event.account),
+    );
+
+    await failureOrSuccess.fold(
+      (failure) async => emit(AccountsError(_mapFailureToMessage(failure))),
+      (_) async {
+        // After successfully updating, reload the list to show the changes
+        add(LoadAccounts()); // Trigger reload
+        // Consider emitting a specific success state if EditAccountPage needs it
+        // e.g., emit(AccountUpdateSuccess()); then EditAccountPage can pop.
+        // For now, reloading AccountsLoaded will be handled by AccountsPage.
       },
     );
   }

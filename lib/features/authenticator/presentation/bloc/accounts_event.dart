@@ -62,3 +62,13 @@ class ReplaceAccountsEvent extends AccountsEvent {
   @override
   List<Object> get props => [accounts];
 }
+
+/// Event to update an existing account.
+class UpdateAccountRequested extends AccountsEvent {
+  final AuthenticatorAccount account;
+
+  const UpdateAccountRequested({required this.account});
+
+  @override
+  List<Object?> get props => [account];
+}

@@ -4,6 +4,8 @@ import 'dart:ui'; // For FontFeature
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart'; // For Clipboard
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_slidable/flutter_slidable.dart'; // Import Slidable
+import 'package:qr_flutter/qr_flutter.dart'; // Import QR Flutter
 import 'package:hyper_authenticator/core/constants/app_colors.dart'; // Import AppColors (needed for Card)
 import 'package:hyper_authenticator/core/usecases/usecase.dart'; // For NoParams
 import 'package:hyper_authenticator/features/authenticator/domain/entities/authenticator_account.dart';
@@ -14,9 +16,12 @@ import 'package:hyper_authenticator/features/authenticator/presentation/widgets/
 import 'package:hyper_authenticator/injection_container.dart';
 import 'package:go_router/go_router.dart'; // Import GoRouter for navigation
 import 'package:hyper_authenticator/core/router/app_router.dart'; // Import AppRoutes
+import 'package:hyper_authenticator/features/authenticator/presentation/pages/edit_account_page.dart'; // Import EditAccountPage
 
 // TODO: Define route for AddAccountPage
 // import 'add_account_page.dart'; // Will create this later
+// TODO: Define route for EditAccountPage
+// import 'edit_account_page.dart'; // Will create this later
 
 class AccountsPage extends StatefulWidget {
   const AccountsPage({super.key});
@@ -137,7 +142,8 @@ class _AccountsPageState extends State<AccountsPage> {
                             .cDarkIconBg // Dark background for dark mode
                         : AppColors
                             .cLightIconBg, // Light background for light mode
-                shape: const CircleBorder(), // Slightly reduced padding for smaller icon
+                shape:
+                    const CircleBorder(), // Slightly reduced padding for smaller icon
               ),
               onPressed: () {
                 context.push(AppRoutes.addAccount);
@@ -297,32 +303,50 @@ class _AccountsPageState extends State<AccountsPage> {
                           itemBuilder: (context, index) {
                             final account =
                                 filteredAccounts[index]; // Use filtered list item
-                            return Dismissible(
-                              // Add swipe-to-delete
+                            // --- Start Slidable Widget ---
+                            return Slidable(
                               key: Key(account.id),
-                              direction: DismissDirection.endToStart,
-                              onDismissed: (_) {
-                                context.read<AccountsBloc>().add(
-                                  DeleteAccountRequested(accountId: account.id),
-                                );
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text(
-                                      'Deleted ${account.issuer} (${account.accountName})',
-                                    ),
+                              groupTag:
+                                  '0', // For SlidableStrechAction animation
+                              endActionPane: ActionPane(
+                                motion:
+                                    const StretchMotion(), // Changed to StretchMotion for desired effect
+                                extentRatio:
+                                    0.5, // Show 1/2 of the slidable actions
+                                children: [
+                                  SlidableAction(
+                                    onPressed:
+                                        (_) =>
+                                            _showQrCodeDialog(context, account),
+                                    backgroundColor: Colors.blue,
+                                    foregroundColor: Colors.white,
+                                    icon: Icons.qr_code,
+                                    // label: 'QR Code',
                                   ),
-                                );
-                              },
-                              background: Container(
-                                color: Colors.red,
-                                alignment: Alignment.centerRight,
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 20.0,
-                                ),
-                                child: const Icon(
-                                  Icons.delete,
-                                  color: Colors.white,
-                                ),
+                                  SlidableAction(
+                                    onPressed: (_) {
+                                      context.push(
+                                        AppRoutes.editAccount,
+                                        extra: account,
+                                      );
+                                    },
+                                    backgroundColor: Colors.orange,
+                                    foregroundColor: Colors.white,
+                                    icon: Icons.edit,
+                                    // label: 'Edit',
+                                  ),
+                                  SlidableAction(
+                                    onPressed:
+                                        (_) => _showDeleteConfirmationDialog(
+                                          context,
+                                          account,
+                                        ),
+                                    backgroundColor: Colors.red,
+                                    foregroundColor: Colors.white,
+                                    icon: Icons.delete,
+                                    // label: 'Delete',
+                                  ),
+                                ],
                               ),
                               child: FutureBuilder<String>(
                                 // Use future builder to get the code asynchronously
@@ -477,7 +501,7 @@ class _AccountsPageState extends State<AccountsPage> {
                                   // --- End New Row Layout ---
                                 }, // End FutureBuilder builder
                               ), // End FutureBuilder
-                            ); // End Dismissible
+                            ); // --- End Slidable Widget ---
                           }, // End itemBuilder
                         ), // End ListView.separated
                       ), // End RefreshIndicator
@@ -495,4 +519,159 @@ class _AccountsPageState extends State<AccountsPage> {
       ), // End GestureDetector
     ); // End Scaffold
   } // End build method
+
+  // --- Helper method to show QR Code Dialog ---
+  void _showQrCodeDialog(BuildContext context, AuthenticatorAccount account) {
+    // Construct the OTPAuth URI (Standard format for 2FA export)
+    // otpauth://TYPE/LABEL?PARAMETERS
+    // TYPE: totp or hotp
+    // LABEL: issuer:accountName or issuer (accountName)
+    // PARAMETERS: secret, issuer, algorithm, digits, period
+    const type = 'totp'; // Assuming all accounts are TOTP for now
+    final label = Uri.encodeComponent(
+      '${account.issuer}:${account.accountName}',
+    );
+    final secret = account.secretKey;
+    final issuer = Uri.encodeComponent(account.issuer ?? '');
+    final algorithm = account.algorithm.toUpperCase();
+    final digits = account.digits;
+    final period = account.period;
+
+    final qrData =
+        'otpauth://$type/$label?secret=$secret&issuer=$issuer&algorithm=$algorithm&digits=$digits&period=$period';
+
+    showDialog(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          title: const Text('Account QR Code'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text('Issuer: ${account.issuer ?? 'N/A'}'),
+                Text('Account: ${account.accountName}'),
+                const SizedBox(height: 16),
+                Center(
+                  child: Container(
+                    // Add a white background container
+                    color: Colors.white,
+                    padding: const EdgeInsets.all(8.0), // Add padding around QR
+                    child: SizedBox(
+                      width: 200.0,
+                      height: 200.0,
+                      child: QrImageView(
+                        data: qrData,
+                        version: QrVersions.auto,
+                        size:
+                            200.0, // This size is for the QR code itself within the QrImageView
+                        // embeddedImage: AssetImage('assets/images/hyper-logo.png'), // Optional: if you have a logo
+                        // embeddedImageStyle: QrEmbeddedImageStyle(
+                        //   size: Size(40, 40),
+                        // ),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                // Optional: Display raw QR data for debugging or manual entry
+                // SelectableText(
+                //   'Raw Data: $qrData',
+                //   style: TextStyle(fontSize: 10, color: Colors.grey),
+                // ),
+              ],
+            ),
+          ),
+          actions: <Widget>[
+            TextButton(
+              child: const Text('Close'),
+              onPressed: () {
+                Navigator.of(dialogContext).pop();
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  // --- Helper method to show Delete Confirmation Dialog ---
+  void _showDeleteConfirmationDialog(
+    BuildContext context,
+    AuthenticatorAccount account,
+  ) {
+    final String logoPath = LogoService.instance.getLogoPath(account.issuer);
+    showDialog(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          title: const Text('Confirm Deletion'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              SizedBox(
+                width: 60,
+                height: 60,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(8.0),
+                  child: Image.asset(
+                    logoPath,
+                    fit: BoxFit.contain,
+                    errorBuilder: (context, error, stackTrace) {
+                      return Container(
+                        alignment: Alignment.center,
+                        child: const Icon(
+                          Icons.shield_outlined,
+                          size: 30,
+                          color: Colors.grey,
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Are you sure you want to delete this account?',
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Issuer: ${account.issuer ?? 'N/A'}',
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+              Text('Account: ${account.accountName}'),
+            ],
+          ),
+          actions: <Widget>[
+            TextButton(
+              child: const Text('Cancel'),
+              onPressed: () {
+                Navigator.of(dialogContext).pop();
+              },
+            ),
+            TextButton(
+              style: TextButton.styleFrom(foregroundColor: Colors.red),
+              child: const Text('Delete'),
+              onPressed: () {
+                context.read<AccountsBloc>().add(
+                  DeleteAccountRequested(accountId: account.id),
+                );
+                Navigator.of(dialogContext).pop(); // Close dialog
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      'Deleted ${account.issuer ?? 'Account'} (${account.accountName})',
+                    ),
+                    duration: const Duration(seconds: 2),
+                  ),
+                );
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
 } // End _AccountsPageState class
