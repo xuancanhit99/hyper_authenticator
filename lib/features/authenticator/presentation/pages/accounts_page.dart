@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart'; // For Clipboard
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_slidable/flutter_slidable.dart'; // Import Slidable
+import 'package:provider/provider.dart'; // Import Provider
+import 'package:hyper_authenticator/core/theme/theme_provider.dart'; // Import ThemeProvider
 import 'package:qr_flutter/qr_flutter.dart'; // Import QR Flutter
 import 'package:hyper_authenticator/core/constants/app_colors.dart'; // Import AppColors (needed for Card)
 import 'package:hyper_authenticator/core/usecases/usecase.dart'; // For NoParams
@@ -123,6 +125,62 @@ class _AccountsPageState extends State<AccountsPage> {
         elevation: 0, // Remove shadow for a flatter look if desired
         title: const Text('Authenticator'),
         actions: [
+          // Theme switcher icon
+          Consumer<ThemeProvider>(
+            builder: (context, themeProvider, _) {
+              IconData iconData;
+              switch (themeProvider.themeMode) {
+                case ThemeMode.light:
+                  iconData = Icons.light_mode_outlined;
+                  break;
+                case ThemeMode.dark:
+                  iconData = Icons.dark_mode_outlined;
+                  break;
+                case ThemeMode.system:
+                default: // Default to system icon
+                  iconData = Icons.brightness_auto_outlined;
+                  break;
+              }
+              return PopupMenuButton<ThemeMode>(
+                icon: Icon(
+                  iconData,
+                  color: isDarkMode ? Colors.white : Colors.black87,
+                ),
+                tooltip: 'Change Theme',
+                onSelected: (ThemeMode result) {
+                  // Use ThemeProvider to set the theme
+                  Provider.of<ThemeProvider>(
+                    context,
+                    listen: false,
+                  ).setThemeMode(result);
+                },
+                itemBuilder:
+                    (BuildContext context) => <PopupMenuEntry<ThemeMode>>[
+                      const PopupMenuItem<ThemeMode>(
+                        value: ThemeMode.system,
+                        child: ListTile(
+                          leading: Icon(Icons.brightness_auto_outlined),
+                          title: Text('System'),
+                        ),
+                      ),
+                      const PopupMenuItem<ThemeMode>(
+                        value: ThemeMode.light,
+                        child: ListTile(
+                          leading: Icon(Icons.light_mode_outlined),
+                          title: Text('Light'),
+                        ),
+                      ),
+                      const PopupMenuItem<ThemeMode>(
+                        value: ThemeMode.dark,
+                        child: ListTile(
+                          leading: Icon(Icons.dark_mode_outlined),
+                          title: Text('Dark'),
+                        ),
+                      ),
+                    ],
+              );
+            },
+          ),
           // Apply background color directly to IconButton using style
           Padding(
             // Add padding to prevent button touching edge

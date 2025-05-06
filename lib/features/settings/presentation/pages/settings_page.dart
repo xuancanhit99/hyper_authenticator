@@ -37,61 +37,7 @@ class SettingsPage extends StatelessWidget {
               Theme.of(context).scaffoldBackgroundColor, // Set background color
           elevation: 0, // Remove shadow
           title: const Text('Settings'),
-          actions: [
-            // Use Consumer<ThemeProvider> for theme switching UI
-            Consumer<ThemeProvider>(
-              builder: (context, themeProvider, _) {
-                IconData iconData;
-                switch (themeProvider.themeMode) {
-                  case ThemeMode.light:
-                    iconData = Icons.light_mode_outlined;
-                    break;
-                  case ThemeMode.dark:
-                    iconData = Icons.dark_mode_outlined;
-                    break;
-                  case ThemeMode.system:
-                  default: // Default to system icon
-                    iconData = Icons.brightness_auto_outlined;
-                    break;
-                }
-                return PopupMenuButton<ThemeMode>(
-                  icon: Icon(iconData),
-                  tooltip: 'Change Theme',
-                  onSelected: (ThemeMode result) {
-                    // Use ThemeProvider to set the theme
-                    Provider.of<ThemeProvider>(
-                      context,
-                      listen: false,
-                    ).setThemeMode(result);
-                  },
-                  itemBuilder:
-                      (BuildContext context) => <PopupMenuEntry<ThemeMode>>[
-                        const PopupMenuItem<ThemeMode>(
-                          value: ThemeMode.system,
-                          child: ListTile(
-                            leading: Icon(Icons.brightness_auto_outlined),
-                            title: Text('System'),
-                          ),
-                        ),
-                        const PopupMenuItem<ThemeMode>(
-                          value: ThemeMode.light,
-                          child: ListTile(
-                            leading: Icon(Icons.light_mode_outlined),
-                            title: Text('Light'),
-                          ),
-                        ),
-                        const PopupMenuItem<ThemeMode>(
-                          value: ThemeMode.dark,
-                          child: ListTile(
-                            leading: Icon(Icons.dark_mode_outlined),
-                            title: Text('Dark'),
-                          ),
-                        ),
-                      ],
-                );
-              },
-            ),
-          ],
+          actions: [],
         ),
         body: BlocListener<SyncBloc, SyncState>(
           // Listen for sync success/failure messages
