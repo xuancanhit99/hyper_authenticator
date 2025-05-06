@@ -5,6 +5,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:image_picker/image_picker.dart'; // Import image_picker
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:hyper_authenticator/features/authenticator/presentation/bloc/accounts_bloc.dart';
+import 'package:hyper_authenticator/features/authenticator/presentation/utils/logo_service.dart'; // Import LogoService
+import 'package:hyper_authenticator/features/authenticator/presentation/widgets/logo_picker_dialog.dart'; // Import LogoPickerDialog
 
 class AddAccountPage extends StatefulWidget {
   const AddAccountPage({super.key});
@@ -19,9 +21,38 @@ class _AddAccountPageState extends State<AddAccountPage> {
   final _accountNameController = TextEditingController();
   final _secretController = TextEditingController();
 
+  String? _selectedIssuer;
+  List<String> _availableIssuers = [];
+  String? _previewLogoPath;
+
   bool _isScanning = false; // To toggle between manual entry and scanner view
   MobileScannerController scannerController =
       MobileScannerController(); // Controller for scanner
+
+  @override
+  void initState() {
+    super.initState();
+    _loadAvailableIssuers();
+    _issuerController.addListener(() {
+      // Update preview when text field changes, unless a dropdown item was just selected
+      // This avoids a double update if onChanged from dropdown also sets the text field
+      if (_selectedIssuer != _issuerController.text) {
+        _updatePreviewLogo(_issuerController.text);
+        // If user types something that matches an available issuer, select it in dropdown
+        if (_availableIssuers.contains(_issuerController.text)) {
+          setState(() {
+            _selectedIssuer = _issuerController.text;
+          });
+        } else {
+          // If user types something different, clear dropdown selection
+          setState(() {
+            _selectedIssuer = null;
+          });
+        }
+      }
+    });
+    _updatePreviewLogo(_issuerController.text); // Initial preview
+  }
 
   @override
   void dispose() {
@@ -30,6 +61,31 @@ class _AddAccountPageState extends State<AddAccountPage> {
     _secretController.dispose();
     scannerController.dispose(); // Dispose scanner controller
     super.dispose();
+  }
+
+  Future<void> _loadAvailableIssuers() async {
+    // Ensure LogoService is loaded - it's a singleton, loadLogoMap handles multiple calls
+    await LogoService.instance.loadLogoMap();
+    if (mounted) {
+      setState(() {
+        _availableIssuers = LogoService.instance.getAvailableIssuers();
+        // Attempt to set initial preview based on controller, if any text exists
+        if (_issuerController.text.isNotEmpty) {
+          _updatePreviewLogo(_issuerController.text);
+          if (_availableIssuers.contains(_issuerController.text)) {
+            _selectedIssuer = _issuerController.text;
+          }
+        }
+      });
+    }
+  }
+
+  void _updatePreviewLogo(String? issuerName) {
+    if (mounted) {
+      setState(() {
+        _previewLogoPath = LogoService.instance.getLogoPath(issuerName);
+      });
+    }
   }
 
   void _handleBarcode(BarcodeCapture capture) {
@@ -116,7 +172,23 @@ class _AddAccountPageState extends State<AddAccountPage> {
           period: (period > 0) ? period : 30,
         ),
       );
-
+      // Update UI elements after QR scan
+      if (mounted) {
+        _issuerController.text = issuer ?? '';
+        _accountNameController.text =
+            label.isNotEmpty ? label : (issuer ?? 'Unknown Account');
+        _secretController.text = secret;
+        _updatePreviewLogo(issuer);
+        if (_availableIssuers.contains(issuer)) {
+          setState(() {
+            _selectedIssuer = issuer;
+          });
+        } else {
+          setState(() {
+            _selectedIssuer = null;
+          });
+        }
+      }
       // Navigation and feedback are now handled by BlocListener
     } on FormatException catch (e) {
       debugPrint('Error parsing OTP Auth URI: $e');
@@ -150,6 +222,27 @@ class _AddAccountPageState extends State<AddAccountPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(message), backgroundColor: Colors.red),
       );
+    }
+  }
+
+  Future<void> _showLogoSelectionDialog() async {
+    final String? selectedIssuerFromDialog = await showDialog<String>(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return LogoPickerDialog(
+          availableIssuers: _availableIssuers,
+          currentIssuer: _issuerController.text,
+        );
+      },
+    );
+
+    if (selectedIssuerFromDialog != null) {
+      setState(() {
+        _issuerController.text = selectedIssuerFromDialog;
+        _selectedIssuer =
+            selectedIssuerFromDialog; // Keep this to indicate a choice was made
+        _updatePreviewLogo(selectedIssuerFromDialog);
+      });
     }
   }
 
@@ -279,16 +372,120 @@ class _AddAccountPageState extends State<AddAccountPage> {
         child: ListView(
           // Use ListView for scrollability on small screens
           children: [
+            if (_previewLogoPath != null)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 16.0),
+                child: Center(
+                  child: InkWell(
+                    onTap: _showLogoSelectionDialog,
+                    child: Tooltip(
+                      message: "Tap to change logo",
+                      child: Stack(
+                        clipBehavior: Clip.none, // Allow overflow
+                        alignment: Alignment.center,
+                        children: [
+                          SizedBox(
+                            width:
+                                72, // Increased size for better tap target and icon placement
+                            height: 72,
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(8.0),
+                              child:
+                                  _previewLogoPath == null ||
+                                          _previewLogoPath!.isEmpty
+                                      ? Container(
+                                        // Placeholder when no logo is available
+                                        decoration: BoxDecoration(
+                                          color: Colors.grey[200],
+                                          borderRadius: BorderRadius.circular(
+                                            8.0,
+                                          ),
+                                        ),
+                                        child: const Icon(
+                                          Icons.image_search,
+                                          size: 40,
+                                          color: Colors.grey,
+                                        ),
+                                      )
+                                      : Image.asset(
+                                        _previewLogoPath!,
+                                        fit: BoxFit.contain,
+                                        errorBuilder:
+                                            (
+                                              context,
+                                              error,
+                                              stackTrace,
+                                            ) => Container(
+                                              decoration: BoxDecoration(
+                                                color: Colors.grey[200],
+                                                borderRadius:
+                                                    BorderRadius.circular(8.0),
+                                              ),
+                                              child: const Icon(
+                                                Icons.business_center_outlined,
+                                                size: 40,
+                                                color: Colors.grey,
+                                              ),
+                                            ),
+                                      ),
+                            ),
+                          ),
+                          Positioned(
+                            right: -4, // Adjust to make it slightly outside
+                            bottom: -4, // Adjust to make it slightly outside
+                            child: Container(
+                              padding: const EdgeInsets.all(
+                                4,
+                              ), // Slightly more padding
+                              decoration: BoxDecoration(
+                                color:
+                                    Theme.of(context)
+                                        .colorScheme
+                                        .primary, // Solid primary color background
+                                shape: BoxShape.circle,
+                                // Optional: Add a slight shadow to make it "pop" more
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.2),
+                                    spreadRadius: 1,
+                                    blurRadius: 2,
+                                    offset: const Offset(0, 1),
+                                  ),
+                                ],
+                              ),
+                              child: Icon(
+                                Icons.edit,
+                                size:
+                                    16, // Slightly smaller icon if padding is increased
+                                color:
+                                    Theme.of(
+                                      context,
+                                    ).colorScheme.onPrimary, // Ensure contrast
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            const SizedBox(height: 24), // Increased spacing after logo
             TextFormField(
               controller: _issuerController,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Issuer (e.g., Google, GitHub)',
+                hintText:
+                    _selectedIssuer != null
+                        ? 'Selected: $_selectedIssuer'
+                        : 'Type to search or add new',
               ),
               validator:
                   (value) =>
                       (value == null || value.isEmpty)
                           ? 'Please enter an issuer'
                           : null,
+              // Listener is in initState to update preview dynamically
             ),
             const SizedBox(height: 16),
             TextFormField(

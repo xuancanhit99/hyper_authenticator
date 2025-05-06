@@ -63,4 +63,11 @@ class LogoService {
   // Future<void> preloadDefaultLogo(BuildContext context) async {
   //   await precacheImage(AssetImage(_defaultLogoPath), context);
   // }
+
+  List<String> getAvailableIssuers() {
+    if (!_isLoaded || _logoMap == null) {
+      return [];
+    }
+    return _logoMap!.keys.toList()..sort(); // Return sorted list of issuers
+  }
 }

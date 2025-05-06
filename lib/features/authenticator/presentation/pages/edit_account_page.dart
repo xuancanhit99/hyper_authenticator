@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:hyper_authenticator/features/authenticator/domain/entities/authenticator_account.dart';
 import 'package:hyper_authenticator/features/authenticator/presentation/bloc/accounts_bloc.dart';
+import 'package:hyper_authenticator/features/authenticator/presentation/utils/logo_service.dart'; // Import LogoService
+import 'package:hyper_authenticator/features/authenticator/presentation/widgets/logo_picker_dialog.dart'; // Import LogoPickerDialog
 
 class EditAccountPage extends StatefulWidget {
   final AuthenticatorAccount account;
@@ -24,10 +26,16 @@ class _EditAccountPageState extends State<EditAccountPage> {
   late TextEditingController _digitsController;
   late TextEditingController _periodController;
 
+  String? _selectedIssuer;
+  List<String> _availableIssuers = [];
+  String? _previewLogoPath;
+
   @override
   void initState() {
     super.initState();
-    _issuerController = TextEditingController(text: widget.account.issuer);
+    _issuerController = TextEditingController(
+      text: widget.account.issuer ?? '',
+    );
     _accountNameController = TextEditingController(
       text: widget.account.accountName,
     );
@@ -41,6 +49,54 @@ class _EditAccountPageState extends State<EditAccountPage> {
     _periodController = TextEditingController(
       text: widget.account.period.toString(),
     );
+
+    _loadAvailableIssuers().then((_) {
+      // Initialize selectedIssuer and previewLogoPath after issuers are loaded
+      if (mounted) {
+        setState(() {
+          if (widget.account.issuer != null &&
+              _availableIssuers.contains(widget.account.issuer)) {
+            _selectedIssuer = widget.account.issuer;
+          }
+          _updatePreviewLogo(widget.account.issuer ?? _issuerController.text);
+        });
+      }
+    });
+
+    _issuerController.addListener(() {
+      // Update preview when text field changes, unless a dropdown item was just selected
+      if (_selectedIssuer != _issuerController.text) {
+        _updatePreviewLogo(_issuerController.text);
+        // If user types something that matches an available issuer, select it in dropdown
+        if (_availableIssuers.contains(_issuerController.text)) {
+          setState(() {
+            _selectedIssuer = _issuerController.text;
+          });
+        } else {
+          // If user types something different, clear dropdown selection
+          setState(() {
+            _selectedIssuer = null;
+          });
+        }
+      }
+    });
+  }
+
+  Future<void> _loadAvailableIssuers() async {
+    await LogoService.instance.loadLogoMap();
+    if (mounted) {
+      setState(() {
+        _availableIssuers = LogoService.instance.getAvailableIssuers();
+      });
+    }
+  }
+
+  void _updatePreviewLogo(String? issuerName) {
+    if (mounted) {
+      setState(() {
+        _previewLogoPath = LogoService.instance.getLogoPath(issuerName);
+      });
+    }
   }
 
   @override
@@ -93,6 +149,26 @@ class _EditAccountPageState extends State<EditAccountPage> {
     }
   }
 
+  Future<void> _showLogoSelectionDialog() async {
+    final String? selectedIssuerFromDialog = await showDialog<String>(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return LogoPickerDialog(
+          availableIssuers: _availableIssuers,
+          currentIssuer: _issuerController.text,
+        );
+      },
+    );
+
+    if (selectedIssuerFromDialog != null) {
+      setState(() {
+        _issuerController.text = selectedIssuerFromDialog;
+        _selectedIssuer = selectedIssuerFromDialog;
+        _updatePreviewLogo(selectedIssuerFromDialog);
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -133,10 +209,115 @@ class _EditAccountPageState extends State<EditAccountPage> {
             key: _formKey,
             child: ListView(
               children: [
+                if (_previewLogoPath != null)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 16.0),
+                    child: Center(
+                      child: InkWell(
+                        onTap: _showLogoSelectionDialog,
+                        child: Tooltip(
+                          message: "Tap to change logo",
+                          child: Stack(
+                            clipBehavior: Clip.none, // Allow overflow
+                            alignment: Alignment.center,
+                            children: [
+                              SizedBox(
+                                width: 72, // Increased size
+                                height: 72,
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(8.0),
+                                  child:
+                                      _previewLogoPath == null ||
+                                              _previewLogoPath!.isEmpty
+                                          ? Container(
+                                            // Placeholder when no logo is available
+                                            decoration: BoxDecoration(
+                                              color: Colors.grey[200],
+                                              borderRadius:
+                                                  BorderRadius.circular(8.0),
+                                            ),
+                                            child: const Icon(
+                                              Icons.image_search,
+                                              size: 40,
+                                              color: Colors.grey,
+                                            ),
+                                          )
+                                          : Image.asset(
+                                            _previewLogoPath!,
+                                            fit: BoxFit.contain,
+                                            errorBuilder:
+                                                (
+                                                  context,
+                                                  error,
+                                                  stackTrace,
+                                                ) => Container(
+                                                  decoration: BoxDecoration(
+                                                    color: Colors.grey[200],
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                          8.0,
+                                                        ),
+                                                  ),
+                                                  child: const Icon(
+                                                    Icons
+                                                        .business_center_outlined,
+                                                    size: 40,
+                                                    color: Colors.grey,
+                                                  ),
+                                                ),
+                                          ),
+                                ),
+                              ),
+                              Positioned(
+                                right: -4, // Adjust to make it slightly outside
+                                bottom:
+                                    -4, // Adjust to make it slightly outside
+                                child: Container(
+                                  padding: const EdgeInsets.all(
+                                    4,
+                                  ), // Slightly more padding
+                                  decoration: BoxDecoration(
+                                    color:
+                                        Theme.of(context)
+                                            .colorScheme
+                                            .primary, // Solid primary color background
+                                    shape: BoxShape.circle,
+                                    // Optional: Add a slight shadow to make it "pop" more
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withOpacity(0.2),
+                                        spreadRadius: 1,
+                                        blurRadius: 2,
+                                        offset: const Offset(0, 1),
+                                      ),
+                                    ],
+                                  ),
+                                  child: Icon(
+                                    Icons.edit,
+                                    size:
+                                        16, // Slightly smaller icon if padding is increased
+                                    color:
+                                        Theme.of(context)
+                                            .colorScheme
+                                            .onPrimary, // Ensure contrast
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                const SizedBox(height: 24), // Increased spacing after logo
                 TextFormField(
                   controller: _issuerController,
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     labelText: 'Issuer (e.g., Google, GitHub)',
+                    hintText:
+                        _selectedIssuer != null
+                            ? 'Selected: $_selectedIssuer'
+                            : 'Type to search or add new',
                   ),
                   validator:
                       (value) =>
