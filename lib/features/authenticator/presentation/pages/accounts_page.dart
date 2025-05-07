@@ -370,7 +370,7 @@ class _AccountsPageState extends State<AccountsPage> {
                                 motion:
                                     const StretchMotion(), // Changed to StretchMotion for desired effect
                                 extentRatio:
-                                    0.5, // Show 1/2 of the slidable actions
+                                    0.6, // Show 1/2 of the slidable actions
                                 children: [
                                   SlidableAction(
                                     onPressed:
