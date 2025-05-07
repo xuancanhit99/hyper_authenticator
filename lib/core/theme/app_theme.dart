@@ -24,15 +24,42 @@ class AppTheme {
       foregroundColor: AppColors.textPrimaryLight, // Dark title and icons
       elevation: 0.5, // Subtle elevation or 0
       titleTextStyle: TextStyle(
-          color: AppColors.textPrimaryLight,
-          fontSize: 20,
-          fontWeight: FontWeight.bold),
+        color: AppColors.textPrimaryLight,
+        fontSize: 20,
+        fontWeight: FontWeight.bold,
+      ),
       iconTheme: IconThemeData(color: AppColors.textPrimaryLight),
     ),
     textTheme: CTextTheme.lightTextTheme,
     outlinedButtonTheme: COutlinedButtonTheme.lightOutlinedButtonTheme,
     elevatedButtonTheme: CElevatedButtonTheme.lightElevatedButtonTheme,
     inputDecorationTheme: CTextFormFieldTheme.lightInputDecorationTheme,
+    navigationBarTheme: NavigationBarThemeData(
+      backgroundColor: AppColors.lightBackground,
+      indicatorColor: AppColors.facebookBlue.withOpacity(0.15),
+      indicatorShape: const StadiumBorder(),
+      labelTextStyle: MaterialStateProperty.resolveWith((states) {
+        if (states.contains(MaterialState.selected)) {
+          return TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: AppColors.facebookBlue,
+          );
+        }
+        return TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w500,
+          color: AppColors.textSecondaryLight,
+        );
+      }),
+      iconTheme: MaterialStateProperty.resolveWith((states) {
+        if (states.contains(MaterialState.selected)) {
+          return IconThemeData(color: AppColors.facebookBlue);
+        }
+        return IconThemeData(color: AppColors.textSecondaryLight);
+      }),
+      elevation: 0,
+    ),
     // elevatedButtonTheme: ElevatedButtonThemeData(
     //   style: ElevatedButton.styleFrom(
     //     backgroundColor: AppColors.facebookBlue, // Facebook blue button
@@ -86,17 +113,39 @@ class AppTheme {
       foregroundColor: AppColors.textPrimaryDark, // Light title and icons
       elevation: 0.5, // Subtle elevation or 0
       titleTextStyle: TextStyle(
-          color: AppColors.textPrimaryDark,
-          fontSize: 20,
-          fontWeight: FontWeight.bold),
+        color: AppColors.textPrimaryDark,
+        fontSize: 20,
+        fontWeight: FontWeight.bold,
+      ),
       iconTheme: IconThemeData(color: AppColors.textPrimaryDark),
     ),
     // Set color cDarkColor for background bottomNavigationBar
-    bottomNavigationBarTheme: BottomNavigationBarThemeData(
+    navigationBarTheme: NavigationBarThemeData(
       backgroundColor: AppColors.cDarkColor,
-      selectedItemColor: AppColors.cBlueColor ,
+      indicatorColor: AppColors.cBlueColor.withOpacity(0.25),
+      indicatorShape: const StadiumBorder(),
+      labelTextStyle: MaterialStateProperty.resolveWith((states) {
+        if (states.contains(MaterialState.selected)) {
+          return TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: AppColors.cBlueColor,
+          );
+        }
+        return TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w500,
+          color: AppColors.textSecondaryDark,
+        );
+      }),
+      iconTheme: MaterialStateProperty.resolveWith((states) {
+        if (states.contains(MaterialState.selected)) {
+          return IconThemeData(color: AppColors.cBlueColor);
+        }
+        return IconThemeData(color: AppColors.textSecondaryDark);
+      }),
+      elevation: 0,
     ),
-
     textTheme: CTextTheme.darkTextTheme,
     outlinedButtonTheme: COutlinedButtonTheme.darkOutlinedButtonTheme,
     elevatedButtonTheme: CElevatedButtonTheme.darkElevatedButtonTheme,

@@ -63,28 +63,24 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
         index: _selectedIndex,
         children: _widgetOptions,
       ),
-      bottomNavigationBar: BottomNavigationBar(
+      bottomNavigationBar: NavigationBar(
         backgroundColor:
             Theme.of(context).scaffoldBackgroundColor, // Set background color
         elevation: 0, // Remove shadow
-        type:
-            BottomNavigationBarType
-                .fixed, // Optional: Ensure labels are always visible
-        items: const <BottomNavigationBarItem>[
-          BottomNavigationBarItem(
-            icon: Icon(Icons.shield_outlined), // Or Icons.vpn_key_outlined
-            activeIcon: Icon(Icons.shield), // Or Icons.vpn_key
+        selectedIndex: _selectedIndex,
+        onDestinationSelected: _onItemTapped,
+        destinations: const <Widget>[
+          NavigationDestination(
+            icon: Icon(Icons.shield_outlined),
+            selectedIcon: Icon(Icons.shield),
             label: 'Accounts',
           ),
-          BottomNavigationBarItem(
+          NavigationDestination(
             icon: Icon(Icons.settings_outlined),
-            activeIcon: Icon(Icons.settings),
+            selectedIcon: Icon(Icons.settings),
             label: 'Settings',
           ),
         ],
-        currentIndex: _selectedIndex,
-        // selectedItemColor: Colors.amber[800], // Customize colors if needed
-        onTap: _onItemTapped,
       ),
     );
   }
