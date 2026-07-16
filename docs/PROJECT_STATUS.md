@@ -11,7 +11,9 @@ Hyper Authenticator là ứng dụng Flutter ở chất lượng alpha. Trải n
 - Flutter 3.44.6 stable.
 - Dart 3.12.2.
 - Constraint trong `pubspec`: Dart 3.7.2 hoặc tương thích.
+- Dependency resolution trong `pubspec.lock`: Dart từ 3.10.0-0 trở lên.
 - Phiên bản ứng dụng: 1.0.0+9.
+- iOS và macOS đã được Flutter 3.44 migrate sang Swift Package Manager, đồng thời giữ CocoaPods làm fallback cho plugin chưa hỗ trợ SwiftPM.
 
 ## Ma trận tính năng
 
@@ -79,7 +81,7 @@ Kết quả: phát hiện formatting drift trong 7 file Dart có sẵn.
 
     flutter test
 
-Kết quả: bước tạo asset bundle thất bại vì không có file `.env` bị ignore.
+Kết quả: checkout không có `.env` sẽ thất bại ở bước tạo asset bundle. Khi dùng `.env` placeholder local, test vẫn thất bại vì `test/widget_test.dart` không định nghĩa `main`.
 
 Test inventory:
 

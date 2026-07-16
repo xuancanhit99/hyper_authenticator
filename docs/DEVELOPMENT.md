@@ -6,7 +6,7 @@
 - Git.
 - Platform toolchain cho target được chọn.
 - Supabase project không phải production cho luồng đăng nhập hiện tại.
-- CocoaPods cho tích hợp plugin iOS và macOS hiện tại.
+- Xcode với Swift Package Manager và CocoaPods cho các plugin iOS/macOS cần fallback.
 
 Kiểm tra máy:
 
@@ -136,11 +136,15 @@ Cách này chỉ chấp nhận được với public client configuration như a
 ### iOS
 
 - Xác minh bundle ID và signing trong Xcode.
+- Deployment target hiện là iOS 13.0.
+- Project dùng SwiftPM theo mặc định của Flutter 3.44 và fallback CocoaPods cho plugin chưa hỗ trợ.
 - Đã có usage description cho camera và Face ID.
 - URL handling cho password recovery vẫn cần deep-link configuration canonical.
 
 ### macOS
 
+- Deployment target hiện là macOS 10.15.
+- Project dùng SwiftPM theo mặc định của Flutter 3.44 và fallback CocoaPods cho plugin chưa hỗ trợ.
 - Xác minh sandbox entitlement cho network client, camera, keychain và local-auth.
 - Không suy luận release readiness chỉ từ CocoaPods cài thành công.
 

@@ -82,6 +82,7 @@ Build candidate:
 
 Trước distribution:
 
+- xác minh SwiftPM `Package.resolved` và CocoaPods `Podfile.lock` khớp dependency đã test;
 - xác minh bundle ID, team, signing và provisioning;
 - xác minh usage description camera và Face ID;
 - cấu hình, test universal link hoặc custom scheme cho password recovery;
@@ -97,6 +98,7 @@ Build candidate:
 
 Trước distribution:
 
+- xác minh SwiftPM `Package.resolved` và CocoaPods `Podfile.lock` khớp dependency đã test;
 - cấu hình sandbox entitlement cho network client, camera, keychain và local-auth;
 - sign và notarize;
 - test hardened runtime artifact ngoài máy development;

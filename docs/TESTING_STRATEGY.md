@@ -8,7 +8,7 @@ Automated product test chưa được triển khai.
 - Không có thư mục `integration_test`.
 - Native test target chỉ có template.
 - Không có CI pipeline được track.
-- `flutter test` hiện dừng khi thiếu `.env` vì file này được khai báo là asset.
+- `flutter test` dừng khi thiếu `.env`; với `.env` placeholder local, suite vẫn thất bại vì file test đã comment toàn bộ không có hàm `main`.
 - Static analysis baseline ngày 17 tháng 7 năm 2026: 0 error, 29 warning, 72 info diagnostic.
 
 Phần này phải được giữ cho đến khi test và CI thay thế baseline.

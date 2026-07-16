@@ -175,6 +175,8 @@ Cấu hình container hiện chưa hoàn thiện: Compose truyền build argumen
 
 ## Trạng thái platform
 
+Flutter 3.44 đã migrate project Darwin sang `FlutterGeneratedPluginSwiftPackage`. Plugin có SwiftPM support được resolve qua `Package.resolved`; plugin chưa hỗ trợ vẫn được tích hợp bằng Podfile và Podfile.lock. Cả hai bộ lockfile là một phần của build contract.
+
 | Platform | Runner | Trạng thái phát hành |
 |---|---|---|
 | Android | Có | Mục tiêu chính; permission và release signing cần hardening |
