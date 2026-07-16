@@ -1,77 +1,59 @@
-# Architectural & Technological Decisions Justification
+# Architectural Decisions
 
-This document provides justifications for the key architectural and technological choices made during the development of the Hyper Authenticator application. It aims to compare the chosen solutions with alternatives and explain the reasoning behind the final decisions, relevant for academic analysis (e.g., Master's Thesis).
+This document indexes durable decisions. Detailed new decisions use records in docs/adr.
 
-## 1. Choice of Cross-Platform Framework: Flutter
+## Adopted decisions reflected in code
 
-*   **Chosen:** Flutter
-*   **Alternatives Considered:** React Native, Native Development (Kotlin/Swift), Xamarin, etc.
-*   **Justification:**
-    *   Single codebase for multiple platforms (Android, iOS, Web, Desktop) -> Reduced development time and cost.
-    *   High performance (compiles to native code, Skia rendering engine).
-    *   Rich widget library and strong community support.
-    *   Hot reload/restart for faster development cycles.
-    *   Suitable UI/UX consistency across platforms.
-*   **Trade-offs:** App size might be larger than native; requires learning Dart.
+| ID | Decision | Status | Evidence |
+|---|---|---|---|
+| A-001 | Flutter and Dart for the client | Adopted | pubspec.yaml and platform runners |
+| A-002 | Feature-first Presentation, Domain, Data layering | Adopted with inconsistencies | lib/features |
+| A-003 | BLoC for feature state and Provider for theme | Adopted | flutter_bloc and ThemeProvider |
+| A-004 | GetIt and Injectable for dependency construction | Adopted | injection_container files |
+| A-005 | FlutterSecureStorage for authenticator records | Adopted | AuthenticatorLocalDataSource |
+| A-006 | SharedPreferences for non-secret preferences | Adopted | theme, biometric, sync, Remember Me |
+| A-007 | Supabase for user authentication and remote sync | Adopted | auth and sync data sources |
+| A-008 | fpdart Either values at repository/use-case boundaries | Adopted | domain and data layers |
+| A-009 | GoRouter redirects from auth and local-lock state | Adopted | AppRouter |
 
-## 2. Choice of Application Architecture: Clean Architecture
+Adopted does not mean flawless. PROJECT_STATUS.md records defects in the current realization.
 
-*   **Chosen:** Clean Architecture (Layers: Presentation, Domain, Data)
-*   **Alternatives Considered:** MVVM (Model-View-ViewModel), MVC (Model-View-Controller), Simple Layered Architecture.
-*   **Justification:**
-    *   **Separation of Concerns:** Clear boundaries between UI, business logic, and data access.
-    *   **Testability:** Layers can be tested independently (especially Domain and Data layers). Dependencies are injected.
-    *   **Maintainability & Scalability:** Easier to modify or replace components (e.g., change state management, data source) without affecting other layers. Business logic is independent of frameworks.
-    *   **Framework Independence:** Domain layer is independent of Flutter framework details.
-*   **Trade-offs:** Can introduce more boilerplate code compared to simpler architectures; requires discipline to maintain layer boundaries.
+## Decisions that must be made
 
-## 3. Choice of State Management: BLoC / Cubit
+| Proposed ID | Decision needed | Why |
+|---|---|---|
+| P-001 | Is offline-only use supported, or is Supabase auth mandatory? | README history and router behavior disagree |
+| P-002 | E2EE key hierarchy, recovery, and encrypted format | Plaintext cloud secrets block release |
+| P-003 | Atomic sync and conflict/deletion protocol | Current delete-insert snapshot loses data |
+| P-004 | Authenticator data ownership on logout and account switch | Current logout deletes local accounts |
+| P-005 | Single AccountsBloc ownership or repository-level orchestration | Sync and UI resolve different instances |
+| P-006 | Canonical password-recovery surface | Mobile deep link and web page overlap |
+| P-007 | Supported platform matrix | Runners exist beyond verified targets |
+| P-008 | Client configuration strategy | .env is ignored but bundled as an asset |
+| P-009 | Product name and identifiers | Hyper Authenticator and HyperZ are mixed |
+| P-010 | License | No explicit license file is tracked |
 
-*   **Chosen:** `flutter_bloc` (BLoC/Cubit) for primary state management, `provider` for Theme.
-*   **Alternatives Considered:** Riverpod, GetX, Provider (for all state), Redux, MobX.
-*   **Justification:**
-    *   **Predictable State:** Clear separation of events, states, and business logic. Makes state changes predictable and traceable.
-    *   **Testability:** `bloc_test` package provides excellent support for testing BLoCs/Cubits.
-    *   **Scalability:** Suitable for complex applications with multiple features interacting.
-    *   **Separation from UI:** Encourages separation of business logic from widget code.
-    *   `Provider` is sufficient and simpler for dependency injection and simple state like theme management.
-*   **Trade-offs:** Can have a steeper learning curve initially compared to Provider or GetX; might involve more boilerplate for simple state changes compared to Cubit/Provider.
+## ADR process
 
-## 4. Choice of Backend Service: Supabase
+Create an ADR when a change:
 
-*   **Chosen:** Supabase (Backend-as-a-Service)
-*   **Alternatives Considered:** Firebase, AWS Amplify, Custom Backend (e.g., Node.js/Python/Go with PostgreSQL), Appwrite.
-*   **Justification:**
-    *   **Open Source:** Based on open-source tools (PostgreSQL, GoTrue, etc.), reducing vendor lock-in compared to some alternatives.
-    *   **Integrated Services:** Provides Authentication, Database (PostgreSQL with real-time), Storage, and Edge Functions in one platform.
-    *   **PostgreSQL:** Powerful and familiar relational database. Row Level Security (RLS) provides fine-grained access control.
-    *   **Generous Free Tier:** Suitable for development and small-scale deployment.
-    *   **Flutter Client Library:** Well-maintained `supabase_flutter` package.
-*   **Trade-offs:** Newer compared to Firebase; ecosystem might be less mature in some areas; scaling costs need consideration for large applications.
+- modifies a trust boundary or cryptographic design;
+- changes a persisted or remote data contract;
+- changes supported platforms or backend;
+- introduces destructive semantics;
+- changes state ownership or the primary architecture pattern;
+- selects a dependency with long-lived constraints.
 
-## 5. Choice of Local Storage
+Steps:
 
-*   **Chosen:** `FlutterSecureStorage` (for sensitive data), `SharedPreferences` (for non-sensitive data).
-*   **Alternatives Considered:** Hive, Moor/Drift (SQLite wrappers), File System.
-*   **Justification:**
-    *   **`FlutterSecureStorage`:** Leverages platform-specific secure storage (Keystore/Keychain) for maximum security of TOTP secrets. Essential for sensitive data.
-    *   **`SharedPreferences`:** Simple key-value store, easy to use for basic settings like theme preference or feature flags. Sufficient for non-critical data.
-    *   Using dedicated secure storage for secrets is a security best practice.
-*   **Trade-offs:** `FlutterSecureStorage` access can be slightly slower than `SharedPreferences`; `SharedPreferences` is not suitable for sensitive data.
+1. Copy docs/adr/0000-template.md.
+2. Assign the next four-digit number and a short slug.
+3. Describe context, decision, alternatives, consequences, migration, rollback, and verification.
+4. Mark status Proposed.
+5. Obtain owner approval.
+6. Change status to Accepted and add the record to this index.
+7. Mark superseded records instead of rewriting history.
 
-## 6. Choice of Biometric Authentication: `local_auth` Plugin
+## Historical rationale
 
-*   **Chosen:** `local_auth`
-*   **Alternatives Considered:** Platform-specific native implementations (more complex).
-*   **Justification:**
-    *   Official Flutter Favorite plugin, providing a unified API for accessing native biometric (fingerprint, face ID) and device credential (PIN, pattern, password) authentication.
-    *   Abstracts platform differences.
-*   **Trade-offs & Security Considerations:**
-    *   **Reliance on OS Security:** The plugin acts as a bridge to the native OS authentication mechanisms. Its security fundamentally depends on the security of the underlying platform (Android Keystore, iOS Secure Enclave, etc.) and the OS's implementation of biometric handling. Vulnerabilities in the OS could potentially compromise the authentication.
-    *   **No Direct Biometric Access:** The plugin does *not* provide the application with raw biometric data (e.g., fingerprint image). It only returns a boolean success/failure status from the OS, which is a good security practice (least privilege).
-    *   **Platform Inconsistencies:** Behavior and available options (e.g., specific biometric types, error messages, UI presentation) can vary significantly between Android versions, iOS versions, and different device manufacturers. Requires careful testing across target devices.
-    *   **Rooted/Jailbroken Devices:** On compromised devices (rooted Android, jailbroken iOS), the OS-level security guarantees might be bypassed, potentially allowing attackers to tamper with the authentication mechanism or bypass the lock screen. Detecting rooted/jailbroken status is complex and often unreliable.
-    *   **Fallback Mechanism:** Relies on the device's PIN/pattern/password as a fallback. The security of this fallback depends on the strength of the user's chosen credential.
-    *   **Limited Context:** The plugin primarily confirms the *presence* of the authenticated user at the time of the check, but doesn't guarantee continuous presence or prevent the app from being backgrounded and later resumed by an unauthorized user if the OS lock screen isn't triggered immediately. (The app lifecycle listener helps mitigate this by re-prompting on resume).
-
-*(This section should be expanded with more detailed comparisons and specific project constraints that influenced the decisions.)*
+The current choices optimize for a single cross-platform codebase, explicit state transitions, replaceable data sources, and fast backend bootstrap. Their main trade-offs are generated-code maintenance, BLoC boilerplate, platform-plugin differences, dependence on Supabase configuration, and the need for disciplined boundary tests.

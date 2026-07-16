@@ -1,70 +1,183 @@
-# Deployment Notes
+# Deployment and Release Guide
 
-This document provides high-level notes and considerations for building and deploying the Hyper Authenticator application to its target platforms.
+The repository is not currently release-ready. This document defines gates; it does not certify that they pass.
 
-## 1. Prerequisites
+## Release environments
 
-*   Ensure Flutter SDK is correctly installed and configured for each target platform.
-*   Platform-specific build tools are required (Android Studio/SDK, Xcode/Command Line Tools, Web build tools, Visual Studio for Windows, etc.).
-*   Code signing certificates and provisioning profiles are necessary for iOS and macOS distribution.
-*   Keystore file and credentials are needed for signing Android release builds.
-*   Web server or hosting platform for deploying the web version.
+Maintain separate development, test, staging, and production Supabase projects. Each environment needs:
 
-## 2. General Build Commands
+- distinct client configuration;
+- explicit redirect URLs;
+- versioned schema and RLS migrations;
+- isolated users and synthetic test data;
+- documented owner and rollback plan.
 
-*   **Check Setup:** `flutter doctor`
-*   **Clean Build:** `flutter clean`
-*   **Get Dependencies:** `flutter pub get`
-*   **Build Release:** (Specific commands per platform below)
+Never distribute a service-role key.
 
-## 3. Platform-Specific Deployment
+## Global release gates
 
-### 3.1. Android
+- All release blockers in PROJECT_STATUS.md and SECURITY.md resolved or explicitly accepted.
+- Product name, bundle IDs, application ID, URLs, icons, and store metadata consistent.
+- Explicit LICENSE file added.
+- Privacy policy reviewed against actual behavior.
+- No plaintext production TOTP secrets in Supabase.
+- Atomic and recoverable sync.
+- Local data is not silently removed on logout.
+- RLS migrations and cross-user negative tests pass.
+- Analyzer has no errors and no unexplained warnings.
+- Unit, widget, and critical integration tests pass.
+- Dependency and secret scans pass.
+- Upgrade and rollback rehearsed.
+- Release artifact is signed with production credentials.
 
-*   **Build Command:** `flutter build apk --release` or `flutter build appbundle --release` (Recommended for Google Play).
-*   **Signing:** Requires a signing key (keystore). Configure signing in `android/app/build.gradle`. Refer to Flutter's official documentation for detailed steps on creating a keystore and configuring signing.
-    *   Securely store your keystore file and passwords.
-*   **Distribution:** Upload the signed APK or App Bundle (`.aab`) to Google Play Store or distribute manually.
+## Versioning
 
-### 3.2. iOS
+Flutter version is defined in pubspec.yaml:
 
-*   **Build Command:** `flutter build ipa --release`
-*   **Configuration:** Requires Xcode setup.
-    *   Configure Bundle ID, version, build number in `ios/Runner.xcodeproj`.
-    *   Set up code signing with an Apple Developer account (Certificates, Identifiers & Profiles). Xcode can often manage this automatically or manually configure signing settings.
-*   **Distribution:**
-    *   **TestFlight:** Archive the build in Xcode (`Product > Archive`) and upload to App Store Connect for internal/external testing.
-    *   **App Store:** Submit the archived build through App Store Connect for review and release.
+    version: major.minor.patch+build
 
-### 3.3. Web
+Before release:
 
-*   **Build Command:** `flutter build web --release --web-renderer canvaskit` (CanvasKit recommended for performance and fidelity, but HTML renderer is an option: `--web-renderer html`).
-*   **Output:** The build output will be in the `build/web` directory.
-*   **Deployment:** Deploy the contents of the `build/web` directory to any static web hosting provider (e.g., Firebase Hosting, Netlify, Vercel, GitHub Pages, traditional web server).
-    *   Ensure the server is configured correctly to handle single-page application routing (redirecting all paths to `index.html`).
+1. update the version;
+2. update release notes;
+3. confirm schema and encrypted-format compatibility;
+4. tag the exact tested commit;
+5. archive checksums and build provenance.
 
-### 3.4. Windows
+## Client configuration
 
-*   **Build Command:** `flutter build windows --release`
-*   **Output:** An executable and associated files will be generated in `build/windows/runner/Release`.
-*   **Distribution:**
-    *   Package the contents of the `Release` directory into an installer (e.g., using Inno Setup, NSIS) or distribute as a zipped archive.
-    *   Consider code signing the executable for better user trust (requires a Windows code signing certificate).
+The current build expects a root .env asset with SUPABASE_URL and SUPABASE_ANON_KEY.
 
-### 3.5. macOS
+Before standardizing deployment, accept an ADR for configuration injection. Requirements:
 
-*   **Build Command:** `flutter build macos --release`
-*   **Output:** A `.app` bundle will be created in `build/macos/Build/Products/Release/`.
-*   **Distribution:**
-    *   **Code Signing & Notarization:** Essential for distribution outside the Mac App Store. Requires an Apple Developer ID certificate. Sign the app using `codesign` and submit for notarization using `altool`.
-    *   **Mac App Store:** Configure the app in App Store Connect, archive using Xcode (`Product > Archive`), and submit for review.
-    *   **Direct Distribution:** Distribute the signed and notarized `.app` bundle (often within a `.dmg` disk image).
+- deterministic per environment;
+- no server secrets in artifacts;
+- no manual post-build editing;
+- environment visible in non-secret diagnostics;
+- production builds cannot point to development by accident.
 
-## 4. Environment Variables (.env)
+## Android
 
-*   The `.env` file containing Supabase keys is **not** included in Git.
-*   For CI/CD pipelines or build servers, ensure these environment variables (`SUPABASE_URL`, `SUPABASE_ANON_KEY`) are securely injected during the build process. Flutter's `--dart-define-from-file` flag or specific CI/CD environment variable mechanisms can be used.
+Build candidates:
 
-## 5. Versioning
+    flutter build appbundle --release
+    flutter build apk --release
 
-*   Update the `version` number in `pubspec.yaml` (e.g., `1.0.0+1`) before building a release. The part before `+` is the public version name, and the part after `+` is the build number. Follow semantic versioning principles.
+Before distribution:
+
+- remove debug-signing fallback for release;
+- verify the resolved keystore and alias;
+- inspect the merged release manifest;
+- verify network, camera, biometric, and backup behavior;
+- decide code shrinking and keep rules;
+- upload native debug symbols as required;
+- test install, upgrade, sign-in, TOTP, lock, sync, and recovery on representative API levels;
+- complete Play data-safety declarations from actual behavior.
+
+## iOS
+
+Build candidate:
+
+    flutter build ipa --release
+
+Before distribution:
+
+- verify bundle ID, team, signing, and provisioning;
+- verify camera and Face ID descriptions;
+- configure and test password-recovery universal links or custom schemes;
+- test Keychain behavior across reinstall, logout, backup, and device restore;
+- complete App Store privacy details from actual behavior;
+- validate on physical devices and TestFlight.
+
+## macOS
+
+Build candidate:
+
+    flutter build macos --release
+
+Before distribution:
+
+- configure network-client, camera, keychain, and local-auth sandbox entitlements;
+- sign and notarize;
+- test a hardened runtime artifact outside the development machine;
+- verify plugin registration and secure-storage behavior.
+
+## Web
+
+Build candidate:
+
+    flutter build web --release
+
+Before distribution:
+
+- remove or isolate unsupported platform imports;
+- verify secure-storage semantics and document the browser threat model;
+- configure SPA routing;
+- set CSP, HSTS, referrer, permissions, and cache policies;
+- pin and integrity-protect external scripts or self-host them;
+- test auth redirects and recovery URLs;
+- do not claim equivalent security to mobile without review.
+
+## Windows and Linux
+
+Runners exist but product support is unverified. Before release:
+
+- verify every plugin;
+- define installer, signing, update, secure storage, device-lock, and rollback behavior;
+- add platform integration tests;
+- update the public supported-platform matrix.
+
+## Password-recovery web page
+
+Before deploying reset-password-web:
+
+- implement a public-client configuration injection mechanism;
+- pin or self-host the Supabase JavaScript dependency;
+- add CSP and other security headers;
+- allow only production recovery redirects;
+- disable caching of recovery pages and sensitive URL material where appropriate;
+- test expired, malformed, reused, and successful sessions;
+- remove verbose session logging;
+- provide privacy and support links.
+
+## Backend rollout
+
+Every backend change requires:
+
+1. migration ID and review;
+2. backward/forward client compatibility;
+3. staging rehearsal;
+4. RLS negative tests;
+5. backup or rollback;
+6. monitoring without credential logging;
+7. migration completion evidence.
+
+E2EE rollout must follow E2EE_DESIGN.md and an accepted ADR.
+
+## Rollback
+
+Rollback must preserve the last valid local and remote snapshots. Never roll back to a client that cannot read the current encrypted or schema version without a compatibility plan.
+
+Record:
+
+- client versions affected;
+- schema and format versions;
+- safe downgrade path;
+- data restoration steps;
+- user communication;
+- incident owner.
+
+## Release evidence
+
+Archive for every release:
+
+- commit and tag;
+- Flutter and Dart versions;
+- dependency lockfile;
+- generated-code verification;
+- analyzer and test results;
+- platform build logs;
+- schema migration version and RLS test result;
+- artifact hashes;
+- signing identity reference, never private key material;
+- approved privacy and store declarations.

@@ -1,72 +1,136 @@
-# Data Models
+# Data Models and Storage Contracts
 
-This document defines the structure of key data models used within the Hyper Authenticator application, including Domain Entities and Data Transfer Objects (DTOs).
+This document describes the shapes implemented in source. Proposed encrypted formats are defined in E2EE_DESIGN.md.
 
-## 1. Domain Entities
+## AuthenticatorAccount
 
-These represent the core business objects of the application.
+Source: lib/features/authenticator/domain/entities/authenticator_account.dart.
 
-### 1.1. `AuthenticatorAccount` (Domain Entity)
+| Field | Dart type | Nullable | Default | Sensitive |
+|---|---|---:|---|---:|
+| id | String | No | None | No |
+| issuer | String | No | None | Potentially |
+| accountName | String | No | None | Yes |
+| secretKey | String | No | None | Critical credential |
+| algorithm | String | No | SHA1 | No |
+| digits | int | No | 6 | No |
+| period | int | No | 30 | No |
 
-Represents a single 2FA account stored by the user.
+The active model does not contain createdAt, updatedAt, orderIndex, iconPath, counter, tags, or a record version.
 
-| Field         | Type     | Description                                      | Nullable | Example                               |
-|---------------|----------|--------------------------------------------------|----------|---------------------------------------|
-| `id`          | `String` | Unique identifier for the account (e.g., UUID)   | No       | `"a1b2c3d4-..."`                      |
-| `secretKey`   | `String` | The Base32 encoded secret key for TOTP generation| No       | `"JBSWY3DPEHPK3PXP"`                  |
-| `issuer`      | `String` | The name of the service/issuer (e.g., "Google")  | Yes      | `"Google"`                            |
-| `accountName` | `String` | The username or email associated with the account| No       | `"user@example.com"`                  |
-| `digits`      | `int`    | Number of digits in the generated TOTP code      | No       | `6`                                   |
-| `period`      | `int`    | Time step duration in seconds for TOTP           | No       | `30`                                  |
-| `algorithm`   | `String` | Hashing algorithm used (SHA1, SHA256, SHA512)    | No       | `"SHA1"`                              |
-| `createdAt`   | `DateTime`| Timestamp when the account was added           | No       | `DateTime.now()`                      |
-| `orderIndex`  | `int`    | Used for maintaining user-defined sort order     | No       | `0`                                   |
+### JSON contract
 
-### 1.2. `UserEntity` (Domain Entity)
+The active toJson method writes:
 
-Represents an authenticated user of the application (primarily for sync features).
+~~~json
+{
+  "id": "account-uuid",
+  "issuer": "Example",
+  "accountName": "user@example.invalid",
+  "secretKey": "REDACTED",
+  "algorithm": "SHA1",
+  "digits": 6,
+  "period": 30
+}
+~~~
 
-| Field      | Type     | Description                               | Nullable | Example                 |
-|------------|----------|-------------------------------------------|----------|-------------------------|
-| `id`       | `String` | Unique user ID provided by Supabase Auth  | No       | `"uuid-from-supabase"`  |
-| `email`    | `String` | User's email address                      | Yes      | `"user@example.com"`    |
-| `createdAt`| `DateTime`| Timestamp of user creation              | Yes      | `DateTime.now()`        |
+Keys use camelCase. fromJson requires id, issuer, accountName, and secretKey. It defaults missing algorithm, digits, and period.
 
-## 2. Data Transfer Objects (DTOs)
+### Required invariants
 
-These models are typically used for communication with external services (like Supabase) or for specific data storage formats.
+- id is stable and unique.
+- secretKey is a valid Base32 secret accepted by the OTP library.
+- algorithm is one of SHA1, SHA256, or SHA512.
+- digits is supported by the product contract; current UI validation expects 6 through 8.
+- period is positive.
+- Every field round-trips through local and remote storage without silent replacement.
+- Logs and test reports must redact secretKey.
 
-### 2.1. `SyncedAccountDto` (Data Layer Model/DTO)
+The current implementation violates the round-trip invariant when a new UUID is assigned. See PROJECT_STATUS.md.
 
-Represents the structure of an account as stored in/retrieved from the Supabase database for synchronization. This structure might differ slightly from the Domain Entity, especially concerning encryption.
+## Local secure-storage layout
 
-**Note:** The exact structure depends on the implementation details of synchronization, particularly E2EE.
+Source: lib/features/authenticator/data/datasources/authenticator_local_data_source.dart.
 
-**Example Structure (Pre-E2EE or with server-side handling):**
+| Storage key | Value |
+|---|---|
+| authenticator_account_index | JSON array of account IDs |
+| each account ID | AuthenticatorAccount JSON |
 
-| Field         | Type     | Description                                       | Nullable | Notes                                     |
-|---------------|----------|---------------------------------------------------|----------|-------------------------------------------|
-| `id`          | `String` | Primary Key (matches `AuthenticatorAccount.id`)   | No       | UUID                                      |
-| `user_id`     | `String` | Foreign Key linking to the Supabase user (`auth.users.id`) | No       | UUID                                      |
-| `secret_key`  | `String` | Base32 encoded secret key                         | No       | **Needs E2EE before storing raw**         |
-| `issuer`      | `String` | Service/issuer name                               | Yes      |                                           |
-| `account_name`| `String` | Username/email                                    | No       |                                           |
-| `digits`      | `int`    | Number of TOTP digits                             | No       |                                           |
-| `period`      | `int`    | TOTP period in seconds                            | No       |                                           |
-| `algorithm`   | `String` | Hashing algorithm                                 | No       |                                           |
-| `created_at`  | `timestamp`| Timestamp from `AuthenticatorAccount.createdAt` | No       | Stored as Supabase timestamp type         |
-| `order_index` | `int`    | Sort order index                                  | No       |                                           |
-| `updated_at`  | `timestamp`| Timestamp of the last modification in Supabase  | No       | Managed by Supabase                       |
+Create writes the record and then updates the index. Delete removes the record and then updates the index. These multi-step operations are not transactional.
 
-**Example Structure (With Client-Side E2EE):**
+Recovery behavior must be defined for:
 
-| Field          | Type     | Description                                       | Nullable | Notes                                     |
-|----------------|----------|---------------------------------------------------|----------|-------------------------------------------|
-| `id`           | `String` | Primary Key (matches `AuthenticatorAccount.id`)   | No       | UUID                                      |
-| `user_id`      | `String` | Foreign Key linking to the Supabase user (`auth.users.id`) | No       | UUID                                      |
-| `encrypted_data`| `String` | Encrypted blob containing sensitive fields (secret, issuer, name, etc.) | No | Encrypted using client-side key (AES-GCM) |
-| `created_at`   | `timestamp`| Timestamp from `AuthenticatorAccount.createdAt` | No       | Stored as Supabase timestamp type         |
-| `order_index`  | `int`    | Sort order index                                  | No       | Stored unencrypted for server-side sorting? (Consider implications) |
-| `updated_at`   | `timestamp`| Timestamp of the last modification in Supabase  | No       | Managed by Supabase                       |
+- index contains an ID whose record is missing;
+- record exists but index update failed;
+- malformed JSON;
+- duplicate IDs;
+- secure-storage read or write failure.
 
-*(Mapping logic between `AuthenticatorAccount` and `SyncedAccountDto` resides in the Data Layer, potentially within the Repository implementation or dedicated Mapper classes.)*
+## UserEntity
+
+Source: lib/features/auth/domain/entities/user_entity.dart.
+
+| Field | Dart type | Nullable | Source |
+|---|---|---:|---|
+| id | String | No | Supabase User.id |
+| email | String | Yes | Supabase User.email |
+| name | String | Yes | Supabase userMetadata name |
+
+No password or session token is part of UserEntity.
+
+## SharedPreferences keys
+
+The project currently uses string constants in multiple features rather than one central registry.
+
+| Key | Meaning | Sensitive |
+|---|---|---:|
+| biometric_enabled | Require OS device authentication | No |
+| sync_enabled | Display and allow manual sync controls | No |
+| remembered_email | Login form convenience | Personal data |
+| remember_me_state | Remember Me checkbox | No |
+| theme_mode | Theme selection | No |
+
+Exact theme key naming must be checked in ThemeProvider before migration. Preference changes need compatibility behavior for existing installations.
+
+## Observed Supabase row contract
+
+Source: lib/features/sync/data/datasources/supabase_sync_remote_data_source_impl.dart.
+
+The client currently writes a map based on AuthenticatorAccount JSON, then:
+
+- renames id to account_id;
+- adds user_id;
+- inserts issuer, accountName, secretKey, algorithm, digits, and period.
+
+The client also expects:
+
+- id to exist for hasRemoteData selection;
+- updated_at to exist for last-upload time;
+- account_id to be mapped back to entity id on download.
+
+This means the observed contract includes both id and account_id semantics and uses camelCase application fields. Older documentation described snake_case fields and does not match the client.
+
+No schema migration is tracked, so the production database shape cannot be reproduced from this repository.
+
+## Remote identity and merge identity
+
+- Remote ownership: user_id.
+- Entity identity: id or account_id depending on boundary.
+- Current merge identity: lowercase issuer plus lowercase accountName.
+
+Merge identity is not sufficient to distinguish secret rotation, duplicate labels, or two accounts with the same label. It also cannot represent deletions.
+
+## Model change protocol
+
+Any persisted model change must include:
+
+1. A format or schema version.
+2. Backward-compatible read behavior.
+3. A local migration and rollback or recovery strategy.
+4. A remote migration when cloud data changes.
+5. Unit tests for old-to-new and new-to-new round trips.
+6. Conflict behavior across client versions.
+7. Updates to this document, SUPABASE_INTEGRATION.md, and SECURITY.md.
+
+Never use a silent default to hide an unsupported or corrupted persisted value.

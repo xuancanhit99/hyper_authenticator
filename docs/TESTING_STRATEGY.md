@@ -1,76 +1,146 @@
 # Testing Strategy
 
-This document outlines the testing strategy for the Hyper Authenticator application, ensuring code quality, reliability, and maintainability across its different layers based on the Clean Architecture principles.
+## Current baseline
 
-## 1. Testing Pyramid
+Automated product tests are not implemented.
 
-We aim to follow the principles of the testing pyramid, focusing heavily on unit tests, followed by widget tests, and a smaller number of integration/end-to-end tests.
+- test/widget_test.dart is fully commented.
+- No integration_test directory exists.
+- Native test targets contain templates only.
+- No CI pipeline is tracked.
+- flutter test currently stops when .env is absent because .env is declared as an asset.
+- Static analysis baseline on July 17, 2026: 0 errors, 29 warnings, 72 info diagnostics.
 
-```
-      /\
-     /  \ Integration / E2E Tests
-    /____\
-   /      \ Widget Tests
-  /________\
- /          \ Unit Tests
-/____________\
-```
+This section must remain until tests and CI replace the baseline.
 
-## 2. Testing Levels & Scope
+## Quality gates
 
-### 2.1. Unit Tests (`test/` directory)
+Documentation:
 
-*   **Focus:** Testing individual functions, methods, or classes in isolation. Primarily targets the Data and Domain layers, and BLoCs/Cubits in the Presentation layer.
-*   **Scope:**
-    *   **Domain Layer:**
-        *   **UseCases:** Verify that each UseCase correctly orchestrates interactions with mock Repositories and returns the expected `Either<Failure, SuccessType>`. Test different scenarios (success, specific failures).
-        *   **Entities:** Test any logic within entities (if any, usually minimal).
-    *   **Data Layer:**
-        *   **Repositories:** Verify that Repository implementations correctly call methods on mock Data Sources (local and remote) and handle potential exceptions by returning appropriate `Failure` types. Test data mapping logic (DTOs to/from Entities).
-        *   **Data Sources:** Test interactions with external dependencies (like `FlutterSecureStorage`, `SharedPreferences`, Supabase client libraries) using mocks. Verify correct data fetching, saving, and error handling.
-        *   **Models/DTOs:** Test serialization/deserialization logic (`fromJson`, `toJson`) if applicable.
-    *   **Presentation Layer (BLoCs/Cubits):**
-        *   Use `bloc_test` package.
-        *   Verify that BLoCs/Cubits emit the correct sequence of states in response to specific events/method calls.
-        *   Mock UseCases and other dependencies. Test state transitions for success and failure scenarios.
-    *   **Core/Utils:** Test utility functions, validators, helper classes.
-*   **Tools:** `test`, `mockito` (or `mocktail`), `bloc_test`, `dartz`.
+    scripts/agent/check.sh docs
 
-### 2.2. Widget Tests (`test/` directory, often in feature subfolders)
+Fast Dart and Flutter gate:
 
-*   **Focus:** Testing individual Flutter Widgets or groups of related widgets (e.g., a single screen or a complex component) in isolation from the full application. Verifies UI rendering, user interaction, and integration with BLoCs/Providers.
-*   **Scope:**
-    *   **Presentation Layer (UI):**
-        *   Verify that widgets render correctly based on different states emitted by mock BLoCs/Cubits.
-        *   Test user interactions (tapping buttons, entering text) and verify that the correct events are dispatched to the BLoC/Cubit.
-        *   Test navigation logic triggered by widget interactions (using mock `GoRouter`).
-        *   Verify correct display of data provided by BLoCs/Providers.
-*   **Tools:** `flutter_test`, `mockito` (or `mocktail`), `bloc_test`, `provider`.
+    scripts/agent/check.sh quick
 
-### 2.3. Integration Tests (`integration_test/` directory)
+Full gate:
 
-*   **Focus:** Testing the integration between different parts of the application, including UI, state management, business logic, and potentially external services (though often mocked). Verifies complete user flows.
-*   **Scope:**
-    *   Test critical user journeys, such as:
-        *   Adding a new account via QR scan.
-        *   Generating and displaying TOTP codes.
-        *   User login/logout flow.
-        *   App lock authentication flow.
-        *   Data synchronization (upload/download - potentially mocking the network layer).
-        *   Deleting an account.
-    *   These tests run on a real device or emulator.
-*   **Tools:** `integration_test`, `flutter_driver` (optional, for more complex E2E), `mockito` (for mocking external services if needed).
+    scripts/agent/check.sh full
 
-## 3. Mocking Strategy
+The harness is intentionally strict. A known baseline failure must be reported, not hidden. When one check is blocked, run every unaffected check.
 
-*   **Unit Tests:** Mock all external dependencies (Repositories, Data Sources, external packages like `http`, `local_auth`, `otp`).
-*   **Widget Tests:** Mock BLoCs/Cubits, UseCases, and navigation (`GoRouter`). Provide mock data via Providers if necessary.
-*   **Integration Tests:** Mock external network calls (Supabase) or use a dedicated test environment if available and feasible. Avoid mocking internal components unless absolutely necessary.
+## Test layers
 
-## 4. Code Coverage
+### Unit tests
 
-While aiming for high code coverage is beneficial, the primary goal is to write meaningful tests that cover critical paths and edge cases. Coverage reports (generated using `flutter test --coverage`) will be used as an indicator but not the sole metric for test quality. Focus will be on ensuring key logic in Domain, Data, and BLoCs is well-tested.
+Highest priority:
 
-## 5. Continuous Integration (CI)
+- RFC 6238 and package known-answer TOTP cases.
+- algorithm, digits, and period validation.
+- AuthenticatorAccount JSON round trip.
+- local storage create/read/update/delete and index recovery.
+- repository exception-to-failure mapping.
+- merge identity and conflict behavior.
+- encrypted envelope and migration once E2EE exists.
 
-A CI pipeline (e.g., using GitHub Actions) should be set up to automatically run all unit and widget tests on every push or pull request to ensure regressions are caught early. Integration tests might be run less frequently (e.g., nightly or before releases) due to their longer execution time.
+### BLoC tests
+
+Use bloc_test or an equivalent package after adding it to dev_dependencies.
+
+Cover:
+
+- AuthBloc sign-in, sign-up, recovery, sign-out, and safe data ownership.
+- AccountsBloc load, add, update, delete, merge, and partial failure.
+- LocalAuthBloc lifecycle, cancellation, unsupported devices, and fail-closed errors.
+- SyncBloc disabled, merge, overwrite, network failure, concurrency conflict, and retries.
+- SettingsBloc preference persistence.
+
+### Widget tests
+
+Cover:
+
+- login and registration validation;
+- add-account manual and QR parse feedback;
+- account list code formatting and copy behavior;
+- destructive delete and logout warnings;
+- lock-screen retry and error behavior;
+- sync option descriptions and disabled states;
+- theme changes.
+
+All plugin boundaries should be replaceable with fakes.
+
+### Integration tests
+
+Critical journeys:
+
+1. Sign in and load existing local accounts.
+2. Add a standard TOTP account and verify a known code.
+3. Add SHA256, 8-digit, non-30-second data and verify round trip.
+4. Background, resume, and unlock a configured app.
+5. Sign out without unintended local data loss.
+6. Download and merge without overwriting a conflict.
+7. Interrupted upload without losing the last valid cloud snapshot.
+8. User A cannot access User B data through Supabase RLS.
+9. Password-recovery link success, expiration, and reuse.
+
+Use isolated synthetic environments and never production credentials.
+
+### Platform verification
+
+For each supported platform:
+
+- clean install and upgrade;
+- secure-storage persistence and deletion semantics;
+- biometric or device-credential availability and cancellation;
+- camera and gallery permissions;
+- network access in a release build;
+- background and resume behavior;
+- deep links;
+- release signing and sandbox entitlements.
+
+## Fixtures
+
+- Use example.invalid addresses.
+- Use synthetic RFC test vectors, never a personal account.
+- Mark every secret-looking fixture as TEST_ONLY.
+- Do not snapshot real Supabase responses or sessions.
+- Redact otpauth secret values from failure output.
+
+## Coverage policy
+
+Coverage percentage is secondary to risk coverage. However, before beta:
+
+- every domain use case must have success and failure tests;
+- every persisted model must have round-trip and migration tests;
+- every destructive path must have interruption and rollback tests;
+- auth, lock, sync, and recovery must have integration coverage;
+- security regressions must have a permanent test.
+
+Do not exclude security-critical files merely to raise the percentage.
+
+## CI target
+
+A future pull-request pipeline should run:
+
+1. dependency resolution with a pinned Flutter version;
+2. generated-code drift check;
+3. formatting check;
+4. static analysis with no new diagnostics;
+5. unit and widget tests;
+6. documentation harness;
+7. secret scanning;
+8. at least Android debug build;
+9. scheduled or protected platform and Supabase integration suites.
+
+CI must receive only environment-scoped public client configuration. Production credentials are not allowed.
+
+## Definition of done
+
+A behavior change is complete only when:
+
+- acceptance criteria are observable;
+- regression coverage exists;
+- relevant quality gates pass or existing blockers are reported exactly;
+- data and security failure behavior is tested;
+- affected canonical docs are updated;
+- platform-specific validation is recorded when applicable.

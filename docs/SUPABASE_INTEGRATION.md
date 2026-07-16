@@ -1,100 +1,147 @@
 # Supabase Integration
 
-This document details how the Hyper Authenticator application integrates with Supabase for backend services, specifically Authentication and Database (for cloud synchronization).
+This document separates the observed client behavior from the server controls that must exist. The repository currently does not contain reproducible Supabase migrations.
 
-## 1. Project Setup
+## Client configuration
 
-*   A Supabase project is required for backend functionality.
-*   The project's **URL** and **Anon Key** must be configured in a `.env` file at the root of the Flutter project, based on the `.env.example` template. These keys are used by the `supabase_flutter` package to initialize the connection.
+The Flutter app loads:
 
-```dotenv
-# .env example
-SUPABASE_URL=YOUR_SUPABASE_URL
-SUPABASE_ANON_KEY=YOUR_SUPABASE_ANON_KEY
-```
+- SUPABASE_URL
+- SUPABASE_ANON_KEY
 
-*   The `SupabaseClient` instance is initialized (likely in `main.dart` or an injection module) and made available throughout the application via dependency injection (`GetIt`).
+from the root .env file through flutter_dotenv.
 
-## 2. Supabase Authentication
+Rules:
 
-*   **Purpose:** Manages user accounts (registration, login, logout, session management) to associate synchronized data with a specific user.
-*   **Mechanism:** Primarily uses email and password authentication provided by `supabase_flutter`.
-    *   `supabase.auth.signUp(email: ..., password: ...)`
-    *   `supabase.auth.signInWithPassword(email: ..., password: ...)`
-    *   `supabase.auth.signOut()`
-    *   `supabase.auth.currentSession`, `supabase.auth.currentUser`
-    *   `supabase.auth.onAuthStateChange` stream is listened to (likely by `AuthBloc`) to reactively update the application's authentication state.
-*   **User Data:** Supabase automatically manages user data in the `auth.users` table. The application primarily uses the `id` and `email` from the `User` object provided by the client library.
-*   **Password Reset:** Supabase Auth provides password reset functionality. The current implementation might leverage Supabase's built-in email templates or a custom solution (like the `reset-password-web` component included in the project).
+- Commit only .env.example with placeholders.
+- Never use SUPABASE_SERVICE_ROLE_KEY in a client application.
+- Treat the anon key as public client configuration, while still avoiding accidental mixing of test and production projects.
+- Use separate Supabase projects for development, test, staging, and production.
+- Record redirect URLs and platform bundle IDs per environment.
 
-## 3. Supabase Database
+The current pubspec bundles .env as an asset. A future configuration ADR should decide whether to keep that pattern or move to a reproducible build-time configuration strategy.
 
-*   **Purpose:** Stores user account data (`AuthenticatorAccount`) securely when the cloud synchronization feature is enabled.
-*   **Technology:** Supabase PostgreSQL database.
-*   **Schema:**
-    *   A primary table (e.g., `synced_accounts`) is used to store the account data.
-    *   **Table: `synced_accounts`** (Refer to `DATA_MODELS.md` for DTO structure)
-        *   `id` (uuid, primary key): Matches `AuthenticatorAccount.id`.
-        *   `user_id` (uuid, foreign key -> `auth.users.id`): Links the account to the authenticated user. **Crucial for RLS.**
-        *   `encrypted_data` (text): Stores the client-side encrypted account details (if E2EE is implemented). Alternatively, individual fields (`secret_key`, `issuer`, `account_name`, etc.) might be stored if E2EE is not yet active (less secure).
-        *   `created_at` (timestamptz): Original creation timestamp from the client.
-        *   `order_index` (integer): User-defined sort order.
-        *   `updated_at` (timestamptz, default `now()`): Automatically managed by Supabase to track last modification.
-*   **Data Access:**
-    *   The `SyncRemoteDataSource` implementation in the Flutter app's Data Layer interacts with this table using the `supabase_flutter` client library.
-    *   Operations include:
-        *   Fetching accounts for the current user (`select().eq('user_id', currentUser.id)`).
-        *   Uploading/Upserting accounts (`upsert([...])`).
-        *   Deleting accounts (`delete().eq('id', accountId)`).
+## Authentication operations
 
-## 4. Row Level Security (RLS)
+The client implements:
 
-*   **CRITICAL:** RLS policies **must** be enabled on the `synced_accounts` table (and any other tables containing user data) to ensure users can only access their own data.
-*   **Example Policies for `synced_accounts`:**
-    *   **SELECT Policy:** Allow users to select rows where `user_id` matches their authenticated user ID.
-        ```sql
-        -- Policy name: Allow individual user select access
-        CREATE POLICY "Allow individual user select access"
-        ON public.synced_accounts
-        FOR SELECT
-        USING (auth.uid() = user_id);
-        ```
-    *   **INSERT Policy:** Allow users to insert rows where the `user_id` column matches their authenticated user ID.
-        ```sql
-        -- Policy name: Allow individual user insert access
-        CREATE POLICY "Allow individual user insert access"
-        ON public.synced_accounts
-        FOR INSERT
-        WITH CHECK (auth.uid() = user_id);
-        ```
-    *   **UPDATE Policy:** Allow users to update rows where `user_id` matches their authenticated user ID.
-        ```sql
-        -- Policy name: Allow individual user update access
-        CREATE POLICY "Allow individual user update access"
-        ON public.synced_accounts
-        FOR UPDATE
-        USING (auth.uid() = user_id)
-        WITH CHECK (auth.uid() = user_id); -- Optional: Re-check on update
-        ```
-    *   **DELETE Policy:** Allow users to delete rows where `user_id` matches their authenticated user ID.
-        ```sql
-        -- Policy name: Allow individual user delete access
-        CREATE POLICY "Allow individual user delete access"
-        ON public.synced_accounts
-        FOR DELETE
-        USING (auth.uid() = user_id);
-        ```
-*   **Verification:** RLS policies should be thoroughly tested using the Supabase SQL editor and by simulating requests from different users.
+- sign up with email, password, and optional name metadata;
+- sign in with email and password;
+- auth-state stream mapping to UserEntity;
+- password-recovery email request;
+- password update for an authenticated recovery session;
+- sign out.
 
-## 5. Supabase Functions (Edge Functions)
+Current product behavior requires an authenticated user to enter the main application.
 
-*   **Current Use:** As of the current design, there might not be a direct need for Supabase Edge Functions.
-*   **Potential Future Use:** Could be used for:
-    *   Sending custom emails (e.g., welcome emails, sync notifications) triggered by database changes (using webhooks or triggers).
-    *   Performing complex server-side validation or operations if needed.
-    *   Integrating with third-party services securely without exposing keys to the client.
+## Password recovery
 
-## 6. Supabase Storage
+The mobile route /update-password exists, but platform deep links and reset redirect behavior are incomplete.
 
-*   **Current Use:** Not explicitly mentioned for core features in the current design documents.
-*   **Potential Future Use:** Could potentially be used for storing user-uploaded custom icons for accounts, although this adds complexity.
+The reset-password-web page also handles Supabase PASSWORD_RECOVERY sessions. It is not deployable as committed because:
+
+- script.js contains empty URL and anon-key values;
+- Compose passes build arguments;
+- the Dockerfile declares and consumes no matching arguments;
+- the referenced runtime environment-injection concept is not implemented.
+
+Choose one canonical recovery surface, define allowed redirect URLs, and cover expired, reused, malformed, and cross-environment links.
+
+## Current database operations
+
+Table constant: synced_accounts.
+
+### Download
+
+The client selects all rows whose user_id equals the current Supabase user ID. If account_id exists and id does not, it maps account_id to id before AuthenticatorAccount.fromJson.
+
+### Upload
+
+The client:
+
+1. deletes every row whose user_id matches the current user;
+2. converts each AuthenticatorAccount to JSON;
+3. renames id to account_id;
+4. adds user_id;
+5. inserts the complete list.
+
+### Status
+
+- hasRemoteData selects id and limits to one row.
+- last-upload time selects the newest updated_at.
+
+See DATA_MODELS.md for the observed key mismatch and PROJECT_STATUS.md for risks.
+
+## Required RLS behavior
+
+RLS must be enabled on every user-owned table. For synced_accounts, each operation must enforce:
+
+    auth.uid() = user_id
+
+Required policy coverage:
+
+| Operation | USING | WITH CHECK |
+|---|---|---|
+| SELECT | auth.uid() = user_id | Not applicable |
+| INSERT | Not applicable | auth.uid() = user_id |
+| UPDATE | auth.uid() = user_id | auth.uid() = user_id |
+| DELETE | auth.uid() = user_id | Not applicable |
+
+These statements are requirements, not proof of deployed configuration. Policies must be tracked in migrations and tested against a local or isolated Supabase environment.
+
+## Required negative tests
+
+- Anonymous clients cannot read or write rows.
+- User A cannot select User B rows.
+- User A cannot insert a row with User B user_id.
+- User A cannot update ownership to User B.
+- User A cannot delete User B rows.
+- An expired session cannot synchronize.
+- Service-role credentials are absent from distributed artifacts.
+
+## Target contract
+
+Do not stabilize the current plaintext row contract as the long-term design. The target contract should use:
+
+- a stable record or snapshot ID;
+- user_id ownership;
+- a format_version;
+- encrypted authenticated payload;
+- non-secret version or concurrency metadata;
+- created_at and updated_at managed consistently;
+- atomic snapshot publication or per-record optimistic concurrency;
+- migration state for legacy plaintext rows.
+
+The exact schema requires an accepted ADR and must align with E2EE_DESIGN.md.
+
+## Environment checklist
+
+For each environment, document outside the repository secrets:
+
+- project reference and region;
+- allowed redirect URLs;
+- email verification and recovery templates;
+- SMTP configuration ownership;
+- rate limits and abuse controls;
+- schema migration version;
+- RLS verification result;
+- backup and restore policy;
+- log retention and access;
+- key-management and incident owner.
+
+Do not place actual project URLs or keys in this document.
+
+## Failure behavior
+
+The client must distinguish:
+
+- unauthenticated or expired session;
+- authorization denied;
+- validation failure;
+- network unavailable;
+- server conflict;
+- schema incompatibility;
+- partial or interrupted upload;
+- encrypted payload version unsupported.
+
+Do not convert a partial merge into success or retry a destructive operation without idempotency.
