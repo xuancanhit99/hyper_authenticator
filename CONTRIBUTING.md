@@ -1,61 +1,61 @@
-# Contributing
+# Hướng dẫn đóng góp
 
-This repository treats documentation, security behavior, and data contracts as part of the product.
+Repository xem tài liệu, hành vi bảo mật và data contract là một phần của sản phẩm.
 
-## Before starting
+## Trước khi bắt đầu
 
-1. Read AGENTS.md.
-2. Run scripts/agent/context.sh.
-3. Read docs/PROJECT_STATUS.md and the canonical document for the area being changed.
-4. Inspect git status and preserve unrelated user changes.
-5. For non-trivial work, copy docs/tasks/TEMPLATE.md to a dated task note and record scope, risks, and validation.
+1. Đọc `AGENTS.md`.
+2. Chạy `scripts/agent/context.sh`.
+3. Đọc `docs/PROJECT_STATUS.md` và tài liệu canonical của khu vực cần thay đổi.
+4. Kiểm tra trạng thái Git và bảo toàn thay đổi không liên quan của người dùng.
+5. Với công việc không đơn giản, sao chép `docs/tasks/TEMPLATE.md` thành task note có ngày và ghi scope, rủi ro, cách xác minh.
 
-## Change workflow
+## Quy trình thay đổi
 
-1. Define observable acceptance criteria.
-2. Add or update tests before changing a security-critical or data-loss-sensitive path.
-3. Keep Presentation, Domain, and Data responsibilities separate.
-4. Never log TOTP secrets, otpauth URIs, passwords, session tokens, encryption keys, salts, or recovery material.
-5. Update generated Injectable output when dependency annotations change.
-6. Update documentation in the same change when behavior, configuration, data contracts, or operational steps change.
-7. Run the smallest relevant quality gate, then the full gate when feasible.
+1. Định nghĩa acceptance criteria có thể quan sát.
+2. Thêm hoặc cập nhật test trước khi thay đổi luồng liên quan đến bảo mật hoặc nguy cơ mất dữ liệu.
+3. Giữ trách nhiệm của Presentation, Domain và Data tách biệt.
+4. Không log TOTP secret, URI `otpauth`, mật khẩu, session token, encryption key, salt hoặc recovery material.
+5. Cập nhật output của Injectable khi dependency annotation thay đổi.
+6. Cập nhật tài liệu trong cùng thay đổi khi hành vi, cấu hình, data contract hoặc quy trình vận hành thay đổi.
+7. Chạy quality gate nhỏ nhất phù hợp, sau đó chạy full gate khi khả thi.
 
-## Quality gates
+## Quality gate
 
-Documentation-only:
+Chỉ thay đổi tài liệu:
 
     scripts/agent/check.sh docs
 
-Dart or Flutter code:
+Code Dart hoặc Flutter:
 
     scripts/agent/check.sh quick
 
-Behavior, storage, authentication, sync, routing, or platform integration:
+Hành vi, storage, authentication, sync, routing hoặc tích hợp platform:
 
     scripts/agent/check.sh full
 
-Platform-specific changes also require a build or test on the affected platform. Record commands and results in the handoff.
+Thay đổi đặc thù platform cũng cần build hoặc test trên platform bị ảnh hưởng. Ghi command và kết quả trong phần bàn giao.
 
-## Architecture decisions
+## Quyết định kiến trúc
 
-Add an ADR when a change affects:
+Thêm ADR khi thay đổi ảnh hưởng đến:
 
-- persisted or remote data shape;
-- authentication or authorization boundaries;
-- encryption or key management;
-- state-management or dependency-injection ownership;
-- supported platforms;
-- destructive sync or deletion semantics;
-- a dependency that establishes a long-lived project constraint.
+- hình dạng dữ liệu local hoặc remote đã persist;
+- ranh giới authentication hoặc authorization;
+- encryption hoặc key management;
+- quyền sở hữu state management hoặc dependency injection;
+- platform được hỗ trợ;
+- ngữ nghĩa sync hoặc xóa mang tính phá hủy;
+- dependency tạo ra ràng buộc dài hạn cho dự án.
 
-Use docs/adr/0000-template.md and add the new record to docs/ARCHITECTURAL_DECISIONS.md.
+Dùng `docs/adr/0000-template.md` và thêm record mới vào `docs/ARCHITECTURAL_DECISIONS.md`.
 
-## Pull request checklist
+## Checklist pull request
 
-- Scope and acceptance criteria are explicit.
-- No unrelated user changes were overwritten.
-- Tests cover the changed behavior or the missing coverage is explained.
-- No secret or personal data is present in code, fixtures, logs, screenshots, or documentation.
-- Data migration and rollback implications are documented.
-- Relevant canonical docs are updated.
-- Analyzer, tests, and platform checks are reported with exact outcomes.
+- Scope và acceptance criteria rõ ràng.
+- Không ghi đè thay đổi không liên quan của người dùng.
+- Test bao phủ hành vi thay đổi hoặc đã giải thích phần coverage còn thiếu.
+- Không có secret hoặc dữ liệu cá nhân trong code, fixture, log, screenshot hoặc tài liệu.
+- Ảnh hưởng đến data migration và rollback đã được ghi lại.
+- Tài liệu canonical liên quan đã cập nhật.
+- Kết quả analyzer, test và platform check được báo chính xác.

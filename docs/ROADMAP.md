@@ -1,71 +1,71 @@
 # Roadmap
 
-This is a risk-first remediation roadmap, not a delivery commitment.
+Đây là roadmap xử lý theo rủi ro, không phải cam kết thời gian giao hàng.
 
-## Phase 0 — Establish a trustworthy baseline
+## Giai đoạn 0 — Thiết lập baseline đáng tin cậy
 
-- Add a safe development .env workflow that allows tests to build.
-- Replace the commented template with real tests.
-- Fix existing analyzer warnings and deprecated API usage without behavior churn.
-- Add CI with pinned Flutter.
-- Add explicit license and consistent product naming.
-- Add version-controlled Supabase schema and RLS migrations.
+- Thêm workflow `.env` development an toàn để test build được.
+- Thay template đã comment bằng test thật.
+- Sửa analyzer warning và deprecated API hiện tại mà không gây behavior churn.
+- Thêm CI với Flutter version được pin.
+- Thêm license rõ ràng và tên sản phẩm nhất quán.
+- Thêm Supabase schema và RLS migration có version control.
 
-Exit criteria: quick and full harness gates run deterministically in CI.
+Exit criteria: quick và full harness gate chạy deterministic trong CI.
 
-## Phase 1 — Protect local correctness
+## Giai đoạn 1 — Bảo vệ tính đúng đắn local
 
-- Preserve algorithm, digits, and period during create and sync restore.
-- Make countdown period-aware.
-- Validate Base32, algorithm, digits, and period at a domain boundary.
-- Remove secret-bearing logs.
-- Define secure-storage index recovery.
-- Separate authentication/session storage from authenticator storage.
-- Decide and implement logout/account-switch data ownership.
-- Make app-lock errors fail closed.
+- Giữ algorithm, digits và period khi create và restore từ sync.
+- Countdown nhận biết period.
+- Validate Base32, algorithm, digits và period tại domain boundary.
+- Xóa log chứa secret.
+- Định nghĩa recovery cho secure-storage index.
+- Tách storage authentication/session khỏi authenticator storage.
+- Quyết định và triển khai quyền sở hữu dữ liệu khi logout/đổi account.
+- Làm app-lock error fail closed.
 
-Exit criteria: local TOTP and lock flows have unit, BLoC, widget, and device integration coverage.
+Exit criteria: luồng TOTP và lock local có unit, BLoC, widget và device integration coverage.
 
-## Phase 2 — Redesign synchronization
+## Giai đoạn 2 — Thiết kế lại synchronization
 
-- Accept ADRs for identity, deletion, conflicts, concurrency, and atomic publication.
-- Replace delete-then-insert with an atomic, idempotent protocol.
-- Use one explicit account-state owner.
-- Add tombstones or a documented snapshot revision model.
-- Add interrupted-write, retry, and two-device tests.
+- Chấp nhận ADR cho identity, deletion, conflict, concurrency và atomic publication.
+- Thay xóa-rồi-chèn bằng protocol atomic, idempotent.
+- Dùng một account-state owner rõ ràng.
+- Thêm tombstone hoặc snapshot revision model có tài liệu.
+- Thêm test interrupted write, retry và hai thiết bị.
 
-Exit criteria: no simulated network or concurrency failure loses the last valid snapshot.
+Exit criteria: không network/concurrency failure giả lập nào làm mất snapshot hợp lệ gần nhất.
 
-## Phase 3 — Implement E2EE
+## Giai đoạn 3 — Triển khai E2EE
 
-- Accept key hierarchy and recovery ADR.
-- Implement versioned authenticated encryption.
-- Add multi-device onboarding and recovery.
-- Migrate plaintext rows safely.
-- Remove plaintext fields and verify no secret reaches remote logs or rows.
+- Chấp nhận ADR về key hierarchy và recovery.
+- Triển khai authenticated encryption có version.
+- Thêm onboarding đa thiết bị và recovery.
+- Migrate row plaintext an toàn.
+- Xóa field plaintext và xác minh không secret nào tới remote log hoặc row.
 
-Exit criteria: backend-blind secret storage is demonstrated by tests and review.
+Exit criteria: backend-blind secret storage được chứng minh bằng test và review.
 
-## Phase 4 — Complete auth and product flows
+## Giai đoạn 4 — Hoàn thiện auth và product flow
 
-- Decide whether offline-only use is supported.
-- Choose one password-recovery surface.
-- Complete deep links and recovery tests.
-- Add user-facing data export, deletion, and retention behavior.
-- Add localization and accessibility baseline.
+- Quyết định có hỗ trợ offline-only hay không.
+- Chọn một password-recovery surface.
+- Hoàn thiện deep link và recovery test.
+- Thêm data export, deletion và retention behavior hướng tới user.
+- Thêm localization và accessibility baseline.
 
-Exit criteria: product behavior, privacy policy, and store declarations match.
+Exit criteria: product behavior, privacy policy và store declaration khớp nhau.
 
-## Phase 5 — Platform release hardening
+## Giai đoạn 5 — Hardening platform release
 
-- Android signing, permissions, backup, and Play checks.
-- iOS signing, Keychain, deep links, and TestFlight checks.
-- macOS entitlements and notarization.
-- Explicit decision for Web, Windows, and Linux support.
-- Release provenance, rollback, and incident procedures.
+- Android signing, permission, backup và Play check.
+- iOS signing, Keychain, deep link và TestFlight check.
+- macOS entitlement và notarization.
+- Quyết định rõ về Web, Windows và Linux support.
+- Quy trình release provenance, rollback và incident.
 
-Exit criteria: DEPLOYMENT.md gates pass for each advertised platform.
+Exit criteria: gate trong `DEPLOYMENT.md` pass cho từng platform được quảng bá.
 
-## Work selection rule
+## Quy tắc chọn việc
 
-Do not add convenience features ahead of unresolved credential disclosure or data-loss blockers unless the owner explicitly accepts the risk. Each roadmap item should use docs/tasks/TEMPLATE.md and record verification evidence.
+Không ưu tiên convenience feature trước các blocker làm lộ credential hoặc mất dữ liệu, trừ khi owner chấp nhận rủi ro rõ ràng. Mỗi roadmap item nên dùng `docs/tasks/TEMPLATE.md` và ghi bằng chứng xác minh.

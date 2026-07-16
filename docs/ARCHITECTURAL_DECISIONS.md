@@ -1,59 +1,59 @@
-# Architectural Decisions
+# Quyết định kiến trúc
 
-This document indexes durable decisions. Detailed new decisions use records in docs/adr.
+Tài liệu này lập chỉ mục các quyết định bền vững. Quyết định chi tiết mới được ghi thành record trong `docs/adr`.
 
-## Adopted decisions reflected in code
+## Quyết định đã được code áp dụng
 
-| ID | Decision | Status | Evidence |
+| ID | Quyết định | Trạng thái | Bằng chứng |
 |---|---|---|---|
-| A-001 | Flutter and Dart for the client | Adopted | pubspec.yaml and platform runners |
-| A-002 | Feature-first Presentation, Domain, Data layering | Adopted with inconsistencies | lib/features |
-| A-003 | BLoC for feature state and Provider for theme | Adopted | flutter_bloc and ThemeProvider |
-| A-004 | GetIt and Injectable for dependency construction | Adopted | injection_container files |
-| A-005 | FlutterSecureStorage for authenticator records | Adopted | AuthenticatorLocalDataSource |
-| A-006 | SharedPreferences for non-secret preferences | Adopted | theme, biometric, sync, Remember Me |
-| A-007 | Supabase for user authentication and remote sync | Adopted | auth and sync data sources |
-| A-008 | fpdart Either values at repository/use-case boundaries | Adopted | domain and data layers |
-| A-009 | GoRouter redirects from auth and local-lock state | Adopted | AppRouter |
+| A-001 | Dùng Flutter và Dart cho client | Đã áp dụng | `pubspec.yaml` và platform runner |
+| A-002 | Chia lớp Presentation, Domain, Data theo feature | Đã áp dụng, chưa nhất quán | `lib/features` |
+| A-003 | BLoC cho feature state và Provider cho theme | Đã áp dụng | `flutter_bloc` và `ThemeProvider` |
+| A-004 | GetIt và Injectable để khởi tạo dependency | Đã áp dụng | Các file `injection_container` |
+| A-005 | FlutterSecureStorage cho authenticator record | Đã áp dụng | `AuthenticatorLocalDataSource` |
+| A-006 | SharedPreferences cho preference không phải secret | Đã áp dụng | Theme, biometric, sync, Remember Me |
+| A-007 | Supabase cho user authentication và remote sync | Đã áp dụng | Auth và sync data source |
+| A-008 | `Either` của fpdart tại repository/use-case boundary | Đã áp dụng | Domain và data layer |
+| A-009 | GoRouter redirect từ auth và local-lock state | Đã áp dụng | `AppRouter` |
 
-Adopted does not mean flawless. PROJECT_STATUS.md records defects in the current realization.
+Đã áp dụng không đồng nghĩa hoàn hảo. `PROJECT_STATUS.md` ghi defect trong implementation hiện tại.
 
-## Decisions that must be made
+## Quyết định cần đưa ra
 
-| Proposed ID | Decision needed | Why |
+| ID đề xuất | Quyết định cần có | Lý do |
 |---|---|---|
-| P-001 | Is offline-only use supported, or is Supabase auth mandatory? | README history and router behavior disagree |
-| P-002 | E2EE key hierarchy, recovery, and encrypted format | Plaintext cloud secrets block release |
-| P-003 | Atomic sync and conflict/deletion protocol | Current delete-insert snapshot loses data |
-| P-004 | Authenticator data ownership on logout and account switch | Current logout deletes local accounts |
-| P-005 | Single AccountsBloc ownership or repository-level orchestration | Sync and UI resolve different instances |
-| P-006 | Canonical password-recovery surface | Mobile deep link and web page overlap |
-| P-007 | Supported platform matrix | Runners exist beyond verified targets |
-| P-008 | Client configuration strategy | .env is ignored but bundled as an asset |
-| P-009 | Product name and identifiers | Hyper Authenticator and HyperZ are mixed |
-| P-010 | License | No explicit license file is tracked |
+| P-001 | Hỗ trợ offline-only hay bắt buộc Supabase auth? | Lịch sử README và router hiện tại mâu thuẫn |
+| P-002 | E2EE key hierarchy, recovery và encrypted format | Cloud secret dạng plaintext chặn release |
+| P-003 | Protocol sync atomic, conflict và deletion | Snapshot xóa-rồi-chèn hiện tại có thể mất dữ liệu |
+| P-004 | Quyền sở hữu authenticator data khi logout/đổi account | Logout hiện xóa account local |
+| P-005 | Một `AccountsBloc` owner hay orchestration tầng repository | Sync và UI resolve instance khác nhau |
+| P-006 | Bề mặt password recovery canonical | Mobile deep link và web page đang chồng lấn |
+| P-007 | Ma trận platform được hỗ trợ | Có runner ngoài các mục tiêu đã xác minh |
+| P-008 | Chiến lược client configuration | `.env` bị ignore nhưng đóng gói như asset |
+| P-009 | Tên và identifier sản phẩm | Hyper Authenticator và HyperZ đang bị trộn |
+| P-010 | License | Chưa track file license rõ ràng |
 
-## ADR process
+## Quy trình ADR
 
-Create an ADR when a change:
+Tạo ADR khi thay đổi:
 
-- modifies a trust boundary or cryptographic design;
-- changes a persisted or remote data contract;
-- changes supported platforms or backend;
-- introduces destructive semantics;
-- changes state ownership or the primary architecture pattern;
-- selects a dependency with long-lived constraints.
+- trust boundary hoặc cryptographic design;
+- data contract local/remote đã persist;
+- platform hoặc backend được hỗ trợ;
+- ngữ nghĩa phá hủy dữ liệu;
+- state ownership hoặc pattern kiến trúc chính;
+- dependency có ràng buộc dài hạn.
 
-Steps:
+Các bước:
 
-1. Copy docs/adr/0000-template.md.
-2. Assign the next four-digit number and a short slug.
-3. Describe context, decision, alternatives, consequences, migration, rollback, and verification.
-4. Mark status Proposed.
-5. Obtain owner approval.
-6. Change status to Accepted and add the record to this index.
-7. Mark superseded records instead of rewriting history.
+1. Sao chép `docs/adr/0000-template.md`.
+2. Gán số bốn chữ số tiếp theo và slug ngắn.
+3. Mô tả context, decision, alternative, consequence, migration, rollback và verification.
+4. Đặt trạng thái **Đề xuất**.
+5. Lấy phê duyệt của owner.
+6. Chuyển sang **Chấp nhận** và thêm record vào chỉ mục này.
+7. Đánh dấu record bị thay thế thay vì sửa lại lịch sử.
 
-## Historical rationale
+## Lý do lịch sử
 
-The current choices optimize for a single cross-platform codebase, explicit state transitions, replaceable data sources, and fast backend bootstrap. Their main trade-offs are generated-code maintenance, BLoC boilerplate, platform-plugin differences, dependence on Supabase configuration, and the need for disciplined boundary tests.
+Các lựa chọn hiện tại tối ưu cho một codebase cross-platform, state transition rõ ràng, data source có thể thay thế và backend bootstrap nhanh. Trade-off chính là bảo trì generated code, BLoC boilerplate, khác biệt plugin theo platform, phụ thuộc cấu hình Supabase và yêu cầu boundary test nghiêm ngặt.

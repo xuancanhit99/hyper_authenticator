@@ -1,17 +1,17 @@
-# Engineering Task Records
+# Engineering task record
 
-Use a task record for multi-step work, especially when it spans sessions or affects security, storage, sync, routing, backend contracts, or multiple platforms.
+Dùng task record cho công việc nhiều bước, đặc biệt khi kéo dài qua nhiều session hoặc ảnh hưởng security, storage, sync, routing, backend contract hay nhiều platform.
 
-Naming:
+Quy tắc đặt tên:
 
     YYYY-MM-DD-short-name.md
 
-Create from TEMPLATE.md. Keep working notes factual and short. Do not include credentials or copied production data.
+Tạo từ `TEMPLATE.md`. Giữ working note khách quan, ngắn gọn. Không chứa credential hoặc dữ liệu production được sao chép.
 
-At completion:
+Khi hoàn thành:
 
-- move durable facts into canonical docs;
-- record final validation;
-- mark the task complete;
-- keep unresolved follow-ups explicit;
-- delete purely disposable scratch notes when they add no historical value.
+- chuyển sự thật bền vững vào tài liệu canonical;
+- ghi kết quả xác minh cuối;
+- đánh dấu task hoàn tất;
+- nêu rõ follow-up chưa xử lý;
+- xóa scratch note thuần túy nếu không có giá trị lịch sử.

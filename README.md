@@ -1,81 +1,79 @@
 # Hyper Authenticator
 
-Hyper Authenticator is a Flutter application for storing TOTP accounts and generating RFC 6238 one-time passwords. The repository also contains Supabase authentication and cloud synchronization, device-credential app locking, QR import/export, and a small password-recovery web page.
+Hyper Authenticator là ứng dụng Flutter dùng để lưu tài khoản TOTP và tạo mã dùng một lần theo RFC 6238. Repository cũng bao gồm xác thực và đồng bộ cloud qua Supabase, khóa ứng dụng bằng thông tin xác thực của thiết bị, nhập/xuất QR và một trang web nhỏ phục vụ khôi phục mật khẩu.
 
-> Project status: alpha. The local authenticator flow is implemented, but cloud synchronization is not end-to-end encrypted and the repository is not ready for production use. Read [Project Status](docs/PROJECT_STATUS.md) before using real 2FA secrets.
+> Trạng thái dự án: alpha. Luồng authenticator cục bộ đã được triển khai, nhưng đồng bộ cloud chưa có mã hóa đầu cuối (E2EE) và repository chưa sẵn sàng cho production. Hãy đọc [Trạng thái dự án](docs/PROJECT_STATUS.md) trước khi dùng secret 2FA thật.
 
-[Vietnamese overview](README.vi.md)
+## Chức năng đã triển khai
 
-## Implemented
+- Đăng ký và đăng nhập bằng email/mật khẩu qua Supabase.
+- Thêm tài khoản TOTP bằng camera quét QR, ảnh trong thư viện hoặc nhập thủ công.
+- Tạo mã TOTP SHA1, SHA256 hoặc SHA512 với số chữ số và chu kỳ tùy chỉnh.
+- Tìm kiếm, sửa, xóa, sao chép và xuất tài khoản thành QR `otpauth`.
+- Lưu bản ghi tài khoản qua FlutterSecureStorage.
+- Tùy chọn khóa bằng sinh trắc học hoặc thông tin xác thực của thiết bị.
+- Giao diện sáng, tối hoặc theo hệ thống.
+- Gộp dữ liệu hoặc ghi đè cloud thủ công qua Supabase.
 
-- Email/password registration and sign-in through Supabase.
-- Add TOTP accounts by camera QR scan, gallery image, or manual entry.
-- Generate SHA1, SHA256, or SHA512 TOTP codes with configurable digits and period.
-- Search, edit, delete, copy, and export accounts as otpauth QR codes.
-- Store account records in FlutterSecureStorage.
-- Optional device biometric or device-credential lock.
-- Light, dark, and system themes.
-- Manual cloud merge or cloud overwrite through Supabase.
+Một số luồng đã triển khai vẫn còn lỗi về tính đúng đắn hoặc bảo mật. Danh sách có thẩm quyền nằm trong [Trạng thái dự án](docs/PROJECT_STATUS.md).
 
-Some implemented paths still contain correctness or security defects. The authoritative list is in docs/PROJECT_STATUS.md.
+## Kiến trúc
 
-## Architecture
-
-The Flutter code is organized by feature and broadly follows Presentation, Domain, and Data layers:
+Mã Flutter được tổ chức theo feature và nhìn chung tuân theo ba lớp Presentation, Domain và Data:
 
     UI pages
       -> BLoCs
-        -> use cases and repository contracts
+        -> use cases và repository contracts
           -> FlutterSecureStorage / SharedPreferences / Supabase
 
-Start with:
+Nên bắt đầu từ:
 
-- [Documentation map](docs/README.md)
-- [System design](docs/SYSTEM_DESIGN.md)
-- [Verified project status](docs/PROJECT_STATUS.md)
-- [Security model](docs/SECURITY.md)
-- [AI agent contract](AGENTS.md)
+- [Bản đồ tài liệu](docs/README.md)
+- [Thiết kế hệ thống](docs/SYSTEM_DESIGN.md)
+- [Trạng thái dự án đã xác minh](docs/PROJECT_STATUS.md)
+- [Mô hình bảo mật](docs/SECURITY.md)
+- [Hợp đồng dành cho AI Agent](AGENTS.md)
 
-## Local setup
+## Thiết lập local
 
-Prerequisites:
+Điều kiện cần:
 
-- Flutter stable with a Dart SDK compatible with pubspec.yaml.
-- Platform tooling for the target device.
-- A Supabase project for the current mandatory sign-in flow.
+- Flutter stable với Dart SDK tương thích `pubspec.yaml`.
+- Platform tooling cho thiết bị đích.
+- Một Supabase project cho luồng đăng nhập hiện đang bắt buộc.
 
-Setup:
+Thiết lập:
 
     cp .env.example .env
     flutter pub get
     dart run build_runner build --delete-conflicting-outputs
     flutter run
 
-The environment file must contain SUPABASE_URL and SUPABASE_ANON_KEY. It is ignored by Git but is currently bundled as a Flutter asset. Do not place a Supabase service-role key or any server secret in this file.
+File môi trường phải có `SUPABASE_URL` và `SUPABASE_ANON_KEY`. File này bị Git bỏ qua nhưng hiện được đóng gói như một Flutter asset. Không đặt Supabase service-role key hoặc bất kỳ server secret nào trong file này.
 
-Run the repository harness before and after a change:
+Chạy repository harness trước và sau mỗi thay đổi:
 
     scripts/agent/doctor.sh
     scripts/agent/check.sh quick
 
-Use the full gate when the test baseline is available:
+Dùng full gate khi test baseline đã sẵn sàng:
 
     scripts/agent/check.sh full
 
-See [Development Guide](docs/DEVELOPMENT.md) and [Testing Strategy](docs/TESTING_STRATEGY.md) for details.
+Xem [Hướng dẫn phát triển](docs/DEVELOPMENT.md) và [Chiến lược kiểm thử](docs/TESTING_STRATEGY.md) để biết chi tiết.
 
-## Platforms
+## Nền tảng
 
-Flutter runners exist for Android, iOS, Web, Windows, macOS, and Linux. Presence of a runner does not mean a platform is release-ready. Android and iOS are the primary mobile targets; every other target requires explicit compatibility and security verification.
+Flutter runner hiện có cho Android, iOS, Web, Windows, macOS và Linux. Có runner không đồng nghĩa nền tảng đã sẵn sàng phát hành. Android và iOS là hai mục tiêu mobile chính; mọi mục tiêu khác cần được xác minh rõ ràng về tính tương thích và bảo mật.
 
-## Security notice
+## Lưu ý bảo mật
 
-Cloud sync currently serializes TOTP secrets into Supabase rows without client-side encryption. Upload is implemented as delete-all followed by insert-all. Do not market the current sync as encrypted backup or use it with sensitive production accounts until the blockers in docs/SECURITY.md are resolved.
+Luồng sync hiện tại serialize TOTP secret trực tiếp vào row Supabase mà không có mã hóa phía client. Upload được thực hiện bằng cách xóa toàn bộ rồi chèn lại toàn bộ. Không quảng bá chức năng hiện tại là encrypted backup và không dùng với tài khoản production nhạy cảm cho đến khi xử lý xong các blocker trong [Mô hình bảo mật](docs/SECURITY.md).
 
-## Contributing
+## Đóng góp
 
-Read [Contributing](CONTRIBUTING.md). Significant architectural or security changes must update the relevant canonical document and add an ADR when the decision changes a long-lived contract.
+Đọc [Hướng dẫn đóng góp](CONTRIBUTING.md). Mọi thay đổi lớn về kiến trúc hoặc bảo mật phải cập nhật tài liệu canonical tương ứng và thêm ADR nếu quyết định làm thay đổi một contract dài hạn.
 
-## License
+## Giấy phép
 
-No license file is currently tracked. Do not assume reuse rights until the project owner adds an explicit license.
+Repository hiện chưa theo dõi file giấy phép. Không mặc định rằng mã nguồn có quyền được tái sử dụng cho đến khi chủ dự án bổ sung giấy phép rõ ràng.

@@ -1,19 +1,19 @@
-# Architecture Decision Records
+# Architecture Decision Record
 
-ADRs capture decisions that should survive code churn and agent sessions.
+ADR ghi lại quyết định cần tồn tại bền vững qua các lần thay đổi code và qua nhiều session của agent.
 
-Naming:
+Quy tắc đặt tên:
 
     NNNN-short-decision-title.md
 
-Statuses:
+Trạng thái:
 
-- Proposed
-- Accepted
-- Rejected
-- Superseded by ADR-NNNN
-- Deprecated
+- Đề xuất
+- Chấp nhận
+- Từ chối
+- Bị thay thế bởi ADR-NNNN
+- Không còn áp dụng
 
-Do not rewrite an accepted ADR to hide history. Add a superseding ADR.
+Không sửa ADR đã chấp nhận để che lịch sử. Hãy tạo ADR mới thay thế.
 
-Use 0000-template.md and register accepted or pending decisions in ../ARCHITECTURAL_DECISIONS.md.
+Dùng `0000-template.md` và đăng ký quyết định đang chờ hoặc đã chấp nhận trong `../ARCHITECTURAL_DECISIONS.md`.

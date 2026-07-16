@@ -1,13 +1,13 @@
-# Legacy Notes
+# Ghi chú cũ
 
-This file previously contained ad hoc build and Google Play instructions. Those instructions were incomplete and duplicated other documents.
+File này trước đây chứa hướng dẫn build và Google Play rời rạc. Những hướng dẫn đó không đầy đủ và trùng với tài liệu khác.
 
-Use the maintained documentation instead:
+Hãy dùng tài liệu được duy trì:
 
-- [Development Guide](docs/DEVELOPMENT.md) for local setup and generated code.
-- [Testing Strategy](docs/TESTING_STRATEGY.md) for quality gates.
-- [Deployment Guide](docs/DEPLOYMENT.md) for release preparation.
-- [Project Status](docs/PROJECT_STATUS.md) for known blockers.
-- [Contributing](CONTRIBUTING.md) and [AI Agent Contract](AGENTS.md) for the engineering workflow.
+- [Hướng dẫn phát triển](docs/DEVELOPMENT.md) cho thiết lập local và generated code.
+- [Chiến lược kiểm thử](docs/TESTING_STRATEGY.md) cho quality gate.
+- [Hướng dẫn deployment](docs/DEPLOYMENT.md) cho chuẩn bị phát hành.
+- [Trạng thái dự án](docs/PROJECT_STATUS.md) cho các blocker đã biết.
+- [Hướng dẫn đóng góp](CONTRIBUTING.md) và [Hợp đồng AI Agent](AGENTS.md) cho engineering workflow.
 
-Do not add new operational instructions to this file.
+Không thêm hướng dẫn vận hành mới vào file này.

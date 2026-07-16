@@ -1,26 +1,26 @@
-# Data Models and Storage Contracts
+# Mô hình dữ liệu và storage contract
 
-This document describes the shapes implemented in source. Proposed encrypted formats are defined in E2EE_DESIGN.md.
+Tài liệu này mô tả shape đã triển khai trong source. Encrypted format được đề xuất nằm trong `E2EE_DESIGN.md`.
 
 ## AuthenticatorAccount
 
-Source: lib/features/authenticator/domain/entities/authenticator_account.dart.
+Source: `lib/features/authenticator/domain/entities/authenticator_account.dart`.
 
-| Field | Dart type | Nullable | Default | Sensitive |
+| Field | Kiểu Dart | Nullable | Default | Nhạy cảm |
 |---|---|---:|---|---:|
-| id | String | No | None | No |
-| issuer | String | No | None | Potentially |
-| accountName | String | No | None | Yes |
-| secretKey | String | No | None | Critical credential |
-| algorithm | String | No | SHA1 | No |
-| digits | int | No | 6 | No |
-| period | int | No | 30 | No |
+| `id` | String | Không | Không có | Không |
+| `issuer` | String | Không | Không có | Có thể |
+| `accountName` | String | Không | Không có | Có |
+| `secretKey` | String | Không | Không có | Credential tối quan trọng |
+| `algorithm` | String | Không | SHA1 | Không |
+| `digits` | int | Không | 6 | Không |
+| `period` | int | Không | 30 | Không |
 
-The active model does not contain createdAt, updatedAt, orderIndex, iconPath, counter, tags, or a record version.
+Model hiện tại không có `createdAt`, `updatedAt`, `orderIndex`, `iconPath`, `counter`, tag hoặc record version.
 
 ### JSON contract
 
-The active toJson method writes:
+Phương thức `toJson` hiện tại ghi:
 
 ~~~json
 {
@@ -34,103 +34,103 @@ The active toJson method writes:
 }
 ~~~
 
-Keys use camelCase. fromJson requires id, issuer, accountName, and secretKey. It defaults missing algorithm, digits, and period.
+Key dùng camelCase. `fromJson` bắt buộc `id`, `issuer`, `accountName`, `secretKey`; algorithm, digits và period bị thiếu sẽ nhận default.
 
-### Required invariants
+### Bất biến bắt buộc
 
-- id is stable and unique.
-- secretKey is a valid Base32 secret accepted by the OTP library.
-- algorithm is one of SHA1, SHA256, or SHA512.
-- digits is supported by the product contract; current UI validation expects 6 through 8.
-- period is positive.
-- Every field round-trips through local and remote storage without silent replacement.
-- Logs and test reports must redact secretKey.
+- `id` ổn định và duy nhất.
+- `secretKey` là Base32 secret hợp lệ mà OTP library chấp nhận.
+- `algorithm` là SHA1, SHA256 hoặc SHA512.
+- `digits` nằm trong product contract được hỗ trợ; UI hiện validate từ 6 đến 8.
+- `period` lớn hơn 0.
+- Mọi field round-trip qua local và remote storage mà không âm thầm bị thay thế.
+- Log và test report phải redact `secretKey`.
 
-The current implementation violates the round-trip invariant when a new UUID is assigned. See PROJECT_STATUS.md.
+Implementation hiện tại vi phạm bất biến round-trip khi gán UUID mới. Xem `PROJECT_STATUS.md`.
 
-## Local secure-storage layout
+## Bố cục local secure storage
 
-Source: lib/features/authenticator/data/datasources/authenticator_local_data_source.dart.
+Source: `lib/features/authenticator/data/datasources/authenticator_local_data_source.dart`.
 
-| Storage key | Value |
+| Storage key | Giá trị |
 |---|---|
-| authenticator_account_index | JSON array of account IDs |
-| each account ID | AuthenticatorAccount JSON |
+| `authenticator_account_index` | JSON array chứa account ID |
+| Mỗi account ID | JSON của `AuthenticatorAccount` |
 
-Create writes the record and then updates the index. Delete removes the record and then updates the index. These multi-step operations are not transactional.
+Create ghi record rồi cập nhật index. Delete xóa record rồi cập nhật index. Các thao tác nhiều bước này không transactional.
 
-Recovery behavior must be defined for:
+Cần định nghĩa recovery behavior khi:
 
-- index contains an ID whose record is missing;
-- record exists but index update failed;
-- malformed JSON;
-- duplicate IDs;
-- secure-storage read or write failure.
+- index có ID nhưng record bị thiếu;
+- record tồn tại nhưng cập nhật index thất bại;
+- JSON hỏng;
+- ID trùng;
+- đọc hoặc ghi secure storage thất bại.
 
 ## UserEntity
 
-Source: lib/features/auth/domain/entities/user_entity.dart.
+Source: `lib/features/auth/domain/entities/user_entity.dart`.
 
-| Field | Dart type | Nullable | Source |
+| Field | Kiểu Dart | Nullable | Nguồn |
 |---|---|---:|---|
-| id | String | No | Supabase User.id |
-| email | String | Yes | Supabase User.email |
-| name | String | Yes | Supabase userMetadata name |
+| `id` | String | Không | Supabase `User.id` |
+| `email` | String | Có | Supabase `User.email` |
+| `name` | String | Có | `name` trong Supabase `userMetadata` |
 
-No password or session token is part of UserEntity.
+`UserEntity` không chứa mật khẩu hoặc session token.
 
-## SharedPreferences keys
+## Key SharedPreferences
 
-The project currently uses string constants in multiple features rather than one central registry.
+Dự án hiện dùng string constant ở nhiều feature thay vì một registry tập trung.
 
-| Key | Meaning | Sensitive |
+| Key | Ý nghĩa | Nhạy cảm |
 |---|---|---:|
-| biometric_enabled | Require OS device authentication | No |
-| sync_enabled | Display and allow manual sync controls | No |
-| remembered_email | Login form convenience | Personal data |
-| remember_me_state | Remember Me checkbox | No |
-| theme_mode | Theme selection | No |
+| `biometric_enabled` | Yêu cầu xác thực thiết bị qua OS | Không |
+| `sync_enabled` | Hiển thị và cho phép sync thủ công | Không |
+| `remembered_email` | Tiện ích cho form login | Dữ liệu cá nhân |
+| `remember_me_state` | Trạng thái checkbox Remember Me | Không |
+| `theme_mode` | Theme được chọn | Không |
 
-Exact theme key naming must be checked in ThemeProvider before migration. Preference changes need compatibility behavior for existing installations.
+Tên key theme chính xác phải được kiểm tra trong `ThemeProvider` trước migration. Thay đổi preference cần compatibility behavior cho bản cài hiện có.
 
-## Observed Supabase row contract
+## Contract row Supabase đã quan sát
 
-Source: lib/features/sync/data/datasources/supabase_sync_remote_data_source_impl.dart.
+Source: `lib/features/sync/data/datasources/supabase_sync_remote_data_source_impl.dart`.
 
-The client currently writes a map based on AuthenticatorAccount JSON, then:
+Client hiện ghi map từ JSON `AuthenticatorAccount`, sau đó:
 
-- renames id to account_id;
-- adds user_id;
-- inserts issuer, accountName, secretKey, algorithm, digits, and period.
+- đổi `id` thành `account_id`;
+- thêm `user_id`;
+- chèn `issuer`, `accountName`, `secretKey`, `algorithm`, `digits` và `period`.
 
-The client also expects:
+Client cũng kỳ vọng:
 
-- id to exist for hasRemoteData selection;
-- updated_at to exist for last-upload time;
-- account_id to be mapped back to entity id on download.
+- có `id` khi `hasRemoteData` thực hiện select;
+- có `updated_at` khi đọc thời điểm upload gần nhất;
+- `account_id` được map ngược thành entity `id` khi download.
 
-This means the observed contract includes both id and account_id semantics and uses camelCase application fields. Older documentation described snake_case fields and does not match the client.
+Vì vậy contract quan sát được vừa có semantic `id` vừa có `account_id`, đồng thời field ứng dụng dùng camelCase. Tài liệu cũ từng mô tả field snake_case không khớp client.
 
-No schema migration is tracked, so the production database shape cannot be reproduced from this repository.
+Repository không track schema migration nên không thể tái lập chính xác production database.
 
-## Remote identity and merge identity
+## Định danh remote và merge
 
-- Remote ownership: user_id.
-- Entity identity: id or account_id depending on boundary.
-- Current merge identity: lowercase issuer plus lowercase accountName.
+- Quyền sở hữu remote: `user_id`.
+- Entity identity: `id` hoặc `account_id` tùy boundary.
+- Merge identity hiện tại: issuer viết thường cộng `accountName` viết thường.
 
-Merge identity is not sufficient to distinguish secret rotation, duplicate labels, or two accounts with the same label. It also cannot represent deletions.
+Merge identity này không phân biệt được secret rotation, label trùng hoặc hai account cùng nhãn. Nó cũng không biểu diễn deletion.
 
-## Model change protocol
+## Protocol thay đổi model
 
-Any persisted model change must include:
+Mọi thay đổi model đã persist phải gồm:
 
-1. A format or schema version.
-2. Backward-compatible read behavior.
-3. A local migration and rollback or recovery strategy.
-4. A remote migration when cloud data changes.
-5. Unit tests for old-to-new and new-to-new round trips.
-6. Conflict behavior across client versions.
-7. Updates to this document, SUPABASE_INTEGRATION.md, and SECURITY.md.
+1. Format hoặc schema version.
+2. Read behavior tương thích ngược.
+3. Local migration cùng rollback hoặc recovery strategy.
+4. Remote migration nếu cloud data thay đổi.
+5. Unit test cho round trip old-to-new và new-to-new.
+6. Conflict behavior giữa các phiên bản client.
+7. Cập nhật tài liệu này, `SUPABASE_INTEGRATION.md` và `SECURITY.md`.
 
-Never use a silent default to hide an unsupported or corrupted persisted value.
+Không dùng silent default để che giấu giá trị persist bị hỏng hoặc không được hỗ trợ.

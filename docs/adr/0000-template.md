@@ -1,55 +1,55 @@
-# ADR-NNNN: Decision title
+# ADR-NNNN: Tiêu đề quyết định
 
-- Status: Proposed
-- Date: YYYY-MM-DD
-- Owners:
-- Supersedes:
-- Superseded by:
+- Trạng thái: Đề xuất
+- Ngày: YYYY-MM-DD
+- Owner:
+- Thay thế:
+- Bị thay thế bởi:
 
-## Context
+## Bối cảnh
 
-What problem, constraint, evidence, and risk require a durable decision?
+Vấn đề, constraint, bằng chứng và rủi ro nào cần một quyết định dài hạn?
 
-## Decision
+## Quyết định
 
-What is being chosen? State the boundary precisely.
+Lựa chọn nào được đưa ra? Nêu boundary chính xác.
 
-## Alternatives considered
+## Phương án đã cân nhắc
 
-### Alternative A
+### Phương án A
 
-Benefits, costs, and rejection reason.
+Lợi ích, chi phí và lý do không chọn.
 
-### Alternative B
+### Phương án B
 
-Benefits, costs, and rejection reason.
+Lợi ích, chi phí và lý do không chọn.
 
-## Consequences
+## Hệ quả
 
-### Positive
+### Tích cực
 
-- Describe a positive consequence.
+- Mô tả một hệ quả tích cực.
 
-### Negative
+### Tiêu cực
 
-- Describe a negative consequence.
+- Mô tả một hệ quả tiêu cực.
 
-### Risks
+### Rủi ro
 
-- Describe a risk and mitigation.
+- Mô tả rủi ro và cách giảm thiểu.
 
-## Security and privacy
+## Bảo mật và quyền riêng tư
 
-Assets, trust boundaries, abuse cases, and controls.
+Asset, trust boundary, abuse case và control.
 
-## Data and compatibility
+## Dữ liệu và compatibility
 
-Persisted formats, migrations, client compatibility, and rollback.
+Persisted format, migration, client compatibility và rollback.
 
-## Verification
+## Xác minh
 
-Tests, release gates, and evidence required to accept the decision.
+Test, release gate và bằng chứng cần có để chấp nhận quyết định.
 
 ## Rollout
 
-Ordered steps, feature gating, monitoring, and rollback trigger.
+Các bước theo thứ tự, feature gate, monitoring và rollback trigger.

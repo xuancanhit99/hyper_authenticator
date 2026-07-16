@@ -1,118 +1,118 @@
-# Non-Functional Requirements
+# Yêu cầu phi chức năng
 
-Targets marked Proposed are not yet measured or enforced.
+Mục tiêu có nhãn **Đề xuất** chưa được đo hoặc enforce.
 
-## Security
+## Bảo mật
 
-Required:
+Bắt buộc:
 
-- No readable TOTP secret leaves the client during production sync.
-- No credential appears in logs, analytics, crash reports, screenshots, or fixtures.
-- Cross-user Supabase access tests deny every operation.
-- Configured app lock fails closed on plugin or routing error.
-- No production artifact contains a service-role or server secret.
-- All critical and high security findings are resolved before release.
+- Không TOTP secret dạng đọc được nào rời client khi sync production.
+- Không credential nào xuất hiện trong log, analytics, crash report, screenshot hoặc fixture.
+- Cross-user Supabase test từ chối mọi operation.
+- App lock đã cấu hình fail closed khi plugin hoặc routing error.
+- Không production artifact nào chứa service-role hoặc server secret.
+- Mọi finding bảo mật Critical và High được xử lý trước release.
 
-## Correctness and reliability
+## Tính đúng đắn và độ tin cậy
 
-Required:
+Bắt buộc:
 
-- TOTP output matches RFC 6238 or equivalent known-answer vectors for supported algorithms.
-- Every account field round-trips through local storage.
-- Sync interruption cannot destroy the last valid local or cloud snapshot.
-- Merge and deletion semantics are deterministic and documented.
-- Retry is idempotent.
-- Unsupported schema or encrypted-format versions fail without overwriting valid data.
+- TOTP output khớp RFC 6238 hoặc known-answer vector tương đương cho algorithm được hỗ trợ.
+- Mọi account field round-trip qua local storage.
+- Sync bị gián đoạn không thể phá hủy snapshot local/cloud hợp lệ gần nhất.
+- Merge và deletion semantic deterministic và được ghi lại.
+- Retry idempotent.
+- Schema hoặc encrypted-format version không được hỗ trợ phải fail mà không ghi đè dữ liệu hợp lệ.
 
-## Availability
+## Tính sẵn sàng
 
-Product decision required: offline-only access versus mandatory Supabase authentication.
+Cần quyết định sản phẩm: offline-only access hay Supabase authentication bắt buộc.
 
-If offline core use is accepted, TOTP viewing must remain available without network after local unlock. If mandatory auth remains, the dependency and outage behavior must be stated publicly.
+Nếu chấp nhận offline core use, việc xem TOTP phải tiếp tục được khi mất network sau local unlock. Nếu vẫn bắt buộc auth, dependency và outage behavior phải được công bố.
 
-## Performance
+## Hiệu năng
 
-Proposed initial targets on a representative mid-range mobile device:
+Mục tiêu ban đầu đề xuất trên thiết bị mobile tầm trung đại diện:
 
-- cached account list visible within 500 ms after the app shell is ready;
-- TOTP generation under 10 ms per account at the 95th percentile for 100 accounts;
-- account-list scrolling remains responsive with 500 accounts;
-- no network or secure-storage loop blocks the UI thread;
-- sync progress remains observable and cancellable.
+- danh sách account cache hiển thị trong 500 ms sau khi app shell sẵn sàng;
+- tạo TOTP dưới 10 ms mỗi account ở percentile 95 với 100 account;
+- scroll danh sách vẫn responsive với 500 account;
+- không có network hoặc secure-storage loop block UI thread;
+- tiến trình sync có thể quan sát và cancel.
 
-Measure before adopting these as release SLOs.
+Đo thực tế trước khi nhận các giá trị này làm release SLO.
 
-## Privacy
+## Quyền riêng tư
 
-Required:
+Bắt buộc:
 
-- Data inventory matches the privacy policy.
-- User-triggered cloud sync is distinguishable from local storage.
-- Account deletion and retention behavior is documented.
-- Personal data is minimized in logs and support workflows.
-- Third-party services and hosted dependencies are disclosed.
+- Data inventory khớp privacy policy.
+- Cloud sync do user kích hoạt được phân biệt rõ với local storage.
+- Hành vi xóa account và retention được ghi lại.
+- Giảm tối đa dữ liệu cá nhân trong log và support workflow.
+- Công bố third-party service và hosted dependency.
 
-## Usability and accessibility
+## Usability và accessibility
 
-Proposed targets:
+Mục tiêu đề xuất:
 
-- all critical flows usable with screen readers;
-- text respects system scaling without clipping;
-- actions do not rely on color alone;
-- destructive actions explain exact data impact;
-- copy feedback does not expose the copied secret;
-- localization strategy is defined before adding more hard-coded text.
+- mọi critical flow dùng được bằng screen reader;
+- text tuân theo system scaling mà không bị cắt;
+- action không phụ thuộc riêng vào màu;
+- destructive action giải thích chính xác tác động dữ liệu;
+- feedback copy không làm lộ secret đã sao chép;
+- định nghĩa localization strategy trước khi thêm hard-coded text.
 
-## Maintainability
+## Khả năng bảo trì
 
-Required:
+Bắt buộc:
 
-- Canonical docs updated with behavior.
-- No generated DI drift.
-- New defects receive regression tests.
-- Persisted contracts are versioned before incompatible change.
-- Architectural changes have ADRs.
-- Static-analysis diagnostics do not increase without explicit rationale.
+- Tài liệu canonical cập nhật cùng behavior.
+- Không có generated DI drift.
+- Defect mới có regression test.
+- Persisted contract có version trước incompatible change.
+- Thay đổi kiến trúc có ADR.
+- Static-analysis diagnostic không tăng khi thiếu lý do rõ ràng.
 
-## Portability
+## Tính portable
 
-A platform is supported only after:
+Một platform chỉ được hỗ trợ sau khi:
 
-- required plugins are compatible;
-- permissions and entitlements are correct;
-- secure-storage and local-auth behavior are tested;
-- release build, install, upgrade, and rollback pass;
-- limitations are documented.
+- plugin cần thiết tương thích;
+- permission và entitlement đúng;
+- secure-storage và local-auth behavior được test;
+- release build, install, upgrade và rollback pass;
+- limitation được ghi lại.
 
-Runner presence alone is not support.
+Có runner không đồng nghĩa được hỗ trợ.
 
 ## Observability
 
-Proposed:
+Đề xuất:
 
-- structured event categories with redaction at the boundary;
-- no raw auth or sync payloads;
-- correlation IDs that cannot reveal user or account identity;
-- actionable error classes for auth, storage, network, schema, and crypto;
-- opt-in crash reporting with documented retention and provider.
+- structured event category với redaction ở boundary;
+- không có raw auth hoặc sync payload;
+- correlation ID không làm lộ user/account identity;
+- actionable error class cho auth, storage, network, schema và crypto;
+- crash reporting opt-in với retention và provider được ghi rõ.
 
 ## Recovery
 
-Required before production:
+Bắt buộc trước production:
 
-- local storage inconsistency recovery;
-- remote snapshot rollback;
-- key-loss and E2EE recovery policy;
-- account export or backup decision;
-- incident response for credential or backend compromise.
+- recovery khi local storage không nhất quán;
+- rollback remote snapshot;
+- policy key loss và E2EE recovery;
+- quyết định account export hoặc backup;
+- incident response khi credential hoặc backend bị compromise.
 
-## Enforcement
+## Cách enforce
 
-Each requirement must eventually map to one or more:
+Mỗi requirement cuối cùng phải map tới một hoặc nhiều:
 
 - automated test;
 - CI rule;
 - platform release checklist;
 - security review;
 - operational monitor;
-- accepted risk with owner and expiration.
+- accepted risk có owner và thời hạn.

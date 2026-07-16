@@ -1,38 +1,38 @@
-# Proposed End-to-End Encryption Design
+# Thiết kế mã hóa đầu cuối đề xuất
 
-Status: Planned. No part of this document proves that E2EE is implemented.
+Trạng thái: **Dự kiến**. Không nội dung nào trong tài liệu này chứng minh E2EE đã được triển khai.
 
-An architecture decision record must accept the final design before implementation.
+Architecture decision record phải chấp nhận thiết kế cuối cùng trước khi implementation.
 
-## Goal
+## Mục tiêu
 
-Supabase and network intermediaries must be unable to read TOTP secrets or account labels from synchronized data. The client must detect ciphertext tampering and prevent accidental cross-user or cross-record decryption.
+Supabase và network intermediary không thể đọc TOTP secret hoặc account label trong dữ liệu sync. Client phải phát hiện ciphertext bị sửa và ngăn decryption nhầm giữa user hoặc record.
 
-## Non-goals
+## Ngoài phạm vi
 
-- Protecting secrets from a fully compromised unlocked client device.
-- Replacing Supabase authentication or RLS.
-- Inventing custom cryptographic primitives.
-- Claiming recovery is possible without a deliberate key-recovery design.
+- Bảo vệ secret khỏi thiết bị client đã unlock và bị compromise hoàn toàn.
+- Thay thế Supabase authentication hoặc RLS.
+- Tự phát minh cryptographic primitive.
+- Khẳng định có thể recovery khi chưa thiết kế key recovery rõ ràng.
 
-## Proposed key hierarchy
+## Key hierarchy đề xuất
 
-Use two key levels:
+Dùng hai tầng key:
 
-1. A random Data Encryption Key, or DEK, encrypts account payloads.
-2. A Key Encryption Key, or KEK, wraps the DEK for each authorized device or recovery method.
+1. Data Encryption Key (DEK) ngẫu nhiên mã hóa account payload.
+2. Key Encryption Key (KEK) wrap DEK cho từng thiết bị hoặc recovery method được cho phép.
 
-Possible KEK sources:
+Nguồn KEK khả thi:
 
-- a key derived from a user-provided master password using a memory-hard KDF;
-- a device key protected by secure hardware or platform secure storage;
-- a recovery key explicitly exported to the user.
+- key derive từ master password do user cung cấp bằng memory-hard KDF;
+- device key được bảo vệ bởi secure hardware hoặc platform secure storage;
+- recovery key được export rõ ràng cho user.
 
-The project must choose how a new device obtains the DEK without giving the backend plaintext key material.
+Dự án phải quyết định cách thiết bị mới nhận DEK mà backend không nhận key material ở dạng plaintext.
 
-## Proposed payload
+## Payload đề xuất
 
-A versioned envelope could contain:
+Versioned envelope có thể có dạng:
 
 ~~~json
 {
@@ -46,106 +46,106 @@ A versioned envelope could contain:
 }
 ~~~
 
-Plaintext before encryption contains the complete AuthenticatorAccount fields needed for generation. Associated authenticated data should bind at least:
+Plaintext trước encryption chứa đầy đủ field `AuthenticatorAccount` cần để tạo mã. Associated authenticated data phải bind ít nhất:
 
 - format version;
-- user identity or tenant scope;
+- user identity hoặc tenant scope;
 - record ID;
 - purpose string;
-- revision when used by the conflict protocol.
+- revision nếu conflict protocol sử dụng.
 
-Nonce uniqueness is mandatory for a given key. Use the cryptography library to generate random nonces and authenticated ciphertext.
+Nonce phải duy nhất với cùng một key. Dùng cryptography library để tạo nonce ngẫu nhiên và authenticated ciphertext.
 
 ## Key derivation
 
-If a master password is chosen:
+Nếu chọn master password:
 
-- store a random per-user salt;
-- use a reviewed memory-hard KDF available on all supported targets;
-- define parameters in the versioned envelope or key metadata;
-- enforce rate-limiting only as defense in depth because encrypted blobs permit offline guessing;
-- never reuse the Supabase login password implicitly;
-- never log the password, derived key, salt, DEK, or recovery data.
+- lưu random salt riêng cho mỗi user;
+- dùng memory-hard KDF đã review và chạy được trên mọi target;
+- định nghĩa parameter trong versioned envelope hoặc key metadata;
+- rate limit chỉ là defense in depth vì encrypted blob cho phép offline guessing;
+- không ngầm tái sử dụng mật khẩu đăng nhập Supabase;
+- không log password, derived key, salt, DEK hoặc recovery data.
 
-If the selected Dart stack cannot provide a suitable cross-platform KDF, resolve that dependency before accepting the design.
+Nếu Dart stack được chọn không có KDF cross-platform phù hợp, phải xử lý dependency đó trước khi chấp nhận thiết kế.
 
-## Device onboarding
+## Onboarding thiết bị
 
-The final design must specify one or more:
+Thiết kế cuối phải định nghĩa một hoặc nhiều cách:
 
-- scan a device-to-device encrypted transfer QR;
-- enter a high-entropy recovery key;
-- enter a master password that derives a KEK;
-- approve a new device from an existing trusted device.
+- quét QR truyền dữ liệu mã hóa device-to-device;
+- nhập recovery key entropy cao;
+- nhập master password để derive KEK;
+- phê duyệt thiết bị mới từ thiết bị tin cậy đang có.
 
-Supabase authentication alone must not reveal the DEK.
+Chỉ xác thực Supabase không được làm lộ DEK.
 
 ## Recovery
 
-Recovery is a product and security decision, not an implementation detail.
+Recovery là quyết định sản phẩm và bảo mật, không phải chi tiết implementation.
 
-Options:
+Các lựa chọn:
 
-- No recovery: lost key means lost synchronized data.
-- User-held recovery key: high entropy, displayed once, never stored in plaintext by the backend.
-- Threshold or trusted-device recovery: more complex and requires a separate threat review.
+- **Không recovery:** mất key đồng nghĩa mất dữ liệu sync.
+- **Recovery key do user giữ:** entropy cao, chỉ hiển thị một lần, backend không lưu plaintext.
+- **Threshold hoặc trusted-device recovery:** phức tạp hơn và cần threat review riêng.
 
-Do not claim password-reset emails can recover E2EE data unless the cryptographic design explicitly enables it.
+Không khẳng định email reset mật khẩu có thể khôi phục dữ liệu E2EE trừ khi cryptographic design cho phép rõ ràng.
 
-## Synchronization integration
+## Tích hợp synchronization
 
 Upload:
 
-1. Validate and serialize the account.
-2. Obtain the DEK in memory.
-3. Generate a unique nonce.
-4. Encrypt with authenticated associated data.
-5. Upload only the versioned envelope and non-secret concurrency metadata.
+1. Validate và serialize account.
+2. Lấy DEK vào memory.
+3. Tạo nonce duy nhất.
+4. Encrypt với authenticated associated data.
+5. Chỉ upload versioned envelope và concurrency metadata không nhạy cảm.
 
 Download:
 
-1. Validate envelope shape and supported version.
-2. Obtain the DEK.
-3. Verify and decrypt using associated data.
-4. Validate the plaintext model.
-5. Persist locally only after successful authentication and validation.
+1. Validate shape và version được hỗ trợ của envelope.
+2. Lấy DEK.
+3. Verify rồi decrypt bằng associated data.
+4. Validate plaintext model.
+5. Chỉ persist local sau khi authentication và validation thành công.
 
-Decryption or validation failure must not overwrite a valid local record.
+Decryption hoặc validation failure không được ghi đè record local hợp lệ.
 
-## Plaintext migration
+## Migration plaintext
 
-Before enabling E2EE in production:
+Trước khi bật E2EE ở production:
 
-1. Inventory legacy plaintext rows.
-2. Release a client that can read legacy and encrypted formats but writes only encrypted.
-3. Authenticate the user and establish the DEK.
-4. Download, validate, encrypt, and atomically migrate the snapshot.
-5. Verify encrypted reads.
-6. Remove plaintext fields.
-7. Track migration completion without exposing secrets.
-8. Define rollback before deleting legacy data.
+1. Kiểm kê row plaintext cũ.
+2. Release client có thể đọc format cũ lẫn encrypted nhưng chỉ ghi encrypted.
+3. Xác thực user và thiết lập DEK.
+4. Download, validate, encrypt và migrate snapshot atomically.
+5. Xác minh đọc encrypted thành công.
+6. Xóa field plaintext.
+7. Theo dõi migration completion mà không lộ secret.
+8. Định nghĩa rollback trước khi xóa dữ liệu cũ.
 
-## Test requirements
+## Yêu cầu kiểm thử
 
-- Known-answer encryption and decryption tests.
-- Random nonce uniqueness test strategy.
-- Tampered nonce, ciphertext, tag, associated data, record ID, and version tests.
-- Wrong user, wrong device key, and wrong master-password tests.
-- Old and future format-version behavior.
-- Interrupted migration and retry.
-- Multi-device onboarding and revocation.
-- Recovery success and failure.
-- No plaintext secret in remote request fixtures, logs, crash reports, or database rows.
-- Target-platform performance and secure-memory limitations documented.
+- Known-answer test cho encryption và decryption.
+- Chiến lược test tính duy nhất của random nonce.
+- Test nonce, ciphertext, tag, associated data, record ID và version bị sửa.
+- Test sai user, sai device key và sai master password.
+- Hành vi với format version cũ và tương lai.
+- Migration bị gián đoạn và retry.
+- Onboarding và revoke đa thiết bị.
+- Recovery thành công và thất bại.
+- Không có plaintext secret trong remote request fixture, log, crash report hoặc database row.
+- Ghi lại performance trên target platform và giới hạn secure memory.
 
-## Open decisions
+## Quyết định mở
 
-- Cipher suite and library.
-- KDF and parameters.
-- Per-record versus per-snapshot encryption.
-- Key rotation and device revocation.
+- Cipher suite và library.
+- KDF và parameter.
+- Encryption theo record hay snapshot.
+- Key rotation và device revocation.
 - Recovery model.
-- Conflict protocol and associated-data fields.
+- Conflict protocol và field associated data.
 - Metadata privacy.
-- Secure deletion expectations by platform.
-- Web support and browser threat model.
+- Kỳ vọng secure deletion theo platform.
+- Web support và browser threat model.

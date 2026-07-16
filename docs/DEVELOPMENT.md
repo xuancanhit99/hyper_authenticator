@@ -1,70 +1,70 @@
-# Development Guide
+# Hướng dẫn phát triển
 
-## Prerequisites
+## Điều kiện cần
 
-- Flutter stable and a Dart SDK compatible with pubspec.yaml.
+- Flutter stable và Dart SDK tương thích `pubspec.yaml`.
 - Git.
-- Platform toolchain for the selected target.
-- A non-production Supabase project for the current sign-in flow.
-- CocoaPods for current iOS and macOS plugin integration.
+- Platform toolchain cho target được chọn.
+- Supabase project không phải production cho luồng đăng nhập hiện tại.
+- CocoaPods cho tích hợp plugin iOS và macOS hiện tại.
 
-Check the machine:
+Kiểm tra máy:
 
     flutter doctor -v
     flutter --version
     dart --version
     scripts/agent/doctor.sh
 
-## First setup
+## Thiết lập lần đầu
 
-1. Create local client configuration:
+1. Tạo client configuration local:
 
        cp .env.example .env
 
-2. Set placeholder-safe development values:
+2. Điền giá trị development an toàn:
 
        SUPABASE_URL=https://your-development-project.invalid
        SUPABASE_ANON_KEY=your-development-anon-key
 
-3. Fetch dependencies:
+3. Tải dependency:
 
        flutter pub get
 
-4. Generate Injectable registrations after dependency-annotation changes:
+4. Generate đăng ký Injectable sau khi dependency annotation thay đổi:
 
        dart run build_runner build --delete-conflicting-outputs
 
-5. Select a device and run:
+5. Chọn thiết bị và chạy:
 
        flutter devices
        flutter run
 
-Never place a service-role key, database password, SMTP credential, TOTP secret, or real user token in .env.
+Không đặt service-role key, database password, SMTP credential, TOTP secret hoặc user token thật trong `.env`.
 
-## Daily workflow
+## Workflow hằng ngày
 
-Before editing:
+Trước khi sửa:
 
     git status --short --branch
     scripts/agent/context.sh
     scripts/agent/check.sh docs
 
-After documentation-only changes:
+Sau thay đổi chỉ có tài liệu:
 
     scripts/agent/check.sh docs
 
-After Dart changes:
+Sau thay đổi Dart:
 
     dart format lib test
     scripts/agent/check.sh quick
 
-After auth, storage, sync, routing, DI, plugin, or platform changes:
+Sau thay đổi auth, storage, sync, routing, DI, plugin hoặc platform:
 
     scripts/agent/check.sh full
 
-Also run the affected platform build or test and record the result.
+Đồng thời chạy build hoặc test platform bị ảnh hưởng và ghi kết quả.
 
-## Repository structure
+## Cấu trúc repository
 
     lib/
       main.dart
@@ -84,94 +84,94 @@ Also run the affected platform build or test and record the result.
     windows/
     linux/
 
-Generated file:
+File được generate:
 
-- lib/injection_container.config.dart
+- `lib/injection_container.config.dart`
 
-Do not hand-edit generated output. Modify annotations or modules and regenerate.
+Không sửa generated output bằng tay. Hãy sửa annotation hoặc module rồi generate lại.
 
-## Common change paths
+## Luồng thay đổi thường gặp
 
-### Add or change an account field
+### Thêm hoặc sửa field tài khoản
 
-Update:
+Cập nhật:
 
-1. AuthenticatorAccount constructor, equality, toJson, and fromJson.
-2. Add/update use-case parameters.
-3. Local data-source round trip.
-4. Sync serialization and remote migration.
-5. Import, edit, export, and display UI.
-6. Tests for legacy and current formats.
-7. DATA_MODELS.md and SUPABASE_INTEGRATION.md.
+1. Constructor, equality, `toJson` và `fromJson` của `AuthenticatorAccount`.
+2. Parameter của add/update use case.
+3. Round trip trong local data source.
+4. Sync serialization và remote migration.
+5. UI import, edit, export và display.
+6. Test format cũ và hiện tại.
+7. `DATA_MODELS.md` và `SUPABASE_INTEGRATION.md`.
 
-### Add a route
+### Thêm route
 
-Update AppRoutes and AppRouter, define public/protected behavior, add redirect tests, and document the route in SYSTEM_DESIGN.md.
+Cập nhật `AppRoutes` và `AppRouter`, định nghĩa behavior public/protected, thêm redirect test và ghi route trong `SYSTEM_DESIGN.md`.
 
-### Change dependency injection
+### Thay đổi dependency injection
 
-1. Change annotations or RegisterModule.
-2. Regenerate Injectable output.
-3. Verify lifecycle: factory, lazy singleton, or shared provider.
-4. Add a test when instance identity affects behavior.
+1. Sửa annotation hoặc `RegisterModule`.
+2. Generate lại Injectable output.
+3. Xác minh lifecycle: factory, lazy singleton hoặc shared provider.
+4. Thêm test khi instance identity ảnh hưởng behavior.
 
-### Change sync
+### Thay đổi sync
 
-Start with SECURITY.md and SUPABASE_INTEGRATION.md. Define idempotency, conflict behavior, deletion propagation, migration, and rollback before implementation.
+Bắt đầu từ `SECURITY.md` và `SUPABASE_INTEGRATION.md`. Định nghĩa idempotency, conflict behavior, deletion propagation, migration và rollback trước implementation.
 
-## Local configuration model
+## Mô hình cấu hình local
 
-The current app loads .env at runtime as a Flutter asset. That makes the file mandatory for asset-bundle construction and places client configuration into the built application.
+Ứng dụng hiện load `.env` ở runtime như Flutter asset. Điều này khiến file bắt buộc để tạo asset bundle và đưa client configuration vào built application.
 
-This is acceptable only for public client configuration such as an anon key. It is not a secret-delivery mechanism. The long-term strategy is an open architectural decision.
+Cách này chỉ chấp nhận được với public client configuration như anon key, không phải cơ chế phân phối secret. Chiến lược dài hạn vẫn là một quyết định kiến trúc mở.
 
-## Platform notes
+## Lưu ý theo platform
 
 ### Android
 
-- Application ID: app.hyperz.authenticator.
-- Release signing currently falls back to debug signing when the release key is unavailable; do not distribute that artifact.
-- Verify INTERNET, camera, biometric, backup, and secure-storage behavior in the merged release manifest.
+- Application ID: `app.hyperz.authenticator`.
+- Release signing hiện fallback sang debug signing nếu không có release key; không phân phối artifact đó.
+- Xác minh INTERNET, camera, biometric, backup và secure-storage behavior trong merged release manifest.
 
 ### iOS
 
-- Verify bundle ID and signing in Xcode.
-- Camera and Face ID usage descriptions exist.
-- Password-recovery URL handling still needs a canonical deep-link configuration.
+- Xác minh bundle ID và signing trong Xcode.
+- Đã có usage description cho camera và Face ID.
+- URL handling cho password recovery vẫn cần deep-link configuration canonical.
 
 ### macOS
 
-- Verify sandbox network client, camera, keychain, and local-auth entitlements.
-- Do not infer readiness from successful CocoaPods installation.
+- Xác minh sandbox entitlement cho network client, camera, keychain và local-auth.
+- Không suy luận release readiness chỉ từ CocoaPods cài thành công.
 
-### Web and desktop
+### Web và desktop
 
-- Verify every plugin on the target.
-- Remove or conditionally isolate unsupported dart:io imports for Web.
-- Document the browser storage and threat model before claiming secure Web support.
+- Xác minh mọi plugin trên target.
+- Xóa hoặc conditionally isolate import `dart:io` không được Web hỗ trợ.
+- Ghi browser storage và threat model trước khi khẳng định Web support an toàn.
 
-## Password-recovery web page
+## Trang web khôi phục mật khẩu
 
-The static page is separate from the Flutter Web app.
+Trang tĩnh này tách biệt Flutter Web app.
 
-Run it only after implementing a safe public-client configuration injection path. Current Compose build arguments are not consumed by the Dockerfile.
+Chỉ chạy sau khi triển khai cơ chế inject public client configuration an toàn. Build argument của Compose hiện không được Dockerfile sử dụng.
 
-Do not bake server secrets into script.js or an Nginx image.
+Không bake server secret vào `script.js` hoặc Nginx image.
 
-## Debugging without leaking credentials
+## Debug mà không làm lộ credential
 
-- Redact values after secret= in otpauth URIs.
-- Log account IDs only when necessary; prefer an irreversible short fingerprint for correlation.
-- Do not log emails by default.
-- Do not print auth responses, sessions, encryption keys, salts, or full exceptions containing request data.
-- Use synthetic accounts and invalid example domains.
+- Redact giá trị sau `secret=` trong URI `otpauth`.
+- Chỉ log account ID khi cần; ưu tiên fingerprint ngắn, một chiều để correlation.
+- Không log email theo mặc định.
+- Không in auth response, session, encryption key, salt hoặc full exception chứa request data.
+- Dùng account tổng hợp và domain `.invalid`.
 
-## Cleaning and regeneration
+## Dọn và generate lại
 
-Use clean only when diagnosing generated or build-cache problems:
+Chỉ dùng clean khi chẩn đoán vấn đề generated file hoặc build cache:
 
     flutter clean
     flutter pub get
     dart run build_runner build --delete-conflicting-outputs
 
-Cleaning is not a substitute for understanding a build failure. Preserve unrelated platform changes in a dirty worktree.
+Clean không thay thế việc hiểu nguyên nhân build failure. Phải bảo toàn thay đổi platform không liên quan trong working tree bẩn.

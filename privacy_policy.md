@@ -1,60 +1,60 @@
-# Privacy Policy for Hyper Authenticator
+# Chính sách quyền riêng tư của Hyper Authenticator
 
-Last updated: July 17, 2026
+Cập nhật lần cuối: 17 tháng 7 năm 2026
 
-> Release note: this is an engineering-aligned draft, not legal advice. The project owner must review it for the laws, stores, regions, backend configuration, and product behavior of the actual release.
+> Lưu ý phát hành: đây là bản nháp bám theo hiện trạng engineering, không phải tư vấn pháp lý. Chủ dự án phải rà soát theo luật, app store, khu vực, cấu hình backend và hành vi sản phẩm của bản phát hành thực tế.
 
-## Scope
+## Phạm vi
 
-This policy describes the data handled by the Hyper Authenticator client application and its password-recovery web page.
+Chính sách này mô tả dữ liệu được xử lý bởi ứng dụng client Hyper Authenticator và trang web khôi phục mật khẩu đi kèm.
 
-## Data handled
+## Dữ liệu được xử lý
 
-The current application requires a Supabase account. Depending on the features used, it handles:
+Ứng dụng hiện yêu cầu tài khoản Supabase. Tùy tính năng được sử dụng, ứng dụng xử lý:
 
-- email address, authentication identifiers, and optional display name for registration and sign-in;
-- authentication sessions managed by Supabase;
-- authenticator account data, including issuer, account label, TOTP secret, algorithm, digits, and period;
-- local preferences such as theme, biometric-lock status, remembered email, and sync status;
-- camera frames or a selected image while decoding a QR code.
+- địa chỉ email, định danh xác thực và tên hiển thị tùy chọn khi đăng ký, đăng nhập;
+- authentication session do Supabase quản lý;
+- dữ liệu tài khoản authenticator, gồm issuer, account label, TOTP secret, algorithm, digits và period;
+- tùy chọn local như theme, trạng thái biometric lock, email đã ghi nhớ và trạng thái sync;
+- camera frame hoặc ảnh được chọn trong khi giải mã QR.
 
-The Remember Me option stores the email address and checkbox state. It does not intentionally store the account password.
+Tùy chọn Remember Me lưu địa chỉ email và trạng thái checkbox. Ứng dụng không chủ ý lưu mật khẩu tài khoản.
 
-## Local processing and storage
+## Xử lý và lưu trữ local
 
-Authenticator account records are stored through FlutterSecureStorage. Non-sensitive preferences are stored through SharedPreferences.
+Bản ghi tài khoản authenticator được lưu qua FlutterSecureStorage. Tùy chọn không nhạy cảm được lưu qua SharedPreferences.
 
-Camera frames and selected QR images are used to decode account data. The application does not intentionally upload the image itself as part of this flow. The decoded account data may be uploaded if the user enables and runs cloud sync.
+Camera frame và ảnh QR được chọn chỉ dùng để giải mã dữ liệu tài khoản. Ứng dụng không chủ ý tải chính ảnh đó lên trong luồng này. Dữ liệu tài khoản đã giải mã có thể được tải lên nếu người dùng bật và chạy cloud sync.
 
-Signing out currently clears the application secure-storage namespace, including locally stored authenticator accounts. This behavior is a known product issue and must be made explicit or changed before release.
+Hiện tại, đăng xuất sẽ xóa namespace secure storage của ứng dụng, bao gồm các tài khoản authenticator local. Đây là vấn đề sản phẩm đã biết và phải được thông báo rõ hoặc thay đổi trước khi phát hành.
 
-## Cloud services
+## Dịch vụ cloud
 
-The application uses Supabase for:
+Ứng dụng dùng Supabase cho:
 
-- user registration, sign-in, session management, and password recovery;
-- storage of synchronized authenticator account records.
+- đăng ký, đăng nhập, quản lý session và khôi phục mật khẩu;
+- lưu bản ghi tài khoản authenticator đã đồng bộ.
 
-Cloud sync is user-controlled from Settings, but Supabase authentication is currently required to enter the application.
+Cloud sync do người dùng điều khiển trong Settings, nhưng xác thực Supabase hiện là bắt buộc để vào ứng dụng.
 
-Important: the current sync implementation does not apply client-side end-to-end encryption to TOTP secrets before upload. Data is protected in transit by the configured HTTPS service and by the deployed Supabase access controls, but authorized backend operators or a database compromise may be able to read synchronized secrets.
+Quan trọng: luồng sync hiện tại chưa mã hóa đầu cuối TOTP secret ở phía client trước khi upload. Dữ liệu truyền đi được bảo vệ bởi dịch vụ HTTPS đã cấu hình và access control được deploy trên Supabase, nhưng backend operator được cấp quyền hoặc kẻ tấn công chiếm được database có thể đọc secret đã sync.
 
-The separate password-recovery page may load the Supabase JavaScript client from a public CDN. Its production hosting and dependency policy must be documented before release.
+Trang khôi phục mật khẩu riêng có thể tải Supabase JavaScript client từ CDN công khai. Hosting production và dependency policy của trang này phải được ghi lại trước khi phát hành.
 
-## Sharing
+## Chia sẻ dữ liệu
 
-Data is sent to Supabase when required for authentication, password recovery, or a user-triggered synchronization. The project does not intentionally sell personal information. Other disclosure obligations depend on the actual production infrastructure and must be reviewed by the project owner.
+Dữ liệu được gửi tới Supabase khi cần cho authentication, password recovery hoặc thao tác sync do người dùng kích hoạt. Dự án không chủ ý bán thông tin cá nhân. Các nghĩa vụ công bố khác phụ thuộc hạ tầng production thực tế và phải được chủ dự án rà soát.
 
-## Retention and deletion
+## Lưu giữ và xóa
 
-Local authenticator records remain until deleted in the app, cleared by app storage behavior, or removed during sign-out under the current implementation. Cloud records remain according to the production Supabase database and account-retention configuration. The current client does not provide a complete self-service account-deletion flow.
+Bản ghi authenticator local được giữ cho đến khi bị xóa trong ứng dụng, bị xóa bởi hành vi dọn app storage hoặc bị xóa khi đăng xuất theo implementation hiện tại. Bản ghi cloud được giữ theo cấu hình database và account retention trên Supabase production. Client hiện chưa cung cấp luồng tự phục vụ để xóa tài khoản hoàn chỉnh.
 
-## Security
+## Bảo mật
 
-No method of storage or transmission is risk-free. Before a production release, the project must complete the security blockers in docs/SECURITY.md, including end-to-end encryption for cloud secrets, tested RLS migrations, safe synchronization semantics, and data-loss protections.
+Không phương thức lưu trữ hoặc truyền dữ liệu nào không có rủi ro. Trước khi phát hành production, dự án phải hoàn tất các blocker trong `docs/SECURITY.md`, gồm E2EE cho cloud secret, RLS migration đã test, ngữ nghĩa sync an toàn và cơ chế chống mất dữ liệu.
 
-## Changes and contact
+## Thay đổi và liên hệ
 
-This policy must be updated whenever authentication, analytics, logging, storage, synchronization, hosting, or third-party services change.
+Chính sách này phải được cập nhật khi authentication, analytics, logging, storage, synchronization, hosting hoặc dịch vụ bên thứ ba thay đổi.
 
-Project contact: xuancanhit99@gmail.com
+Liên hệ dự án: xuancanhit99@gmail.com

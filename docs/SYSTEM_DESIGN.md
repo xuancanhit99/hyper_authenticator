@@ -1,61 +1,61 @@
-# System Design
+# Thiết kế hệ thống
 
-This document describes the system that exists in the repository. Proposed encryption and future behavior are documented separately and are not treated as implemented.
+Tài liệu này mô tả hệ thống đang tồn tại trong repository. Thiết kế encryption và hành vi tương lai được ghi riêng, không được xem là đã triển khai.
 
-## System context
+## Bối cảnh hệ thống
 
-Hyper Authenticator is a Flutter client with two persistence boundaries:
+Hyper Authenticator là Flutter client có hai ranh giới persistence:
 
-- local device storage for authenticator accounts and preferences;
-- Supabase Auth and PostgreSQL for user sessions and optional manual synchronization.
+- storage trên thiết bị cho tài khoản authenticator và preference;
+- Supabase Auth và PostgreSQL cho user session và sync thủ công tùy chọn.
 
-The current product requires Supabase authentication before the authenticator UI can be used.
+Sản phẩm hiện bắt buộc xác thực Supabase trước khi dùng UI authenticator.
 
 ~~~mermaid
 flowchart LR
-    User["User"] --> App["Flutter application"]
-    App --> DeviceAuth["OS biometric / device credential"]
+    User["Người dùng"] --> App["Ứng dụng Flutter"]
+    App --> DeviceAuth["Sinh trắc học / credential của OS"]
     App --> SecureStorage["FlutterSecureStorage"]
     App --> Preferences["SharedPreferences"]
     App --> SupabaseAuth["Supabase Auth"]
     App --> SupabaseDB["Supabase synced_accounts"]
-    Recovery["Static recovery web page"] --> SupabaseAuth
+    Recovery["Trang web recovery tĩnh"] --> SupabaseAuth
 ~~~
 
 ## Bootstrap
 
-The runtime startup order is:
+Thứ tự khởi động runtime:
 
-1. Flutter bindings initialize.
-2. The root .env asset is loaded.
-3. Injectable/GetIt registrations and SharedPreferences pre-resolution run.
-4. AppConfig reads SUPABASE_URL and SUPABASE_ANON_KEY.
-5. Supabase initializes.
-6. ThemeProvider, AuthBloc, LocalAuthBloc, AccountsBloc, and SettingsBloc are provided.
-7. AuthBloc checks the current Supabase user.
-8. LocalAuthBloc checks whether the configured device lock is required.
-9. GoRouter selects login, lock, or the main navigation shell.
+1. Khởi tạo Flutter binding.
+2. Load asset `.env` ở root.
+3. Chạy đăng ký Injectable/GetIt và pre-resolution SharedPreferences.
+4. `AppConfig` đọc `SUPABASE_URL` và `SUPABASE_ANON_KEY`.
+5. Khởi tạo Supabase.
+6. Cung cấp `ThemeProvider`, `AuthBloc`, `LocalAuthBloc`, `AccountsBloc` và `SettingsBloc`.
+7. `AuthBloc` kiểm tra user Supabase hiện tại.
+8. `LocalAuthBloc` kiểm tra có cần khóa thiết bị đã cấu hình hay không.
+9. GoRouter chọn login, lock hoặc main navigation shell.
 
-Any missing or empty Supabase configuration stops normal bootstrap and shows an initialization error screen.
+Thiếu hoặc để trống cấu hình Supabase sẽ dừng bootstrap bình thường và hiển thị màn hình lỗi khởi tạo.
 
-## Navigation
+## Điều hướng
 
-| Route | Purpose | Access |
+| Route | Mục đích | Quyền truy cập |
 |---|---|---|
-| /login | Sign in | Public |
-| /register | Register | Public |
-| /forgot-password | Request recovery email | Public |
-| /update-password | Set a new password | Route exists but recovery/deep-link flow is incomplete |
-| / | Accounts and Settings tabs | Supabase-authenticated |
-| /add-account | Add TOTP account | Supabase-authenticated |
-| /edit-account | Edit an account passed through route state | Supabase-authenticated |
-| /lock-screen | Device credential challenge | Authenticated and lock required |
+| `/login` | Đăng nhập | Công khai |
+| `/register` | Đăng ký | Công khai |
+| `/forgot-password` | Yêu cầu email recovery | Công khai |
+| `/update-password` | Đặt mật khẩu mới | Route đã có nhưng recovery/deep-link chưa hoàn thiện |
+| `/` | Tab Accounts và Settings | Đã xác thực Supabase |
+| `/add-account` | Thêm tài khoản TOTP | Đã xác thực Supabase |
+| `/edit-account` | Sửa tài khoản truyền qua route state | Đã xác thực Supabase |
+| `/lock-screen` | Challenge credential thiết bị | Đã xác thực và cần khóa |
 
-The router refreshes from AuthBloc and LocalAuthBloc streams. Older documentation that describes Supabase authentication as optional is not correct for the current router.
+Router refresh từ stream của `AuthBloc` và `LocalAuthBloc`. Tài liệu cũ mô tả xác thực Supabase là tùy chọn không còn đúng với router hiện tại.
 
-## Flutter architecture
+## Kiến trúc Flutter
 
-Code is organized by feature:
+Code được tổ chức theo feature:
 
     lib/
       core/
@@ -66,140 +66,140 @@ Code is organized by feature:
         settings/
         sync/
 
-Most features use three layers:
+Phần lớn feature có ba lớp:
 
-- Presentation: pages, widgets, events, states, and BLoCs.
-- Domain: entities, repository contracts, and use cases.
-- Data: Supabase and local-storage implementations.
+- **Presentation:** page, widget, event, state và BLoC.
+- **Domain:** entity, repository contract và use case.
+- **Data:** implementation Supabase và local storage.
 
-GetIt and Injectable construct dependencies. Theme state uses Provider. Results commonly use fpdart Either values to translate failures without throwing across the domain boundary.
+GetIt và Injectable khởi tạo dependency. Theme state dùng Provider. Kết quả thường dùng `Either` của fpdart để chuyển failure qua domain boundary mà không throw.
 
-### Ownership caveat
+### Lưu ý về quyền sở hữu instance
 
-AccountsBloc is registered as a factory. The app-level provider owns one instance, while a factory-created SyncBloc resolves another AccountsBloc. Both can reach the same storage repository, but they do not share UI state. Cross-feature work must use an explicitly shared instance or a repository-level orchestration model.
+`AccountsBloc` được đăng ký dạng factory. Provider cấp ứng dụng sở hữu một instance, trong khi `SyncBloc` tạo qua factory lại resolve một `AccountsBloc` khác. Cả hai truy cập được cùng storage repository nhưng không chia sẻ UI state. Phối hợp cross-feature phải dùng instance được chia sẻ rõ ràng hoặc mô hình orchestration ở tầng repository.
 
-## Authenticator account flow
+## Luồng tài khoản authenticator
 
-### Import
+### Nhập tài khoản
 
-1. AddAccountPage accepts manual fields, a camera barcode, or an image.
-2. QR input must use the otpauth scheme and totp host.
-3. The page parses issuer, label, secret, algorithm, digits, and period.
-4. AccountsBloc calls AddAccount.
-5. AuthenticatorRepository writes through AuthenticatorLocalDataSource.
-6. The data source assigns a UUID and writes JSON to secure storage.
-7. The account UUID is added to a secure-storage index.
+1. `AddAccountPage` nhận field thủ công, barcode từ camera hoặc ảnh.
+2. QR phải dùng scheme `otpauth` và host `totp`.
+3. Page parse issuer, label, secret, algorithm, digits và period.
+4. `AccountsBloc` gọi `AddAccount`.
+5. `AuthenticatorRepository` ghi qua `AuthenticatorLocalDataSource`.
+6. Data source gán UUID và ghi JSON vào secure storage.
+7. UUID tài khoản được thêm vào secure-storage index.
 
-Known gap: when assigning a UUID, the active implementation rebuilds the entity without copying algorithm, digits, and period. Non-default input can silently become SHA1, 6 digits, and 30 seconds.
+Khoảng trống đã biết: khi gán UUID, implementation hiện tại tạo lại entity mà không sao chép algorithm, digits và period. Input không mặc định có thể âm thầm thành SHA1, 6 digits và 30 giây.
 
-### Read and code generation
+### Đọc và tạo mã
 
-1. AccountsBloc reads the account index and each JSON record.
-2. AccountsPage invokes GenerateTotpCode for each account.
-3. The otp package calculates a code from the local clock and stored parameters.
-4. The UI refreshes each second and copies the current code on tap.
+1. `AccountsBloc` đọc account index rồi đọc từng record JSON.
+2. `AccountsPage` gọi `GenerateTotpCode` cho mỗi tài khoản.
+3. Package `otp` tính mã từ clock local và tham số đã lưu.
+4. UI refresh mỗi giây và copy mã hiện tại khi người dùng chạm.
 
-Known gap: the visual countdown and regeneration trigger are based on a fixed 30-second cycle even when an account has a different period.
+Khoảng trống đã biết: countdown hiển thị và trigger tạo mã mới dùng chu kỳ cố định 30 giây, kể cả khi account có period khác.
 
-### Update and delete
+### Cập nhật và xóa
 
-Update overwrites the JSON record for the same ID. Delete removes the record and then removes the ID from the index. There is no transactional boundary between record and index writes, so recovery behavior for partial failures should be tested.
+Update ghi đè record JSON có cùng ID. Delete xóa record rồi xóa ID khỏi index. Không có transactional boundary giữa thao tác record và index, vì vậy cần test recovery khi chỉ một phần thao tác thành công.
 
-## Device lock
+## Khóa thiết bị
 
-The biometric_enabled preference is stored in SharedPreferences.
+Preference `biometric_enabled` được lưu trong SharedPreferences.
 
-- When disabled or unsupported, LocalAuthBloc emits success and the app proceeds.
-- When enabled and supported, the router moves to the lock screen.
-- local_auth.authenticate accepts OS biometrics or the configured device credential because biometricOnly is not enabled.
-- On pause or detach, app lifecycle handling resets the auth state.
-- On resume, the app requests another check.
+- Khi tắt hoặc thiết bị không hỗ trợ, `LocalAuthBloc` emit success và ứng dụng tiếp tục.
+- Khi bật và được hỗ trợ, router chuyển tới lock screen.
+- `local_auth.authenticate` chấp nhận sinh trắc học hoặc credential thiết bị do `biometricOnly` không được bật.
+- Khi pause hoặc detach, lifecycle handler reset auth state.
+- Khi resume, ứng dụng yêu cầu kiểm tra lại.
 
-This is an app gate, not cryptographic protection for individual secure-storage records. Error states require fail-closed routing before production.
+Đây là app gate, không phải cryptographic protection cho từng secure-storage record. Error state phải được route theo fail-closed trước production.
 
-## Supabase authentication
+## Xác thực Supabase
 
-AuthRemoteDataSource wraps:
+`AuthRemoteDataSource` bọc các thao tác:
 
-- signInWithPassword;
-- signUp with optional name metadata;
-- resetPasswordForEmail;
-- updateUser for password changes;
-- signOut;
-- the auth-state stream.
+- `signInWithPassword`;
+- `signUp` cùng name metadata tùy chọn;
+- `resetPasswordForEmail`;
+- `updateUser` để đổi mật khẩu;
+- `signOut`;
+- auth-state stream.
 
-Remember Me stores only the email and checkbox state in SharedPreferences. It does not intentionally persist the password.
+Remember Me chỉ lưu email và trạng thái checkbox trong SharedPreferences, không chủ ý persist mật khẩu.
 
-Current sign-out handling also deletes all FlutterSecureStorage entries. Because authenticator accounts use the same storage instance, sign-out removes local accounts.
+Xử lý sign-out hiện tại còn xóa mọi entry FlutterSecureStorage. Vì tài khoản authenticator dùng cùng storage instance, sign-out sẽ xóa tài khoản local.
 
-## Synchronization
+## Đồng bộ
 
-Synchronization is manual. Enabling sync stores only a SharedPreferences flag.
+Sync được kích hoạt thủ công. Bật sync chỉ lưu một flag SharedPreferences.
 
-### Merge path
+### Luồng merge
 
-1. Download every remote account for the current user.
-2. Read local accounts.
-3. Build identity keys from lowercase issuer and accountName.
-4. Add remote accounts whose key is not present locally.
-5. Skip existing keys without field comparison or conflict resolution.
-6. Read the merged local snapshot.
-7. Upload the entire snapshot.
+1. Download mọi tài khoản remote của user hiện tại.
+2. Đọc tài khoản local.
+3. Tạo identity key từ issuer và `accountName` viết thường.
+4. Thêm account remote có key chưa tồn tại ở local.
+5. Bỏ qua key đã có mà không so sánh field hoặc giải quyết conflict.
+6. Đọc snapshot local sau khi merge.
+7. Upload toàn bộ snapshot.
 
-### Overwrite path
+### Luồng overwrite
 
-1. Take the current UI account list.
-2. Delete every remote row for the current user.
-3. Insert the provided snapshot.
+1. Lấy danh sách account hiện tại của UI.
+2. Xóa mọi row remote của user.
+3. Chèn snapshot được cung cấp.
 
-### Current properties
+### Thuộc tính hiện tại
 
-- Secrets are uploaded as readable JSON fields.
-- Upload is not atomic.
-- There are no tombstones or deletion propagation rules.
-- There is no version vector, updated-at comparison, or multi-device conflict policy.
-- The server schema and RLS are not reproduced by tracked migrations.
-- Last sync time is inferred from the newest remote updated_at.
+- Secret được upload dưới dạng field JSON có thể đọc.
+- Upload không atomic.
+- Không có tombstone hoặc rule truyền deletion.
+- Không có version vector, so sánh `updated_at` hoặc policy conflict đa thiết bị.
+- Server schema và RLS không thể tái lập từ migration được track.
+- Last sync time được suy ra từ `updated_at` mới nhất trên remote.
 
-See SECURITY.md, SUPABASE_INTEGRATION.md, and E2EE_DESIGN.md.
+Xem [Bảo mật](SECURITY.md), [Tích hợp Supabase](SUPABASE_INTEGRATION.md) và [Thiết kế E2EE](E2EE_DESIGN.md).
 
-## Password-recovery web page
+## Trang web khôi phục mật khẩu
 
-reset-password-web is a static HTML, CSS, and JavaScript page that:
+`reset-password-web` là trang HTML, CSS và JavaScript tĩnh:
 
-1. receives a Supabase recovery session;
-2. validates a new password and confirmation;
-3. calls Supabase auth.updateUser.
+1. nhận Supabase recovery session;
+2. validate mật khẩu mới và xác nhận;
+3. gọi `Supabase auth.updateUser`.
 
-The current container configuration is incomplete: Compose passes build arguments, the Dockerfile does not consume them, and script.js contains empty configuration constants.
+Cấu hình container hiện chưa hoàn thiện: Compose truyền build argument, Dockerfile không sử dụng, còn `script.js` có hằng cấu hình trống.
 
-## Platform posture
+## Trạng thái platform
 
-| Platform | Runner | Release posture |
+| Platform | Runner | Trạng thái phát hành |
 |---|---|---|
-| Android | Present | Primary target; permissions and release signing need hardening |
-| iOS | Present | Primary target; camera and Face ID descriptions exist; deep links need work |
-| macOS | Present | Sandbox entitlements need network/client and plugin verification |
-| Web | Present | Metadata is partly template; plugin and dart:io compatibility need verification |
-| Windows | Present | Runner only; full feature validation required |
-| Linux | Present | Runner only; not an advertised or verified target |
+| Android | Có | Mục tiêu chính; permission và release signing cần hardening |
+| iOS | Có | Mục tiêu chính; đã có mô tả camera/Face ID, deep link còn thiếu |
+| macOS | Có | Cần xác minh network client, sandbox entitlement và plugin |
+| Web | Có | Metadata còn dấu vết template; cần xác minh plugin và tương thích `dart:io` |
+| Windows | Có | Chỉ có runner; cần xác minh đầy đủ tính năng |
+| Linux | Có | Chỉ có runner; chưa phải mục tiêu được quảng bá hoặc xác minh |
 
-No platform is considered supported until the documented release gate passes on that platform.
+Không platform nào được xem là supported cho đến khi vượt qua release gate được ghi cho platform đó.
 
-## Error handling
+## Xử lý lỗi
 
-Repositories generally convert storage, authentication, and server exceptions into Failure values. BLoCs map those failures into state. Remaining issues include:
+Repository thường chuyển storage, authentication và server exception thành `Failure`. BLoC ánh xạ failure thành state. Các vấn đề còn lại:
 
-- broad catches that lose diagnostic structure;
-- production print and debugPrint calls;
-- success states emitted after partial sync failure;
-- local-auth error routing;
-- no telemetry policy or redaction layer.
+- catch quá rộng làm mất cấu trúc diagnostic;
+- còn `print` và `debugPrint` trong production path;
+- emit success sau lỗi sync một phần;
+- routing khi local-auth error;
+- chưa có telemetry policy hoặc redaction layer.
 
-## Change impact map
+## Bản đồ tác động thay đổi
 
-- New persisted field: update entity JSON, local round-trip tests, remote contract, migration plan, and DATA_MODELS.md.
-- New route or auth rule: update router tests and this document.
-- New sync behavior: update conflict semantics, SECURITY.md, SUPABASE_INTEGRATION.md, and destructive-operation tests.
-- New plugin or platform: update entitlements/permissions, dependency policy, and DEPLOYMENT.md.
-- New encryption behavior: add an ADR, format version, migration, recovery path, and E2EE tests.
+- Field persist mới: cập nhật entity JSON, local round-trip test, remote contract, migration plan và `DATA_MODELS.md`.
+- Route hoặc auth rule mới: cập nhật router test và tài liệu này.
+- Hành vi sync mới: cập nhật conflict semantic, `SECURITY.md`, `SUPABASE_INTEGRATION.md` và test thao tác phá hủy.
+- Plugin hoặc platform mới: cập nhật entitlement/permission, dependency policy và `DEPLOYMENT.md`.
+- Hành vi encryption mới: thêm ADR, format version, migration, recovery path và E2EE test.

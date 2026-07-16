@@ -1,48 +1,48 @@
-# Password-Recovery Web Page
+# Trang web khôi phục mật khẩu
 
-This directory contains a static Supabase password-recovery page served by Nginx.
+Thư mục này chứa trang khôi phục mật khẩu Supabase tĩnh, được phục vụ bởi Nginx.
 
-## Status
+## Trạng thái
 
-Incomplete and not deployable as committed.
+Chưa hoàn thiện và chưa thể deploy ở trạng thái committed hiện tại.
 
-- index.html loads the Supabase JavaScript v2 bundle from jsDelivr.
-- script.js listens for a PASSWORD_RECOVERY session and calls auth.updateUser.
-- SUPABASE_URL and SUPABASE_ANON_KEY are empty constants.
-- compose.yml passes build arguments.
-- Dockerfile does not declare or consume those arguments.
-- No runtime env-config.js file is generated or loaded.
+- `index.html` load Supabase JavaScript v2 bundle từ jsDelivr.
+- `script.js` lắng nghe `PASSWORD_RECOVERY` session và gọi `auth.updateUser`.
+- `SUPABASE_URL` và `SUPABASE_ANON_KEY` là hằng trống.
+- `compose.yml` truyền build argument.
+- `Dockerfile` không khai báo hoặc sử dụng các argument đó.
+- Không có file `env-config.js` được generate hoặc load ở runtime.
 
-Do not deploy this page until one configuration path is implemented and tested.
+Không deploy trang này cho đến khi triển khai và test một configuration path hoàn chỉnh.
 
-## Intended flow
+## Luồng dự kiến
 
-1. The mobile app requests a recovery email.
-2. Supabase sends a link to an allowed recovery URL.
-3. The page receives and validates the recovery session.
-4. The user enters and confirms a new password.
-5. The page calls Supabase auth.updateUser.
-6. The page clears sensitive URL/session state and provides a safe completion message.
+1. Ứng dụng mobile yêu cầu email recovery.
+2. Supabase gửi link tới recovery URL được cho phép.
+3. Trang nhận và validate recovery session.
+4. User nhập và xác nhận mật khẩu mới.
+5. Trang gọi `Supabase auth.updateUser`.
+6. Trang xóa URL/session state nhạy cảm và hiển thị thông báo hoàn tất an toàn.
 
-## Production requirements
+## Yêu cầu production
 
-- Choose this page or the Flutter /update-password route as the canonical recovery surface.
-- Inject only the public Supabase URL and anon key.
-- Never embed a service-role key.
-- Pin or self-host external scripts and define a Content Security Policy.
-- Remove session and user-object logging.
-- Configure exact allowed redirect URLs per environment.
-- Test successful, expired, malformed, replayed, and cross-environment links.
-- Add rate-limit and abuse expectations.
-- Add privacy, support, and incident contact links.
-- Configure no-store caching where appropriate for recovery responses.
+- Chọn trang này hoặc Flutter route `/update-password` làm recovery surface canonical.
+- Chỉ inject public Supabase URL và anon key.
+- Không bao giờ nhúng service-role key.
+- Pin hoặc self-host external script và định nghĩa Content Security Policy.
+- Xóa log session và user object.
+- Cấu hình chính xác allowed redirect URL theo environment.
+- Test link thành công, hết hạn, malformed, replay và cross-environment.
+- Thêm kỳ vọng rate limit và abuse control.
+- Thêm link privacy, support và incident contact.
+- Cấu hình `no-store` cache khi phù hợp cho recovery response.
 
-## Local development
+## Phát triển local
 
-The current Compose command is intentionally not documented as working. First implement and review configuration injection. Then document an environment-safe local command and an automated browser test in this file.
+Command Compose hiện tại được chủ ý không mô tả là chạy được. Trước hết hãy triển khai và review configuration injection. Sau đó ghi command local an toàn theo environment và automated browser test tại đây.
 
-See:
+Xem:
 
-- [Supabase Integration](../docs/SUPABASE_INTEGRATION.md)
-- [Security Model](../docs/SECURITY.md)
-- [Deployment Guide](../docs/DEPLOYMENT.md)
+- [Tích hợp Supabase](../docs/SUPABASE_INTEGRATION.md)
+- [Mô hình bảo mật](../docs/SECURITY.md)
+- [Hướng dẫn deployment](../docs/DEPLOYMENT.md)

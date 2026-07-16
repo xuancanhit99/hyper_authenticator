@@ -4,12 +4,10 @@ const requiredDocuments = <String>[
   'AGENTS.md',
   'CONTRIBUTING.md',
   'README.md',
-  'README.vi.md',
   'privacy_policy.md',
   'docs/README.md',
   'docs/PROJECT_STATUS.md',
   'docs/SYSTEM_DESIGN.md',
-  'docs/SYSTEM_DESIGN.vi.md',
   'docs/ARCHITECTURAL_DECISIONS.md',
   'docs/DATA_MODELS.md',
   'docs/SECURITY.md',
@@ -41,14 +39,14 @@ void main() {
   final failures = <String>[];
 
   if (!File('${root.path}/pubspec.yaml').existsSync()) {
-    stderr.writeln('Run this check from the repository root.');
+    stderr.writeln('Hãy chạy kiểm tra này từ thư mục root của repository.');
     exitCode = 64;
     return;
   }
 
   for (final relativePath in requiredDocuments) {
     if (!File('${root.path}/$relativePath').existsSync()) {
-      failures.add('Missing required document: $relativePath');
+      failures.add('Thiếu tài liệu bắt buộc: $relativePath');
     }
   }
 
@@ -63,9 +61,13 @@ void main() {
 
   for (final file in markdownFiles) {
     final relativePath = _relativeToRoot(root, file);
-    if (relativePath.endsWith('.ru.md') || relativePath == 'README.ru.md') {
+    if (relativePath.endsWith('.ru.md') ||
+        relativePath.endsWith('.vi.md') ||
+        relativePath == 'README.ru.md' ||
+        relativePath == 'README.vi.md') {
       failures.add(
-        'Russian documentation is no longer maintained: $relativePath',
+        'Tài liệu phải dùng tên file canonical, không dùng hậu tố ngôn ngữ: '
+        '$relativePath',
       );
     }
 
@@ -76,17 +78,18 @@ void main() {
 
   if (failures.isNotEmpty) {
     for (final failure in failures) {
-      stderr.writeln('FAIL $failure');
+      stderr.writeln('LỖI $failure');
     }
     stderr.writeln(
-      'Documentation gate failed with ${failures.length} issue(s).',
+      'Documentation gate thất bại với ${failures.length} vấn đề.',
     );
     exitCode = 1;
     return;
   }
 
   stdout.writeln(
-    'Documentation gate passed: ${markdownFiles.length} Markdown files checked.',
+    'Documentation gate đã pass: đã kiểm tra '
+    '${markdownFiles.length} file Markdown.',
   );
 }
 
@@ -118,7 +121,7 @@ void _checkLinks(
         ).absolute;
     if (!resolved.existsSync()) {
       failures.add(
-        'Broken link in ${_relativeToRoot(root, source)}: $rawTarget',
+        'Link hỏng trong ${_relativeToRoot(root, source)}: $rawTarget',
       );
     }
   }
@@ -131,7 +134,7 @@ void _checkCredentialLikeContent(
 ) {
   final jwtLike = RegExp(r'eyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}');
   if (jwtLike.hasMatch(content)) {
-    failures.add('JWT-like value found in $path');
+    failures.add('Phát hiện giá trị giống JWT trong $path');
   }
 
   final unsafeOtpUri = RegExp(
@@ -139,7 +142,7 @@ void _checkCredentialLikeContent(
     caseSensitive: false,
   );
   if (unsafeOtpUri.hasMatch(content)) {
-    failures.add('Credential-like otpauth URI found in $path');
+    failures.add('Phát hiện URI otpauth giống credential trong $path');
   }
 }
 

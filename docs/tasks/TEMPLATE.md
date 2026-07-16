@@ -1,58 +1,58 @@
-# Task: Short title
+# Task: Tiêu đề ngắn
 
-- Status: Proposed
-- Started: YYYY-MM-DD
+- Trạng thái: Đề xuất
+- Bắt đầu: YYYY-MM-DD
 - Owner:
-- Related issue or ADR:
+- Issue hoặc ADR liên quan:
 
-## Objective
+## Mục tiêu
 
-Observable user or engineering outcome.
+Outcome engineering hoặc hướng tới user có thể quan sát.
 
-## Non-goals
+## Ngoài phạm vi
 
-- Describe an explicit non-goal.
+- Mô tả rõ một non-goal.
 
 ## Acceptance criteria
 
-- [ ] Define an observable acceptance criterion.
+- [ ] Định nghĩa một tiêu chí có thể quan sát.
 
-## Current evidence
+## Bằng chứng hiện tại
 
-- Source paths:
-- Reproduction:
-- Existing tests:
-- Assumptions:
+- Source path:
+- Cách tái hiện:
+- Test hiện có:
+- Giả định:
 
-## Risk review
+## Đánh giá rủi ro
 
-- Credential exposure:
-- Local data loss:
-- Cloud data loss:
+- Lộ credential:
+- Mất dữ liệu local:
+- Mất dữ liệu cloud:
 - Migration:
 - Rollback:
-- Platform impact:
+- Tác động platform:
 
-## Plan
+## Kế hoạch
 
-- [ ] Add an implementation or verification step.
+- [ ] Thêm một bước implementation hoặc verification.
 
-## Verification log
+## Nhật ký xác minh
 
-| Command or test | Result | Date |
+| Command hoặc test | Kết quả | Ngày |
 |---|---|---|
 |  |  |  |
 
-## Documentation impact
+## Tác động tài liệu
 
-- [ ] PROJECT_STATUS.md
-- [ ] SYSTEM_DESIGN.md
-- [ ] DATA_MODELS.md
-- [ ] SECURITY.md
-- [ ] SUPABASE_INTEGRATION.md
-- [ ] DEPLOYMENT.md
+- [ ] `PROJECT_STATUS.md`
+- [ ] `SYSTEM_DESIGN.md`
+- [ ] `DATA_MODELS.md`
+- [ ] `SECURITY.md`
+- [ ] `SUPABASE_INTEGRATION.md`
+- [ ] `DEPLOYMENT.md`
 - [ ] ADR
 
-## Handoff
+## Bàn giao
 
-Outcome, files changed, compatibility impact, validation, and remaining risks.
+Kết quả, file thay đổi, tác động compatibility, kết quả xác minh và rủi ro còn lại.

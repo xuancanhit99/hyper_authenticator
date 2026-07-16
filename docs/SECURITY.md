@@ -1,152 +1,152 @@
-# Security Model
+# Mô hình bảo mật
 
-## Current posture
+## Trạng thái hiện tại
 
-The project must be treated as alpha software. Local storage uses a secure-storage abstraction, but the complete system does not yet provide a production-safe backup or synchronization boundary.
+Dự án phải được xem là phần mềm alpha. Local storage dùng secure-storage abstraction, nhưng toàn hệ thống chưa cung cấp ranh giới backup hoặc sync đủ an toàn cho production.
 
-The most important fact is simple: current cloud sync uploads readable TOTP secrets.
+Điểm quan trọng nhất: cloud sync hiện upload TOTP secret ở dạng có thể đọc.
 
-## Assets
+## Asset cần bảo vệ
 
-| Asset | Impact if compromised |
+| Asset | Tác động khi bị lộ |
 |---|---|
-| TOTP secretKey | Attacker can generate the second authentication factor |
-| Complete otpauth URI | Equivalent to disclosure of the embedded secret |
-| Supabase session | Attacker may access or modify the user cloud snapshot |
-| User email and name | Privacy and phishing impact |
-| Local account labels | Privacy and account-discovery impact |
-| Future encryption key or recovery code | Decrypts or recovers synchronized secrets |
+| TOTP `secretKey` | Kẻ tấn công có thể tạo yếu tố xác thực thứ hai |
+| URI `otpauth` đầy đủ | Tương đương làm lộ secret được nhúng |
+| Supabase session | Kẻ tấn công có thể truy cập hoặc sửa cloud snapshot của user |
+| Email và tên người dùng | Rủi ro privacy và phishing |
+| Nhãn tài khoản local | Lộ thông tin riêng tư và dịch vụ đang dùng |
+| Encryption key hoặc recovery code tương lai | Giải mã hoặc khôi phục secret đã sync |
 
-## Trust boundaries
+## Trust boundary
 
-- Flutter process to FlutterSecureStorage.
-- Flutter process to SharedPreferences.
-- Flutter process to OS local authentication.
-- Flutter process to Supabase over the network.
-- Supabase Auth to PostgreSQL RLS.
-- Password-recovery browser page to Supabase.
-- Build environment to bundled client configuration.
+- Flutter process với FlutterSecureStorage.
+- Flutter process với SharedPreferences.
+- Flutter process với local authentication của OS.
+- Flutter process với Supabase qua network.
+- Supabase Auth với PostgreSQL RLS.
+- Browser page khôi phục mật khẩu với Supabase.
+- Build environment với client configuration được đóng gói.
 
-Client-side user_id filters are not an authorization boundary. Deployed RLS policies are.
+Filter `user_id` phía client không phải authorization boundary. RLS policy đã deploy mới là boundary.
 
-## Implemented controls
+## Control đã triển khai
 
-- TOTP account JSON is stored through FlutterSecureStorage.
-- App locking delegates verification to local_auth and the OS.
-- Supabase Auth owns password verification and sessions.
-- Repository boundaries convert many infrastructure exceptions to typed failures.
-- .env is ignored by Git.
-- The client uses an anon key rather than requiring a server key.
+- JSON tài khoản TOTP được lưu qua FlutterSecureStorage.
+- App lock giao việc xác minh cho `local_auth` và OS.
+- Supabase Auth quản lý password verification và session.
+- Repository boundary chuyển nhiều infrastructure exception thành typed failure.
+- `.env` bị Git bỏ qua.
+- Client dùng anon key và không cần server key.
 
-These controls do not make plaintext cloud secrets end-to-end encrypted.
+Những control này không biến cloud secret dạng plaintext thành E2EE.
 
-## Confirmed release blockers
+## Release blocker đã xác nhận
 
-### Plaintext synchronization
+### Đồng bộ plaintext
 
-AuthenticatorAccount.toJson includes secretKey. The sync data source inserts that map into Supabase. No encryption, authentication tag, key derivation, key wrapping, or versioned envelope runs in the active path.
+`AuthenticatorAccount.toJson` có `secretKey`. Sync data source chèn map đó vào Supabase. Active path không có encryption, authentication tag, key derivation, key wrapping hoặc versioned envelope.
 
-Required before production cloud sync:
+Bắt buộc trước cloud sync production:
 
-- accepted E2EE ADR;
-- versioned encrypted payload;
+- E2EE ADR được chấp nhận;
+- encrypted payload có version;
 - authenticated encryption;
-- multi-device key bootstrap;
-- recovery design;
-- migration from any plaintext rows;
-- redacted logs and fixtures;
-- cryptographic and integration tests.
+- bootstrap key đa thiết bị;
+- thiết kế recovery;
+- migration từ mọi row plaintext;
+- log và fixture đã redact;
+- cryptographic test và integration test.
 
-### Destructive and non-atomic upload
+### Upload phá hủy và không atomic
 
-Upload deletes all user rows, then inserts the replacement list. A failure after delete can erase the cloud copy.
+Upload xóa toàn bộ row của user rồi chèn danh sách thay thế. Lỗi sau bước delete có thể xóa cloud copy.
 
-Required:
+Bắt buộc:
 
-- database transaction or versioned snapshot commit;
-- optimistic concurrency or compare-and-swap;
-- idempotent retry;
-- server-side validation;
-- recovery from interrupted writes;
-- explicit destructive confirmation and audit-safe UI.
+- database transaction hoặc versioned snapshot commit;
+- optimistic concurrency hoặc compare-and-swap;
+- retry idempotent;
+- validation phía server;
+- recovery sau write bị gián đoạn;
+- xác nhận rõ thao tác phá hủy và UI an toàn cho audit.
 
-### Logout data deletion
+### Xóa dữ liệu khi logout
 
-AuthBloc signs out and then calls deleteAll on the shared secure-storage namespace. This removes local authenticator accounts without a data-specific warning.
+`AuthBloc` sign out rồi gọi `deleteAll` trên namespace secure storage dùng chung. Việc này xóa account authenticator local mà không có cảnh báo riêng.
 
-Required:
+Bắt buộc:
 
-- separate session and account storage namespaces;
-- explicit product decision for local data ownership;
-- backup/export or recovery behavior;
-- regression tests;
-- warning text if deletion remains intentional.
+- tách namespace lưu session và account;
+- quyết định sản phẩm rõ ràng về quyền sở hữu dữ liệu local;
+- backup/export hoặc recovery behavior;
+- regression test;
+- warning text nếu vẫn chủ ý xóa.
 
-### Secret-bearing logs
+### Log chứa secret
 
-QR handling currently prints the complete scanned value. A valid otpauth URI contains the secret.
+Luồng xử lý QR hiện in toàn bộ giá trị đã quét. URI `otpauth` hợp lệ chứa secret.
 
-Required:
+Bắt buộc:
 
-- remove credential-bearing logs;
-- central redaction helpers;
-- static review for secretKey, otpauth, token, password, key, salt, and recovery material;
-- sanitized error reporting policy.
+- xóa log chứa credential;
+- helper redaction tập trung;
+- static review cho `secretKey`, `otpauth`, token, password, key, salt và recovery material;
+- policy error reporting đã sanitize.
 
-### Authorization reproducibility
+### Khả năng tái lập authorization
 
-RLS guidance exists, but no tracked migration proves that policies are enabled.
+Có hướng dẫn RLS nhưng không có migration được track để chứng minh policy đã bật.
 
-Required:
+Bắt buộc:
 
-- version-controlled schema and policies;
-- per-user SELECT, INSERT, UPDATE, and DELETE tests;
-- negative cross-user tests;
-- no service-role credentials in clients.
+- schema và policy được version control;
+- test SELECT, INSERT, UPDATE và DELETE theo từng user;
+- negative test cross-user;
+- không có service-role credential trong client.
 
-### App-lock failure behavior
+### Hành vi khi app lock lỗi
 
-LocalAuthError is not an explicit router deny condition. When a lock is configured, errors must fail closed unless a deliberate recovery policy says otherwise.
+`LocalAuthError` chưa phải explicit deny condition của router. Khi lock đã được cấu hình, lỗi phải fail closed trừ khi có recovery policy được chủ ý thiết kế.
 
-## Threat scenarios
+## Kịch bản đe dọa
 
-| Scenario | Current exposure | Required response |
+| Kịch bản | Mức lộ hiện tại | Phản ứng bắt buộc |
 |---|---|---|
-| Supabase database leak | Synced TOTP secrets readable | E2EE and plaintext migration |
-| Malicious or mistaken backend operator | Synced secrets readable | Backend-blind ciphertext |
-| Network interruption during upload | Cloud snapshot can be deleted | Atomic commit and retry |
-| Two devices sync concurrently | Last writer can lose data | Version/conflict protocol |
-| Device logs collected | QR secret may appear | Remove and redact logs |
-| User signs out before sync | Local accounts are deleted | Safe ownership and warning |
-| RLS missing or incorrect | Cross-user data access possible | Tracked policies and negative tests |
-| Local-auth plugin error | Possible lock bypass | Fail-closed routing |
+| Supabase database bị lộ | TOTP secret đã sync đọc được | E2EE và migration plaintext |
+| Backend operator ác ý hoặc nhầm lẫn | Secret đã sync đọc được | Ciphertext mà backend không thể đọc |
+| Network gián đoạn khi upload | Cloud snapshot có thể bị xóa | Atomic commit và retry |
+| Hai thiết bị sync đồng thời | Last writer có thể làm mất dữ liệu | Version/conflict protocol |
+| Log thiết bị bị thu thập | QR secret có thể xuất hiện | Xóa và redact log |
+| User logout trước khi sync | Account local bị xóa | Quyền sở hữu dữ liệu và cảnh báo an toàn |
+| RLS thiếu hoặc sai | Có thể truy cập dữ liệu cross-user | Policy được track và negative test |
+| Plugin local-auth lỗi | Có thể bypass lock | Routing fail-closed |
 
-## Secure coding rules
+## Quy tắc secure coding
 
-- Treat secretKey and otpauth URIs as credentials.
-- Never put real credentials in examples, screenshots, issue text, test fixtures, or analytics.
-- Do not include service-role keys in Flutter or static web builds.
-- Avoid logging raw exceptions from auth or storage when they may contain identifiers or tokens.
-- Validate imported algorithms, digits, periods, labels, and Base32 input before persistence.
-- Use constant-time or library-provided cryptographic operations; do not implement primitives.
-- Version all encrypted and remotely persisted formats.
-- Keep destructive operations recoverable and observable.
+- Xem `secretKey` và URI `otpauth` là credential.
+- Không dùng credential thật trong example, screenshot, issue, test fixture hoặc analytics.
+- Không đưa service-role key vào Flutter hoặc static web build.
+- Tránh log raw exception từ auth/storage khi có thể chứa identifier hoặc token.
+- Validate algorithm, digits, period, label và Base32 input trước persistence.
+- Dùng cryptographic operation từ library đã review; không tự viết primitive.
+- Gắn version cho mọi encrypted format và remote persisted format.
+- Giữ thao tác phá hủy có thể khôi phục và quan sát được.
 
 ## Security verification gate
 
-A production release handling real secrets requires:
+Release production xử lý secret thật yêu cầu:
 
-- threat model reviewed;
-- all blockers above resolved or explicitly accepted by the owner;
-- unit tests for validation and serialization;
-- storage recovery tests;
-- cross-user RLS integration tests;
-- concurrency and interrupted-sync tests;
-- mobile lock lifecycle tests;
-- dependency and platform security review;
-- privacy policy matched to actual production behavior;
-- incident and key-compromise response documented.
+- threat model đã review;
+- mọi blocker trên được xử lý hoặc owner chấp nhận rõ;
+- unit test validation và serialization;
+- storage recovery test;
+- RLS integration test cross-user;
+- test concurrency và interrupted sync;
+- mobile lock lifecycle test;
+- review dependency và platform security;
+- privacy policy khớp hành vi production thật;
+- quy trình xử lý incident và key compromise.
 
-## Reporting
+## Báo cáo
 
-Do not open a public issue containing a real secret, token, user email, or production URL. Use a private channel selected by the project owner and provide sanitized reproduction steps.
+Không mở issue công khai có secret, token, email user hoặc production URL thật. Dùng kênh riêng do chủ dự án chọn và cung cấp reproduction step đã sanitize.

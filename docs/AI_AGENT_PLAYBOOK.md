@@ -1,173 +1,173 @@
-# AI Agent Playbook
+# Playbook dành cho AI Agent
 
-AGENTS.md is the repository-wide operating contract. This document explains how to apply it to long-running work.
+`AGENTS.md` là operating contract cho toàn repository. Tài liệu này giải thích cách áp dụng contract vào công việc dài hạn.
 
-## Harness components
+## Thành phần harness
 
-- AGENTS.md: invariant rules and validation matrix.
-- docs/PROJECT_STATUS.md: verified baseline and known failures.
-- docs/README.md: canonical documentation map.
-- docs/tasks: durable task context across sessions.
-- docs/adr: durable architectural decisions.
-- scripts/agent/context.sh: safe repository orientation.
-- scripts/agent/doctor.sh: environment and configuration checks.
-- scripts/agent/check.sh: documentation, quick, and full gates.
+- `AGENTS.md`: invariant rule và validation matrix.
+- `docs/PROJECT_STATUS.md`: baseline đã xác minh và failure đã biết.
+- `docs/README.md`: bản đồ tài liệu canonical.
+- `docs/tasks`: context task bền vững qua nhiều session.
+- `docs/adr`: quyết định kiến trúc bền vững.
+- `scripts/agent/context.sh`: định hướng repository an toàn.
+- `scripts/agent/doctor.sh`: kiểm tra environment và configuration.
+- `scripts/agent/check.sh`: documentation, quick và full gate.
 
-## Session startup
+## Bắt đầu session
 
-Run:
+Chạy:
 
     git status --short --branch
     scripts/agent/context.sh
     scripts/agent/doctor.sh
 
-Then read:
+Sau đó đọc:
 
-1. AGENTS.md.
-2. PROJECT_STATUS.md.
-3. The canonical document for the subsystem.
-4. The nearest source, tests, and generated boundaries.
+1. `AGENTS.md`.
+2. `PROJECT_STATUS.md`.
+3. Tài liệu canonical của subsystem.
+4. Source, test và generated boundary gần nhất.
 
-Do not begin from README claims alone.
+Không bắt đầu chỉ từ feature claim trong README.
 
 ## Task record
 
-For non-trivial work, create:
+Với công việc không đơn giản, tạo:
 
     docs/tasks/YYYY-MM-DD-short-name.md
 
-from docs/tasks/TEMPLATE.md.
+từ `docs/tasks/TEMPLATE.md`.
 
-Keep it concise and update it with:
+Giữ record ngắn gọn và cập nhật:
 
-- objective and non-goals;
+- objective và non-goal;
 - acceptance criteria;
-- evidence and assumptions;
-- affected contracts;
-- implementation checkpoints;
-- commands and outcomes;
-- follow-ups.
+- evidence và assumption;
+- contract bị ảnh hưởng;
+- implementation checkpoint;
+- command và kết quả;
+- follow-up.
 
-Task records are not a substitute for canonical docs. On completion, migrate durable facts to canonical documents and close or archive the task note.
+Task record không thay thế tài liệu canonical. Khi hoàn thành, chuyển sự thật bền vững vào tài liệu canonical rồi đóng hoặc archive task note.
 
-## Work loop
+## Vòng lặp làm việc
 
-### 1. Frame
+### 1. Định khung
 
-- Restate the user-visible outcome.
-- Identify security and data-loss impact.
-- List evidence needed.
-- Choose a validation gate.
+- Nêu lại outcome mà user có thể thấy.
+- Xác định tác động bảo mật và nguy cơ mất dữ liệu.
+- Liệt kê bằng chứng cần có.
+- Chọn validation gate.
 
-### 2. Inspect
+### 2. Khảo sát
 
-- Search with rg and rg --files.
-- Trace from UI to BLoC, use case, repository, and data source.
-- Inspect registration lifecycle when instances cross features.
-- Check platform and backend configuration.
-- Distinguish current behavior from comments and planned docs.
+- Tìm bằng `rg` và `rg --files`.
+- Truy vết từ UI qua BLoC, use case, repository tới data source.
+- Kiểm tra registration lifecycle khi instance đi qua nhiều feature.
+- Kiểm tra cấu hình platform và backend.
+- Phân biệt behavior hiện tại với comment hoặc planned doc.
 
-### 3. Plan
+### 3. Lập kế hoạch
 
-- Use small reversible steps.
-- Put tests before security-critical fixes.
-- Identify migration and rollback for persisted data.
-- Request owner direction only for decisions that materially change product behavior.
+- Dùng bước nhỏ, có thể hoàn tác.
+- Viết test trước security-critical fix.
+- Xác định migration và rollback cho persisted data.
+- Chỉ yêu cầu owner quyết định khi lựa chọn làm thay đổi đáng kể product behavior.
 
-### 4. Implement
+### 4. Triển khai
 
-- Preserve unrelated changes.
-- Avoid broad refactors during a bug fix.
-- Never hand-edit generated DI output.
-- Do not log credentials while adding diagnostics.
-- Update docs as contracts change.
+- Bảo toàn thay đổi không liên quan.
+- Tránh refactor rộng trong bug fix.
+- Không sửa generated DI output bằng tay.
+- Không log credential khi thêm diagnostic.
+- Cập nhật tài liệu khi contract thay đổi.
 
-### 5. Verify
+### 5. Xác minh
 
-- Run the narrowest test during iteration.
-- Run the required harness gate at completion.
-- Run platform or Supabase integration checks for boundary changes.
-- Compare git diff to task scope.
+- Chạy test hẹp nhất trong lúc lặp.
+- Chạy harness gate bắt buộc khi hoàn tất.
+- Chạy platform hoặc Supabase integration check cho boundary change.
+- So sánh Git diff với scope task.
 
-### 6. Handoff
+### 6. Bàn giao
 
-Report:
+Báo cáo:
 
-- outcome first;
-- files and behavior changed;
-- migration or compatibility impact;
-- exact validation results;
-- remaining known risks;
-- unrelated changes preserved.
+- outcome trước;
+- file và behavior đã thay đổi;
+- tác động migration hoặc compatibility;
+- kết quả xác minh chính xác;
+- rủi ro còn lại;
+- thay đổi không liên quan có được bảo toàn hay không.
 
-## Evidence standard
+## Tiêu chuẩn bằng chứng
 
-Strong evidence:
+Bằng chứng mạnh:
 
-- passing deterministic test;
-- reproduced runtime output;
-- direct source trace;
-- generated manifest or compiled artifact inspection;
-- isolated backend integration test.
+- deterministic test pass;
+- runtime output tái hiện được;
+- truy vết source trực tiếp;
+- kiểm tra generated manifest hoặc compiled artifact;
+- backend integration test isolated.
 
-Weak evidence:
+Bằng chứng yếu:
 
-- old comments;
-- README feature lists;
-- planned design documents;
-- runner directories;
-- package presence without an active call path.
+- comment cũ;
+- feature list trong README;
+- planned design document;
+- thư mục runner;
+- package tồn tại nhưng không có active call path.
 
-Label inference as inference.
+Đánh nhãn rõ nội dung suy luận.
 
-## Security-sensitive task protocol
+## Protocol cho task nhạy cảm về bảo mật
 
-For auth, TOTP, secure storage, sync, crypto, recovery, or RLS:
+Với auth, TOTP, secure storage, sync, crypto, recovery hoặc RLS:
 
-1. Identify assets and attackers.
-2. Define trust boundaries.
-3. Write failure and abuse cases.
-4. Add negative tests.
-5. Define migration, rollback, and key/data recovery.
-6. Confirm logs and fixtures are redacted.
-7. Update SECURITY.md.
-8. Add an ADR when a long-lived decision changes.
+1. Xác định asset và attacker.
+2. Định nghĩa trust boundary.
+3. Viết failure case và abuse case.
+4. Thêm negative test.
+5. Định nghĩa migration, rollback và key/data recovery.
+6. Xác nhận log và fixture đã redact.
+7. Cập nhật `SECURITY.md`.
+8. Thêm ADR khi quyết định dài hạn thay đổi.
 
-Do not ship a partial crypto design behind a normal user toggle.
+Không ship thiết kế crypto một phần sau user toggle thông thường.
 
-## Context management
+## Quản lý context
 
-When a task spans sessions:
+Khi task kéo dài qua nhiều session:
 
-- keep durable facts in the task record;
-- reference file paths and symbols, not copied source;
-- record the last command and result;
-- record unresolved decisions separately from implementation TODOs;
-- avoid storing secrets or transient tokens;
-- keep PROJECT_STATUS.md reserved for repository-wide verified facts.
+- giữ sự thật bền vững trong task record;
+- tham chiếu file path và symbol, không copy source dài;
+- ghi command gần nhất và kết quả;
+- tách quyết định chưa xử lý khỏi implementation TODO;
+- không lưu secret hoặc token tạm thời;
+- chỉ dùng `PROJECT_STATUS.md` cho sự thật cấp repository đã xác minh.
 
-## Review prompts
+## Câu hỏi tự review
 
-Before declaring completion, ask:
+Trước khi tuyên bố hoàn tất:
 
-- Can this change lose local or cloud accounts?
-- Can any secret reach a log, backend field, test output, or screenshot?
-- Does retry duplicate or delete data?
-- Do old records still load?
-- Are UI and background components using the same state owner?
-- Does a configured lock fail closed?
-- Are server policies version-controlled and negatively tested?
-- Did behavior and canonical docs change together?
+- Thay đổi có thể làm mất account local hoặc cloud không?
+- Secret có thể tới log, backend field, test output hoặc screenshot không?
+- Retry có duplicate hoặc delete dữ liệu không?
+- Record cũ còn load được không?
+- UI và background component có dùng cùng state owner không?
+- Lock đã cấu hình có fail closed không?
+- Server policy có version control và negative test không?
+- Behavior và tài liệu canonical có thay đổi cùng nhau không?
 
-## Stop conditions
+## Điều kiện dừng để xin quyết định
 
-Pause and request owner direction when:
+Dừng và yêu cầu owner quyết định khi:
 
-- offline versus mandatory account behavior must be chosen;
-- logout data ownership changes;
-- E2EE recovery policy is undecided;
-- a migration can irreversibly delete plaintext or ciphertext;
-- supported platform claims change;
-- legal, store, or external production configuration must be approved.
+- phải chọn offline hay mandatory account;
+- quyền sở hữu dữ liệu khi logout thay đổi;
+- E2EE recovery policy chưa quyết định;
+- migration có thể xóa plaintext hoặc ciphertext không thể đảo ngược;
+- claim platform support thay đổi;
+- cấu hình legal, store hoặc external production cần phê duyệt.
 
-Continue independently for read-only investigation, tests, safe refactors, and changes within an already accepted contract.
+Tiếp tục độc lập với khảo sát read-only, test, safe refactor và thay đổi nằm trong contract đã chấp nhận.
