@@ -87,7 +87,7 @@ begin
 
   get diagnostics affected_rows = row_count;
   if affected_rows <> 1 then
-    raise exception 'revision_conflict' using errcode = '40001';
+    raise sqlstate 'PT409' using message = 'revision_conflict';
   end if;
 
   return query

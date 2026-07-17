@@ -35,6 +35,7 @@ Tài liệu theo component:
 
 - [Trang web khôi phục mật khẩu](../reset-password-web/README.md)
 - [Backup và khôi phục Supabase legacy](operations/SUPABASE_LEGACY_BACKUP.md)
+- [Rollout Supabase E2EE snapshot](operations/SUPABASE_E2EE_ROLLOUT.md)
 - [Supabase backend harness](../supabase/README.md)
 
 ## Từ vựng trạng thái

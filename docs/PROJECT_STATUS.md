@@ -9,8 +9,9 @@ Hyper Authenticator là ứng dụng Flutter alpha hướng tới Android, iOS, 
 Ứng dụng **chưa sẵn sàng production** với cloud secret thật. Cloud sync plaintext hiện
 bị khóa mặc định, chỉ có thể bật trong non-release bằng build flag nguy hiểm dành
 cho migration/test và luôn bị khóa trong release; protocol phía sau vẫn plaintext,
-xóa-rồi-chèn. E2EE/atomic snapshot primitives cùng additive schema đã có nhưng chưa
-nối onboarding/client remote flow hoặc deploy staging.
+xóa-rồi-chèn. E2EE/atomic snapshot primitives cùng additive schema đã có;
+schema/RPC đã deploy trên Supabase self-hosted và remote contract pass, nhưng chưa
+nối onboarding/client remote flow.
 Supabase schema/RLS đã có migration cùng cross-user contract test, nhưng control
 này chỉ giới hạn authorization, không mã hóa TOTP secret.
 
@@ -32,7 +33,7 @@ này chỉ giới hạn authorization, không mã hóa TOTP secret.
 | `flutter doctor -v` | Không có lỗi toolchain |
 | `dart format --output=none --set-exit-if-changed lib test tool` | Pass |
 | `flutter analyze` | Pass, không có diagnostic |
-| `flutter test` | 41 test pass |
+| `flutter test` | 42 test pass |
 | Android `flutter build apk --debug` | Pass |
 | Web `flutter build web --release` | Pass |
 | macOS `flutter build macos --debug` | Pass |
@@ -53,6 +54,7 @@ Chưa có device/integration test Flutter đầy đủ.
 - Legacy data/config/Storage đã backup có checksum ngoài repository; instance mới không import dữ liệu cũ.
 - `synced_accounts` có migration, grant CRUD tối thiểu, force RLS và bốn owner policy.
 - Smoke test official qua public endpoint: 35 pass; API key/JWKS/asymmetric Auth: 43 pass; RLS contract: 17 pass.
+- Encrypted snapshot migration/RPC đã deploy; PostgREST/Auth/RLS contract: 11 pass.
 - Session JWT mới dùng ES256; legacy HS256 verification vẫn pass để hỗ trợ transition.
 - Sau test/cleanup: Auth user/audit, Storage bucket/object, Realtime message và `synced_accounts` đều 0 row.
 
@@ -98,7 +100,8 @@ Có artifact build không đồng nghĩa platform đã đủ điều kiện phá
 - Web recovery được chọn làm canonical surface, có client redirect config và
   self-hosted email template version control.
 - AES-256-GCM snapshot/AAD, DEK wrapping, recovery key và secure key-store primitive
-  đã có regression test; migration v2 có atomic revision/RLS harness.
+  đã có regression test; migration v2 có atomic revision/RLS harness, đã deploy
+  và pass 11 remote contract check.
 - Source dùng Apache License 2.0; asset/trademark vẫn cần provenance audit.
 
 ## Release blocker còn lại
@@ -106,7 +109,8 @@ Có artifact build không đồng nghĩa platform đã đủ điều kiện phá
 ### Bảo mật và dữ liệu
 
 1. Table compatibility vẫn chứa plaintext nếu dangerous bridge được dùng; release
-   bridge khóa. E2EE v2 chưa nối SyncBloc/onboarding hoặc deploy.
+   bridge khóa. E2EE v2 server contract đã deploy nhưng chưa nối
+   SyncBloc/onboarding, nên chưa thể enable cho người dùng.
 2. Upload cloud xóa snapshot cũ rồi chèn snapshot mới, không atomic và không idempotent.
 3. Merge đã dùng stable `account_id` và local-wins khi trùng ID, nhưng chưa có revision conflict protocol hoặc tombstone.
 4. Schema plaintext hiện tại là compatibility bridge; build client cũ dùng camelCase không tương thích backend mới.
@@ -128,7 +132,7 @@ Có artifact build không đồng nghĩa platform đã đủ điều kiện phá
 1. Đã có Apache-2.0 nhưng chưa audit license/provenance asset; release credential,
    notarization, installer và store metadata chưa hoàn chỉnh.
 2. iOS cần xác minh trên simulator/thiết bị; Windows và Linux cần xác minh ngoài CI.
-3. Chưa có integration test Flutter cho local storage, auth UI, lock, sync interruption và recovery; remote RLS contract test đã có.
+3. Chưa có integration test Flutter cho local storage, auth UI, lock, sync interruption và recovery; remote plaintext và encrypted RLS contract test đã có.
 4. Một số plugin Android vẫn dùng Kotlin Gradle Plugin legacy và phát cảnh báo tương thích tương lai từ Flutter; build hiện tại vẫn pass.
 
 ## CI và automation

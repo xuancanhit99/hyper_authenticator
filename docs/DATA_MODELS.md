@@ -130,7 +130,7 @@ snake_case. Dữ liệu legacy không được import vào instance mới.
 
 ## Encrypted vault snapshot v2
 
-**Đã triển khai trong source/migration, chưa deploy production.** Table
+**Đã triển khai trên self-hosted Supabase; client vẫn staged.** Table
 `encrypted_vault_snapshots` giữ một snapshot hiện hành cho mỗi `user_id`:
 
 | Field | Contract |
@@ -146,7 +146,8 @@ snake_case. Dữ liệu legacy không được import vào instance mới.
 Plaintext trong cipher là JSON snapshot canonical gồm `format_version` và danh
 sách `AuthenticatorAccount` sort theo stable ID. AAD bind purpose/version,
 Supabase user ID và revision. RPC `publish_encrypted_vault_snapshot` chỉ commit
-khi `expected_revision` khớp rồi tăng revision atomically.
+khi `expected_revision` khớp rồi tăng revision atomically. Conflict dùng SQLSTATE
+`PT409`/HTTP 409; remote contract đã xác minh owner isolation và revision behavior.
 
 Local DEK dùng secure-storage key `ha:e2ee:v1:dek:<supabase-user-id>` và không bị
 xóa khi logout. Recovery code dạng `HA1-<base64url-256-bit>` không được lưu remote

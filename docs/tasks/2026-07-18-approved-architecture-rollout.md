@@ -1,6 +1,6 @@
 # Task: Triển khai bốn quyết định kiến trúc đã duyệt
 
-- Trạng thái: Hoàn tất batch staged; chưa deploy remote
+- Trạng thái: Server E2EE contract đã deploy; Recovery Web chờ DNS/TLS
 - Bắt đầu: 2026-07-18
 - Owner: canhvx
 - ADR: 0003, 0004, 0005, 0006
@@ -14,7 +14,7 @@ E2EE sync v2 theo rollout an toàn và thêm Apache-2.0.
 
 - Không bật E2EE sync production trước onboarding/export/import recovery key UI.
 - Không drop hoặc migrate destructive table plaintext trong batch này.
-- Không tự deploy template/migration lên host khi chưa có staging rehearsal.
+- Không deploy Auth recovery template tới URL chưa có DNS/TLS hoạt động.
 
 ## Acceptance criteria
 
@@ -44,7 +44,8 @@ E2EE sync v2 theo rollout an toàn và thêm Apache-2.0.
 | Focused crypto/key-store test | 6 pass; encrypted remote mapper thêm 2 pass |
 | `reset-password-web/test.sh` | Pass sau khi thêm template |
 | `scripts/supabase/test_encrypted_vault_migration.sh` | Pass revision/conflict/RLS |
-| `scripts/agent/check.sh full` | Pass docs/generated/format/analyze và 41 test |
+| Remote encrypted PostgREST/Auth contract | 11 pass; cleanup 0 test row/user |
+| `scripts/agent/check.sh full` | Pass docs/generated/format/analyze và 42 test |
 | `scripts/agent/build.sh host` | Pass Android debug, Web release và macOS debug |
 
 ## Bàn giao
@@ -52,7 +53,10 @@ E2EE sync v2 theo rollout an toàn và thêm Apache-2.0.
 - Offline-first routing, logout boundary, canonical recovery config/template và
   Apache-2.0 đã triển khai trong client/repository.
 - Crypto/key-store/encrypted remote boundary và additive migration/RPC đã triển khai
-  và test, nhưng SyncBloc/onboarding UI chưa nối nên release sync vẫn khóa.
-- Không sửa/drop remote plaintext table và chưa deploy migration/template lên host.
-- Bước tiếp theo: recovery-key onboarding/export/import UI, staging deployment,
-  PostgREST/Auth E2E và conflict UX trước khi enable E2EE sync.
+  và test; migration/RPC đã deploy lên server, nhưng SyncBloc/onboarding UI chưa
+  nối nên release sync vẫn khóa.
+- Không sửa/drop remote plaintext table. Full pre-change backup đã verify và lưu
+  ngoài repository.
+- Recovery template chưa deploy vì chưa có public recovery domain/DNS/TLS. Bước
+  tiếp theo là chốt domain, deploy Web + template + allow-list cùng một lần, rồi
+  làm recovery-key onboarding/export/import và conflict UX.

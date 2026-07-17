@@ -5,7 +5,7 @@
 Ngày 18 tháng 7 năm 2026:
 
 - `flutter analyze`: pass, không có diagnostic.
-- `flutter test`: 41 test pass.
+- `flutter test`: 42 test pass.
 - Format gate: pass.
 - CI đa nền tảng đã được track.
 - Đã có widget test countdown; chưa có BLoC test hoặc `integration_test` đầy đủ.
@@ -105,6 +105,7 @@ Backend rollout chạy ba suite ngoài Flutter unit test:
 | Official `test-self-hosted.sh` | Container, Studio, Auth, REST, Storage/TUS, Edge Functions, pg-meta, Realtime | 35 pass |
 | Official `test-auth-keys.sh` | Legacy/opaque key, ES256/JWKS, HS256 compatibility, WebSocket | 43 pass |
 | `scripts/supabase/test_remote_contract.sh` | Anonymous denial, mapper shape và owner/cross-user CRUD RLS | 17 pass |
+| `scripts/supabase/test_remote_encrypted_vault_contract.sh` | Encrypted shape, optimistic revision và cross-user RLS qua PostgREST/Auth | 11 pass |
 
 Contract script cần server `.env` có service role chỉ để tạo/dọn isolated user.
 Không copy credential đó vào client hoặc CI log. Script dùng placeholder được đánh
@@ -119,7 +120,8 @@ Additive E2EE migration có harness Docker không cần remote secret:
     scripts/supabase/test_encrypted_vault_migration.sh
 
 Nó xác minh SQL apply, optimistic revision, conflict, anonymous denial và owner
-RLS trên PostgreSQL tạm. Vẫn cần PostgREST/Auth E2E sau staging deploy.
+RLS trên PostgreSQL tạm. Sau deploy, remote contract riêng đã xác minh cùng boundary
+qua PostgREST/Auth và cleanup toàn bộ isolated test data.
 
 ## Xác minh platform
 

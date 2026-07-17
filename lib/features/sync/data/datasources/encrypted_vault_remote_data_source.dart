@@ -4,6 +4,13 @@ import 'package:hyper_authenticator/features/sync/domain/entities/encrypted_vaul
 import 'package:injectable/injectable.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+bool isEncryptedVaultRevisionConflict({
+  required String? code,
+  required String message,
+}) {
+  return code == 'PT409' || message.contains('revision_conflict');
+}
+
 @lazySingleton
 class EncryptedVaultRemoteDataSource {
   static const tableName = 'encrypted_vault_snapshots';
@@ -51,8 +58,10 @@ class EncryptedVaultRemoteDataSource {
       }
       return row['revision'] as int;
     } on PostgrestException catch (error) {
-      if (error.code == '40001' ||
-          error.message.contains('revision_conflict')) {
+      if (isEncryptedVaultRevisionConflict(
+        code: error.code,
+        message: error.message,
+      )) {
         throw const ServerException(
           'Encrypted vault đã thay đổi trên thiết bị khác.',
         );

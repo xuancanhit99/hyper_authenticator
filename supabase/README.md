@@ -13,6 +13,8 @@ database volume và backup không được đặt trong repository.
   Auth, mapper contract và cross-user RLS.
 - `../scripts/supabase/test_encrypted_vault_migration.sh`: PostgreSQL ephemeral
   test cho encrypted snapshot revision/conflict/RLS, không cần remote secret.
+- `../scripts/supabase/test_remote_encrypted_vault_contract.sh`: PostgREST/Auth
+  contract cho encrypted snapshot trên isolated self-hosted environment.
 
 ## Áp dụng trên một stack mới
 
@@ -41,7 +43,9 @@ Trước khi deploy E2EE migration additive:
     scripts/supabase/test_encrypted_vault_migration.sh
 
 Sau đó áp migration `20260718190000_create_encrypted_vault_snapshots.sql` trên
-staging trước. Migration không drop/sửa table plaintext.
+staging trước. Migration không drop/sửa table plaintext. Baseline self-hosted hiện
+tại đã deploy migration này và pass 11 remote contract check; xem
+`docs/operations/SUPABASE_E2EE_ROLLOUT.md`.
 
 Script cần `SERVICE_ROLE_KEY` để tạo và dọn isolated user. Không copy key này
 vào `.env` của Flutter; không chạy script trong log có shell tracing.
@@ -49,5 +53,5 @@ vào `.env` của Flutter; không chạy script trong log có shell tracing.
 ## Giới hạn hiện tại
 
 `synced_accounts.secret_key` vẫn là plaintext compatibility table và upload cũ vẫn
-xóa-rồi-chèn. Encrypted schema/RPC v2 đã có trong source nhưng chưa deploy/nối client;
-release sync vẫn khóa. Backup định kỳ và restore rehearsal vẫn bắt buộc.
+xóa-rồi-chèn. Encrypted schema/RPC v2 đã deploy nhưng chưa nối client; release sync
+vẫn khóa. Backup định kỳ và restore rehearsal vẫn bắt buộc.

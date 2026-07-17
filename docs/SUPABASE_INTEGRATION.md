@@ -184,7 +184,7 @@ Backup legacy, checksum, rehearsal, restore limitation và chiến lược impor
 lọc nằm trong [runbook backup legacy](operations/SUPABASE_LEGACY_BACKUP.md). Backup
 chứa credential và không nằm trong repository.
 
-## Encrypted contract v2 đang staged
+## Encrypted contract v2 đã deploy, client đang staged
 
 Migration `20260718190000_create_encrypted_vault_snapshots.sql` thêm table một
 snapshot/user và RPC `publish_encrypted_vault_snapshot`:
@@ -194,9 +194,13 @@ snapshot/user và RPC `publish_encrypted_vault_snapshot`:
 - SELECT owner-only RLS; write chỉ qua authenticated RPC;
 - additive rollout, chưa drop `synced_accounts`.
 
-Local crypto/key-store và ephemeral PostgreSQL migration harness đã pass. Client
-remote orchestration/onboarding và deployment chưa hoàn tất, nên release sync vẫn
-khóa. Xem ADR-0005 và `E2EE_DESIGN.md`.
+Local crypto/key-store và ephemeral PostgreSQL migration harness đã pass. Migration
+và RPC đã deploy lên self-hosted instance; remote PostgREST/Auth contract pass 11
+check và dọn sạch isolated test data. Revision conflict dùng SQLSTATE `PT409` để
+PostgREST trả HTTP 409, sau đó client map thành typed server failure.
+
+Client remote orchestration/onboarding chưa hoàn tất, nên release sync vẫn khóa.
+Xem ADR-0005, `E2EE_DESIGN.md` và [rollout evidence](operations/SUPABASE_E2EE_ROLLOUT.md).
 
 ## Failure behavior
 

@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:hyper_authenticator/features/sync/data/datasources/encrypted_vault_remote_data_source.dart';
 import 'package:hyper_authenticator/features/sync/data/models/remote_encrypted_vault_snapshot.dart';
 import 'package:hyper_authenticator/features/sync/domain/entities/encrypted_vault_envelope.dart';
 
@@ -52,4 +53,21 @@ void main() {
       expect(serialized, isNot(contains('issuer')));
     },
   );
+
+  test('PT409 được nhận diện là optimistic revision conflict', () {
+    expect(
+      isEncryptedVaultRevisionConflict(
+        code: 'PT409',
+        message: 'revision_conflict',
+      ),
+      isTrue,
+    );
+    expect(
+      isEncryptedVaultRevisionConflict(
+        code: '42501',
+        message: 'permission denied',
+      ),
+      isFalse,
+    );
+  });
 }
