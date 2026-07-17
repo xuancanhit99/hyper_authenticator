@@ -64,8 +64,9 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
         children: _widgetOptions,
       ),
       bottomNavigationBar: NavigationBar(
-        backgroundColor:
-            Theme.of(context).scaffoldBackgroundColor, // Set background color
+        backgroundColor: Theme.of(
+          context,
+        ).scaffoldBackgroundColor, // Set background color
         elevation: 0, // Remove shadow
         selectedIndex: _selectedIndex,
         onDestinationSelected: _onItemTapped,

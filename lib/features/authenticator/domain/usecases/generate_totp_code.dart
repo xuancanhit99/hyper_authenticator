@@ -9,7 +9,7 @@ import 'package:injectable/injectable.dart'; // Add import
 
 // Define a specific Failure for TOTP generation errors
 class TotpGenerationFailure extends Failure {
-  const TotpGenerationFailure(String message) : super(message);
+  const TotpGenerationFailure(super.message);
 }
 
 @injectable // Register use case
@@ -36,7 +36,7 @@ class GenerateTotpCode implements UseCase<String, GenerateTotpCodeParams> {
 
       final code = OTP.generateTOTPCodeString(
         params.secretKey,
-        DateTime.now().millisecondsSinceEpoch,
+        params.timestampMilliseconds ?? DateTime.now().millisecondsSinceEpoch,
         // Pass parameters explicitly
         interval: params.period,
         length: params.digits,
@@ -60,14 +60,22 @@ class GenerateTotpCodeParams extends Equatable {
   final String algorithm;
   final int digits;
   final int period;
+  final int? timestampMilliseconds;
 
   const GenerateTotpCodeParams({
     required this.secretKey,
     required this.algorithm,
     required this.digits,
     required this.period,
+    this.timestampMilliseconds,
   });
 
   @override
-  List<Object?> get props => [secretKey, algorithm, digits, period];
+  List<Object?> get props => [
+    secretKey,
+    algorithm,
+    digits,
+    period,
+    timestampMilliseconds,
+  ];
 }

@@ -101,8 +101,8 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                       keyboardType: TextInputType.emailAddress,
                       validator: _validateEmail,
                       textInputAction: TextInputAction.done,
-                      onFieldSubmitted:
-                          (_) => _sendResetLink(context), // Pass context
+                      onFieldSubmitted: (_) =>
+                          _sendResetLink(context), // Pass context
                     ),
                     const SizedBox(height: 24),
                     // Use BlocBuilder for loading state
@@ -110,26 +110,23 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                       builder: (context, state) {
                         final isLoading = state is AuthLoading;
                         return ElevatedButton(
-                          onPressed:
-                              isLoading
-                                  ? null
-                                  : () =>
-                                      _sendResetLink(context), // Pass context
+                          onPressed: isLoading
+                              ? null
+                              : () => _sendResetLink(context), // Pass context
                           style: ElevatedButton.styleFrom(
                             padding: const EdgeInsets.symmetric(vertical: 16),
                             textStyle: Theme.of(context).textTheme.titleMedium,
                           ),
-                          child:
-                              isLoading
-                                  ? const SizedBox(
-                                    width: 24,
-                                    height: 24,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      color: Colors.white,
-                                    ),
-                                  )
-                                  : const Text('Send Reset Link'),
+                          child: isLoading
+                              ? const SizedBox(
+                                  width: 24,
+                                  height: 24,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              : const Text('Send Reset Link'),
                         );
                       },
                     ),

@@ -1,5 +1,4 @@
 // lib/features/auth/data/repositories/auth_repository_impl.dart
-import 'package:flutter/foundation.dart';
 import 'package:fpdart/fpdart.dart';
 import 'package:hyper_authenticator/core/error/failures.dart';
 import 'package:hyper_authenticator/features/auth/data/datasources/auth_remote_data_source.dart';
@@ -34,10 +33,7 @@ class AuthRepositoryImpl implements AuthRepository {
     try {
       final userEntity = _mapSupabaseUserToEntity(remoteDataSource.currentUser);
       return Right(userEntity);
-    } catch (e, s) {
-      debugPrint(
-        'Unexpected error in getCurrentUserEntity: $e\nStackTrace: $s',
-      );
+    } catch (_) {
       return Left(
         ServerFailure(
           'Failed to get current user info. Please try again later.',
@@ -61,8 +57,7 @@ class AuthRepositoryImpl implements AuthRepository {
       return Left(AuthCredentialsFailure(e.message));
     } on ServerException catch (e) {
       return Left(AuthCredentialsFailure(e.message));
-    } catch (e, s) {
-      debugPrint('Unexpected error in signInWithPassword: $e\nStackTrace: $s');
+    } catch (_) {
       return Left(
         AuthCredentialsFailure(
           'An unexpected error occurred during sign in. Please check your connection or try again later.',
@@ -98,8 +93,7 @@ class AuthRepositoryImpl implements AuthRepository {
       return Left(AuthServerFailure(e.message));
     } on ServerException catch (e) {
       return Left(AuthServerFailure(e.message));
-    } catch (e, s) {
-      debugPrint('Unexpected error in signUpWithPassword: $e\nStackTrace: $s');
+    } catch (_) {
       return Left(
         AuthServerFailure(
           'An unexpected error occurred during sign up. Please try again later.',
@@ -117,8 +111,7 @@ class AuthRepositoryImpl implements AuthRepository {
       return Left(AuthServerFailure(e.message));
     } on ServerException catch (e) {
       return Left(ServerFailure(e.message));
-    } catch (e, s) {
-      debugPrint('Unexpected error in recoverPassword: $e\nStackTrace: $s');
+    } catch (_) {
       return Left(
         ServerFailure(
           'An unexpected error occurred while recovering password. Please try again later.',
@@ -132,8 +125,7 @@ class AuthRepositoryImpl implements AuthRepository {
     try {
       await remoteDataSource.signOut();
       return const Right(null);
-    } catch (e, s) {
-      debugPrint('Unexpected error in signOut: $e\nStackTrace: $s');
+    } catch (_) {
       return Left(
         ServerFailure(
           'Failed to sign out. Please check your connection or try again later.',
@@ -153,8 +145,7 @@ class AuthRepositoryImpl implements AuthRepository {
       return Left(AuthServerFailure(e.message));
     } on ServerException catch (e) {
       return Left(ServerFailure(e.message));
-    } catch (e, s) {
-      debugPrint('Unexpected error in updatePassword: $e\nStackTrace: $s');
+    } catch (_) {
       return Left(
         ServerFailure(
           'An unexpected error occurred while updating password. Please try again later.',

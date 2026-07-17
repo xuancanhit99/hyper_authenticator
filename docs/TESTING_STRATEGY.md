@@ -2,145 +2,115 @@
 
 ## Baseline hiện tại
 
-Automated product test chưa được triển khai.
+Ngày 17 tháng 7 năm 2026:
 
-- `test/widget_test.dart` đã bị comment toàn bộ.
-- Không có thư mục `integration_test`.
-- Native test target chỉ có template.
-- Không có CI pipeline được track.
-- `flutter test` dừng khi thiếu `.env`; với `.env` placeholder local, suite vẫn thất bại vì file test đã comment toàn bộ không có hàm `main`.
-- Static analysis baseline ngày 17 tháng 7 năm 2026: 0 error, 29 warning, 72 info diagnostic.
+- `flutter analyze`: pass, không có diagnostic.
+- `flutter test`: 10 test pass.
+- Format gate: pass.
+- CI đa nền tảng đã được track.
+- Chưa có widget test, BLoC test hoặc `integration_test` đầy đủ.
 
-Phần này phải được giữ cho đến khi test và CI thay thế baseline.
+Test hiện có:
+
+| Nhóm | Coverage |
+|---|---|
+| `AuthenticatorAccount` | JSON round-trip và default tương thích record cũ |
+| `TotpUriParser` | URI đầy đủ, suy luận issuer và input không hợp lệ |
+| `TotpValidator` | Chuẩn hóa Base32 và từ chối secret/algorithm/digits/period không hợp lệ |
+| `GenerateTotpCode` | RFC 6238 SHA1 known-answer vector tại mốc 59 giây |
+| `AuthBloc` | Sign-in emit authenticated và sign-up chờ email không mắc kẹt ở loading |
 
 ## Quality gate
 
-Tài liệu:
-
     scripts/agent/check.sh docs
-
-Gate Dart và Flutter nhanh:
-
     scripts/agent/check.sh quick
-
-Gate đầy đủ:
-
     scripts/agent/check.sh full
 
-Harness được thiết kế nghiêm ngặt. Baseline failure đã biết phải được báo, không che giấu. Khi một check bị chặn, vẫn chạy mọi check không bị ảnh hưởng.
+- `docs`: kiểm tra link, cấu trúc và drift tài liệu.
+- `quick`: generated-code drift, format và analyze.
+- `full`: toàn bộ quick gate cùng `flutter test`.
 
-## Các tầng test
+Build verification độc lập:
+
+    scripts/agent/build.sh host
+    scripts/agent/build.sh <android|ios|macos|web|windows|linux>
+
+Không biến lỗi baseline thành success giả. Platform không build được trên host phải được ghi là chưa xác minh và chuyển sang runner phù hợp.
+
+## Các tầng test cần bổ sung
 
 ### Unit test
 
-Ưu tiên cao nhất:
-
-- Known-answer TOTP theo RFC 6238 và package.
-- Validation algorithm, digits và period.
-- JSON round trip của `AuthenticatorAccount`.
-- Create/read/update/delete local storage và index recovery.
-- Ánh xạ exception thành failure ở repository.
-- Merge identity và conflict behavior.
-- Encrypted envelope và migration sau khi có E2EE.
+- RFC 6238 SHA1/SHA256/SHA512, digits và period khác nhau.
+- Base32 normalization và validation boundary.
+- Local storage CRUD, index corruption và partial write recovery.
+- Failure mapping ở repository.
+- Merge identity, conflict, deletion và encrypted envelope sau khi có E2EE.
 
 ### BLoC test
 
-Dùng `bloc_test` hoặc package tương đương sau khi thêm vào `dev_dependencies`.
-
-Cần bao phủ:
-
-- `AuthBloc`: sign-in, sign-up, recovery, sign-out và quyền sở hữu dữ liệu an toàn.
-- `AccountsBloc`: load, add, update, delete, merge và partial failure.
-- `LocalAuthBloc`: lifecycle, cancel, thiết bị không hỗ trợ và error fail-closed.
-- `SyncBloc`: disabled, merge, overwrite, network failure, concurrency conflict và retry.
+- `AuthBloc`: sign-in/up/recovery/sign-out và giữ dữ liệu local khi logout.
+- `AccountsBloc`: load/add/update/delete/merge và partial failure.
+- `LocalAuthBloc`: lifecycle, cancel, unsupported platform và fail-closed error.
+- `SyncBloc`: disabled, merge, overwrite, network failure, conflict và retry.
 - `SettingsBloc`: persistence của preference.
 
 ### Widget test
 
-Cần bao phủ:
+- Validation auth và manual TOTP.
+- Parse QR, hiển thị lỗi không lộ secret và capability theo platform.
+- Countdown/copy code, delete confirmation và lock-screen retry.
+- Theme và sync settings.
 
-- validation đăng nhập và đăng ký;
-- phản hồi khi nhập thủ công hoặc parse QR;
-- format mã trong danh sách và hành vi copy;
-- cảnh báo delete và logout phá hủy dữ liệu;
-- retry và error trên lock screen;
-- mô tả tùy chọn sync và disabled state;
-- đổi theme.
-
-Mọi plugin boundary phải có thể thay bằng fake.
+Plugin boundary cần wrapper hoặc fake để test không phụ thuộc camera/keychain/sinh trắc học thật.
 
 ### Integration test
 
-User journey quan trọng:
+1. Đăng nhập và load dữ liệu local.
+2. Thêm SHA1/SHA256/SHA512, 6–8 digits và period tùy chỉnh rồi restart.
+3. Background/resume và unlock.
+4. Logout không làm mất TOTP local.
+5. Interrupted upload không làm mất snapshot hợp lệ gần nhất.
+6. Merge/concurrency hai thiết bị.
+7. User A không truy cập row của User B qua RLS.
+8. Recovery link thành công, hết hạn, malformed và reuse.
 
-1. Đăng nhập và load tài khoản local có sẵn.
-2. Thêm tài khoản TOTP chuẩn và xác minh known code.
-3. Thêm SHA256, 8 digits, period khác 30 giây và xác minh round trip.
-4. Background, resume và unlock ứng dụng đã cấu hình khóa.
-5. Logout không làm mất dữ liệu local ngoài ý muốn.
-6. Download và merge không ghi đè conflict.
-7. Upload bị gián đoạn không làm mất cloud snapshot hợp lệ gần nhất.
-8. User A không truy cập dữ liệu User B qua Supabase RLS.
-9. Link password recovery thành công, hết hạn và reuse.
+Dùng Supabase environment isolated và dữ liệu tổng hợp.
 
-Dùng môi trường isolated với dữ liệu tổng hợp; không dùng production credential.
+## Xác minh platform
 
-### Xác minh platform
-
-Với mỗi platform được hỗ trợ:
+Với mỗi platform được quảng bá:
 
 - clean install và upgrade;
-- persistence và deletion semantic của secure storage;
-- khả dụng và cancel sinh trắc học/credential thiết bị;
-- permission camera và gallery;
+- secure-storage persistence/deletion;
+- local authentication và cancel nếu có hỗ trợ;
+- camera/gallery permission nếu có hỗ trợ;
 - network trong release build;
-- background và resume;
-- deep link;
-- release signing và sandbox entitlement.
+- lifecycle và deep link;
+- signing, entitlement/sandbox và installer;
+- accessibility cơ bản.
 
-## Fixture
+## CI hiện tại
 
-- Dùng địa chỉ `example.invalid`.
-- Dùng RFC test vector tổng hợp, không dùng account cá nhân.
-- Đánh dấu mọi fixture trông giống secret là `TEST_ONLY`.
-- Không snapshot Supabase response hoặc session thật.
-- Redact secret trong URI `otpauth` khỏi failure output.
+`.github/workflows/ci.yml` gồm:
 
-## Coverage policy
+- quality gate trên Ubuntu;
+- Android debug APK;
+- Web release;
+- Linux release;
+- Windows release;
+- macOS debug;
+- iOS simulator debug không codesign.
 
-Tỷ lệ coverage đứng sau coverage theo rủi ro. Tuy nhiên trước beta:
+CI pin Flutter 3.44.6 và Java 17 cho Android. Không đưa production credential vào CI; build không cần Supabase define, còn integration test tương lai chỉ nhận public client config của environment test.
 
-- mọi domain use case có test success và failure;
-- mọi persisted model có round-trip test và migration test;
-- mọi destructive path có interruption và rollback test;
-- auth, lock, sync và recovery có integration coverage;
-- security regression có permanent test.
+## Fixture và báo lỗi
 
-Không loại file security-critical chỉ để tăng phần trăm coverage.
-
-## Mục tiêu CI
-
-Pull-request pipeline trong tương lai nên chạy:
-
-1. resolve dependency bằng Flutter version được pin;
-2. generated-code drift check;
-3. formatting check;
-4. static analysis không có diagnostic mới;
-5. unit test và widget test;
-6. documentation harness;
-7. secret scanning;
-8. ít nhất Android debug build;
-9. suite integration Supabase và platform theo lịch hoặc protected branch.
-
-CI chỉ được nhận public client configuration theo environment. Không cho phép production credential.
+- Dùng email/domain `.invalid` và RFC vector tổng hợp.
+- Đánh dấu fixture trông giống secret là `TEST_ONLY`.
+- Không snapshot Supabase session/response thật.
+- Redact URI `otpauth`, secret, token và password khỏi output.
 
 ## Definition of done
 
-Thay đổi hành vi chỉ hoàn tất khi:
-
-- acceptance criteria có thể quan sát;
-- có regression coverage;
-- quality gate liên quan pass hoặc blocker có sẵn được báo chính xác;
-- failure behavior về dữ liệu và bảo mật đã được test;
-- tài liệu canonical bị ảnh hưởng đã cập nhật;
-- xác minh đặc thù platform được ghi lại khi áp dụng.
+Thay đổi hành vi hoàn tất khi có acceptance criteria quan sát được, regression test theo rủi ro, quality gate pass, failure behavior được kiểm tra và tài liệu canonical liên quan đã cập nhật. Thay đổi platform cần kèm bằng chứng build/test trên runner hoặc thiết bị phù hợp.

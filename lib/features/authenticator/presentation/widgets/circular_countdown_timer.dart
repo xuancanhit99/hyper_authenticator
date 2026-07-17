@@ -18,14 +18,12 @@ class CircularCountdownTimer extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // Ưu tiên màu từ theme nếu màu mặc định không được chỉ định khác
-    final Color effectiveProgressColor =
-        progressColor == Colors.blue
-            ? Theme.of(context).colorScheme.primary
-            : progressColor;
-    final Color effectiveBackgroundColor =
-        backgroundColor == Colors.grey
-            ? Theme.of(context).colorScheme.onSurface.withOpacity(0.1)
-            : backgroundColor;
+    final Color effectiveProgressColor = progressColor == Colors.blue
+        ? Theme.of(context).colorScheme.primary
+        : progressColor;
+    final Color effectiveBackgroundColor = backgroundColor == Colors.grey
+        ? Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.1)
+        : backgroundColor;
 
     return SizedBox(
       width: size,
@@ -54,15 +52,13 @@ class _SolidCountdownPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final Paint backgroundPaint =
-        Paint()
-          ..color = backgroundColor
-          ..style = PaintingStyle.fill; // Tô đầy nền
+    final Paint backgroundPaint = Paint()
+      ..color = backgroundColor
+      ..style = PaintingStyle.fill; // Tô đầy nền
 
-    final Paint progressPaint =
-        Paint()
-          ..color = progressColor
-          ..style = PaintingStyle.fill; // Tô đầy phần tiến trình
+    final Paint progressPaint = Paint()
+      ..color = progressColor
+      ..style = PaintingStyle.fill; // Tô đầy phần tiến trình
 
     final double radius = size.width / 2;
     final Offset center = Offset(radius, radius);

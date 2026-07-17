@@ -74,11 +74,7 @@ class _UpdatePasswordPageState extends State<UpdatePasswordPage> {
             ..hideCurrentSnackBar()
             ..showSnackBar(SnackBar(content: Text(state.message)));
         }
-        // Assuming successful update might trigger AuthAuthenticated or a specific success state
-        // For now, let's show a message and navigate on success (can be refined)
-        // We might need a dedicated AuthPasswordUpdateSuccess state for clarity
-        if (state is AuthAuthenticated) {
-          // Or a specific success state
+        if (state is AuthPasswordUpdateSuccess) {
           ScaffoldMessenger.of(context)
             ..hideCurrentSnackBar()
             ..showSnackBar(
@@ -86,7 +82,7 @@ class _UpdatePasswordPageState extends State<UpdatePasswordPage> {
                 content: Text('Password updated successfully! Please log in.'),
               ),
             );
-          context.go(AppRoutes.login); // Navigate to login after success
+          context.go(AppRoutes.login);
         }
       },
       child: Scaffold(
@@ -157,8 +153,8 @@ class _UpdatePasswordPageState extends State<UpdatePasswordPage> {
                       obscureText: _obscureConfirmPassword,
                       validator: _validateConfirmPassword,
                       textInputAction: TextInputAction.done,
-                      onFieldSubmitted:
-                          (_) => _updatePassword(context), // Pass context
+                      onFieldSubmitted: (_) =>
+                          _updatePassword(context), // Pass context
                     ),
                     const SizedBox(height: 24),
                     // Use BlocBuilder for loading state
@@ -166,26 +162,23 @@ class _UpdatePasswordPageState extends State<UpdatePasswordPage> {
                       builder: (context, state) {
                         final isLoading = state is AuthLoading;
                         return ElevatedButton(
-                          onPressed:
-                              isLoading
-                                  ? null
-                                  : () =>
-                                      _updatePassword(context), // Pass context
+                          onPressed: isLoading
+                              ? null
+                              : () => _updatePassword(context), // Pass context
                           style: ElevatedButton.styleFrom(
                             padding: const EdgeInsets.symmetric(vertical: 16),
                             textStyle: Theme.of(context).textTheme.titleMedium,
                           ),
-                          child:
-                              isLoading
-                                  ? const SizedBox(
-                                    width: 24,
-                                    height: 24,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      color: Colors.white,
-                                    ),
-                                  )
-                                  : const Text('Update Password'),
+                          child: isLoading
+                              ? const SizedBox(
+                                  width: 24,
+                                  height: 24,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              : const Text('Update Password'),
                         );
                       },
                     ),

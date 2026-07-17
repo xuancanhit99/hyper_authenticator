@@ -115,10 +115,9 @@ void _checkLinks(
       continue;
     }
 
-    final resolved =
-        File(
-          '${source.parent.path}/${Uri.decodeComponent(withoutAnchor)}',
-        ).absolute;
+    final resolved = File(
+      '${source.parent.path}/${Uri.decodeComponent(withoutAnchor)}',
+    ).absolute;
     if (!resolved.existsSync()) {
       failures.add(
         'Link hỏng trong ${_relativeToRoot(root, source)}: $rawTarget',

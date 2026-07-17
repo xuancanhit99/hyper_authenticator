@@ -87,10 +87,6 @@ class AuthenticatorLocalDataSourceImpl implements AuthenticatorLocalDataSource {
         final accountJson = await secureStorage.read(key: id);
         if (accountJson != null) {
           accounts.add(AuthenticatorAccount.fromJson(jsonDecode(accountJson)));
-        } else {
-          // Handle inconsistency: ID in index but data missing?
-          // Option: Log warning, remove ID from index? For now, just skip.
-          print('Warning: Account data not found for ID: $id');
         }
       }
       return accounts;
@@ -103,15 +99,17 @@ class AuthenticatorLocalDataSourceImpl implements AuthenticatorLocalDataSource {
   @override
   Future<AuthenticatorAccount> saveAccount(AuthenticatorAccount account) async {
     // Assign a new UUID if the account ID is empty or doesn't conform (optional check)
-    final accountToSave =
-        account.id.isEmpty
-            ? AuthenticatorAccount(
-              id: uuid.v4(), // Generate a new ID
-              issuer: account.issuer,
-              accountName: account.accountName,
-              secretKey: account.secretKey,
-            )
-            : account;
+    final accountToSave = account.id.isEmpty
+        ? AuthenticatorAccount(
+            id: uuid.v4(), // Generate a new ID
+            issuer: account.issuer,
+            accountName: account.accountName,
+            secretKey: account.secretKey,
+            algorithm: account.algorithm,
+            digits: account.digits,
+            period: account.period,
+          )
+        : account;
 
     try {
       final accountJson = jsonEncode(accountToSave.toJson());

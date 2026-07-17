@@ -1,59 +1,50 @@
 # Quyết định kiến trúc
 
-Tài liệu này lập chỉ mục các quyết định bền vững. Quyết định chi tiết mới được ghi thành record trong `docs/adr`.
+Tài liệu này lập chỉ mục quyết định bền vững. Quyết định mới có ảnh hưởng dài hạn cần record riêng trong `docs/adr`.
 
-## Quyết định đã được code áp dụng
+## Quyết định đã áp dụng
 
 | ID | Quyết định | Trạng thái | Bằng chứng |
 |---|---|---|---|
-| A-001 | Dùng Flutter và Dart cho client | Đã áp dụng | `pubspec.yaml` và platform runner |
-| A-002 | Chia lớp Presentation, Domain, Data theo feature | Đã áp dụng, chưa nhất quán | `lib/features` |
-| A-003 | BLoC cho feature state và Provider cho theme | Đã áp dụng | `flutter_bloc` và `ThemeProvider` |
-| A-004 | GetIt và Injectable để khởi tạo dependency | Đã áp dụng | Các file `injection_container` |
-| A-005 | FlutterSecureStorage cho authenticator record | Đã áp dụng | `AuthenticatorLocalDataSource` |
-| A-006 | SharedPreferences cho preference không phải secret | Đã áp dụng | Theme, biometric, sync, Remember Me |
-| A-007 | Supabase cho user authentication và remote sync | Đã áp dụng | Auth và sync data source |
-| A-008 | `Either` của fpdart tại repository/use-case boundary | Đã áp dụng | Domain và data layer |
-| A-009 | GoRouter redirect từ auth và local-lock state | Đã áp dụng | `AppRouter` |
+| A-001 | Flutter/Dart cho client đa nền tảng | Đã áp dụng | `pubspec.yaml`, sáu platform runner và Web |
+| A-002 | Presentation/Domain/Data theo feature | Đã áp dụng, chưa tuyệt đối | `lib/features` |
+| A-003 | BLoC cho feature state, Provider cho theme | Đã áp dụng | `flutter_bloc`, `ThemeProvider` |
+| A-004 | GetIt/Injectable cho dependency | Đã áp dụng | `injection_container*` |
+| A-005 | FlutterSecureStorage cho TOTP record | Đã áp dụng | Authenticator local data source |
+| A-006 | SharedPreferences cho preference không phải secret | Đã áp dụng | Theme, lock, sync, Remember Me |
+| A-007 | Supabase cho authentication và remote sync | Đã áp dụng | Auth/sync data source |
+| A-008 | fpdart `Either` tại repository/use-case boundary | Đã áp dụng | Domain/data layer |
+| A-009 | GoRouter redirect từ auth và app-lock state | Đã áp dụng | `AppRouter` |
+| A-010 | Supabase client config qua compile-time `dart-define` | Đã áp dụng | `AppConfig`, `.env.example` |
+| A-011 | Shared Auth/Accounts BLoC instance cho UI và sync | Đã áp dụng | Lazy singleton + `BlocProvider.value` |
+| A-012 | Logout giữ authenticator data local | Đã áp dụng | `AuthBloc` |
+| A-013 | Swift Package Manager là Apple dependency manager duy nhất | Đã áp dụng | iOS/macOS project |
+| A-014 | Capability theo platform được kiểm soát tập trung | Đã áp dụng | `PlatformCapabilities` |
 
-Đã áp dụng không đồng nghĩa hoàn hảo. `PROJECT_STATUS.md` ghi defect trong implementation hiện tại.
+Đã áp dụng không đồng nghĩa production-ready; defect/risk nằm trong `PROJECT_STATUS.md`.
 
-## Quyết định cần đưa ra
+## Quyết định còn mở
 
 | ID đề xuất | Quyết định cần có | Lý do |
 |---|---|---|
-| P-001 | Hỗ trợ offline-only hay bắt buộc Supabase auth? | Lịch sử README và router hiện tại mâu thuẫn |
-| P-002 | E2EE key hierarchy, recovery và encrypted format | Cloud secret dạng plaintext chặn release |
-| P-003 | Protocol sync atomic, conflict và deletion | Snapshot xóa-rồi-chèn hiện tại có thể mất dữ liệu |
-| P-004 | Quyền sở hữu authenticator data khi logout/đổi account | Logout hiện xóa account local |
-| P-005 | Một `AccountsBloc` owner hay orchestration tầng repository | Sync và UI resolve instance khác nhau |
-| P-006 | Bề mặt password recovery canonical | Mobile deep link và web page đang chồng lấn |
-| P-007 | Ma trận platform được hỗ trợ | Có runner ngoài các mục tiêu đã xác minh |
-| P-008 | Chiến lược client configuration | `.env` bị ignore nhưng đóng gói như asset |
-| P-009 | Tên và identifier sản phẩm | Hyper Authenticator và HyperZ đang bị trộn |
-| P-010 | License | Chưa track file license rõ ràng |
+| P-001 | Offline-only hay bắt buộc Supabase auth | Router hiện bắt buộc authentication |
+| P-002 | E2EE key hierarchy, recovery và format | Plaintext cloud secret chặn release |
+| P-003 | Atomic sync, conflict, identity và deletion | Xóa-rồi-chèn có thể mất dữ liệu |
+| P-004 | Tách/ghép local TOTP giữa nhiều user trên một thiết bị | Logout giữ data nhưng ownership chưa rõ |
+| P-005 | Password recovery surface canonical | Mobile deep link và static Web chồng lấn |
+| P-006 | Platform support/SLA chính thức | Build matrix chưa phải product commitment |
+| P-007 | Tên identifier dài hạn | Display name đã thống nhất, bundle ID cũ được giữ để bảo toàn install identity |
+| P-008 | License | Chưa có file license |
+| P-009 | Web security/support level | Browser storage khác native secure storage |
 
-## Quy trình ADR
+## Khi nào cần ADR
 
-Tạo ADR khi thay đổi:
+Tạo ADR khi thay đổi trust boundary/cryptography, persisted contract, platform/backend được hỗ trợ, destructive data semantics, state ownership chính hoặc dependency strategy dài hạn.
 
-- trust boundary hoặc cryptographic design;
-- data contract local/remote đã persist;
-- platform hoặc backend được hỗ trợ;
-- ngữ nghĩa phá hủy dữ liệu;
-- state ownership hoặc pattern kiến trúc chính;
-- dependency có ràng buộc dài hạn.
-
-Các bước:
+Quy trình:
 
 1. Sao chép `docs/adr/0000-template.md`.
-2. Gán số bốn chữ số tiếp theo và slug ngắn.
-3. Mô tả context, decision, alternative, consequence, migration, rollback và verification.
-4. Đặt trạng thái **Đề xuất**.
-5. Lấy phê duyệt của owner.
-6. Chuyển sang **Chấp nhận** và thêm record vào chỉ mục này.
-7. Đánh dấu record bị thay thế thay vì sửa lại lịch sử.
-
-## Lý do lịch sử
-
-Các lựa chọn hiện tại tối ưu cho một codebase cross-platform, state transition rõ ràng, data source có thể thay thế và backend bootstrap nhanh. Trade-off chính là bảo trì generated code, BLoC boilerplate, khác biệt plugin theo platform, phụ thuộc cấu hình Supabase và yêu cầu boundary test nghiêm ngặt.
+2. Gán số và slug.
+3. Ghi context, decision, alternative, consequence, migration, rollback, verification.
+4. Đặt trạng thái **Đề xuất**, lấy phê duyệt owner rồi chuyển **Chấp nhận**.
+5. Thêm record vào chỉ mục và đánh dấu **Bị thay thế** thay vì sửa lịch sử.

@@ -33,9 +33,7 @@ class _EditAccountPageState extends State<EditAccountPage> {
   @override
   void initState() {
     super.initState();
-    _issuerController = TextEditingController(
-      text: widget.account.issuer ?? '',
-    );
+    _issuerController = TextEditingController(text: widget.account.issuer);
     _accountNameController = TextEditingController(
       text: widget.account.accountName,
     );
@@ -54,11 +52,10 @@ class _EditAccountPageState extends State<EditAccountPage> {
       // Initialize selectedIssuer and previewLogoPath after issuers are loaded
       if (mounted) {
         setState(() {
-          if (widget.account.issuer != null &&
-              _availableIssuers.contains(widget.account.issuer)) {
+          if (_availableIssuers.contains(widget.account.issuer)) {
             _selectedIssuer = widget.account.issuer;
           }
-          _updatePreviewLogo(widget.account.issuer ?? _issuerController.text);
+          _updatePreviewLogo(widget.account.issuer);
         });
       }
     });
@@ -116,9 +113,8 @@ class _EditAccountPageState extends State<EditAccountPage> {
         id: widget.account.id, // Keep the original ID
         issuer: _issuerController.text.trim(),
         accountName: _accountNameController.text.trim(),
-        secretKey:
-            _secretController.text
-                .trim(), // Secret key modification might be risky/complex in real 2FA
+        secretKey: _secretController.text
+            .trim(), // Secret key modification might be risky/complex in real 2FA
         algorithm: _algorithmController.text.trim().toUpperCase(),
         digits:
             int.tryParse(_digitsController.text.trim()) ??
@@ -228,44 +224,45 @@ class _EditAccountPageState extends State<EditAccountPage> {
                                   borderRadius: BorderRadius.circular(8.0),
                                   child:
                                       _previewLogoPath == null ||
-                                              _previewLogoPath!.isEmpty
-                                          ? Container(
-                                            // Placeholder when no logo is available
-                                            decoration: BoxDecoration(
-                                              color: Colors.grey[200],
-                                              borderRadius:
-                                                  BorderRadius.circular(8.0),
+                                          _previewLogoPath!.isEmpty
+                                      ? Container(
+                                          // Placeholder when no logo is available
+                                          decoration: BoxDecoration(
+                                            color: Colors.grey[200],
+                                            borderRadius: BorderRadius.circular(
+                                              8.0,
                                             ),
-                                            child: const Icon(
-                                              Icons.image_search,
-                                              size: 40,
-                                              color: Colors.grey,
-                                            ),
-                                          )
-                                          : Image.asset(
-                                            _previewLogoPath!,
-                                            fit: BoxFit.contain,
-                                            errorBuilder:
-                                                (
-                                                  context,
-                                                  error,
-                                                  stackTrace,
-                                                ) => Container(
-                                                  decoration: BoxDecoration(
-                                                    color: Colors.grey[200],
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                          8.0,
-                                                        ),
-                                                  ),
-                                                  child: const Icon(
-                                                    Icons
-                                                        .business_center_outlined,
-                                                    size: 40,
-                                                    color: Colors.grey,
-                                                  ),
-                                                ),
                                           ),
+                                          child: const Icon(
+                                            Icons.image_search,
+                                            size: 40,
+                                            color: Colors.grey,
+                                          ),
+                                        )
+                                      : Image.asset(
+                                          _previewLogoPath!,
+                                          fit: BoxFit.contain,
+                                          errorBuilder:
+                                              (
+                                                context,
+                                                error,
+                                                stackTrace,
+                                              ) => Container(
+                                                decoration: BoxDecoration(
+                                                  color: Colors.grey[200],
+                                                  borderRadius:
+                                                      BorderRadius.circular(
+                                                        8.0,
+                                                      ),
+                                                ),
+                                                child: const Icon(
+                                                  Icons
+                                                      .business_center_outlined,
+                                                  size: 40,
+                                                  color: Colors.grey,
+                                                ),
+                                              ),
+                                        ),
                                 ),
                               ),
                               Positioned(
@@ -277,15 +274,16 @@ class _EditAccountPageState extends State<EditAccountPage> {
                                     4,
                                   ), // Slightly more padding
                                   decoration: BoxDecoration(
-                                    color:
-                                        Theme.of(context)
-                                            .colorScheme
-                                            .primary, // Solid primary color background
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .primary, // Solid primary color background
                                     shape: BoxShape.circle,
                                     // Optional: Add a slight shadow to make it "pop" more
                                     boxShadow: [
                                       BoxShadow(
-                                        color: Colors.black.withOpacity(0.2),
+                                        color: Colors.black.withValues(
+                                          alpha: 0.2,
+                                        ),
                                         spreadRadius: 1,
                                         blurRadius: 2,
                                         offset: const Offset(0, 1),
@@ -296,10 +294,9 @@ class _EditAccountPageState extends State<EditAccountPage> {
                                     Icons.edit,
                                     size:
                                         16, // Slightly smaller icon if padding is increased
-                                    color:
-                                        Theme.of(context)
-                                            .colorScheme
-                                            .onPrimary, // Ensure contrast
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.onPrimary, // Ensure contrast
                                   ),
                                 ),
                               ),
@@ -314,16 +311,13 @@ class _EditAccountPageState extends State<EditAccountPage> {
                   controller: _issuerController,
                   decoration: InputDecoration(
                     labelText: 'Issuer (e.g., Google, GitHub)',
-                    hintText:
-                        _selectedIssuer != null
-                            ? 'Selected: $_selectedIssuer'
-                            : 'Type to search or add new',
+                    hintText: _selectedIssuer != null
+                        ? 'Selected: $_selectedIssuer'
+                        : 'Type to search or add new',
                   ),
-                  validator:
-                      (value) =>
-                          (value == null || value.isEmpty)
-                              ? 'Please enter an issuer'
-                              : null,
+                  validator: (value) => (value == null || value.isEmpty)
+                      ? 'Please enter an issuer'
+                      : null,
                 ),
                 const SizedBox(height: 16),
                 TextFormField(
@@ -331,11 +325,9 @@ class _EditAccountPageState extends State<EditAccountPage> {
                   decoration: const InputDecoration(
                     labelText: 'Account Name (e.g., user@example.com)',
                   ),
-                  validator:
-                      (value) =>
-                          (value == null || value.isEmpty)
-                              ? 'Please enter an account name'
-                              : null,
+                  validator: (value) => (value == null || value.isEmpty)
+                      ? 'Please enter an account name'
+                      : null,
                 ),
                 const SizedBox(height: 16),
                 TextFormField(
@@ -364,8 +356,9 @@ class _EditAccountPageState extends State<EditAccountPage> {
                     labelText: 'Algorithm (SHA1, SHA256, SHA512)',
                   ),
                   validator: (value) {
-                    if (value == null || value.isEmpty)
+                    if (value == null || value.isEmpty) {
                       return 'Please enter an algorithm';
+                    }
                     if (![
                       'SHA1',
                       'SHA256',
@@ -384,8 +377,9 @@ class _EditAccountPageState extends State<EditAccountPage> {
                   ),
                   keyboardType: TextInputType.number,
                   validator: (value) {
-                    if (value == null || value.isEmpty)
+                    if (value == null || value.isEmpty) {
                       return 'Please enter number of digits';
+                    }
                     final n = int.tryParse(value);
                     if (n == null) return 'Invalid number';
                     if (n < 6 || n > 8) return 'Digits must be 6, 7, or 8';
@@ -400,11 +394,13 @@ class _EditAccountPageState extends State<EditAccountPage> {
                   ),
                   keyboardType: TextInputType.number,
                   validator: (value) {
-                    if (value == null || value.isEmpty)
+                    if (value == null || value.isEmpty) {
                       return 'Please enter period';
+                    }
                     final n = int.tryParse(value);
-                    if (n == null || n <= 0)
+                    if (n == null || n <= 0) {
                       return 'Period must be a positive number';
+                    }
                     return null;
                   },
                 ),

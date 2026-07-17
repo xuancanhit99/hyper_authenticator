@@ -15,9 +15,38 @@ run_docs() {
   dart run tool/agent/check_docs.dart
 }
 
+run_generated() {
+  printf '\n%s\n' "== Generated-code drift gate =="
+
+  local status=0
+  local output_dir
+  output_dir=$(mktemp -d "${TMPDIR:-/tmp}/hyper-auth-generated.XXXXXX")
+  local generated_file="$output_dir/packages/hyper_authenticator/injection_container.config.dart"
+
+  if ! dart run build_runner build \
+    --output "$output_dir" \
+    --build-filter lib/injection_container.config.dart; then
+    status=1
+  elif [[ ! -f "$generated_file" ]]; then
+    printf '%s\n' "Generated output không tồn tại: $generated_file" >&2
+    status=1
+  elif ! cmp -s lib/injection_container.config.dart "$generated_file"; then
+    printf '%s\n' \
+      "lib/injection_container.config.dart không khớp annotation hiện tại." >&2
+    printf '%s\n' "Chạy: dart run build_runner build" >&2
+    status=1
+  else
+    printf '%s\n' "Generated code khớp source annotation."
+  fi
+
+  find "$output_dir" -depth -delete
+  return "$status"
+}
+
 run_quick() {
   local status=0
   run_docs || status=1
+  run_generated || status=1
   printf '\n%s\n' "== Formatting gate =="
   dart format --output=none --set-exit-if-changed lib test tool || status=1
   printf '\n%s\n' "== Static analysis gate =="
@@ -28,14 +57,8 @@ run_quick() {
 run_full() {
   local status=0
   run_quick || status=1
-  if [[ ! -f .env ]]; then
-    printf '\n%s\n' "ERROR: .env is required because pubspec.yaml bundles it as an asset." >&2
-    printf '%s\n' "Create it from .env.example with development Supabase client values." >&2
-    status=1
-  else
-    printf '\n%s\n' "== Flutter test gate =="
-    flutter test || status=1
-  fi
+  printf '\n%s\n' "== Flutter test gate =="
+  flutter test || status=1
   return "$status"
 }
 

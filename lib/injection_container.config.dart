@@ -1,5 +1,5 @@
-// dart format width=80
 // GENERATED CODE - DO NOT MODIFY BY HAND
+// dart format width=80
 
 // **************************************************************************
 // InjectableConfigGenerator
@@ -11,7 +11,6 @@
 // ignore_for_file: no_leading_underscores_for_library_prefixes
 import 'package:flutter_secure_storage/flutter_secure_storage.dart' as _i558;
 import 'package:get_it/get_it.dart' as _i174;
-import 'package:http/http.dart' as _i519;
 import 'package:injectable/injectable.dart' as _i526;
 import 'package:local_auth/local_auth.dart' as _i152;
 import 'package:shared_preferences/shared_preferences.dart' as _i460;
@@ -63,8 +62,7 @@ extension GetItInjectableX on _i174.GetIt {
       () => registerModule.sharedPreferences,
       preResolve: true,
     );
-    gh.lazySingleton<_i828.AppConfig>(() => _i828.AppConfig.fromEnv());
-    gh.lazySingleton<_i519.Client>(() => registerModule.httpClient);
+    gh.lazySingleton<_i828.AppConfig>(() => _i828.AppConfig.fromEnvironment());
     gh.lazySingleton<_i454.SupabaseClient>(() => registerModule.supabaseClient);
     gh.lazySingleton<_i152.LocalAuthentication>(
       () => registerModule.localAuthentication,
@@ -85,19 +83,36 @@ extension GetItInjectableX on _i174.GetIt {
         uuid: gh<_i706.Uuid>(),
       ),
     );
-    gh.lazySingleton<_i686.SyncRemoteDataSource>(
-      () => _i984.SupabaseSyncRemoteDataSourceImpl(
-        supabaseClient: gh<_i454.SupabaseClient>(),
-      ),
-    );
-    gh.lazySingleton<_i767.AuthRemoteDataSource>(
-      () => _i767.AuthRemoteDataSourceImpl(gh<_i454.SupabaseClient>()),
-    );
     gh.lazySingleton<_i534.LocalAuthBloc>(
       () => _i534.LocalAuthBloc(
         auth: gh<_i152.LocalAuthentication>(),
         sharedPreferences: gh<_i460.SharedPreferences>(),
       ),
+    );
+    gh.lazySingleton<_i608.AuthenticatorRepository>(
+      () => _i166.AuthenticatorRepositoryImpl(
+        localDataSource: gh<_i674.AuthenticatorLocalDataSource>(),
+      ),
+    );
+    gh.lazySingleton<_i767.AuthRemoteDataSource>(
+      () => _i767.AuthRemoteDataSourceImpl(gh<_i454.SupabaseClient>()),
+    );
+    gh.lazySingleton<_i686.SyncRemoteDataSource>(
+      () => _i984.SupabaseSyncRemoteDataSourceImpl(
+        supabaseClient: gh<_i454.SupabaseClient>(),
+      ),
+    );
+    gh.factory<_i356.AddAccount>(
+      () => _i356.AddAccount(gh<_i608.AuthenticatorRepository>()),
+    );
+    gh.factory<_i523.DeleteAccount>(
+      () => _i523.DeleteAccount(gh<_i608.AuthenticatorRepository>()),
+    );
+    gh.factory<_i572.GetAccounts>(
+      () => _i572.GetAccounts(gh<_i608.AuthenticatorRepository>()),
+    );
+    gh.lazySingleton<_i827.UpdateAccount>(
+      () => _i827.UpdateAccount(gh<_i608.AuthenticatorRepository>()),
     );
     gh.lazySingleton<_i1015.AuthRepository>(
       () => _i111.AuthRepositoryImpl(
@@ -109,40 +124,8 @@ extension GetItInjectableX on _i174.GetIt {
         remoteDataSource: gh<_i686.SyncRemoteDataSource>(),
       ),
     );
-    gh.lazySingleton<_i608.AuthenticatorRepository>(
-      () => _i166.AuthenticatorRepositoryImpl(
-        localDataSource: gh<_i674.AuthenticatorLocalDataSource>(),
-      ),
-    );
     gh.lazySingleton<_i4.GetLastSyncTimeUseCase>(
       () => _i4.GetLastSyncTimeUseCase(gh<_i800.SyncRepository>()),
-    );
-    gh.lazySingleton<_i827.UpdateAccount>(
-      () => _i827.UpdateAccount(gh<_i608.AuthenticatorRepository>()),
-    );
-    gh.factory<_i356.AddAccount>(
-      () => _i356.AddAccount(gh<_i608.AuthenticatorRepository>()),
-    );
-    gh.factory<_i523.DeleteAccount>(
-      () => _i523.DeleteAccount(gh<_i608.AuthenticatorRepository>()),
-    );
-    gh.factory<_i572.GetAccounts>(
-      () => _i572.GetAccounts(gh<_i608.AuthenticatorRepository>()),
-    );
-    gh.factory<_i363.AuthBloc>(
-      () => _i363.AuthBloc(
-        gh<_i1015.AuthRepository>(),
-        gh<_i460.SharedPreferences>(),
-        gh<_i558.FlutterSecureStorage>(),
-      ),
-    );
-    gh.factory<_i467.AccountsBloc>(
-      () => _i467.AccountsBloc(
-        getAccounts: gh<_i572.GetAccounts>(),
-        addAccount: gh<_i356.AddAccount>(),
-        deleteAccount: gh<_i523.DeleteAccount>(),
-        updateAccount: gh<_i827.UpdateAccount>(),
-      ),
     );
     gh.lazySingleton<_i939.DownloadAccountsUseCase>(
       () => _i939.DownloadAccountsUseCase(gh<_i800.SyncRepository>()),
@@ -152,6 +135,20 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i392.UploadAccountsUseCase>(
       () => _i392.UploadAccountsUseCase(gh<_i800.SyncRepository>()),
+    );
+    gh.lazySingleton<_i467.AccountsBloc>(
+      () => _i467.AccountsBloc(
+        getAccounts: gh<_i572.GetAccounts>(),
+        addAccount: gh<_i356.AddAccount>(),
+        deleteAccount: gh<_i523.DeleteAccount>(),
+        updateAccount: gh<_i827.UpdateAccount>(),
+      ),
+    );
+    gh.lazySingleton<_i363.AuthBloc>(
+      () => _i363.AuthBloc(
+        gh<_i1015.AuthRepository>(),
+        gh<_i460.SharedPreferences>(),
+      ),
     );
     gh.factory<_i416.SyncBloc>(
       () => _i416.SyncBloc(

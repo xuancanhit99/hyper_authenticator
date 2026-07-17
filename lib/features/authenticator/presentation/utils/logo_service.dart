@@ -1,6 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/services.dart' show rootBundle;
-import 'package:flutter/widgets.dart'; // For Image asset check
+// For Image asset check
 
 class LogoService {
   static const String _jsonPath = 'assets/data/authenticator_logo_map.json';
@@ -27,9 +27,7 @@ class LogoService {
       // Ensure values are strings
       _logoMap = jsonMap.map((key, value) => MapEntry(key, value.toString()));
       _isLoaded = true;
-      print('Authenticator logo map loaded successfully.');
-    } catch (e) {
-      print('Error loading authenticator logo map: $e');
+    } catch (_) {
       _logoMap = {}; // Assign empty map on error to prevent null issues
       _isLoaded = true; // Mark as loaded even if error occurred
     }

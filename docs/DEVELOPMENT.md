@@ -3,43 +3,45 @@
 ## Điều kiện cần
 
 - Flutter stable và Dart SDK tương thích `pubspec.yaml`.
-- Git.
-- Platform toolchain cho target được chọn.
-- Supabase project không phải production cho luồng đăng nhập hiện tại.
-- Xcode với Swift Package Manager và CocoaPods cho các plugin iOS/macOS cần fallback.
+- Git và toolchain của platform đích.
+- Supabase project không phải production để chạy luồng auth/sync.
+- Xcode với Swift Package Manager cho iOS/macOS.
 
 Kiểm tra máy:
 
     flutter doctor -v
-    flutter --version
-    dart --version
     scripts/agent/doctor.sh
 
 ## Thiết lập lần đầu
 
-1. Tạo client configuration local:
+1. Tạo public client configuration local:
 
        cp .env.example .env
 
-2. Điền giá trị development an toàn:
+2. Điền giá trị development:
 
-       SUPABASE_URL=https://your-development-project.invalid
-       SUPABASE_ANON_KEY=your-development-anon-key
+       SUPABASE_URL=https://your-project.supabase.co
+       SUPABASE_PUBLISHABLE_KEY=your-publishable-key
 
-3. Tải dependency:
+3. Tải dependency và generate Injectable:
 
        flutter pub get
+       dart run build_runner build
 
-4. Generate đăng ký Injectable sau khi dependency annotation thay đổi:
-
-       dart run build_runner build --delete-conflicting-outputs
-
-5. Chọn thiết bị và chạy:
+4. Chọn thiết bị và chạy:
 
        flutter devices
-       flutter run
+       flutter run --dart-define-from-file=.env
 
-Không đặt service-role key, database password, SMTP credential, TOTP secret hoặc user token thật trong `.env`.
+`.env` bị Git ignore và không phải Flutter asset. Không đặt service-role key, database password, SMTP credential, TOTP secret hoặc user token thật trong file này. Analyze, test và build có thể chạy không cần `.env`; bootstrap runtime cần Supabase define hợp lệ.
+
+Có thể truyền trực tiếp trong CI/release:
+
+    flutter build web \
+      --dart-define=SUPABASE_URL=... \
+      --dart-define=SUPABASE_PUBLISHABLE_KEY=...
+
+Alias `SUPABASE_ANON_KEY` cũ chỉ còn là fallback chuyển tiếp; configuration mới phải dùng `SUPABASE_PUBLISHABLE_KEY`.
 
 ## Workflow hằng ngày
 
@@ -47,10 +49,6 @@ Trước khi sửa:
 
     git status --short --branch
     scripts/agent/context.sh
-    scripts/agent/check.sh docs
-
-Sau thay đổi chỉ có tài liệu:
-
     scripts/agent/check.sh docs
 
 Sau thay đổi Dart:
@@ -61,121 +59,103 @@ Sau thay đổi Dart:
 Sau thay đổi auth, storage, sync, routing, DI, plugin hoặc platform:
 
     scripts/agent/check.sh full
+    scripts/agent/build.sh host
 
-Đồng thời chạy build hoặc test platform bị ảnh hưởng và ghi kết quả.
+Build target rõ ràng:
+
+    scripts/agent/build.sh android
+    scripts/agent/build.sh ios
+    scripts/agent/build.sh macos
+    scripts/agent/build.sh web
+    scripts/agent/build.sh windows
+    scripts/agent/build.sh linux
+
+Script sẽ báo target không hỗ trợ trên host thay vì giả vờ thành công.
 
 ## Cấu trúc repository
 
     lib/
       main.dart
       app.dart
-      injection_container.dart
       core/
       features/
+    test/
     assets/
     docs/
     scripts/agent/
-    test/
     reset-password-web/
-    android/
-    ios/
-    macos/
-    web/
-    windows/
-    linux/
+    android/ ios/ macos/ web/ windows/ linux/
 
-File được generate:
+`lib/injection_container.config.dart` được generate. Không sửa tay; thay annotation/module rồi chạy:
 
-- `lib/injection_container.config.dart`
-
-Không sửa generated output bằng tay. Hãy sửa annotation hoặc module rồi generate lại.
+    dart run build_runner build
 
 ## Luồng thay đổi thường gặp
 
 ### Thêm hoặc sửa field tài khoản
 
-Cập nhật:
-
-1. Constructor, equality, `toJson` và `fromJson` của `AuthenticatorAccount`.
-2. Parameter của add/update use case.
-3. Round trip trong local data source.
-4. Sync serialization và remote migration.
-5. UI import, edit, export và display.
-6. Test format cũ và hiện tại.
-7. `DATA_MODELS.md` và `SUPABASE_INTEGRATION.md`.
+1. Cập nhật entity, equality, `toJson` và `fromJson`.
+2. Cập nhật use case, local round-trip và sync serialization.
+3. Định nghĩa migration/backward compatibility.
+4. Cập nhật UI import/edit/export.
+5. Thêm test cho format cũ và mới.
+6. Cập nhật `DATA_MODELS.md`, `SUPABASE_INTEGRATION.md` và `SECURITY.md`.
 
 ### Thêm route
 
-Cập nhật `AppRoutes` và `AppRouter`, định nghĩa behavior public/protected, thêm redirect test và ghi route trong `SYSTEM_DESIGN.md`.
+Cập nhật `AppRoutes`/`AppRouter`, xác định public/protected/fail-closed behavior, thêm redirect test và cập nhật `SYSTEM_DESIGN.md`.
 
 ### Thay đổi dependency injection
 
-1. Sửa annotation hoặc `RegisterModule`.
-2. Generate lại Injectable output.
-3. Xác minh lifecycle: factory, lazy singleton hoặc shared provider.
-4. Thêm test khi instance identity ảnh hưởng behavior.
+Sửa annotation hoặc module, generate lại, rồi xác minh lifecycle. State dùng chung giữa feature phải là shared instance và được cấp bằng `BlocProvider.value` khi provider không sở hữu lifecycle.
 
 ### Thay đổi sync
 
-Bắt đầu từ `SECURITY.md` và `SUPABASE_INTEGRATION.md`. Định nghĩa idempotency, conflict behavior, deletion propagation, migration và rollback trước implementation.
-
-## Mô hình cấu hình local
-
-Ứng dụng hiện load `.env` ở runtime như Flutter asset. Điều này khiến file bắt buộc để tạo asset bundle và đưa client configuration vào built application.
-
-Cách này chỉ chấp nhận được với public client configuration như anon key, không phải cơ chế phân phối secret. Chiến lược dài hạn vẫn là một quyết định kiến trúc mở.
+Bắt đầu từ `SECURITY.md`, `SUPABASE_INTEGRATION.md` và ADR. Định nghĩa idempotency, conflict, deletion, migration và rollback trước implementation.
 
 ## Lưu ý theo platform
 
 ### Android
 
 - Application ID: `app.hyperz.authenticator`.
-- Release signing hiện fallback sang debug signing nếu không có release key; không phân phối artifact đó.
-- Xác minh INTERNET, camera, biometric, backup và secure-storage behavior trong merged release manifest.
+- Baseline dùng AGP 9.0.1, Gradle 9.1, Kotlin 2.3.20 và JVM 17.
+- Release signing thiếu credential sẽ fallback debug để hỗ trợ development; không phân phối artifact đó.
+- `allowBackup=false`; vẫn phải test secure-storage behavior trên thiết bị/API đại diện.
 
 ### iOS
 
-- Xác minh bundle ID và signing trong Xcode.
-- Deployment target hiện là iOS 13.0.
-- Project dùng SwiftPM theo mặc định của Flutter 3.44 và fallback CocoaPods cho plugin chưa hỗ trợ.
-- Đã có usage description cho camera và Face ID.
-- URL handling cho password recovery vẫn cần deep-link configuration canonical.
+- Bundle ID hiện giữ `app.hyperz.authenticator` để không đổi install identity.
+- Plugin được resolve bằng Swift Package Manager; không còn CocoaPods integration.
+- Đã có camera, photo library, Face ID usage description và keychain entitlement.
+- Cần cài đúng iOS Simulator Runtime hoặc dùng thiết bị vật lý.
+- Password recovery deep link vẫn chưa hoàn thiện.
 
 ### macOS
 
-- Deployment target hiện là macOS 10.15.
-- Project dùng SwiftPM theo mặc định của Flutter 3.44 và fallback CocoaPods cho plugin chưa hỗ trợ.
-- Xác minh sandbox entitlement cho network client, camera, keychain và local-auth.
-- Không suy luận release readiness chỉ từ CocoaPods cài thành công.
+- Plugin được resolve bằng Swift Package Manager.
+- Debug build dùng keychain mặc định để có thể ký ad-hoc; Release có keychain access group và cần signing identity hợp lệ.
+- Sandbox đã bật network client và camera. Release cần xác minh local-auth, keychain, signing và notarization.
 
-### Web và desktop
+### Web, Windows và Linux
 
-- Xác minh mọi plugin trên target.
-- Xóa hoặc conditionally isolate import `dart:io` không được Web hỗ trợ.
-- Ghi browser storage và threat model trước khi khẳng định Web support an toàn.
+- Web không bật `local_auth`; scanner hỗ trợ camera nhưng không hỗ trợ analyze ảnh file.
+- Windows hỗ trợ device authentication nhưng scanner plugin hiện không hỗ trợ camera.
+- Linux chưa có local-auth hoặc scanner trong dependency hiện tại.
+- Manual TOTP entry vẫn là đường dùng chung trên mọi platform.
 
-## Trang web khôi phục mật khẩu
+## Debug an toàn
 
-Trang tĩnh này tách biệt Flutter Web app.
-
-Chỉ chạy sau khi triển khai cơ chế inject public client configuration an toàn. Build argument của Compose hiện không được Dockerfile sử dụng.
-
-Không bake server secret vào `script.js` hoặc Nginx image.
-
-## Debug mà không làm lộ credential
-
-- Redact giá trị sau `secret=` trong URI `otpauth`.
-- Chỉ log account ID khi cần; ưu tiên fingerprint ngắn, một chiều để correlation.
-- Không log email theo mặc định.
-- Không in auth response, session, encryption key, salt hoặc full exception chứa request data.
-- Dùng account tổng hợp và domain `.invalid`.
+- Xem `secretKey`, URI `otpauth`, session, password và recovery material là credential.
+- Không log email hoặc raw exception chứa request data theo mặc định.
+- Chỉ dùng fixture tổng hợp và domain `.invalid`.
+- Không chụp screenshot có secret thật.
 
 ## Dọn và generate lại
 
-Chỉ dùng clean khi chẩn đoán vấn đề generated file hoặc build cache:
+Chỉ clean khi chẩn đoán cache/generated state:
 
     flutter clean
     flutter pub get
-    dart run build_runner build --delete-conflicting-outputs
+    dart run build_runner build
 
-Clean không thay thế việc hiểu nguyên nhân build failure. Phải bảo toàn thay đổi platform không liên quan trong working tree bẩn.
+`flutter clean` không thay thế việc tìm nguyên nhân build failure và không được dùng để xóa thay đổi platform của người khác.

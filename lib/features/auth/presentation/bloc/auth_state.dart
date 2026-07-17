@@ -38,6 +38,10 @@ class AuthUnauthenticated extends AuthState {}
 // User has requested a password reset
 class AuthPasswordResetEmailSent extends AuthState {}
 
+class AuthSignUpSuccess extends AuthState {}
+
+class AuthPasswordUpdateSuccess extends AuthState {}
+
 // An error occurred during an auth operation
 class AuthFailure extends AuthState {
   final String message;

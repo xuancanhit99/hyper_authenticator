@@ -1,6 +1,7 @@
 import 'package:bloc/bloc.dart';
 import 'package:equatable/equatable.dart';
-import 'package:flutter/material.dart'; // Added for ThemeMode
+// Added for ThemeMode
+import 'package:hyper_authenticator/core/platform/platform_capabilities.dart';
 import 'package:injectable/injectable.dart';
 import 'package:local_auth/local_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -102,16 +103,19 @@ class SettingsBloc extends Bloc<SettingsEvent, SettingsState> {
   }
 
   Future<bool> _checkBiometricSupport() async {
+    if (!PlatformCapabilities.supportsLocalAuthentication) {
+      return false;
+    }
+
     try {
       // isDeviceSupported() checks for PIN/Pattern/Passcode as well
       // canCheckBiometrics checks specifically for biometrics
       // Combine checks for broader compatibility
       final bool canCheckBio = await localAuthentication.canCheckBiometrics;
-      final bool isDeviceSupported =
-          await localAuthentication.isDeviceSupported();
+      final bool isDeviceSupported = await localAuthentication
+          .isDeviceSupported();
       return canCheckBio || isDeviceSupported;
     } catch (e) {
-      print("Error checking biometric support: $e");
       return false;
     }
   }

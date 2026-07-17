@@ -1,147 +1,111 @@
 # Tích hợp Supabase
 
-Tài liệu này tách hành vi client quan sát được khỏi server control bắt buộc. Repository hiện không có Supabase migration có thể tái lập.
+Tài liệu này tách client behavior đã triển khai khỏi server control bắt buộc. Repository hiện chưa có Supabase migration có thể tái lập.
 
 ## Cấu hình client
 
-Ứng dụng Flutter load:
+`AppConfig` đọc compile-time environment:
 
-- `SUPABASE_URL`
-- `SUPABASE_ANON_KEY`
+- `SUPABASE_URL`;
+- `SUPABASE_PUBLISHABLE_KEY`;
+- `SUPABASE_ANON_KEY` chỉ là fallback tương thích cấu hình cũ.
 
-từ file `.env` ở root qua `flutter_dotenv`.
+Development:
+
+    cp .env.example .env
+    flutter run --dart-define-from-file=.env
+
+`.env` bị Git ignore và không được khai báo trong Flutter assets. Analyze/test/build không cần configuration; runtime bootstrap cần URL và publishable key hợp lệ.
 
 Quy tắc:
 
-- Chỉ commit `.env.example` chứa placeholder.
-- Không dùng `SUPABASE_SERVICE_ROLE_KEY` trong client application.
-- Xem anon key là public client configuration, nhưng vẫn tránh trộn nhầm project test và production.
-- Dùng Supabase project riêng cho development, test, staging và production.
-- Ghi redirect URL và platform bundle ID theo từng environment.
+- Chỉ commit `.env.example` có placeholder.
+- Không dùng service-role key trong Flutter, static web hoặc CI client build.
+- Publishable/anon key là public client configuration, không phải authorization boundary.
+- Tách project development, test, staging và production.
+- Ghi allowed redirect URL và application identifier theo environment.
 
-`pubspec` hiện đóng gói `.env` như asset. Một ADR cấu hình trong tương lai phải quyết định giữ pattern này hay chuyển sang build-time configuration có thể tái lập.
+## Authentication
 
-## Thao tác authentication
+Client đã có đăng ký email/password cùng name metadata, đăng nhập, auth-state stream, gửi recovery email, cập nhật mật khẩu và đăng xuất. Router hiện bắt buộc user đã xác thực để dùng ứng dụng chính.
 
-Client đã triển khai:
-
-- đăng ký bằng email, mật khẩu và name metadata tùy chọn;
-- đăng nhập bằng email và mật khẩu;
-- ánh xạ auth-state stream thành `UserEntity`;
-- yêu cầu email khôi phục mật khẩu;
-- cập nhật mật khẩu khi có recovery session đã xác thực;
-- đăng xuất.
-
-Hành vi sản phẩm hiện tại bắt buộc user đã xác thực để vào ứng dụng chính.
+Logout không xóa TOTP local. Quyền sở hữu local data giữa nhiều Supabase user vẫn cần product decision rõ ràng.
 
 ## Khôi phục mật khẩu
 
-Mobile route `/update-password` đã có nhưng platform deep link và reset redirect chưa hoàn thiện.
+Mobile route `/update-password` có sẵn nhưng universal/custom link chưa hoàn thiện. `reset-password-web` cũng lắng nghe `PASSWORD_RECOVERY`, nhưng chưa deploy-ready vì JavaScript config trống và Docker build argument chưa được inject.
 
-Trang `reset-password-web` cũng xử lý Supabase `PASSWORD_RECOVERY` session. Trạng thái committed hiện chưa deploy được vì:
+Cần chọn recovery surface canonical, whitelist redirect URL và test link thành công, hết hạn, reuse, malformed cùng cross-environment.
 
-- `script.js` có URL và anon key để trống;
-- Compose truyền build argument;
-- Dockerfile không khai báo hoặc sử dụng argument tương ứng;
-- khái niệm inject `env-config.js` ở runtime chưa được triển khai.
+## Contract database đã quan sát
 
-Cần chọn một recovery surface canonical, định nghĩa allowed redirect URL và bao phủ link hết hạn, đã dùng lại, malformed và cross-environment.
-
-## Thao tác database hiện tại
-
-Table constant: `synced_accounts`.
+Table: `synced_accounts`.
 
 ### Download
 
-Client select mọi row có `user_id` bằng Supabase user ID hiện tại. Nếu có `account_id` mà không có `id`, client map `account_id` thành `id` trước khi gọi `AuthenticatorAccount.fromJson`.
+Client select mọi row có `user_id` bằng user hiện tại. `account_id` được map về entity key `id` trước `AuthenticatorAccount.fromJson`.
 
 ### Upload
 
-Client:
+1. Xóa mọi row có `user_id` của user hiện tại.
+2. Chuyển mỗi account thành JSON.
+3. Đổi `id` thành `account_id` và thêm `user_id`.
+4. Chèn toàn bộ danh sách.
 
-1. xóa mọi row có `user_id` khớp user hiện tại;
-2. chuyển mỗi `AuthenticatorAccount` thành JSON;
-3. đổi `id` thành `account_id`;
-4. thêm `user_id`;
-5. chèn toàn bộ danh sách.
+### Truy vấn trạng thái
 
-### Trạng thái
+- `hasRemoteData` select `account_id` và limit một row.
+- Last-upload time lấy `updated_at` mới nhất.
 
-- `hasRemoteData` select `id` và giới hạn một row.
-- Thời điểm upload gần nhất select `updated_at` mới nhất.
+Contract field application hiện dùng camelCase. Không có migration nên không thể chứng minh schema production khớp contract này.
 
-Xem `DATA_MODELS.md` cho key mismatch quan sát được và `PROJECT_STATUS.md` cho rủi ro.
+## RLS bắt buộc
 
-## Hành vi RLS bắt buộc
-
-Phải bật RLS trên mọi table thuộc sở hữu user. Với `synced_accounts`, mỗi operation phải bắt buộc:
+RLS phải bật cho mọi table user-owned. Với `synced_accounts`:
 
     auth.uid() = user_id
 
-Policy cần có:
-
 | Operation | `USING` | `WITH CHECK` |
 |---|---|---|
-| SELECT | `auth.uid() = user_id` | Không áp dụng |
-| INSERT | Không áp dụng | `auth.uid() = user_id` |
+| SELECT | `auth.uid() = user_id` | — |
+| INSERT | — | `auth.uid() = user_id` |
 | UPDATE | `auth.uid() = user_id` | `auth.uid() = user_id` |
-| DELETE | `auth.uid() = user_id` | Không áp dụng |
+| DELETE | `auth.uid() = user_id` | — |
 
-Đây là requirement, không phải bằng chứng cấu hình đã deploy. Policy phải được track bằng migration và test trên môi trường Supabase local hoặc isolated.
+Đây là requirement, không phải bằng chứng policy đã deploy. Schema/policy cần migration version control và test Supabase local hoặc isolated.
 
-## Negative test bắt buộc
+Negative test bắt buộc:
 
-- Anonymous client không thể đọc hoặc ghi row.
-- User A không thể select row của User B.
-- User A không thể insert row có `user_id` của User B.
-- User A không thể đổi owner thành User B.
-- User A không thể delete row của User B.
-- Session hết hạn không thể sync.
-- Distributed artifact không có service-role credential.
+- anonymous không đọc/ghi row;
+- User A không select/update/delete row User B;
+- User A không insert hoặc đổi owner sang User B;
+- session hết hạn không sync;
+- distributed artifact không có service-role credential.
 
 ## Contract mục tiêu
 
-Không ổn định hóa plaintext row contract hiện tại thành thiết kế dài hạn. Target contract nên có:
+Không ổn định hóa plaintext row hiện tại thành thiết kế dài hạn. Target cần:
 
-- record hoặc snapshot ID ổn định;
-- quyền sở hữu `user_id`;
+- stable record/snapshot ID và `user_id`;
 - `format_version`;
-- authenticated payload đã encrypt;
-- version hoặc concurrency metadata không nhạy cảm;
-- `created_at` và `updated_at` được quản lý nhất quán;
-- atomic snapshot publication hoặc optimistic concurrency theo record;
-- migration state cho row plaintext cũ.
+- authenticated encrypted payload;
+- revision/concurrency metadata không nhạy cảm;
+- atomic snapshot publication hoặc optimistic concurrency;
+- migration rõ cho row plaintext cũ.
 
-Schema chính xác cần ADR được chấp nhận và phải đồng bộ với `E2EE_DESIGN.md`.
-
-## Checklist environment
-
-Với mỗi environment, ghi bên ngoài repository secret:
-
-- project reference và region;
-- allowed redirect URL;
-- email verification và recovery template;
-- owner cấu hình SMTP;
-- rate limit và abuse control;
-- schema migration version;
-- kết quả xác minh RLS;
-- backup và restore policy;
-- quyền truy cập và thời gian lưu log;
-- owner key management và incident.
-
-Không đặt project URL hoặc key thật trong tài liệu này.
+Schema chính xác cần ADR và phải đồng bộ `E2EE_DESIGN.md`.
 
 ## Failure behavior
 
-Client phải phân biệt:
+Client phải phân biệt unauthenticated, authorization denied, validation, network, conflict, schema mismatch, interrupted upload và unsupported encrypted format. Merge một phần không được emit success; destructive retry phải có idempotency trước.
 
-- chưa xác thực hoặc session hết hạn;
-- bị từ chối authorization;
-- validation failure;
-- network unavailable;
-- server conflict;
-- schema không tương thích;
-- upload một phần hoặc bị gián đoạn;
-- encrypted payload version không được hỗ trợ.
+## Checklist environment
 
-Không biến merge một phần thành success và không retry thao tác phá hủy khi chưa có idempotency.
+Quản lý ngoài repository secret:
+
+- project reference/region và owner;
+- allowed redirect URL;
+- email verification/recovery template;
+- SMTP, rate-limit và abuse control;
+- migration version và RLS test result;
+- backup/restore, log retention và incident owner.

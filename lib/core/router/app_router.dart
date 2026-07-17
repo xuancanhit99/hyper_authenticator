@@ -18,6 +18,7 @@ import 'package:hyper_authenticator/features/authenticator/domain/entities/authe
 
 // --- Define Route Paths ---
 class AppRoutes {
+  static const startup = '/startup';
   static const login = '/login';
   static const main = '/'; // Main screen (wrapper with bottom nav)
   static const addAccount = '/add-account';
@@ -35,14 +36,13 @@ class CombinedAuthRefreshStream extends ChangeNotifier {
 
   CombinedAuthRefreshStream(List<Stream<dynamic>> streams) {
     notifyListeners(); // Notify initially
-    _subscriptions =
-        streams
-            .map(
-              (stream) => stream
-                  .asBroadcastStream() // Ensure streams are broadcast streams
-                  .listen((_) => notifyListeners()),
-            )
-            .toList();
+    _subscriptions = streams
+        .map(
+          (stream) => stream
+              .asBroadcastStream() // Ensure streams are broadcast streams
+              .listen((_) => notifyListeners()),
+        )
+        .toList();
   }
 
   @override
@@ -60,9 +60,13 @@ class AppRouter {
 
   AppRouter(this.authBloc, this.localAuthBloc); // Update constructor
 
+  late final GoRouter _router = _buildRouter();
+
   static String get loginPath => AppRoutes.login;
 
-  GoRouter config() {
+  GoRouter config() => _router;
+
+  GoRouter _buildRouter() {
     return GoRouter(
       initialLocation: AppRoutes.main, // Bắt đầu ở trang chính
       // Chỉ lắng nghe AuthBloc để refresh redirect
@@ -72,6 +76,12 @@ class AppRouter {
         localAuthBloc.stream,
       ]),
       routes: [
+        GoRoute(
+          path: AppRoutes.startup,
+          name: AppRoutes.startup,
+          builder: (context, state) =>
+              const Scaffold(body: Center(child: CircularProgressIndicator())),
+        ),
         // Public route
         GoRoute(
           path: AppRoutes.login,
@@ -129,10 +139,7 @@ class AppRouter {
                 account = AuthenticatorAccount.fromJson(
                   state.extra as Map<String, dynamic>,
                 );
-              } catch (e) {
-                debugPrint(
-                  'Error deserializing AuthenticatorAccount from Map: $e',
-                );
+              } catch (_) {
                 // Handle error, perhaps redirect or show an error page
               }
             }
@@ -160,24 +167,22 @@ class AppRouter {
         final location = state.matchedLocation;
 
         final isGoingToLogin = location == AppRoutes.login;
+        final isStartingUp = location == AppRoutes.startup;
         final isGoingToLockScreen = location == AppRoutes.lockScreen;
         // Add checks for other public routes
         final isGoingToRegister = location == AppRoutes.register;
         final isGoingToForgotPassword = location == AppRoutes.forgotPassword;
-        // UpdatePassword might need special handling (only via deep link)
-        // final isGoingToUpdatePassword = location == AppRoutes.updatePassword;
-
-        // Added timestamp for better tracing
-        final timestamp = DateTime.now().toIso8601String();
-        debugPrint(
-          "[$timestamp Redirect] Supabase State: ${supabaseAuthState.runtimeType}, LocalAuth State: ${localAuthState.runtimeType}, Location: $location",
-        );
+        final isGoingToUpdatePassword = location == AppRoutes.updatePassword;
 
         // 1. Chờ Supabase Auth load xong
         if (supabaseAuthState is AuthInitial ||
             supabaseAuthState is AuthLoading) {
-          debugPrint("[$timestamp Redirect] Waiting for Supabase Auth...");
-          return null; // Wait for Supabase auth to settle
+          final isOnPublicRoute =
+              isGoingToLogin ||
+              isGoingToRegister ||
+              isGoingToForgotPassword ||
+              isGoingToUpdatePassword;
+          return (isStartingUp || isOnPublicRoute) ? null : AppRoutes.startup;
         }
 
         final isSupabaseAuthenticated = supabaseAuthState is AuthAuthenticated;
@@ -188,70 +193,51 @@ class AppRouter {
         if (!isSupabaseAuthenticated &&
             !isGoingToLogin &&
             !isGoingToRegister &&
-            !isGoingToForgotPassword) {
-          debugPrint(
-            "[$timestamp Redirect] Unauthenticated & not on allowed public route ($location) -> Go Login",
-          );
+            !isGoingToForgotPassword &&
+            !isGoingToUpdatePassword) {
           return AppRoutes.login;
         }
 
         // 3. Nếu ĐÃ đăng nhập Supabase và ĐANG ở trang Login -> Vào Main
         // 4. Nếu ĐÃ đăng nhập Supabase VÀ ĐANG ở trang Login -> Vào Main
         //    (Logic kiểm tra Local Auth sẽ chạy sau nếu cần khi đã ở Main hoặc Lock)
-        if (isSupabaseAuthenticated && isGoingToLogin) {
-          debugPrint(
-            "[$timestamp Redirect] Authenticated & on Login -> Go Main",
-          );
-          return AppRoutes.main; // Redirect away from login immediately
-        }
-
         // --- Local Authentication Checks (only if Supabase authenticated) ---
         if (isSupabaseAuthenticated) {
           // 5. Chờ Local Auth load xong (nếu cần)
           if (localAuthState is LocalAuthInitial) {
-            debugPrint("[$timestamp Redirect] Waiting for Local Auth check...");
-            // Dispatch check if not already done (though app.dart should do it)
-            // localAuthBloc.add(CheckLocalAuth()); // Consider if needed here
-            return null; // Wait
+            return isStartingUp ? null : AppRoutes.startup;
           }
 
-          // 6. Nếu Local Auth YÊU CẦU và KHÔNG ở màn hình khóa -> Tới màn hình khóa
-          if (localAuthState is LocalAuthRequired && !isGoingToLockScreen) {
-            debugPrint(
-              "[$timestamp Redirect] Local Auth Required & not on Lock Screen -> Go Lock Screen",
-            );
+          if ((localAuthState is LocalAuthRequired ||
+                  localAuthState is LocalAuthError) &&
+              !isGoingToLockScreen) {
             return AppRoutes.lockScreen;
           }
 
           // 7. Nếu Local Auth THÀNH CÔNG và ĐANG ở màn hình khóa -> Vào Main
           if (localAuthState is LocalAuthSuccess && isGoingToLockScreen) {
-            debugPrint(
-              "[$timestamp Redirect] Local Auth Success & on Lock Screen -> Go Main",
-            );
             return AppRoutes.main;
           }
 
           // 8. Nếu Local Auth KHÔNG CÓ SẴN và ĐANG ở màn hình khóa -> Vào Main
           // (Shouldn't happen if LocalAuthSuccess is emitted correctly, but as a safeguard)
           if (localAuthState is LocalAuthUnavailable && isGoingToLockScreen) {
-            debugPrint(
-              "[$timestamp Redirect] Local Auth Unavailable & on Lock Screen -> Go Main",
-            );
+            return AppRoutes.main;
+          }
+
+          if ((isGoingToLogin || isStartingUp) &&
+              (localAuthState is LocalAuthSuccess ||
+                  localAuthState is LocalAuthUnavailable)) {
             return AppRoutes.main;
           }
         }
 
         // Các trường hợp khác (đã đăng nhập và ở trang main, chưa đăng nhập và ở trang login) -> không cần redirect
         // Các trường hợp khác không cần redirect
-        debugPrint(
-          "[$timestamp Redirect] No redirect needed for current states and location.",
-        );
         return null;
       },
-      errorBuilder:
-          (context, state) => Scaffold(
-            body: Center(child: Text('Page not found: ${state.error}')),
-          ),
+      errorBuilder: (context, state) =>
+          Scaffold(body: Center(child: Text('Page not found: ${state.error}'))),
     );
   }
 }

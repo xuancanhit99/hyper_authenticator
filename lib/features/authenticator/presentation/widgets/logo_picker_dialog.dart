@@ -42,10 +42,9 @@ class _LogoPickerDialogState extends State<LogoPickerDialog> {
       });
     } else {
       setState(() {
-        _filteredIssuers =
-            widget.availableIssuers
-                .where((issuer) => issuer.toLowerCase().contains(query))
-                .toList();
+        _filteredIssuers = widget.availableIssuers
+            .where((issuer) => issuer.toLowerCase().contains(query))
+            .toList();
       });
     }
   }
@@ -69,42 +68,40 @@ class _LogoPickerDialogState extends State<LogoPickerDialog> {
             ),
             const SizedBox(height: 16),
             Expanded(
-              child:
-                  _filteredIssuers.isEmpty
-                      ? const Center(child: Text('No services found.'))
-                      : ListView.builder(
-                        shrinkWrap: true,
-                        itemCount: _filteredIssuers.length,
-                        itemBuilder: (context, index) {
-                          final issuer = _filteredIssuers[index];
-                          final logoPath = LogoService.instance.getLogoPath(
-                            issuer,
-                          );
-                          return ListTile(
-                            leading: SizedBox(
-                              width: 40,
-                              height: 40,
-                              child: ClipRRect(
-                                borderRadius: BorderRadius.circular(4.0),
-                                child: Image.asset(
-                                  logoPath,
-                                  fit: BoxFit.contain,
-                                  errorBuilder:
-                                      (context, error, stackTrace) =>
-                                          const Icon(
-                                            Icons.business_center_outlined,
-                                            size: 24,
-                                          ),
-                                ),
+              child: _filteredIssuers.isEmpty
+                  ? const Center(child: Text('No services found.'))
+                  : ListView.builder(
+                      shrinkWrap: true,
+                      itemCount: _filteredIssuers.length,
+                      itemBuilder: (context, index) {
+                        final issuer = _filteredIssuers[index];
+                        final logoPath = LogoService.instance.getLogoPath(
+                          issuer,
+                        );
+                        return ListTile(
+                          leading: SizedBox(
+                            width: 40,
+                            height: 40,
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(4.0),
+                              child: Image.asset(
+                                logoPath,
+                                fit: BoxFit.contain,
+                                errorBuilder: (context, error, stackTrace) =>
+                                    const Icon(
+                                      Icons.business_center_outlined,
+                                      size: 24,
+                                    ),
                               ),
                             ),
-                            title: Text(issuer),
-                            onTap: () {
-                              Navigator.of(context).pop(issuer);
-                            },
-                          );
-                        },
-                      ),
+                          ),
+                          title: Text(issuer),
+                          onTap: () {
+                            Navigator.of(context).pop(issuer);
+                          },
+                        );
+                      },
+                    ),
             ),
           ],
         ),

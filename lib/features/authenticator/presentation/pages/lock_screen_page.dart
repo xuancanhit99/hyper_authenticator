@@ -34,14 +34,7 @@ class _LockScreenPageState extends State<LockScreenPage> {
       setState(() {
         _authTriggered = true; // Mark as triggered
       });
-      print(
-        "[LockScreenPage] State is LocalAuthRequired, triggering Authenticate event automatically.",
-      );
       localAuthBloc.add(Authenticate());
-    } else {
-      print(
-        "[LockScreenPage] Initial state is ${localAuthBloc.state}, not triggering auto-auth.",
-      );
     }
   }
 
@@ -76,20 +69,16 @@ class _LockScreenPageState extends State<LockScreenPage> {
             ),
             const SizedBox(height: 20),
             const Text(
-              'App Locked',
+              'Ứng dụng đã khóa',
               style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 10),
-            const Text('Please authenticate to continue.'),
+            const Text('Vui lòng xác thực để tiếp tục.'),
             const SizedBox(height: 30),
             ElevatedButton.icon(
               icon: const Icon(Icons.fingerprint), // Or appropriate icon
-              label: const Text('Unlock App'),
+              label: const Text('Mở khóa'),
               onPressed: () {
-                // Manually trigger authentication attempt if button is pressed
-                print(
-                  "[LockScreenPage] Manual Unlock button pressed. Triggering Authenticate.",
-                );
                 context.read<LocalAuthBloc>().add(Authenticate());
               },
               style: ElevatedButton.styleFrom(
@@ -114,7 +103,7 @@ class _LockScreenPageState extends State<LockScreenPage> {
                   return Padding(
                     padding: const EdgeInsets.only(top: 20.0),
                     child: Text(
-                      'Error: ${state.message}',
+                      state.message,
                       style: const TextStyle(color: Colors.red),
                       textAlign: TextAlign.center,
                     ),

@@ -42,8 +42,8 @@ for required_file in \
 done
 
 if [[ -f .env ]]; then
-  ok ".env exists"
-  for key_name in SUPABASE_URL SUPABASE_ANON_KEY; do
+  ok ".env exists for --dart-define-from-file"
+  for key_name in SUPABASE_URL SUPABASE_PUBLISHABLE_KEY; do
     if rg -q "^$key_name=.+$" .env; then
       ok "$key_name is set"
     else
@@ -51,7 +51,7 @@ if [[ -f .env ]]; then
     fi
   done
 else
-  warn ".env is absent; Flutter asset builds and tests will fail until it is created"
+  warn ".env is absent; analyze/test still work, but running the app requires Supabase defines"
 fi
 
 if [[ -n "$(git status --short)" ]]; then

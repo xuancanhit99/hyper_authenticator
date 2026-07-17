@@ -97,16 +97,18 @@ class _RegisterPageState extends State<RegisterPage> {
             ..hideCurrentSnackBar()
             ..showSnackBar(SnackBar(content: Text(state.message)));
         }
-        // Handle potential success message (e.g., email verification)
-        // This might depend on how your AuthBloc handles SignUp success
-        // if (state is AuthSignUpSuccess) { // Example state
-        //   ScaffoldMessenger.of(context)
-        //     ..hideCurrentSnackBar()
-        //     ..showSnackBar(
-        //       const SnackBar(content: Text('Registration successful! Please check your email to verify.')),
-        //     );
-        //   context.go(AppRoutes.login); // Navigate to login after showing message
-        // }
+        if (state is AuthSignUpSuccess) {
+          ScaffoldMessenger.of(context)
+            ..hideCurrentSnackBar()
+            ..showSnackBar(
+              const SnackBar(
+                content: Text(
+                  'Đăng ký thành công. Hãy kiểm tra email để xác minh tài khoản.',
+                ),
+              ),
+            );
+          context.go(AppRoutes.login);
+        }
       },
       child: Scaffold(
         body: SafeArea(
@@ -191,8 +193,8 @@ class _RegisterPageState extends State<RegisterPage> {
                       obscureText: _obscureConfirmPassword,
                       validator: _validateConfirmPassword,
                       textInputAction: TextInputAction.done,
-                      onFieldSubmitted:
-                          (_) => _register(context), // Pass context
+                      onFieldSubmitted: (_) =>
+                          _register(context), // Pass context
                     ),
                     const SizedBox(height: 24),
                     // Use BlocBuilder for loading state
@@ -201,23 +203,23 @@ class _RegisterPageState extends State<RegisterPage> {
                         final isLoading = state is AuthLoading;
                         return ElevatedButton(
                           // Pass context to _register
-                          onPressed:
-                              isLoading ? null : () => _register(context),
+                          onPressed: isLoading
+                              ? null
+                              : () => _register(context),
                           style: ElevatedButton.styleFrom(
                             padding: const EdgeInsets.symmetric(vertical: 16),
                             textStyle: Theme.of(context).textTheme.titleMedium,
                           ),
-                          child:
-                              isLoading
-                                  ? const SizedBox(
-                                    width: 24,
-                                    height: 24,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      color: Colors.white,
-                                    ),
-                                  )
-                                  : const Text('Sign Up'),
+                          child: isLoading
+                              ? const SizedBox(
+                                  width: 24,
+                                  height: 24,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              : const Text('Sign Up'),
                         );
                       },
                     ),

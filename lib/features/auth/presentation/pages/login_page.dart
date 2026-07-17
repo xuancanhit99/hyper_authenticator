@@ -72,9 +72,8 @@ class _LoginPageState extends State<LoginPage> {
     // Wrap with BlocListener to show errors
     return BlocListener<AuthBloc, AuthState>(
       // Listen for AuthInitial state to pre-fill email
-      listenWhen:
-          (previous, current) =>
-              current is AuthInitial || current is AuthFailure,
+      listenWhen: (previous, current) =>
+          current is AuthInitial || current is AuthFailure,
       listener: (context, state) {
         if (state is AuthInitial) {
           // Pre-fill email if available
@@ -164,12 +163,10 @@ class _LoginPageState extends State<LoginPage> {
                                     _rememberMe = newValue ?? false;
                                   });
                                 },
-                                visualDensity:
-                                    VisualDensity
-                                        .compact, // Make checkbox smaller
-                                materialTapTargetSize:
-                                    MaterialTapTargetSize
-                                        .shrinkWrap, // Reduce tap area
+                                visualDensity: VisualDensity
+                                    .compact, // Make checkbox smaller
+                                materialTapTargetSize: MaterialTapTargetSize
+                                    .shrinkWrap, // Reduce tap area
                               ),
                             ),
                             const SizedBox(
@@ -194,9 +191,8 @@ class _LoginPageState extends State<LoginPage> {
                             padding: EdgeInsets.zero, // Remove default padding
                             minimumSize:
                                 Size.zero, // Remove minimum size constraint
-                            tapTargetSize:
-                                MaterialTapTargetSize
-                                    .shrinkWrap, // Reduce tap area
+                            tapTargetSize: MaterialTapTargetSize
+                                .shrinkWrap, // Reduce tap area
                           ),
                           child: const Text('Forgot Password?'),
                         ),
@@ -214,25 +210,24 @@ class _LoginPageState extends State<LoginPage> {
                             padding: const EdgeInsets.symmetric(vertical: 16),
                             textStyle: Theme.of(context).textTheme.titleMedium,
                           ),
-                          child:
-                              isLoading
-                                  ? SizedBox(
-                                    // Remove const here
-                                    width: 24,
-                                    height: 24,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      // Set indicator color based on theme brightness
-                                      color:
-                                          Theme.of(context).brightness ==
-                                                  Brightness.dark
-                                              ? Colors
-                                                  .black // Black indicator in dark mode
-                                              : Colors
-                                                  .white, // White indicator in light mode
-                                    ),
-                                  )
-                                  : const Text('Login'),
+                          child: isLoading
+                              ? SizedBox(
+                                  // Remove const here
+                                  width: 24,
+                                  height: 24,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    // Set indicator color based on theme brightness
+                                    color:
+                                        Theme.of(context).brightness ==
+                                            Brightness.dark
+                                        ? Colors
+                                              .black // Black indicator in dark mode
+                                        : Colors
+                                              .white, // White indicator in light mode
+                                  ),
+                                )
+                              : const Text('Login'),
                         );
                       },
                     ),
@@ -251,9 +246,8 @@ class _LoginPageState extends State<LoginPage> {
                             padding: EdgeInsets.zero, // Remove default padding
                             // minimumSize:
                             // Size.zero, // Remove minimum size constraint
-                            tapTargetSize:
-                                MaterialTapTargetSize
-                                    .shrinkWrap, // Reduce tap area
+                            tapTargetSize: MaterialTapTargetSize
+                                .shrinkWrap, // Reduce tap area
                           ),
                           child: const Text('Sign Up'),
                         ),

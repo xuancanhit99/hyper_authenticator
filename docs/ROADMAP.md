@@ -1,71 +1,77 @@
 # Roadmap
 
-Đây là roadmap xử lý theo rủi ro, không phải cam kết thời gian giao hàng.
+Roadmap được ưu tiên theo rủi ro, không phải cam kết thời gian.
 
-## Giai đoạn 0 — Thiết lập baseline đáng tin cậy
+## Giai đoạn 0 — Baseline đáng tin cậy
 
-- Thêm workflow `.env` development an toàn để test build được.
-- Thay template đã comment bằng test thật.
-- Sửa analyzer warning và deprecated API hiện tại mà không gây behavior churn.
-- Thêm CI với Flutter version được pin.
-- Thêm license rõ ràng và tên sản phẩm nhất quán.
-- Thêm Supabase schema và RLS migration có version control.
+- [x] Chuyển `.env` khỏi Flutter asset sang build-time define.
+- [x] Thay template test bằng unit test thật.
+- [x] Analyzer/format sạch và deprecated API chính được cập nhật.
+- [x] CI pin Flutter và build sáu platform cùng Web.
+- [x] Nâng direct dependency và native toolchain.
+- [x] Thống nhất display name Hyper Authenticator.
+- [ ] Chọn và thêm license.
+- [ ] Thêm Supabase schema/RLS migration được version control.
 
-Exit criteria: quick và full harness gate chạy deterministic trong CI.
+Exit criteria còn lại: schema/RLS gate deterministic và license rõ ràng.
 
-## Giai đoạn 1 — Bảo vệ tính đúng đắn local
+## Giai đoạn 1 — Tính đúng đắn local
 
-- Giữ algorithm, digits và period khi create và restore từ sync.
-- Countdown nhận biết period.
-- Validate Base32, algorithm, digits và period tại domain boundary.
-- Xóa log chứa secret.
-- Định nghĩa recovery cho secure-storage index.
-- Tách storage authentication/session khỏi authenticator storage.
-- Quyết định và triển khai quyền sở hữu dữ liệu khi logout/đổi account.
-- Làm app-lock error fail closed.
+- [x] Giữ algorithm, digits và period khi create/restore.
+- [x] Validate URI, Base32, algorithm, digits và period.
+- [x] Xóa log chứa QR secret.
+- [x] Logout không xóa TOTP local.
+- [x] App-lock error fail closed và relock theo lifecycle.
+- [ ] Countdown theo period từng account.
+- [ ] Recovery cho secure-storage record/index.
+- [ ] BLoC/widget/device integration coverage.
+- [ ] Quyết định ownership khi nhiều Supabase user dùng cùng thiết bị.
 
-Exit criteria: luồng TOTP và lock local có unit, BLoC, widget và device integration coverage.
+Exit criteria: TOTP, persistence và lock có regression/integration coverage trên platform chính.
 
-## Giai đoạn 2 — Thiết kế lại synchronization
+## Giai đoạn 2 — Thiết kế lại sync
 
-- Chấp nhận ADR cho identity, deletion, conflict, concurrency và atomic publication.
-- Thay xóa-rồi-chèn bằng protocol atomic, idempotent.
-- Dùng một account-state owner rõ ràng.
-- Thêm tombstone hoặc snapshot revision model có tài liệu.
-- Thêm test interrupted write, retry và hai thiết bị.
+- [x] UI và sync dùng chung account-state owner.
+- [x] Partial merge failure dừng upload.
+- [ ] ADR cho identity, deletion, conflict, concurrency và atomic publication.
+- [ ] Thay xóa-rồi-chèn bằng protocol atomic/idempotent.
+- [ ] Tombstone hoặc revisioned snapshot.
+- [ ] Interrupted write/retry/two-device tests.
 
-Exit criteria: không network/concurrency failure giả lập nào làm mất snapshot hợp lệ gần nhất.
+Exit criteria: network hoặc concurrency failure không làm mất snapshot hợp lệ gần nhất.
 
-## Giai đoạn 3 — Triển khai E2EE
+## Giai đoạn 3 — E2EE
 
-- Chấp nhận ADR về key hierarchy và recovery.
-- Triển khai authenticated encryption có version.
-- Thêm onboarding đa thiết bị và recovery.
-- Migrate row plaintext an toàn.
-- Xóa field plaintext và xác minh không secret nào tới remote log hoặc row.
+- [ ] ADR key hierarchy/recovery.
+- [ ] Authenticated encryption có version.
+- [ ] Onboarding đa thiết bị và recovery.
+- [ ] Migration row plaintext.
+- [ ] Chứng minh backend chỉ thấy ciphertext.
 
-Exit criteria: backend-blind secret storage được chứng minh bằng test và review.
+Exit criteria: backend-blind secret storage được test và review.
 
-## Giai đoạn 4 — Hoàn thiện auth và product flow
+## Giai đoạn 4 — Auth và product flow
 
-- Quyết định có hỗ trợ offline-only hay không.
-- Chọn một password-recovery surface.
-- Hoàn thiện deep link và recovery test.
-- Thêm data export, deletion và retention behavior hướng tới user.
-- Thêm localization và accessibility baseline.
+- [ ] Quyết định offline-only.
+- [ ] Chọn recovery surface, hoàn thiện deep link và test.
+- [ ] Data export/deletion/retention hướng tới user.
+- [ ] Localization đầy đủ và accessibility baseline.
 
-Exit criteria: product behavior, privacy policy và store declaration khớp nhau.
+Exit criteria: behavior, privacy policy và store declaration khớp nhau.
 
-## Giai đoạn 5 — Hardening platform release
+## Giai đoạn 5 — Platform release
 
-- Android signing, permission, backup và Play check.
-- iOS signing, Keychain, deep link và TestFlight check.
-- macOS entitlement và notarization.
-- Quyết định rõ về Web, Windows và Linux support.
-- Quy trình release provenance, rollback và incident.
+- [x] Android/macOS/Web build trên baseline local.
+- [x] CI build iOS/Windows/Linux.
+- [ ] Xác minh iOS trên runtime/thiết bị và TestFlight.
+- [ ] Android production signing/Play checks.
+- [ ] macOS signing/notarization.
+- [ ] Windows/Linux installer, signing và device test.
+- [ ] Web threat model/header/deployment hardening.
+- [ ] Release provenance, rollback và incident process.
 
-Exit criteria: gate trong `DEPLOYMENT.md` pass cho từng platform được quảng bá.
+Exit criteria: gate trong `DEPLOYMENT.md` pass riêng cho từng platform được quảng bá.
 
 ## Quy tắc chọn việc
 
-Không ưu tiên convenience feature trước các blocker làm lộ credential hoặc mất dữ liệu, trừ khi owner chấp nhận rủi ro rõ ràng. Mỗi roadmap item nên dùng `docs/tasks/TEMPLATE.md` và ghi bằng chứng xác minh.
+Ưu tiên blocker làm lộ credential hoặc mất dữ liệu trước convenience feature, trừ khi owner chấp nhận rủi ro rõ ràng. Mỗi hạng mục lớn dùng `docs/tasks/TEMPLATE.md` và ghi bằng chứng xác minh.

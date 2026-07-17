@@ -1,5 +1,4 @@
 // lib/features/auth/data/datasources/auth_remote_data_source.dart
-import 'package:flutter/foundation.dart';
 import 'package:injectable/injectable.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:hyper_authenticator/core/error/exceptions.dart';
@@ -58,10 +57,8 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       }
       return response.user!;
     } on AuthException catch (e) {
-      debugPrint('Supabase SignIn AuthException: ${e.message}');
       throw AuthServerException(e.message);
-    } catch (e, s) {
-      debugPrint('Unknown SignIn Error: $e\nStackTrace: $s');
+    } catch (_) {
       throw ServerException('An unexpected error occurred during sign in.');
     }
   }
@@ -87,9 +84,6 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       }
       if (response.user == null) {
         if (response.session != null) {
-          debugPrint(
-            'SignUp successful (session created), but user object is null. Email verification likely required.',
-          );
           throw const AuthServerException(
             'Sign up completed but user data is missing in response.',
           );
@@ -101,10 +95,8 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       }
       return response.user!;
     } on AuthException catch (e) {
-      debugPrint('Supabase SignUp AuthException: ${e.message}');
       throw AuthServerException(e.message);
-    } catch (e, s) {
-      debugPrint('Unknown SignUp Error: $e\nStackTrace: $s');
+    } catch (_) {
       throw ServerException('An unexpected error occurred during sign up.');
     }
   }
@@ -114,10 +106,8 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
     try {
       await _supabaseClient.auth.resetPasswordForEmail(email);
     } on AuthException catch (e) {
-      debugPrint("Supabase RecoverPassword Error: ${e.message}");
       throw AuthServerException(e.message);
-    } catch (e, s) {
-      debugPrint("Unknown RecoverPassword Error: $e\nStackTrace: $s");
+    } catch (_) {
       throw ServerException(
         'An unexpected error occurred during password recovery.',
       );
@@ -128,8 +118,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   Future<void> signOut() async {
     try {
       await _supabaseClient.auth.signOut();
-    } catch (e, s) {
-      debugPrint("Supabase SignOut Error: $e\nStackTrace: $s");
+    } catch (_) {
       throw ServerException('An error occurred during sign out.');
     }
   }
@@ -142,10 +131,8 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
         UserAttributes(password: newPassword),
       );
     } on AuthException catch (e) {
-      debugPrint("Supabase UpdatePassword Error: ${e.message}");
       throw AuthServerException(e.message);
-    } catch (e, s) {
-      debugPrint("Unknown UpdatePassword Error: $e\nStackTrace: $s");
+    } catch (_) {
       throw ServerException(
         'An unexpected error occurred while updating password.',
       );

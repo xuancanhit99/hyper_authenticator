@@ -1,34 +1,34 @@
 // lib/core/config/app_config.dart
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:injectable/injectable.dart';
 
-@lazySingleton // Make sure to use @LazySingleton instead of camelCase
+@lazySingleton
 class AppConfig {
   final String supabaseUrl;
-  final String supabaseAnonKey;
+  final String supabasePublishableKey;
 
-  // Regular constructor (not private)
-  AppConfig({
+  const AppConfig({
     required this.supabaseUrl,
-    required this.supabaseAnonKey,
+    required this.supabasePublishableKey,
   });
 
-  // Add a factory method for DI
   @factoryMethod
-  static AppConfig fromEnv() {
-    final url = dotenv.env['SUPABASE_URL'];
-    final anonKey = dotenv.env['SUPABASE_ANON_KEY'];
+  static AppConfig fromEnvironment() {
+    const url = String.fromEnvironment('SUPABASE_URL');
+    const publishableKey = String.fromEnvironment(
+      'SUPABASE_PUBLISHABLE_KEY',
+      defaultValue: String.fromEnvironment('SUPABASE_ANON_KEY'),
+    );
 
-    if (url == null || url.isEmpty) {
-      throw Exception('SUPABASE_URL not found in .env file');
+    if (url.isEmpty) {
+      throw StateError('Thiếu cấu hình SUPABASE_URL');
     }
-    if (anonKey == null || anonKey.isEmpty) {
-      throw Exception('SUPABASE_ANON_KEY not found in .env file');
+    if (publishableKey.isEmpty) {
+      throw StateError('Thiếu cấu hình SUPABASE_PUBLISHABLE_KEY');
     }
 
-    return AppConfig(
+    return const AppConfig(
       supabaseUrl: url,
-      supabaseAnonKey: anonKey,
+      supabasePublishableKey: publishableKey,
     );
   }
 }

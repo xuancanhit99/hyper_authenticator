@@ -1,11 +1,11 @@
 // lib/app.dart
-import 'dart:async'; // Keep Timer import for potential future use if needed
+// Keep Timer import for potential future use if needed
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart'; // Keep for other Blocs if needed elsewhere
 import 'package:provider/provider.dart'; // Import Provider
 import 'package:hyper_authenticator/core/router/app_router.dart';
-import 'package:hyper_authenticator/features/auth/presentation/bloc/auth_bloc.dart'; // Supabase Auth
-import 'package:hyper_authenticator/features/authenticator/presentation/bloc/accounts_bloc.dart'; // Accounts Bloc
+// Supabase Auth
+// Accounts Bloc
 import 'package:hyper_authenticator/features/authenticator/presentation/bloc/local_auth_bloc.dart'; // Local Auth Bloc
 // SettingsBloc import no longer needed here
 import 'package:hyper_authenticator/core/theme/theme_provider.dart'; // Import ThemeProvider
@@ -24,8 +24,6 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
-  AppLifecycleState? _previousLifecycleState; // Store the previous state
-
   // Timer? _resumeLockTimer; // Timer logic removed
   // StreamSubscription? _authSubscription; // Auth listener removed, handled by router/bloc
   // bool _isResumed = false; // No longer needed
@@ -49,47 +47,19 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    // It's generally better practice to update the state variable *after* using the previous value
-    final previousState = _previousLifecycleState;
-    super.didChangeAppLifecycleState(state); // Call super early
-    debugPrint(
-      "[AppLifecycle] State changed: $state (Previous: $previousState)",
-    );
-
-    try {
-      // Check if LocalAuthBloc is available before adding events
-      if (sl.isRegistered<LocalAuthBloc>()) {
-        final localAuthBloc = sl<LocalAuthBloc>();
-
-        if (state == AppLifecycleState.resumed) {
-          // Always request a check when resuming.
-          // LocalAuthBloc internally handles whether to show prompt based on its current state
-          // (e.g., it won't prompt if already in LocalAuthSuccess and not reset).
-          debugPrint("[AppLifecycle] Resumed. Requesting local auth check.");
-          localAuthBloc.add(CheckLocalAuth());
-        } else if (state == AppLifecycleState.paused ||
-            state == AppLifecycleState.detached) {
-          // Reset auth status only when pausing or detaching.
-          // This prevents reset on inactive/hidden states.
-          debugPrint(
-            "[AppLifecycle] State is $state. Requesting auth status reset.",
-          );
-          localAuthBloc.add(ResetAuthStatus());
-        }
-        // No action needed for inactive or hidden states regarding LocalAuthBloc.
-      } else {
-        debugPrint(
-          "[AppLifecycle] LocalAuthBloc not registered yet during state change to $state.",
-        );
-      }
-    } catch (e) {
-      debugPrint(
-        "[AppLifecycle] Error accessing LocalAuthBloc during state change to $state: $e",
-      );
+    super.didChangeAppLifecycleState(state);
+    if (!sl.isRegistered<LocalAuthBloc>()) {
+      return;
     }
 
-    // Store the current state for the next change detection
-    _previousLifecycleState = state;
+    final localAuthBloc = sl<LocalAuthBloc>();
+    if (state == AppLifecycleState.resumed) {
+      localAuthBloc.add(CheckLocalAuth());
+    } else if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.hidden ||
+        state == AppLifecycleState.detached) {
+      localAuthBloc.add(ResetAuthStatus());
+    }
   }
 
   // _checkAndStartLockTimerIfNeeded removed as logic is simplified

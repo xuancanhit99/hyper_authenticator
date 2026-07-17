@@ -1,185 +1,130 @@
 # Hướng dẫn deployment và phát hành
 
-Repository hiện chưa sẵn sàng phát hành. Tài liệu này định nghĩa gate, không xác nhận gate đã pass.
+Repository build được trên nhiều platform nhưng chưa production-ready. Tài liệu này định nghĩa release gate, không xác nhận gate đã pass.
 
 ## Release environment
 
-Duy trì Supabase project riêng cho development, test, staging và production. Mỗi environment cần:
+Duy trì Supabase project riêng cho development, test, staging và production. Mỗi environment cần public client configuration, redirect URL, migration/RLS version, dữ liệu test tổng hợp, owner và rollback plan. Không phân phối service-role key.
 
-- client configuration riêng;
-- redirect URL rõ ràng;
-- schema và RLS migration có version;
-- user và dữ liệu test tổng hợp, độc lập;
-- owner và rollback plan được ghi lại.
+## Gate toàn cục
 
-Không bao giờ phân phối service-role key.
-
-## Release gate toàn cục
-
-- Mọi blocker trong `PROJECT_STATUS.md` và `SECURITY.md` đã xử lý hoặc được chấp nhận rõ.
-- Tên sản phẩm, bundle ID, application ID, URL, icon và store metadata nhất quán.
-- Đã thêm file `LICENSE` rõ ràng.
-- Privacy policy đã review theo hành vi thật.
-- Không có TOTP secret production dạng plaintext trong Supabase.
-- Sync atomic và có thể recovery.
-- Logout không âm thầm xóa dữ liệu local.
-- RLS migration và cross-user negative test pass.
-- Analyzer không có error và không có warning chưa giải thích.
-- Unit, widget và critical integration test pass.
-- Dependency scan và secret scan pass.
-- Đã diễn tập upgrade và rollback.
-- Release artifact được ký bằng production credential.
+- Blocker trong `PROJECT_STATUS.md` và `SECURITY.md` đã xử lý hoặc được owner chấp nhận rõ.
+- Tên, identifier, icon, URL và store metadata nhất quán.
+- Có `LICENSE` và privacy policy.
+- Không có plaintext TOTP secret trong cloud.
+- Sync atomic/idempotent, có conflict và recovery protocol.
+- RLS migration cùng cross-user negative test pass.
+- Format, analyze, test, generated-code, docs, dependency và secret scan pass.
+- Release artifact được ký bằng production credential và có rollback/upgrade evidence.
 
 ## Versioning
 
-Flutter version được định nghĩa trong `pubspec.yaml`:
+`pubspec.yaml` dùng:
 
     version: major.minor.patch+build
 
-Trước release:
-
-1. cập nhật version;
-2. cập nhật release note;
-3. xác nhận compatibility của schema và encrypted format;
-4. tag đúng commit đã test;
-5. lưu checksum và build provenance.
+Trước release: cập nhật version/release note, xác nhận schema/encrypted-format compatibility, tag đúng commit đã test và lưu artifact checksum/provenance.
 
 ## Client configuration
 
-Build hiện tại cần asset `.env` ở root với `SUPABASE_URL` và `SUPABASE_ANON_KEY`.
+Configuration được inject lúc compile:
 
-Trước khi chuẩn hóa deployment, cần chấp nhận ADR cho configuration injection. Yêu cầu:
+    flutter build <target> \
+      --dart-define=SUPABASE_URL=... \
+      --dart-define=SUPABASE_PUBLISHABLE_KEY=...
 
-- deterministic theo environment;
-- artifact không chứa server secret;
-- không sửa thủ công sau build;
-- có thể nhận biết environment trong diagnostic không nhạy cảm;
-- production build không thể vô tình trỏ vào development.
+Hoặc dùng `--dart-define-from-file=<environment-file>` trong hệ thống build. File không được đóng gói như asset. Production pipeline phải bảo đảm:
+
+- chỉ chứa public client configuration;
+- environment deterministic và không sửa artifact sau build;
+- production không thể trỏ nhầm development;
+- log không in giá trị key/URL nhạy cảm theo chính sách tổ chức.
 
 ## Android
 
-Build candidate:
-
-    flutter build appbundle --release
-    flutter build apk --release
+    flutter build appbundle --release \
+      --dart-define-from-file=.env.production
 
 Trước distribution:
 
-- xóa fallback sang debug signing cho release;
-- xác minh keystore và alias thực tế;
-- kiểm tra merged release manifest;
-- xác minh network, camera, biometric và backup behavior;
-- quyết định code shrinking và keep rule;
-- upload native debug symbol nếu cần;
-- test install, upgrade, sign-in, TOTP, lock, sync và recovery trên API level đại diện;
-- hoàn tất Play data-safety declaration theo hành vi thật.
+- cấu hình release keystore; không dùng debug-signing fallback;
+- kiểm tra merged manifest, network, camera, biometric và `allowBackup=false`;
+- quyết định shrinking/keep rule và native symbols;
+- test install/upgrade, auth, TOTP, lock, sync/recovery trên API đại diện;
+- hoàn tất Play data-safety theo behavior thật.
 
 ## iOS
 
-Build candidate:
-
-    flutter build ipa --release
+    flutter build ipa --release \
+      --dart-define-from-file=.env.production
 
 Trước distribution:
 
-- xác minh SwiftPM `Package.resolved` và CocoaPods `Podfile.lock` khớp dependency đã test;
-- xác minh bundle ID, team, signing và provisioning;
-- xác minh usage description camera và Face ID;
-- cấu hình, test universal link hoặc custom scheme cho password recovery;
-- test Keychain qua reinstall, logout, backup và device restore;
-- hoàn tất App Store privacy detail theo hành vi thật;
-- validate trên thiết bị vật lý và TestFlight.
+- xác minh SwiftPM resolution, bundle ID, team, signing/provisioning;
+- test camera/photo/Face ID usage, Keychain access group và reinstall/restore;
+- cấu hình universal/custom link cho recovery;
+- validate trên thiết bị vật lý và TestFlight;
+- hoàn tất App Store privacy detail.
+
+Project không còn CocoaPods integration; `pubspec.lock` là dependency lock chính, còn SwiftPM plugin graph được Flutter generate từ plugin metadata.
 
 ## macOS
 
-Build candidate:
-
-    flutter build macos --release
+    flutter build macos --release \
+      --dart-define-from-file=.env.production
 
 Trước distribution:
 
-- xác minh SwiftPM `Package.resolved` và CocoaPods `Podfile.lock` khớp dependency đã test;
-- cấu hình sandbox entitlement cho network client, camera, keychain và local-auth;
-- sign và notarize;
-- test hardened runtime artifact ngoài máy development;
-- xác minh plugin registration và secure-storage behavior.
+- xác minh SwiftPM resolution;
+- xác minh sandbox network/camera, Keychain access group và local-auth entitlement;
+- sign, hardened runtime và notarize;
+- test artifact ngoài máy development cùng secure-storage behavior.
 
 ## Web
 
-Build candidate:
-
-    flutter build web --release
+    flutter build web --release \
+      --dart-define-from-file=.env.production
 
 Trước distribution:
 
-- xóa hoặc isolate platform import không được hỗ trợ;
-- xác minh secure-storage semantic và ghi browser threat model;
-- cấu hình SPA routing;
-- đặt CSP, HSTS, referrer, permission và cache policy;
-- pin, integrity-protect external script hoặc self-host;
-- test auth redirect và recovery URL;
-- không khẳng định mức bảo mật tương đương mobile khi chưa review.
+- ghi threat model cho browser storage/session;
+- cấu hình SPA routing, CSP, HSTS, referrer/permission/cache policy;
+- pin/self-host external script khi cần;
+- test auth/recovery redirect;
+- không quảng bá mức bảo mật tương đương mobile nếu chưa có review.
 
-## Windows và Linux
+## Windows
 
-Runner tồn tại nhưng product support chưa được xác minh. Trước release:
+    flutter build windows --release \
+      --dart-define-from-file=.env.production
 
-- xác minh mọi plugin;
-- định nghĩa installer, signing, update, secure storage, device lock và rollback;
-- thêm platform integration test;
-- cập nhật ma trận platform được hỗ trợ công khai.
+Xác minh secure storage, Windows Hello/device auth, manual TOTP flow, installer/signing, upgrade và rollback. Scanner camera hiện không thuộc capability của app trên Windows.
 
-## Trang web khôi phục mật khẩu
+## Linux
+
+    flutter build linux --release \
+      --dart-define-from-file=.env.production
+
+Xác minh secure storage backend/keyring, package/installer/signing, desktop integration và manual TOTP flow. Scanner/local-auth hiện bị tắt trên Linux.
+
+## Trang recovery tĩnh
 
 Trước khi deploy `reset-password-web`:
 
-- triển khai cơ chế inject public client configuration;
-- pin hoặc self-host Supabase JavaScript dependency;
-- thêm CSP và security header khác;
-- chỉ cho phép production recovery redirect;
-- tắt cache recovery page và URL material nhạy cảm khi phù hợp;
-- test session hết hạn, malformed, reuse và thành công;
-- xóa verbose session logging;
-- cung cấp link privacy và support.
+- triển khai inject public configuration;
+- pin/self-host Supabase JavaScript dependency;
+- thêm CSP và security headers;
+- whitelist production redirect;
+- kiểm soát cache/URL material;
+- test expired, malformed, reused và successful session;
+- không log session và thêm privacy/support link.
 
-## Backend rollout
+## Backend rollout và rollback
 
-Mọi backend change cần:
+Mỗi backend change cần migration ID, compatibility tiến/lùi, staging rehearsal, RLS test, backup/rollback và monitoring đã redact. E2EE rollout theo `E2EE_DESIGN.md` cùng ADR được chấp nhận.
 
-1. migration ID và review;
-2. client compatibility tiến/lùi;
-3. diễn tập staging;
-4. RLS negative test;
-5. backup hoặc rollback;
-6. monitoring không log credential;
-7. bằng chứng migration hoàn tất.
-
-E2EE rollout phải theo `E2EE_DESIGN.md` và ADR được chấp nhận.
-
-## Rollback
-
-Rollback phải giữ snapshot local và remote hợp lệ gần nhất. Không rollback về client không đọc được encrypted/schema version hiện tại khi chưa có compatibility plan.
-
-Ghi lại:
-
-- client version bị ảnh hưởng;
-- schema và format version;
-- đường downgrade an toàn;
-- bước restore dữ liệu;
-- nội dung thông báo user;
-- incident owner.
+Rollback phải giữ snapshot hợp lệ gần nhất và không hạ client về phiên bản không đọc được schema/encrypted format hiện hành.
 
 ## Bằng chứng phát hành
 
-Lưu cho mỗi release:
-
-- commit và tag;
-- phiên bản Flutter và Dart;
-- dependency lockfile;
-- xác minh generated code;
-- kết quả analyzer và test;
-- platform build log;
-- schema migration version và kết quả RLS test;
-- artifact hash;
-- tham chiếu signing identity, không lưu private key material;
-- privacy và store declaration đã duyệt.
+Lưu commit/tag, Flutter/Dart version, `pubspec.lock`, generated-code check, analyzer/test/build log, migration/RLS result, artifact hash, signing identity reference và privacy/store declaration. Không lưu private key material trong repository.

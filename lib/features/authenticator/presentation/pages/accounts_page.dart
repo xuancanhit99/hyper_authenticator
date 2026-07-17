@@ -1,5 +1,5 @@
 import 'dart:async';
-import 'dart:ui'; // For FontFeature
+// For FontFeature
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart'; // For Clipboard
@@ -9,7 +9,7 @@ import 'package:provider/provider.dart'; // Import Provider
 import 'package:hyper_authenticator/core/theme/theme_provider.dart'; // Import ThemeProvider
 import 'package:qr_flutter/qr_flutter.dart'; // Import QR Flutter
 import 'package:hyper_authenticator/core/constants/app_colors.dart'; // Import AppColors (needed for Card)
-import 'package:hyper_authenticator/core/usecases/usecase.dart'; // For NoParams
+// For NoParams
 import 'package:hyper_authenticator/features/authenticator/domain/entities/authenticator_account.dart';
 import 'package:hyper_authenticator/features/authenticator/domain/usecases/generate_totp_code.dart';
 import 'package:hyper_authenticator/features/authenticator/presentation/bloc/accounts_bloc.dart';
@@ -18,7 +18,7 @@ import 'package:hyper_authenticator/features/authenticator/presentation/widgets/
 import 'package:hyper_authenticator/injection_container.dart';
 import 'package:go_router/go_router.dart'; // Import GoRouter for navigation
 import 'package:hyper_authenticator/core/router/app_router.dart'; // Import AppRoutes
-import 'package:hyper_authenticator/features/authenticator/presentation/pages/edit_account_page.dart'; // Import EditAccountPage
+// Import EditAccountPage
 
 // TODO: Define route for AddAccountPage
 // import 'add_account_page.dart'; // Will create this later
@@ -120,8 +120,9 @@ class _AccountsPageState extends State<AccountsPage> {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
       appBar: AppBar(
-        backgroundColor:
-            Theme.of(context).scaffoldBackgroundColor, // Set background color
+        backgroundColor: Theme.of(
+          context,
+        ).scaffoldBackgroundColor, // Set background color
         elevation: 0, // Remove shadow for a flatter look if desired
         title: const Text('Authenticator'),
         actions: [
@@ -137,7 +138,6 @@ class _AccountsPageState extends State<AccountsPage> {
                   iconData = Icons.dark_mode_outlined;
                   break;
                 case ThemeMode.system:
-                default: // Default to system icon
                   iconData = Icons.brightness_auto_outlined;
                   break;
               }
@@ -154,8 +154,8 @@ class _AccountsPageState extends State<AccountsPage> {
                     listen: false,
                   ).setThemeMode(result);
                 },
-                itemBuilder:
-                    (BuildContext context) => <PopupMenuEntry<ThemeMode>>[
+                itemBuilder: (BuildContext context) =>
+                    <PopupMenuEntry<ThemeMode>>[
                       const PopupMenuItem<ThemeMode>(
                         value: ThemeMode.system,
                         child: ListTile(
@@ -187,19 +187,16 @@ class _AccountsPageState extends State<AccountsPage> {
             padding: const EdgeInsets.only(right: 8.0),
             child: IconButton(
               icon: const Icon(Icons.add, size: 20), // Reduced icon size
-              color:
-                  isDarkMode
-                      ? Colors
-                          .white // Light icon on dark background
-                      : Colors.black87, // Darker icon on light background
+              color: isDarkMode
+                  ? Colors
+                        .white // Light icon on dark background
+                  : Colors.black87, // Darker icon on light background
               tooltip: 'Add Account',
               style: IconButton.styleFrom(
-                backgroundColor:
-                    isDarkMode
-                        ? AppColors
-                            .cDarkIconBg // Dark background for dark mode
-                        : AppColors
-                            .cLightIconBg, // Light background for light mode
+                backgroundColor: isDarkMode
+                    ? AppColors
+                          .cDarkIconBg // Dark background for dark mode
+                    : AppColors.cLightIconBg, // Light background for light mode
                 shape:
                     const CircleBorder(), // Slightly reduced padding for smaller icon
               ),
@@ -243,25 +240,23 @@ class _AccountsPageState extends State<AccountsPage> {
                         BorderSide.none, // Keep border invisible on focus
                   ),
                   filled: true,
-                  fillColor:
-                      isDarkMode
-                          ? AppColors
-                              .cCardDarkColor // Use custom dark color
-                          : null, // Use default theme fill color for light mode (or specify one)
+                  fillColor: isDarkMode
+                      ? AppColors
+                            .cCardDarkColor // Use custom dark color
+                      : null, // Use default theme fill color for light mode (or specify one)
                   contentPadding: const EdgeInsets.symmetric(
                     vertical: 0,
                     horizontal: 16,
                   ), // Adjust padding
-                  suffixIcon:
-                      _searchQuery.isNotEmpty
-                          ? IconButton(
-                            icon: const Icon(Icons.clear),
-                            onPressed: () {
-                              _searchController.clear();
-                              // _onSearchChanged will be called by the listener
-                            },
-                          )
-                          : null,
+                  suffixIcon: _searchQuery.isNotEmpty
+                      ? IconButton(
+                          icon: const Icon(Icons.clear),
+                          onPressed: () {
+                            _searchController.clear();
+                            // _onSearchChanged will be called by the listener
+                          },
+                        )
+                      : null,
                 ),
               ),
             ),
@@ -281,17 +276,19 @@ class _AccountsPageState extends State<AccountsPage> {
                     return const Center(child: CircularProgressIndicator());
                   } else if (state is AccountsLoaded) {
                     // Filter accounts based on search query
-                    final List<AuthenticatorAccount> filteredAccounts =
-                        state.accounts.where((account) {
+                    final List<AuthenticatorAccount> filteredAccounts = state
+                        .accounts
+                        .where((account) {
                           final query = _searchQuery.toLowerCase();
-                          final issuerMatch =
-                              account.issuer?.toLowerCase().contains(query) ??
-                              false;
+                          final issuerMatch = account.issuer
+                              .toLowerCase()
+                              .contains(query);
                           final nameMatch = account.accountName
                               .toLowerCase()
                               .contains(query);
                           return issuerMatch || nameMatch;
-                        }).toList();
+                        })
+                        .toList();
 
                     if (filteredAccounts.isEmpty) {
                       // Check filtered list
@@ -302,20 +299,19 @@ class _AccountsPageState extends State<AccountsPage> {
                         },
                         child: LayoutBuilder(
                           // Use LayoutBuilder to allow scrolling for refresh
-                          builder:
-                              (context, constraints) => SingleChildScrollView(
-                                physics: const AlwaysScrollableScrollPhysics(),
-                                child: ConstrainedBox(
-                                  constraints: BoxConstraints(
-                                    minHeight: constraints.maxHeight,
-                                  ),
-                                  child: const Center(
-                                    child: Text(
-                                      'No accounts found matching your search.', // Updated empty state message
-                                    ),
-                                  ),
+                          builder: (context, constraints) => SingleChildScrollView(
+                            physics: const AlwaysScrollableScrollPhysics(),
+                            child: ConstrainedBox(
+                              constraints: BoxConstraints(
+                                minHeight: constraints.maxHeight,
+                              ),
+                              child: const Center(
+                                child: Text(
+                                  'No accounts found matching your search.', // Updated empty state message
                                 ),
                               ),
+                            ),
+                          ),
                         ),
                       );
                     }
@@ -323,13 +319,12 @@ class _AccountsPageState extends State<AccountsPage> {
                     return Card(
                       // Wrap with Card
                       elevation: 1,
-                      color:
-                          isDarkMode
-                              ? AppColors
-                                  .cCardDarkColor // Use custom dark color
-                              : Theme.of(
-                                context,
-                              ).cardColor, // Use default theme color for light mode
+                      color: isDarkMode
+                          ? AppColors
+                                .cCardDarkColor // Use custom dark color
+                          : Theme.of(
+                              context,
+                            ).cardColor, // Use default theme color for light mode
                       margin: const EdgeInsets.only(
                         top: 8.0,
                         left: 16.0,
@@ -347,17 +342,15 @@ class _AccountsPageState extends State<AccountsPage> {
                         child: ListView.separated(
                           // Change to ListView.separated
                           // Start ListView.separated (child of RefreshIndicator)
-                          itemCount:
-                              filteredAccounts
-                                  .length, // Use filtered list length
-                          separatorBuilder:
-                              (context, index) => const Divider(
-                                height: 1, // Make divider thin
-                                thickness: 1, // Explicit thickness
-                                // Optional: Add indent or endIndent if needed
-                                // indent: 16.0,
-                                // endIndent: 16.0,
-                              ),
+                          itemCount: filteredAccounts
+                              .length, // Use filtered list length
+                          separatorBuilder: (context, index) => const Divider(
+                            height: 1, // Make divider thin
+                            thickness: 1, // Explicit thickness
+                            // Optional: Add indent or endIndent if needed
+                            // indent: 16.0,
+                            // endIndent: 16.0,
+                          ),
                           itemBuilder: (context, index) {
                             final account =
                                 filteredAccounts[index]; // Use filtered list item
@@ -373,9 +366,8 @@ class _AccountsPageState extends State<AccountsPage> {
                                     0.6, // Show 1/2 of the slidable actions
                                 children: [
                                   SlidableAction(
-                                    onPressed:
-                                        (_) =>
-                                            _showQrCodeDialog(context, account),
+                                    onPressed: (_) =>
+                                        _showQrCodeDialog(context, account),
                                     backgroundColor: Colors.blue,
                                     foregroundColor: Colors.white,
                                     icon: Icons.qr_code,
@@ -394,8 +386,8 @@ class _AccountsPageState extends State<AccountsPage> {
                                     // label: 'Edit',
                                   ),
                                   SlidableAction(
-                                    onPressed:
-                                        (_) => _showDeleteConfirmationDialog(
+                                    onPressed: (_) =>
+                                        _showDeleteConfirmationDialog(
                                           context,
                                           account,
                                         ),
@@ -473,14 +465,9 @@ class _AccountsPageState extends State<AccountsPage> {
                                                   BorderRadius.circular(4.0),
                                               child: Image.asset(
                                                 logoPath,
-                                                fit:
-                                                    BoxFit
-                                                        .contain, // Use contain to avoid stretching
-                                                errorBuilder: (
-                                                  context,
-                                                  error,
-                                                  stackTrace,
-                                                ) {
+                                                fit: BoxFit
+                                                    .contain, // Use contain to avoid stretching
+                                                errorBuilder: (context, error, stackTrace) {
                                                   // Fallback icon if image fails to load
                                                   return Container(
                                                     // Add a background for the fallback icon
@@ -489,9 +476,8 @@ class _AccountsPageState extends State<AccountsPage> {
                                                     child: const Icon(
                                                       Icons.shield_outlined,
                                                       size: 24,
-                                                      color:
-                                                          Colors
-                                                              .grey, // Grey icon color
+                                                      color: Colors
+                                                          .grey, // Grey icon color
                                                     ),
                                                   );
                                                 },
@@ -507,8 +493,7 @@ class _AccountsPageState extends State<AccountsPage> {
                                                   CrossAxisAlignment.start,
                                               children: [
                                                 Text(
-                                                  account.issuer ??
-                                                      'Unknown Issuer',
+                                                  account.issuer,
                                                   style: Theme.of(context)
                                                       .textTheme
                                                       .bodyMedium
@@ -521,10 +506,9 @@ class _AccountsPageState extends State<AccountsPage> {
                                                 ),
                                                 Text(
                                                   account.accountName,
-                                                  style:
-                                                      Theme.of(
-                                                        context,
-                                                      ).textTheme.bodySmall,
+                                                  style: Theme.of(
+                                                    context,
+                                                  ).textTheme.bodySmall,
                                                   overflow:
                                                       TextOverflow.ellipsis,
                                                   maxLines: 1,
@@ -590,7 +574,7 @@ class _AccountsPageState extends State<AccountsPage> {
       '${account.issuer}:${account.accountName}',
     );
     final secret = account.secretKey;
-    final issuer = Uri.encodeComponent(account.issuer ?? '');
+    final issuer = Uri.encodeComponent(account.issuer);
     final algorithm = account.algorithm.toUpperCase();
     final digits = account.digits;
     final period = account.period;
@@ -608,7 +592,7 @@ class _AccountsPageState extends State<AccountsPage> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
-                Text('Issuer: ${account.issuer ?? 'N/A'}'),
+                Text('Issuer: ${account.issuer}'),
                 Text('Account: ${account.accountName}'),
                 const SizedBox(height: 16),
                 Center(
@@ -696,7 +680,7 @@ class _AccountsPageState extends State<AccountsPage> {
               ),
               const SizedBox(height: 8),
               Text(
-                'Issuer: ${account.issuer ?? 'N/A'}',
+                'Issuer: ${account.issuer}',
                 style: const TextStyle(fontWeight: FontWeight.bold),
               ),
               Text('Account: ${account.accountName}'),
@@ -720,7 +704,7 @@ class _AccountsPageState extends State<AccountsPage> {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
                     content: Text(
-                      'Deleted ${account.issuer ?? 'Account'} (${account.accountName})',
+                      'Deleted ${account.issuer} (${account.accountName})',
                     ),
                     duration: const Duration(seconds: 2),
                   ),

@@ -2,7 +2,7 @@ import 'dart:async'; // Added for StreamSubscription
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:provider/provider.dart'; // Import Provider
+// Import Provider
 import 'package:hyper_authenticator/features/auth/presentation/bloc/auth_bloc.dart'; // For logout
 import 'package:hyper_authenticator/features/settings/presentation/bloc/settings_bloc.dart';
 import 'package:hyper_authenticator/features/sync/presentation/bloc/sync_bloc.dart'; // Added
@@ -11,7 +11,7 @@ import 'package:hyper_authenticator/injection_container.dart';
 import 'package:intl/intl.dart'; // Added for date formatting
 import 'package:hyper_authenticator/features/authenticator/domain/entities/authenticator_account.dart';
 import 'package:hyper_authenticator/features/auth/domain/entities/user_entity.dart'; // Import UserEntity
-import 'package:hyper_authenticator/core/theme/theme_provider.dart'; // Import ThemeProvider
+// Import ThemeProvider
 import 'package:hyper_authenticator/core/constants/app_colors.dart'; // Added for _SyncSection
 
 class SettingsPage extends StatelessWidget {
@@ -33,8 +33,9 @@ class SettingsPage extends StatelessWidget {
       ],
       child: Scaffold(
         appBar: AppBar(
-          backgroundColor:
-              Theme.of(context).scaffoldBackgroundColor, // Set background color
+          backgroundColor: Theme.of(
+            context,
+          ).scaffoldBackgroundColor, // Set background color
           elevation: 0, // Remove shadow
           title: const Text('Settings'),
           actions: [],
@@ -95,13 +96,12 @@ class SettingsPage extends StatelessWidget {
                   if (currentUser !=
                       null) // Only show card if user is logged in
                     Card(
-                      color:
-                          isDarkMode
-                              ? AppColors
-                                  .cCardDarkColor // Use custom dark color
-                              : Theme.of(
-                                context,
-                              ).cardColor, // Use default theme color for light mode
+                      color: isDarkMode
+                          ? AppColors
+                                .cCardDarkColor // Use custom dark color
+                          : Theme.of(
+                              context,
+                            ).cardColor, // Use default theme color for light mode
                       margin: const EdgeInsets.only(
                         bottom: 16.0,
                       ), // Add margin below the card
@@ -114,8 +114,8 @@ class SettingsPage extends StatelessWidget {
                             currentUser.name?.isNotEmpty == true
                                 ? currentUser.name![0].toUpperCase()
                                 : (currentUser.email?.isNotEmpty == true
-                                    ? currentUser.email![0].toUpperCase()
-                                    : '?'), // Fallback to email initial
+                                      ? currentUser.email![0].toUpperCase()
+                                      : '?'), // Fallback to email initial
                             // style: TextStyle(color: Theme.of(context).colorScheme.onPrimaryContainer),
                           ),
                         ),
@@ -133,13 +133,12 @@ class SettingsPage extends StatelessWidget {
                     ),
                   // --- Settings Card ---
                   Card(
-                    color:
-                        isDarkMode
-                            ? AppColors
-                                .cCardDarkColor // Use custom dark color
-                            : Theme.of(
-                              context,
-                            ).cardColor, // Use default theme color for light mode
+                    color: isDarkMode
+                        ? AppColors
+                              .cCardDarkColor // Use custom dark color
+                        : Theme.of(
+                            context,
+                          ).cardColor, // Use default theme color for light mode
                     margin: const EdgeInsets.only(
                       bottom: 16.0,
                     ), // Add margin below the card
@@ -155,32 +154,29 @@ class SettingsPage extends StatelessWidget {
                                 ? 'Use FaceID / Fingerprint to unlock the app'
                                 : 'Biometrics not available on this device',
                           ),
-                          trailing:
-                              canCheckBiometrics
-                                  ? Switch(
-                                    value: isBiometricEnabled,
-                                    activeTrackColor:
-                                        Colors
-                                            .green, // Changed to activeTrackColor
-                                    onChanged: (value) {
-                                      context.read<SettingsBloc>().add(
-                                        ToggleBiometric(isEnabled: value),
-                                      );
-                                    },
-                                  )
-                                  : null,
-                          // Disable switch if not supported
-                          onTap:
-                              canCheckBiometrics
-                                  ? () {
-                                    // Allow tapping row to toggle
+                          trailing: canCheckBiometrics
+                              ? Switch(
+                                  value: isBiometricEnabled,
+                                  activeTrackColor: Colors
+                                      .green, // Changed to activeTrackColor
+                                  onChanged: (value) {
                                     context.read<SettingsBloc>().add(
-                                      ToggleBiometric(
-                                        isEnabled: !isBiometricEnabled,
-                                      ),
+                                      ToggleBiometric(isEnabled: value),
                                     );
-                                  }
-                                  : null,
+                                  },
+                                )
+                              : null,
+                          // Disable switch if not supported
+                          onTap: canCheckBiometrics
+                              ? () {
+                                  // Allow tapping row to toggle
+                                  context.read<SettingsBloc>().add(
+                                    ToggleBiometric(
+                                      isEnabled: !isBiometricEnabled,
+                                    ),
+                                  );
+                                }
+                              : null,
                         ),
                         const Divider(),
 
@@ -202,35 +198,34 @@ class SettingsPage extends StatelessWidget {
                             // Show confirmation dialog before logging out
                             showDialog(
                               context: context,
-                              builder:
-                                  (dialogContext) => AlertDialog(
-                                    title: const Text('Confirm Logout'),
-                                    content: const Text(
-                                      'Are you sure you want to log out?',
-                                    ),
-                                    actions: [
-                                      TextButton(
-                                        onPressed:
-                                            () => Navigator.pop(dialogContext),
-                                        child: const Text('Cancel'),
-                                      ),
-                                      TextButton(
-                                        onPressed: () {
-                                          Navigator.pop(
-                                            dialogContext,
-                                          ); // Close dialog
-                                          context.read<AuthBloc>().add(
-                                            AuthSignOutRequested(), // Removed const
-                                          );
-                                          // Router redirect logic will handle navigation to login
-                                        },
-                                        child: const Text(
-                                          'Logout',
-                                          style: TextStyle(color: Colors.red),
-                                        ),
-                                      ),
-                                    ],
+                              builder: (dialogContext) => AlertDialog(
+                                title: const Text('Confirm Logout'),
+                                content: const Text(
+                                  'Are you sure you want to log out?',
+                                ),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () =>
+                                        Navigator.pop(dialogContext),
+                                    child: const Text('Cancel'),
                                   ),
+                                  TextButton(
+                                    onPressed: () {
+                                      Navigator.pop(
+                                        dialogContext,
+                                      ); // Close dialog
+                                      context.read<AuthBloc>().add(
+                                        AuthSignOutRequested(), // Removed const
+                                      );
+                                      // Router redirect logic will handle navigation to login
+                                    },
+                                    child: const Text(
+                                      'Logout',
+                                      style: TextStyle(color: Colors.red),
+                                    ),
+                                  ),
+                                ],
+                              ),
                             );
                           },
                         ),
@@ -267,14 +262,7 @@ class _SyncSectionState extends State<_SyncSection> {
     _authSubscription = context.read<AuthBloc>().stream.listen((authState) {
       // Trigger check only when authenticated and widget is mounted
       if (mounted && authState is AuthAuthenticated) {
-        print(
-          "[_SyncSectionState] AuthAuthenticated detected, dispatching CheckSyncStatus.",
-        );
         context.read<SyncBloc>().add(CheckSyncStatus());
-      } else {
-        print(
-          "[_SyncSectionState] Auth state is not AuthAuthenticated (${authState.runtimeType}), not dispatching CheckSyncStatus.",
-        );
       }
     });
 
@@ -284,9 +272,6 @@ class _SyncSectionState extends State<_SyncSection> {
       if (mounted) {
         final currentAuthState = context.read<AuthBloc>().state;
         if (currentAuthState is AuthAuthenticated) {
-          print(
-            "[_SyncSectionState] Already authenticated on build, dispatching CheckSyncStatus.",
-          );
           // Request initial status including enabled state and last sync time
           context.read<SyncBloc>().add(CheckSyncStatus());
           // Initial CheckSyncStatus is dispatched. UI will update via BlocBuilder.
@@ -306,10 +291,9 @@ class _SyncSectionState extends State<_SyncSection> {
   Widget build(BuildContext context) {
     // Access AccountsBloc to get the current list for upload
     final accountsState = context.watch<AccountsBloc>().state;
-    final currentAccounts =
-        (accountsState is AccountsLoaded)
-            ? accountsState.accounts
-            : <AuthenticatorAccount>[];
+    final currentAccounts = (accountsState is AccountsLoaded)
+        ? accountsState.accounts
+        : <AuthenticatorAccount>[];
 
     return BlocBuilder<SyncBloc, SyncState>(
       builder: (context, state) {
@@ -317,14 +301,12 @@ class _SyncSectionState extends State<_SyncSection> {
         final isDarkMode = Theme.of(context).brightness == Brightness.dark;
         bool isCurrentlySyncEnabled = false; // Default to false
         DateTime? lastSyncTime;
-        bool hasRemoteData = false;
         bool isSyncing = state is SyncInProgress;
         String syncProgressMessage = '';
 
         if (state is SyncStatusChecked) {
           isCurrentlySyncEnabled = state.isSyncEnabled;
           lastSyncTime = state.lastSyncTime;
-          hasRemoteData = state.hasRemoteData;
         } else if (state is SyncFailure) {
           isCurrentlySyncEnabled = state.isSyncEnabled;
           // Potentially retrieve last known sync time if needed, but error state takes precedence
@@ -456,39 +438,39 @@ class _SyncSectionState extends State<_SyncSection> {
               title: const Text('Sync Accounts'),
               subtitle:
                   isSyncing &&
-                          syncProgressMessage !=
-                              'Checking sync status...' // Show progress only during actual sync
-                      ? Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            syncProgressMessage, // Show specific progress message
-                            style: Theme.of(context).textTheme.bodySmall,
-                          ),
-                        ],
-                      )
-                      : statusWidget, // Otherwise show the determined status
+                      syncProgressMessage !=
+                          'Checking sync status...' // Show progress only during actual sync
+                  ? Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          syncProgressMessage, // Show specific progress message
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                      ],
+                    )
+                  : statusWidget, // Otherwise show the determined status
               trailing: IconButton(
                 iconSize: 32.0, // Increased icon size
                 icon: Icon(
                   isCurrentlySyncEnabled
                       ? Icons
-                          .cloud_done // Kept user's icon
+                            .cloud_done // Kept user's icon
                       : Icons
-                          .cloud_off_outlined, // Use filled cloud when enabled
-                  color:
-                      isDarkMode
-                          ? AppColors.cDarkIconBg
-                          : AppColors.cLightIconBg,
+                            .cloud_off_outlined, // Use filled cloud when enabled
+                  color: isDarkMode
+                      ? AppColors.cDarkIconBg
+                      : AppColors.cLightIconBg,
                 ),
-                tooltip:
-                    isCurrentlySyncEnabled ? 'Disable Sync' : 'Enable Sync',
+                tooltip: isCurrentlySyncEnabled
+                    ? 'Disable Sync'
+                    : 'Enable Sync',
                 onPressed: () {
                   // Dispatch event to BLoC to toggle the state
                   context.read<SyncBloc>().add(
@@ -512,85 +494,78 @@ class _SyncSectionState extends State<_SyncSection> {
                 child: ElevatedButton.icon(
                   icon: const Icon(Icons.sync, size: 18),
                   label: const Text('Sync Now'),
-                  onPressed:
-                      canSyncNow
-                          ? () {
-                            // Show confirmation dialog before syncing
-                            showDialog(
-                              context: context,
-                              builder:
-                                  (dialogContext) => AlertDialog(
-                                    title: const Text('Choose Sync Option'),
-                                    // Use content to explain the options briefly or remove if buttons are clear enough
-                                    content: SingleChildScrollView(
-                                      // Use SingleChildScrollView if content might overflow
-                                      child: ListBody(
-                                        children: <Widget>[
-                                          Text(
-                                            'Select how you want to synchronize your accounts:',
-                                          ),
-                                          SizedBox(
-                                            height: 16,
-                                          ), // Add some spacing
-                                          _buildSyncOption(
-                                            context: dialogContext,
-                                            // Pass dialog context
-                                            title: 'Sync and Merge',
-                                            description:
-                                                'Adds new local/cloud accounts, updates existing ones based on cloud data, then uploads the merged result.',
-                                            icon: Icons.merge_type,
-                                            color: AppColors.cPrimaryColor,
-                                            onPressed: () {
-                                              Navigator.pop(
-                                                dialogContext,
-                                              ); // Close dialog
-                                              // Dispatch the original SyncNowRequested event for merge logic
-                                              context.read<SyncBloc>().add(
-                                                SyncNowRequested(
-                                                  accountsToUpload:
-                                                      currentAccounts,
-                                                ),
-                                              );
-                                            },
-                                          ),
-                                          SizedBox(height: 12),
-                                          _buildSyncOption(
-                                            context: dialogContext,
-                                            // Pass dialog context
-                                            title: 'Sync and Overwrite Cloud',
-                                            description:
-                                                'Replaces ALL cloud data with your current local data. Use with caution!',
-                                            icon: Icons.cloud_upload_outlined,
-                                            // Or Icons.warning_amber_rounded
-                                            color: Colors.red,
-                                            onPressed: () {
-                                              Navigator.pop(
-                                                dialogContext,
-                                              ); // Close dialog
-                                              // Dispatch the new event for overwrite logic
-                                              context.read<SyncBloc>().add(
-                                                SyncOverwriteCloudRequested(
-                                                  // Use the new event
-                                                  accountsToUpload:
-                                                      currentAccounts,
-                                                ),
-                                              );
-                                            },
-                                          ),
-                                        ],
-                                      ),
+                  onPressed: canSyncNow
+                      ? () {
+                          // Show confirmation dialog before syncing
+                          showDialog(
+                            context: context,
+                            builder: (dialogContext) => AlertDialog(
+                              title: const Text('Choose Sync Option'),
+                              // Use content to explain the options briefly or remove if buttons are clear enough
+                              content: SingleChildScrollView(
+                                // Use SingleChildScrollView if content might overflow
+                                child: ListBody(
+                                  children: <Widget>[
+                                    Text(
+                                      'Select how you want to synchronize your accounts:',
                                     ),
-                                    actions: [
-                                      TextButton(
-                                        onPressed:
-                                            () => Navigator.pop(dialogContext),
-                                        child: const Text('Cancel'),
-                                      ),
-                                    ],
-                                  ),
-                            );
-                          }
-                          : null, // Disable if not enabled, syncing, or no accounts
+                                    SizedBox(height: 16), // Add some spacing
+                                    _buildSyncOption(
+                                      context: dialogContext,
+                                      // Pass dialog context
+                                      title: 'Sync and Merge',
+                                      description:
+                                          'Adds new local/cloud accounts, updates existing ones based on cloud data, then uploads the merged result.',
+                                      icon: Icons.merge_type,
+                                      color: AppColors.cPrimaryColor,
+                                      onPressed: () {
+                                        Navigator.pop(
+                                          dialogContext,
+                                        ); // Close dialog
+                                        // Dispatch the original SyncNowRequested event for merge logic
+                                        context.read<SyncBloc>().add(
+                                          SyncNowRequested(
+                                            accountsToUpload: currentAccounts,
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                    SizedBox(height: 12),
+                                    _buildSyncOption(
+                                      context: dialogContext,
+                                      // Pass dialog context
+                                      title: 'Sync and Overwrite Cloud',
+                                      description:
+                                          'Replaces ALL cloud data with your current local data. Use with caution!',
+                                      icon: Icons.cloud_upload_outlined,
+                                      // Or Icons.warning_amber_rounded
+                                      color: Colors.red,
+                                      onPressed: () {
+                                        Navigator.pop(
+                                          dialogContext,
+                                        ); // Close dialog
+                                        // Dispatch the new event for overwrite logic
+                                        context.read<SyncBloc>().add(
+                                          SyncOverwriteCloudRequested(
+                                            // Use the new event
+                                            accountsToUpload: currentAccounts,
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              actions: [
+                                TextButton(
+                                  onPressed: () => Navigator.pop(dialogContext),
+                                  child: const Text('Cancel'),
+                                ),
+                              ],
+                            ),
+                          );
+                        }
+                      : null, // Disable if not enabled, syncing, or no accounts
                   style: ElevatedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 12,
@@ -636,7 +611,7 @@ class _SyncSectionState extends State<_SyncSection> {
       ),
       style: OutlinedButton.styleFrom(
         foregroundColor: color,
-        side: BorderSide(color: color.withOpacity(0.5)),
+        side: BorderSide(color: color.withValues(alpha: 0.5)),
         alignment: Alignment.centerLeft,
         // Align icon and text to the left
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),

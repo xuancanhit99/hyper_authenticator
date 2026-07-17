@@ -1,106 +1,97 @@
 # Trạng thái dự án
 
-Được xác minh ngày 17 tháng 7 năm 2026 trên repository local có base HEAD là `6bf2598`. Working tree khi đó đã có thay đổi không liên quan ở iOS, macOS và `pubspec.lock`; các thay đổi đó không được đánh giá trong tài liệu này.
+Baseline được xác minh ngày **17 tháng 7 năm 2026** trên macOS 26.5.1.
 
 ## Tổng quan
 
-Hyper Authenticator là ứng dụng Flutter ở chất lượng alpha. Trải nghiệm TOTP local đã được triển khai phần lớn. Authentication và sync Supabase thủ công cũng đã có, nhưng các khoảng trống về bảo mật, mất dữ liệu, kiểm thử và cấu hình release khiến ứng dụng chưa thể dùng production với authenticator secret thật.
+Hyper Authenticator là ứng dụng Flutter alpha hướng tới Android, iOS, macOS, Windows, Linux và Web. Luồng TOTP local, authentication, app lock và sync thủ công đã có. Đợt hiện đại hóa hiện tại đã nâng toolchain/dependency, sửa các lỗi đúng đắn quan trọng, bổ sung test/CI và đưa ba target có thể chạy trên host hiện tại về trạng thái build được.
 
-## Toolchain đã xác minh
+Ứng dụng **chưa sẵn sàng production** với secret thật vì cloud sync vẫn plaintext, upload không atomic và repository chưa có Supabase schema/RLS migration có thể tái lập.
 
-- Flutter 3.44.6 stable.
-- Dart 3.12.2.
-- Constraint trong `pubspec`: Dart 3.7.2 hoặc tương thích.
-- Dependency resolution trong `pubspec.lock`: Dart từ 3.10.0-0 trở lên.
-- Phiên bản ứng dụng: 1.0.0+9.
-- iOS và macOS đã được Flutter 3.44 migrate sang Swift Package Manager, đồng thời giữ CocoaPods làm fallback cho plugin chưa hỗ trợ SwiftPM.
+## Baseline toolchain và dependency
 
-## Ma trận tính năng
+- Flutter 3.44.6 stable, Dart 3.12.2.
+- Dart constraint: `^3.12.0`.
+- Phiên bản ứng dụng: `1.0.0+9`.
+- Mọi direct dependency ở phiên bản mới nhất mà dependency solver của baseline này chấp nhận.
+- `build_runner` giữ ở 2.15.1 vì 2.15.2 xung đột với version `meta` được Flutter test SDK pin.
+- Apple runner dùng Swift Package Manager; CocoaPods integration và lockfile cũ đã được loại bỏ.
 
-| Tính năng | Trạng thái | Ghi chú |
+## Kết quả xác minh
+
+| Kiểm tra | Kết quả |
+|---|---|
+| `flutter doctor -v` | Không có lỗi toolchain |
+| `dart format --output=none --set-exit-if-changed lib test tool` | Pass |
+| `flutter analyze` | Pass, không có diagnostic |
+| `flutter test` | 10 test pass |
+| Android `flutter build apk --debug` | Pass |
+| Web `flutter build web --release` | Pass |
+| macOS `flutter build macos --debug` | Pass |
+| iOS simulator build | Chưa chạy được local vì thiếu iOS 26.5 Simulator Runtime |
+| Windows/Linux build | Không thể build native trên macOS; CI đã có job tương ứng |
+
+Test hiện có bao phủ JSON round-trip, compatibility với record cũ, parse URI `otpauth`, validation tham số TOTP, RFC 6238 SHA1 known-answer vector và auth-state sau sign-in/sign-up. Chưa có widget/integration test đầy đủ.
+
+## Ma trận platform
+
+| Platform | Trạng thái | Ghi chú |
 |---|---|---|
-| Đăng nhập email/mật khẩu Supabase | Đã triển khai | Router bắt buộc, dù tài liệu cũ từng mô tả là tùy chọn |
-| Đăng ký | Đã triển khai | Tên được lưu trong Supabase user metadata |
-| Email khôi phục mật khẩu | Một phần | Mobile deep link và cấu hình web phụ trợ chưa hoàn thiện |
-| Lưu TOTP local | Đã triển khai | FlutterSecureStorage với index key và JSON cho từng tài khoản |
-| Tạo mã TOTP | Đã triển khai, còn lỗi | Domain nhận algorithm, digits, period; lưu tài khoản mới có thể làm mất giá trị không mặc định |
-| Nhập QR bằng camera | Đã triển khai | Chỉ hỗ trợ `otpauth` TOTP |
-| Nhập QR từ thư viện | Đã triển khai | Dùng MobileScanner phân tích ảnh |
-| Nhập thủ công | Đã triển khai | Mặc định SHA1, 6 digits, 30 giây |
-| Tìm kiếm, copy, sửa, xóa, xuất QR | Đã triển khai | UI chỉ có tiếng Anh |
-| Khóa bằng credential thiết bị | Đã triển khai, còn thiếu | Dùng sinh trắc học hoặc credential của OS, không phải PIN riêng của app |
-| Chọn theme | Đã triển khai | SharedPreferences |
-| Gộp cloud | Đã triển khai, có nguy cơ mất dữ liệu | Gộp kiểu chỉ thêm rồi upload snapshot mang tính phá hủy |
-| Ghi đè cloud | Đã triển khai, có nguy cơ mất dữ liệu | Xóa toàn bộ rồi chèn toàn bộ |
-| E2EE phía client | Dự kiến | Luồng sync hiện tại không encrypt/decrypt |
-| Automated test | Chưa triển khai | Chỉ có Flutter template test đã comment toàn bộ |
-| CI | Chưa triển khai | Không có pipeline được track |
-| Supabase schema tái lập được | Chưa triển khai | Không có migration hoặc generated schema contract |
-| Cấu hình release production | Chưa sẵn sàng | Signing, permission, entitlement, privacy và xác minh platform còn thiếu |
+| Android | Đã build local | Camera QR, image import và device authentication được bật |
+| iOS | Đã cấu hình | SwiftPM, entitlement và usage description đã cập nhật; cần runtime/thiết bị để xác minh |
+| macOS | Đã build local | Sandbox network/camera đã cấu hình; release signing/keychain cần xác minh |
+| Web | Đã build local | Camera QR được hỗ trợ; không bật local authentication |
+| Windows | CI build | Nhập thủ công hoạt động theo thiết kế; scanner bị ẩn vì plugin không hỗ trợ |
+| Linux | CI build | Nhập thủ công hoạt động theo thiết kế; scanner và local authentication bị ẩn |
 
-## Release blocker
+Có artifact build không đồng nghĩa platform đã đủ điều kiện phát hành; release signing, installer, permission và kiểm thử thiết bị vẫn theo [Deployment](DEPLOYMENT.md).
 
-### Bảo mật và bảo vệ dữ liệu
+## Cải tiến đã áp dụng
 
-1. `secretKey` TOTP được serialize và upload lên Supabase mà không mã hóa phía client.
-2. URI `otpauth` đầy đủ, gồm secret, có thể bị ghi vào debug output khi quét QR.
-3. Không thể xác minh RLS đã deploy vì repository không track migration hoặc policy.
-4. Trạng thái lỗi local authentication chưa được router xem là explicit deny.
-5. Privacy policy và data flow production phải luôn đồng bộ.
+- Cấu hình Supabase chuyển từ asset `.env` sang compile-time `dart-define`.
+- Gỡ dependency không dùng; nâng toàn bộ direct dependency có thể nâng.
+- Parse TOTP tập trung, validate Base32/algorithm/digits/period và không log QR secret.
+- Giữ nguyên algorithm, digits và period khi tạo record có UUID.
+- Logout không còn xóa toàn bộ TOTP local.
+- Auth, account và sync dùng cùng shared BLoC instance.
+- App lock fail closed khi authentication lỗi và relock khi app rời foreground.
+- Ẩn scanner/local-auth trên platform plugin không hỗ trợ.
+- Sửa truy vấn `hasRemoteData` dùng đúng `account_id`.
+- Lỗi merge không còn bị nuốt rồi tiếp tục upload.
+- Android nâng Gradle/AGP/Kotlin/JVM; Apple chuyển hoàn toàn sang SwiftPM.
+- Thêm CI đa nền tảng, Dependabot và build harness cho AI Agent.
 
-### Toàn vẹn dữ liệu
+## Release blocker còn lại
 
-1. Cloud upload xóa mọi row remote trước khi chèn snapshot thay thế. Thao tác không atomic.
-2. Merge chỉ dùng issuer và `accountName` viết thường làm key. Không cập nhật conflict hoặc biểu diễn deletion.
-3. Lỗi merge một phần được log nhưng luồng vẫn có thể tiếp tục upload.
-4. Lưu tài khoản local mới tạo lại entity mà không giữ algorithm, digits và period, nên âm thầm về default.
-5. Countdown của danh sách tài khoản bị hard-code chu kỳ hiển thị 30 giây.
-6. Logout gọi `deleteAll` trên namespace secure storage dùng chung và xóa tài khoản authenticator local mà không có cảnh báo riêng.
-7. `SyncBloc` resolve một factory `AccountsBloc` khác instance UI đang hiển thị, khiến state UI có thể cũ.
+### Bảo mật và dữ liệu
 
-### Sản phẩm và vận hành
+1. TOTP secret được upload lên Supabase ở dạng plaintext; chưa có E2EE.
+2. Upload cloud xóa snapshot cũ rồi chèn snapshot mới, không atomic và không idempotent.
+3. Merge dùng `issuer + accountName` làm identity, chưa có conflict protocol hoặc tombstone.
+4. Không có migration/schema/RLS policy được version control và cross-user test.
+5. Secure storage trên Web có threat model khác native và cần review riêng.
 
-1. Cấu hình Supabase và đăng nhập là bắt buộc khi khởi động; chưa có chế độ offline-only.
-2. Deep link khôi phục mật khẩu chưa hoàn thiện.
-3. `reset-password-web` truyền Docker build argument không được dùng, trong khi `script.js` để trống cấu hình Supabase.
-4. Networking bản release Android và sandbox entitlement macOS cần được xác minh và sửa.
-5. Tên sản phẩm chưa nhất quán giữa Hyper Authenticator, HyperZ và metadata template.
-6. Không có file license rõ ràng được track.
+### Tính đúng đắn và sản phẩm
 
-## Quality baseline
+1. Countdown UI vẫn giả định chu kỳ 30 giây cho mọi account.
+2. Local storage record/index là thao tác nhiều bước, chưa có recovery protocol.
+3. Supabase authentication vẫn bắt buộc; chưa có offline-only mode.
+4. Password recovery deep link và trang web recovery chưa được cấu hình hoàn chỉnh.
+5. `reset-password-web` chưa có cơ chế inject public configuration có thể deploy.
 
-Kết quả trước lần viết lại tài liệu:
+### Phát hành
 
-    dart analyze --format=machine
+1. Chưa có license, release signing/notarization, installer và store metadata hoàn chỉnh.
+2. iOS cần xác minh trên simulator/thiết bị; Windows và Linux cần xác minh ngoài CI.
+3. Chưa có integration test cho storage, auth, lock, sync, recovery và RLS.
+4. Một số plugin Android vẫn dùng Kotlin Gradle Plugin legacy và phát cảnh báo tương thích tương lai từ Flutter; build hiện tại vẫn pass.
 
-Kết quả: 0 error, 29 warning, 72 info diagnostic.
+## CI và automation
 
-    dart format --output=none --set-exit-if-changed lib test tool
-
-Kết quả: phát hiện formatting drift trong 7 file Dart có sẵn.
-
-    flutter test
-
-Kết quả: checkout không có `.env` sẽ thất bại ở bước tạo asset bundle. Khi dùng `.env` placeholder local, test vẫn thất bại vì `test/widget_test.dart` không định nghĩa `main`.
-
-Test inventory:
-
-- `test/widget_test.dart` đã bị comment toàn bộ.
-- Không có thư mục `integration_test`.
-- Native test target iOS và macOS chỉ là template, không có product test.
-- Không có CI workflow được track.
-
-## Vị trí bằng chứng
-
-- Bootstrap và Supabase bắt buộc: `lib/main.dart`.
-- Auth redirect bắt buộc và local lock: `lib/core/router/app_router.dart`.
-- Persistence tài khoản local: `lib/features/authenticator/data/datasources/authenticator_local_data_source.dart`.
-- Tạo TOTP: `lib/features/authenticator/domain/usecases/generate_totp_code.dart`.
-- Upload cloud snapshot: `lib/features/sync/data/datasources/supabase_sync_remote_data_source_impl.dart`.
-- Hành vi merge: `lib/features/authenticator/presentation/bloc/accounts_bloc.dart`.
-- Xóa storage khi logout: `lib/features/auth/presentation/bloc/auth_bloc.dart`.
-- Trang recovery: `reset-password-web`.
+- `.github/workflows/ci.yml` pin Flutter 3.44.6 và build Android, iOS simulator, macOS, Web, Windows, Linux.
+- Quality job chạy documentation gate, generated-code drift, format, analyze và test.
+- `.github/dependabot.yml` kiểm tra dependency Pub và GitHub Actions hằng tuần.
 
 ## Cập nhật tài liệu này
 
-Chỉ đổi trạng thái sau khi code và kết quả xác minh khớp nhau. Ghi command hoặc test tạo ra baseline mới. Chuyển defect đã xử lý sang release note hoặc ADR thay vì giữ cảnh báo lỗi thời tại đây.
+Chỉ đổi trạng thái khi có command hoặc test làm bằng chứng. Nếu một platform chưa được chạy trên host/device tương ứng, ghi **chưa xác minh** thay vì suy luận từ việc runner tồn tại.

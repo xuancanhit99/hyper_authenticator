@@ -46,7 +46,6 @@ class SyncBloc extends Bloc<SyncEvent, SyncState> {
   ) : super(SyncInitial()) {
     // Load initial sync enabled state
     _isSyncEnabled = _prefs.getBool(_syncEnabledPrefKey) ?? false;
-    print("[SyncBloc] Initial sync enabled state loaded: $_isSyncEnabled");
     // Register event handlers
     on<CheckSyncStatus>(_onCheckSyncStatus);
     on<UploadAccountsRequested>(_onUploadAccountsRequested);
@@ -68,14 +67,8 @@ class SyncBloc extends Bloc<SyncEvent, SyncState> {
     // Check if we are waiting for a merge operation to complete
     if (_mergeCompleter != null && !_mergeCompleter!.isCompleted) {
       if (accountsState is AccountsLoaded) {
-        print(
-          "[SyncBloc] AccountsBloc emitted AccountsLoaded after merge event. Completing merge.",
-        );
         _mergeCompleter!.complete(accountsState.accounts);
       } else if (accountsState is AccountsError) {
-        print(
-          "[SyncBloc] AccountsBloc emitted AccountsError during merge. Completing merge with error.",
-        );
         _mergeCompleter!.completeError(
           Exception(
             "AccountsBloc failed during merge: ${accountsState.message}",
@@ -166,7 +159,6 @@ class SyncBloc extends Bloc<SyncEvent, SyncState> {
     _isSyncEnabled = event.isEnabled;
     // Save the new state to SharedPreferences
     await _prefs.setBool(_syncEnabledPrefKey, _isSyncEnabled);
-    print("Sync enabled toggled to: $_isSyncEnabled"); // For debugging
 
     // Re-check status to reflect the change and get current data state
     add(CheckSyncStatus());
@@ -206,21 +198,15 @@ class SyncBloc extends Bloc<SyncEvent, SyncState> {
         _mergeCompleter = Completer<List<AuthenticatorAccount>>();
         List<AuthenticatorAccount> accountsToUpload; // Declare here
         try {
-          print("[SyncBloc] Waiting for AccountsBloc merge completion...");
           // Wait for the completer, with a timeout
           accountsToUpload = await _mergeCompleter!.future.timeout(
             // Assign here
             const Duration(seconds: 10), // Adjust timeout as needed
             onTimeout: () {
-              print("[SyncBloc] Timeout waiting for AccountsBloc merge.");
               throw TimeoutException("Timeout waiting for local data update");
             },
           );
-          print(
-            "[SyncBloc] AccountsBloc merge completed. Accounts to upload: ${accountsToUpload.length}",
-          );
         } catch (e) {
-          print("[SyncBloc] Error waiting for AccountsBloc merge: $e");
           emit(
             SyncFailure(
               message: "Failed to get updated local accounts: ${e.toString()}",
@@ -295,7 +281,6 @@ class SyncBloc extends Bloc<SyncEvent, SyncState> {
 
   @override
   Future<void> close() {
-    print("[SyncBloc] Closing SyncBloc and cancelling subscriptions.");
     _accountsSubscription?.cancel();
     // If a merge operation is somehow pending when the bloc closes, complete it with an error.
     if (_mergeCompleter != null && !_mergeCompleter!.isCompleted) {
