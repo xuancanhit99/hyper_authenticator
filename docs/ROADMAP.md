@@ -10,10 +10,11 @@ Roadmap được ưu tiên theo rủi ro, không phải cam kết thời gian.
 - [x] CI pin Flutter và build sáu platform cùng Web.
 - [x] Nâng direct dependency và native toolchain.
 - [x] Thống nhất display name Hyper Authenticator.
-- [ ] Chọn và thêm license.
-- [ ] Thêm Supabase schema/RLS migration được version control.
+- [x] Chọn và thêm Apache License 2.0.
+- [x] Thêm Supabase schema/RLS migration và cross-user contract test được version control.
 
-Exit criteria còn lại: schema/RLS gate deterministic và license rõ ràng.
+Exit criteria còn lại: license rõ ràng; remote contract gate cần ephemeral CI
+environment trước khi tự động hóa hoàn toàn.
 
 ## Giai đoạn 1 — Tính đúng đắn local
 
@@ -22,10 +23,11 @@ Exit criteria còn lại: schema/RLS gate deterministic và license rõ ràng.
 - [x] Xóa log chứa QR secret.
 - [x] Logout không xóa TOTP local.
 - [x] App-lock error fail closed và relock theo lifecycle.
-- [ ] Countdown theo period từng account.
-- [ ] Recovery cho secure-storage record/index.
+- [x] Countdown theo period từng account.
+- [x] Recovery cho secure-storage record/index bằng generation copy-on-write.
+- [ ] Compaction và device-backed test cho local storage v2.
 - [ ] BLoC/widget/device integration coverage.
-- [ ] Quyết định ownership khi nhiều Supabase user dùng cùng thiết bị.
+- [x] Local vault thuộc installation và độc lập Supabase user.
 
 Exit criteria: TOTP, persistence và lock có regression/integration coverage trên platform chính.
 
@@ -33,7 +35,8 @@ Exit criteria: TOTP, persistence và lock có regression/integration coverage tr
 
 - [x] UI và sync dùng chung account-state owner.
 - [x] Partial merge failure dừng upload.
-- [ ] ADR cho identity, deletion, conflict, concurrency và atomic publication.
+- [x] Merge giữ stable ID và chỉ báo success sau local persistence.
+- [x] ADR cho encrypted snapshot, optimistic revision và atomic publication.
 - [ ] Thay xóa-rồi-chèn bằng protocol atomic/idempotent.
 - [ ] Tombstone hoặc revisioned snapshot.
 - [ ] Interrupted write/retry/two-device tests.
@@ -42,9 +45,9 @@ Exit criteria: network hoặc concurrency failure không làm mất snapshot h�
 
 ## Giai đoạn 3 — E2EE
 
-- [ ] ADR key hierarchy/recovery.
-- [ ] Authenticated encryption có version.
-- [ ] Onboarding đa thiết bị và recovery.
+- [x] ADR key hierarchy/recovery.
+- [x] AES-256-GCM snapshot primitive và recovery-key wrapping có version.
+- [ ] Onboarding UI, export/import recovery key và multi-device recovery E2E.
 - [ ] Migration row plaintext.
 - [ ] Chứng minh backend chỉ thấy ciphertext.
 
@@ -52,8 +55,9 @@ Exit criteria: backend-blind secret storage được test và review.
 
 ## Giai đoạn 4 — Auth và product flow
 
-- [ ] Quyết định offline-only.
-- [ ] Chọn recovery surface, hoàn thiện deep link và test.
+- [x] Local vault offline-first; Supabase login chỉ cho cloud feature.
+- [x] Chọn Web recovery và version-control template token-hash.
+- [ ] Deploy recovery template/allow-list và test email E2E.
 - [ ] Data export/deletion/retention hướng tới user.
 - [ ] Localization đầy đủ và accessibility baseline.
 
@@ -67,7 +71,8 @@ Exit criteria: behavior, privacy policy và store declaration khớp nhau.
 - [ ] Android production signing/Play checks.
 - [ ] macOS signing/notarization.
 - [ ] Windows/Linux installer, signing và device test.
-- [ ] Web threat model/header/deployment hardening.
+- [x] Recovery Web có runtime config, dependency pin và container/header hardening.
+- [ ] Recovery Web end-to-end, email template và production hosting review.
 - [ ] Release provenance, rollback và incident process.
 
 Exit criteria: gate trong `DEPLOYMENT.md` pass riêng cho từng platform được quảng bá.

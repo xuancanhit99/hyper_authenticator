@@ -1,6 +1,7 @@
 // lib/features/auth/data/datasources/auth_remote_data_source.dart
 import 'package:injectable/injectable.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:hyper_authenticator/core/config/app_config.dart';
 import 'package:hyper_authenticator/core/error/exceptions.dart';
 
 abstract class AuthRemoteDataSource {
@@ -30,8 +31,9 @@ abstract class AuthRemoteDataSource {
 @LazySingleton(as: AuthRemoteDataSource)
 class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   final SupabaseClient _supabaseClient;
+  final AppConfig _appConfig;
 
-  AuthRemoteDataSourceImpl(this._supabaseClient);
+  AuthRemoteDataSourceImpl(this._supabaseClient, this._appConfig);
 
   @override
   User? get currentUser => _supabaseClient.auth.currentUser;
@@ -103,8 +105,17 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
 
   @override
   Future<void> recoverPassword(String email) async {
+    final recoveryUrl = _appConfig.passwordRecoveryUrl;
+    if (recoveryUrl == null) {
+      throw const AuthServerException(
+        'Password recovery chưa được cấu hình cho environment này.',
+      );
+    }
     try {
-      await _supabaseClient.auth.resetPasswordForEmail(email);
+      await _supabaseClient.auth.resetPasswordForEmail(
+        email,
+        redirectTo: recoveryUrl,
+      );
     } on AuthException catch (e) {
       throw AuthServerException(e.message);
     } catch (_) {

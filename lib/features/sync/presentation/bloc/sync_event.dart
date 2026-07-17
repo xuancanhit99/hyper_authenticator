@@ -36,14 +36,7 @@ class ToggleSyncEnabled extends SyncEvent {
 /// Event triggered by the "Sync Now" button.
 /// Performs Download (add only), Merge (implicit), Confirm, Upload (overwrite).
 class SyncNowRequested extends SyncEvent {
-  // Although download happens first, we need the current local accounts
-  // for the potential upload step after confirmation.
-  final List<AuthenticatorAccount> accountsToUpload;
-
-  const SyncNowRequested({required this.accountsToUpload});
-
-  @override
-  List<Object?> get props => [accountsToUpload];
+  const SyncNowRequested();
 }
 
 /// Event triggered to explicitly overwrite cloud data with local data.

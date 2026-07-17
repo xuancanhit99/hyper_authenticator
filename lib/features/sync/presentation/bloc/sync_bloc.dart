@@ -1,13 +1,14 @@
-import 'dart:async'; // Import async library for Completer and StreamSubscription
-
 import 'package:bloc/bloc.dart';
 import 'package:equatable/equatable.dart';
 import 'package:hyper_authenticator/core/usecases/usecase.dart';
+import 'package:hyper_authenticator/core/config/app_config.dart';
+import 'package:hyper_authenticator/core/error/failures.dart';
 import 'package:hyper_authenticator/features/authenticator/domain/entities/authenticator_account.dart';
 import 'package:hyper_authenticator/features/authenticator/presentation/bloc/accounts_bloc.dart'; // Needed to update accounts after download
 import 'package:hyper_authenticator/features/sync/domain/usecases/download_accounts_usecase.dart';
 import 'package:hyper_authenticator/features/sync/domain/usecases/get_last_sync_time_usecase.dart'; // Use case class renamed to GetLastSyncTimeUseCase
 import 'package:hyper_authenticator/features/sync/domain/usecases/has_remote_data_usecase.dart';
+import 'package:hyper_authenticator/features/sync/domain/usecases/merge_accounts_usecase.dart';
 import 'package:hyper_authenticator/features/sync/domain/usecases/upload_accounts_usecase.dart';
 import 'package:injectable/injectable.dart';
 import 'package:shared_preferences/shared_preferences.dart'; // Import SharedPreferences
@@ -20,18 +21,16 @@ class SyncBloc extends Bloc<SyncEvent, SyncState> {
   final HasRemoteDataUseCase _hasRemoteDataUseCase;
   final UploadAccountsUseCase _uploadAccountsUseCase;
   final DownloadAccountsUseCase _downloadAccountsUseCase;
+  final MergeAccountsUseCase _mergeAccountsUseCase;
   final GetLastSyncTimeUseCase // Use renamed class
   _getLastSyncTimeUseCase; // Rename field for consistency
   final AccountsBloc _accountsBloc;
   final SharedPreferences _prefs; // Add SharedPreferences dependency
+  final AppConfig _appConfig;
 
   // --- State for Sync Enabled ---
   // TODO: Persist this state using SharedPreferences or similar
   bool _isSyncEnabled = false;
-
-  // --- Bloc-to-Bloc Communication ---
-  StreamSubscription<AccountsState>? _accountsSubscription;
-  Completer<List<AuthenticatorAccount>>? _mergeCompleter;
 
   static const String _syncEnabledPrefKey =
       'sync_enabled'; // Define key for preference
@@ -40,12 +39,16 @@ class SyncBloc extends Bloc<SyncEvent, SyncState> {
     this._hasRemoteDataUseCase,
     this._uploadAccountsUseCase,
     this._downloadAccountsUseCase,
+    this._mergeAccountsUseCase,
     this._getLastSyncTimeUseCase, // Use renamed parameter
     this._accountsBloc,
     this._prefs, // Inject SharedPreferences
+    this._appConfig,
   ) : super(SyncInitial()) {
     // Load initial sync enabled state
-    _isSyncEnabled = _prefs.getBool(_syncEnabledPrefKey) ?? false;
+    _isSyncEnabled =
+        _appConfig.plaintextSyncAvailable &&
+        (_prefs.getBool(_syncEnabledPrefKey) ?? false);
     // Register event handlers
     on<CheckSyncStatus>(_onCheckSyncStatus);
     on<UploadAccountsRequested>(_onUploadAccountsRequested);
@@ -55,28 +58,6 @@ class SyncBloc extends Bloc<SyncEvent, SyncState> {
     on<SyncOverwriteCloudRequested>(
       _onSyncOverwriteCloudRequested,
     ); // Register new handler
-
-    // Start listening to AccountsBloc
-    _accountsSubscription = _accountsBloc.stream.listen(
-      _onAccountsStateChanged,
-    );
-  }
-
-  // --- Listener for AccountsBloc State Changes ---
-  void _onAccountsStateChanged(AccountsState accountsState) {
-    // Check if we are waiting for a merge operation to complete
-    if (_mergeCompleter != null && !_mergeCompleter!.isCompleted) {
-      if (accountsState is AccountsLoaded) {
-        _mergeCompleter!.complete(accountsState.accounts);
-      } else if (accountsState is AccountsError) {
-        _mergeCompleter!.completeError(
-          Exception(
-            "AccountsBloc failed during merge: ${accountsState.message}",
-          ),
-        );
-      }
-      // Ignore other states like AccountsLoading while waiting for the final result
-    }
   }
 
   // --- Event Handlers ---
@@ -85,6 +66,15 @@ class SyncBloc extends Bloc<SyncEvent, SyncState> {
     CheckSyncStatus event,
     Emitter<SyncState> emit,
   ) async {
+    if (!_appConfig.plaintextSyncAvailable) {
+      emit(
+        const SyncUnavailable(
+          message:
+              'Cloud sync tạm khóa cho đến khi mã hóa đầu cuối được triển khai.',
+        ),
+      );
+      return;
+    }
     // _isSyncEnabled is already loaded in the constructor
     emit(const SyncInProgress(message: 'Checking sync status...'));
     final hasDataResult = await _hasRemoteDataUseCase(NoParams());
@@ -116,6 +106,9 @@ class SyncBloc extends Bloc<SyncEvent, SyncState> {
     UploadAccountsRequested event,
     Emitter<SyncState> emit,
   ) async {
+    if (!_ensureSyncAvailable(emit)) {
+      return;
+    }
     emit(const SyncInProgress(message: 'Uploading...'));
     final result = await _uploadAccountsUseCase(
       UploadAccountsParams(accounts: event.accountsToUpload),
@@ -136,18 +129,31 @@ class SyncBloc extends Bloc<SyncEvent, SyncState> {
     DownloadAccountsRequested event,
     Emitter<SyncState> emit,
   ) async {
+    if (!_ensureSyncAvailable(emit)) {
+      return;
+    }
     emit(const SyncInProgress(message: 'Downloading...'));
     final result = await _downloadAccountsUseCase(NoParams());
-    result.fold(
-      (failure) => emit(
+    await result.fold(
+      (failure) async => emit(
         SyncFailure(message: failure.message, isSyncEnabled: _isSyncEnabled),
       ),
-      (downloadedAccounts) {
-        // Assuming ReplaceAccountsEvent exists and handles merge/replace logic
-        _accountsBloc.add(ReplaceAccountsEvent(accounts: downloadedAccounts));
-        emit(SyncSuccess(message: 'Accounts downloaded successfully.'));
-        // Trigger status check
-        add(CheckSyncStatus());
+      (downloadedAccounts) async {
+        emit(const SyncInProgress(message: 'Updating local data...'));
+        final mergeResult = await _mergeAccountsUseCase(downloadedAccounts);
+        mergeResult.fold(
+          (failure) => emit(
+            SyncFailure(
+              message: 'Local merge failed: ${failure.message}',
+              isSyncEnabled: _isSyncEnabled,
+            ),
+          ),
+          (_) {
+            _accountsBloc.add(LoadAccounts());
+            emit(SyncSuccess(message: 'Accounts downloaded successfully.'));
+            add(CheckSyncStatus());
+          },
+        );
       },
     );
   }
@@ -156,6 +162,17 @@ class SyncBloc extends Bloc<SyncEvent, SyncState> {
     ToggleSyncEnabled event,
     Emitter<SyncState> emit,
   ) async {
+    if (!_appConfig.plaintextSyncAvailable) {
+      _isSyncEnabled = false;
+      await _prefs.remove(_syncEnabledPrefKey);
+      emit(
+        const SyncUnavailable(
+          message:
+              'Không thể bật cloud sync plaintext. Hãy chờ phiên bản E2EE.',
+        ),
+      );
+      return;
+    }
     _isSyncEnabled = event.isEnabled;
     // Save the new state to SharedPreferences
     await _prefs.setBool(_syncEnabledPrefKey, _isSyncEnabled);
@@ -168,6 +185,9 @@ class SyncBloc extends Bloc<SyncEvent, SyncState> {
     SyncNowRequested event,
     Emitter<SyncState> emit,
   ) async {
+    if (!_ensureSyncAvailable(emit)) {
+      return;
+    }
     if (!_isSyncEnabled) {
       emit(
         SyncFailure(
@@ -190,37 +210,28 @@ class SyncBloc extends Bloc<SyncEvent, SyncState> {
         ),
       ),
       (downloadedAccounts) async {
-        // 2. Merge/Replace in AccountsBloc
+        // 2. Persist the merge directly through the domain boundary.
         emit(const SyncInProgress(message: 'Updating local data...'));
-        _accountsBloc.add(ReplaceAccountsEvent(accounts: downloadedAccounts));
-
-        // --- Wait for AccountsBloc to finish processing ---
-        _mergeCompleter = Completer<List<AuthenticatorAccount>>();
-        List<AuthenticatorAccount> accountsToUpload; // Declare here
-        try {
-          // Wait for the completer, with a timeout
-          accountsToUpload = await _mergeCompleter!.future.timeout(
-            // Assign here
-            const Duration(seconds: 10), // Adjust timeout as needed
-            onTimeout: () {
-              throw TimeoutException("Timeout waiting for local data update");
-            },
-          );
-        } catch (e) {
+        final mergeResult = await _mergeAccountsUseCase(downloadedAccounts);
+        Failure? mergeFailure;
+        List<AuthenticatorAccount>? accountsToUpload;
+        mergeResult.fold(
+          (failure) => mergeFailure = failure,
+          (accounts) => accountsToUpload = accounts,
+        );
+        if (mergeFailure != null) {
           emit(
             SyncFailure(
-              message: "Failed to get updated local accounts: ${e.toString()}",
+              message: 'Local merge failed: ${mergeFailure!.message}',
               isSyncEnabled: _isSyncEnabled,
             ),
           );
-          _mergeCompleter = null; // Clean up completer
           return;
-        } finally {
-          _mergeCompleter = null; // Ensure completer is cleaned up
         }
+        _accountsBloc.add(LoadAccounts());
 
         // Check if there's anything to upload *after* potential merge/replace
-        if (accountsToUpload.isEmpty) {
+        if (accountsToUpload!.isEmpty) {
           emit(
             SyncSuccess(message: 'Sync complete. Local data updated.'),
           ); // Adjusted message
@@ -231,7 +242,7 @@ class SyncBloc extends Bloc<SyncEvent, SyncState> {
         // 3. Upload (Confirmation is handled by UI)
         emit(const SyncInProgress(message: 'Uploading...'));
         final uploadResult = await _uploadAccountsUseCase(
-          UploadAccountsParams(accounts: accountsToUpload),
+          UploadAccountsParams(accounts: accountsToUpload!),
         );
 
         uploadResult.fold(
@@ -255,6 +266,9 @@ class SyncBloc extends Bloc<SyncEvent, SyncState> {
     SyncOverwriteCloudRequested event,
     Emitter<SyncState> emit,
   ) async {
+    if (!_ensureSyncAvailable(emit)) {
+      return;
+    }
     // This logic is essentially the same as a direct upload, overwriting the cloud.
     emit(
       const SyncInProgress(message: 'Overwriting cloud data...'),
@@ -279,47 +293,16 @@ class SyncBloc extends Bloc<SyncEvent, SyncState> {
     );
   }
 
-  @override
-  Future<void> close() {
-    _accountsSubscription?.cancel();
-    // If a merge operation is somehow pending when the bloc closes, complete it with an error.
-    if (_mergeCompleter != null && !_mergeCompleter!.isCompleted) {
-      _mergeCompleter!.completeError('SyncBloc closed during merge operation.');
-      _mergeCompleter = null;
+  bool _ensureSyncAvailable(Emitter<SyncState> emit) {
+    if (_appConfig.plaintextSyncAvailable) {
+      return true;
     }
-    return super.close();
+
+    emit(
+      const SyncUnavailable(
+        message: 'Cloud sync plaintext đã bị khóa để bảo vệ TOTP secret.',
+      ),
+    );
+    return false;
   }
 } // End of SyncBloc class
-
-// TODO: Define ReplaceAccountsEvent in lib/features/authenticator/presentation/bloc/accounts_event.dart
-/*
-class ReplaceAccountsEvent extends AccountsEvent {
-  final List<AuthenticatorAccount> accounts;
-  const ReplaceAccountsEvent({required this.accounts});
-  @override List<Object> get props => [accounts];
-}
-*/
-
-// TODO: Add handler for ReplaceAccountsEvent in lib/features/authenticator/presentation/bloc/accounts_bloc.dart
-/*
-  Future<void> _onReplaceAccounts(
-    ReplaceAccountsEvent event,
-    Emitter<AccountsState> emit,
-  ) async {
-    emit(AccountsLoading()); // Or keep current state?
-    // Implement merge logic here:
-    // 1. Get current local accounts (if any)
-    // 2. Create a map or set for efficient lookup of downloaded accounts.
-    // 3. Iterate through local accounts: update if exists in downloaded, keep if not.
-    // 4. Iterate through downloaded accounts: add if not already processed from local list.
-    // 5. Clear existing local storage.
-    // 6. Save the merged list back to local storage.
-    // Example (simplified, assumes AddAccount handles updates):
-    // await deleteAllAccounts(NoParams()); // Maybe not needed if AddAccount updates
-    // final mergedAccounts = _performMerge(currentLocalAccounts, event.accounts);
-    // for (final account in mergedAccounts) {
-    //    await addAccount(AddAccountParams(account: account));
-    // }
-    add(LoadAccounts()); // Fetch accounts again to reflect changes
-  }
-*/

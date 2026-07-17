@@ -1,0 +1,10 @@
+*
+!Dockerfile
+!docker-entrypoint.sh
+!nginx.conf
+!nginx-site.conf.template
+!index.html
+!style.css
+!script.js
+!logo.png
+!email-templates/recovery.html

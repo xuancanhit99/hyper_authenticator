@@ -31,7 +31,8 @@ Configuration được inject lúc compile:
 
     flutter build <target> \
       --dart-define=SUPABASE_URL=... \
-      --dart-define=SUPABASE_PUBLISHABLE_KEY=...
+      --dart-define=SUPABASE_PUBLISHABLE_KEY=... \
+      --dart-define=PASSWORD_RECOVERY_URL=https://auth.example.com/reset-password/
 
 Hoặc dùng `--dart-define-from-file=<environment-file>` trong hệ thống build. File không được đóng gói như asset. Production pipeline phải bảo đảm:
 
@@ -39,6 +40,8 @@ Hoặc dùng `--dart-define-from-file=<environment-file>` trong hệ thống bui
 - environment deterministic và không sửa artifact sau build;
 - production không thể trỏ nhầm development;
 - log không in giá trị key/URL nhạy cảm theo chính sách tổ chức.
+- `ALLOW_INSECURE_PLAINTEXT_SYNC=false`; release binary vẫn fail closed nếu define
+  này bị bật nhầm.
 
 ## Android
 
@@ -111,13 +114,108 @@ Xác minh secure storage backend/keyring, package/installer/signing, desktop int
 
 Trước khi deploy `reset-password-web`:
 
-- triển khai inject public configuration;
-- pin/self-host Supabase JavaScript dependency;
-- thêm CSP và security headers;
-- whitelist production redirect;
-- kiểm soát cache/URL material;
+- [x] inject public configuration lúc container start và từ chối secret/service key;
+- [x] pin Supabase JavaScript dependency bằng version cùng SRI;
+- [x] thêm CSP, HSTS và security headers;
+- whitelist exact production `PASSWORD_RECOVERY_URL`;
+- [x] no-store, xóa recovery material khỏi URL và không log access/session;
 - test expired, malformed, reused và successful session;
-- không log session và thêm privacy/support link.
+- cấu hình `GOTRUE_MAILER_TEMPLATES_RECOVERY` trỏ file template đóng gói;
+- smoke test email body chứa fragment `token_hash`, không phải PKCE code;
+- thêm privacy/support link phù hợp deployment production.
+
+`reset-password-web/test.sh` là gate local cho image/config/header. Trang chủ động
+từ chối `?code` PKCE từ Flutter vì không có verifier; không deploy canonical flow
+trước khi token template và end-to-end test được chốt.
+
+## E2EE sync v2 staged rollout
+
+1. Chạy `scripts/supabase/test_encrypted_vault_migration.sh` local/CI.
+2. Backup và rehearsal staging rồi áp migration additive
+   `20260718190000_create_encrypted_vault_snapshots.sql`.
+3. Chạy catalog/RLS/RPC conflict test bằng isolated users.
+4. Chỉ enable client sau khi onboarding bắt user export recovery key và import
+   rehearsal pass trên thiết bị thứ hai.
+5. Giữ `synced_accounts` compatibility; không drop plaintext trong rollout này.
+   Drop cần migration/backup/rollback riêng.
+
+## Supabase self-hosted
+
+### Baseline đã triển khai
+
+Backend hiện dùng Docker release `self-hosted/v0.7.0`, commit và PostgreSQL image
+được pin trong `supabase/UPSTREAM_PIN`. Không deploy trực tiếp nhánh upstream
+`master` vì có thể chứa thay đổi `Unreleased`.
+
+Core bundle gồm PostgreSQL, Studio, Kong, Auth, PostgREST, Realtime, Storage,
+imgproxy, postgres-meta, Edge Runtime và Supavisor. Logs/Analytics là optional và
+chưa bật do host chỉ có khoảng 7,8 GB RAM và chưa có load-test headroom. Disk
+cleanup ngày 17 tháng 7 năm 2026 đưa mức dùng từ 93% xuống 67%, còn khoảng 24 GB;
+Vault MTLS POC sau đó đã được owner yêu cầu xóa, giúp swap giảm còn khoảng 1,2/2 GB.
+
+Trên cùng host, Keycloak VNPAY được giới hạn ở 3 GiB RAM (`mem_limit`) với 1 GiB
+reservation. JVM của nó dùng heap khởi tạo 25% và heap tối đa 65% của container,
+thay vì mặc định tính theo toàn bộ RAM host. Không bật Logs/Analytics hoặc service
+mới trước khi đo cold-start và tải ổn định lại. Compose của Keycloak hiện chạy
+`start-dev`; sau cold start ngày 17 tháng 7 năm 2026, healthcheck trên cổng 9000
+đã `healthy` và OIDC discovery qua cổng HTTP đã trả `200`. Vẫn cần load test trước
+khi coi 3 GiB là ngưỡng production ổn định.
+
+Public boundary:
+
+- reverse proxy hiện có terminate TLS;
+- Kong tham gia external network `proxy-network` để proxy resolve bằng container
+  name, tránh phụ thuộc container IP;
+- Kong HTTP/HTTPS và Supavisor session/transaction port chỉ bind `127.0.0.1`;
+- PostgreSQL/Studio/service nội bộ không publish trực tiếp ra Internet.
+
+Overlay tái lập nằm trong `supabase/docker-compose.public-proxy.yml`. Mất external
+network attachment sẽ làm public endpoint trả `502` dù container vẫn healthy, nên
+health check phải gồm cả loopback và public TLS path.
+
+Host maintenance baseline:
+
+- SSH `LogLevel INFO`; DEBUG3 trước đây làm `auth.log` tăng hơn 3 GB khi bị scan;
+- journald giới hạn `SystemMaxUse=1G`, giữ tối đa 14 ngày và chừa 10 GB filesystem;
+- rsyslog vẫn rotate/compress log; không truncate active log;
+- Docker chỉ prune build cache không còn tham chiếu; không prune volume hoặc image
+  đang được container dùng;
+- SSH chỉ chấp nhận public key; password và keyboard-interactive authentication đã
+  tắt, fresh key connection pass và password-only connection bị từ chối;
+- Fail2ban và UFW chưa được cấu hình, vẫn là defense-in-depth follow-up.
+
+### Rollout backend
+
+1. Pin release/commit official và review changelog/compose diff.
+2. Backup database globals/full dump, Storage files và config; checksum và rehearsal
+   trước thao tác phá hủy.
+3. Sinh mới database password, JWT/key, dashboard credential, encryption key và
+   pooler tenant. Không tái sử dụng secret legacy.
+4. Xác minh SMTP, Site URL và redirect allow-list mà không log giá trị.
+5. Start core stack, chờ mọi health check pass rồi nối reverse proxy.
+6. Áp dụng migration theo thứ tự trong `supabase/migrations`.
+7. Chạy smoke test official, auth-key/JWKS test và
+   `scripts/supabase/test_remote_contract.sh` qua public HTTPS endpoint.
+8. Dọn test user/row/bucket/audit và xác minh application data count bằng 0.
+9. Cập nhật Flutter public URL/publishable key, build/test từ cùng source contract.
+
+Hướng dẫn upstream cần đối chiếu mỗi lần nâng:
+
+- [Self-hosting with Docker](https://supabase.com/docs/guides/self-hosting/docker)
+- [Self-hosted Auth API keys](https://supabase.com/docs/guides/self-hosting/self-hosted-auth-keys)
+- [PostgreSQL 17 upgrade](https://supabase.com/docs/guides/self-hosting/postgres-upgrade-17)
+
+### Backup và rollback
+
+Runbook cùng artifact legacy nằm trong
+[`operations/SUPABASE_LEGACY_BACKUP.md`](operations/SUPABASE_LEGACY_BACKUP.md).
+Backup hiện tại là manual point-in-time; trước production cần encrypted off-host
+copy, retention, alert và scheduled restore rehearsal.
+
+Rollback không được import full dump legacy vào instance mới đang chạy. Dựng một
+stack cô lập khớp version legacy, restore và kiểm tra ở đó; hoặc rollback clean
+deployment bằng backup cùng version. Client camelCase cũ không tương thích schema
+snake_case mới.
 
 ## Backend rollout và rollback
 

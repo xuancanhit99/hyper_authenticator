@@ -1,164 +1,197 @@
-// --- Configuration ---
-// Get environment variables from window.ENV object created by env-config.js (injected by Dockerfile)
-const SUPABASE_URL = '';
-const SUPABASE_ANON_KEY = '';
+(() => {
+    'use strict';
 
-// Basic check if variables were loaded
-if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-    console.error("ERROR: Supabase URL or Anon Key not found. Check environment variables and env-config.js injection.");
-    // Optionally display an error message to the user on the page
-    // showMessage("Configuration error. Unable to initialize Supabase.");
-}
+    const form = document.getElementById('reset-password-form');
+    const passwordInput = document.getElementById('password');
+    const confirmPasswordInput = document.getElementById('confirm-password');
+    const messageElement = document.getElementById('message');
+    const submitButton = document.getElementById('submit-button');
 
-// --- Initialize Supabase Client ---
-// Ensure you are using the correct import based on the CDN version
-// For v2: supabase.createClient
-// Check the Supabase JS docs if you use a different version
-const { createClient } = supabase;
-const _supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    let recoverySessionReady = false;
+    let updateSucceeded = false;
 
-console.log('Supabase client initialized');
+    function showMessage(message, type = 'error') {
+        messageElement.textContent = message;
+        messageElement.className = `message ${type}`;
+        messageElement.hidden = false;
+    }
 
-// --- DOM Elements ---
-const form = document.getElementById('reset-password-form');
-const passwordInput = document.getElementById('password');
-const confirmPasswordInput = document.getElementById('confirm-password');
-const messageElement = document.getElementById('message');
-const submitButton = document.getElementById('submit-button');
+    function hideMessage() {
+        messageElement.hidden = true;
+        messageElement.textContent = '';
+        messageElement.className = 'message';
+    }
 
-let session = null; // To store the session info after handling the redirect
+    function setFormEnabled(enabled) {
+        passwordInput.disabled = !enabled;
+        confirmPasswordInput.disabled = !enabled;
+        submitButton.disabled = !enabled;
+    }
 
-// --- Functions ---
-function showMessage(message, type = 'error') {
-    messageElement.textContent = message;
-    messageElement.className = `message ${type}`; // Apply 'success' or 'error' class
-    messageElement.style.display = 'block';
-}
+    function setLoading(loading) {
+        submitButton.disabled = loading;
+        submitButton.textContent = loading ? 'Đang cập nhật…' : 'Cập nhật mật khẩu';
+    }
 
-function hideMessage() {
-    messageElement.style.display = 'none';
-    messageElement.textContent = '';
-    messageElement.className = 'message';
-}
+    function clearSensitiveUrl() {
+        if (window.location.search || window.location.hash) {
+            window.history.replaceState(null, document.title, window.location.pathname);
+        }
+    }
 
-function setLoading(isLoading) {
-    submitButton.disabled = isLoading;
-    submitButton.textContent = isLoading ? 'Updating...' : 'Update Password';
-}
+    function failClosed(message) {
+        recoverySessionReady = false;
+        setFormEnabled(false);
+        showMessage(message);
+    }
 
-// --- Event Listeners ---
+    function activateRecoverySession() {
+        recoverySessionReady = true;
+        clearSensitiveUrl();
+        hideMessage();
+        setFormEnabled(true);
+        passwordInput.focus();
+    }
 
-// Handle form submission
-form.addEventListener('submit', async (event) => {
-    event.preventDefault(); // Prevent default form submission
-    hideMessage();
-    setLoading(true);
+    const queryParameters = new URLSearchParams(window.location.search);
+    const fragmentParameters = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+    const recoveryType = fragmentParameters.get('type') || queryParameters.get('type');
+    const recoveryTokenHash = fragmentParameters.get('token_hash') || queryParameters.get('token_hash');
+    const hasImplicitRecoverySession = recoveryType === 'recovery'
+        && fragmentParameters.has('access_token')
+        && fragmentParameters.has('refresh_token');
+    const hasTokenHashRecovery = recoveryType === 'recovery' && Boolean(recoveryTokenHash);
+    const hasUnsupportedPkceCode = queryParameters.has('code');
 
-    const password = passwordInput.value;
-    const confirmPassword = confirmPasswordInput.value;
-
-    if (password.length < 6) {
-        showMessage('Password must be at least 6 characters long.');
-        setLoading(false);
+    const config = window.__RESET_PASSWORD_CONFIG__;
+    if (!config
+        || typeof config.supabaseUrl !== 'string'
+        || typeof config.supabasePublishableKey !== 'string'
+        || !config.supabaseUrl
+        || !config.supabasePublishableKey
+        || !window.supabase) {
+        clearSensitiveUrl();
+        failClosed('Trang khôi phục chưa được cấu hình đúng. Vui lòng liên hệ hỗ trợ.');
         return;
     }
 
-    if (password !== confirmPassword) {
-        showMessage('Passwords do not match.');
-        setLoading(false);
+    if (hasUnsupportedPkceCode || (!hasImplicitRecoverySession && !hasTokenHashRecovery)) {
+        clearSensitiveUrl();
+        failClosed('Liên kết không hợp lệ hoặc đã hết hạn. Vui lòng yêu cầu email khôi phục mới.');
         return;
     }
 
-    // Check if we have a valid session (user should be authenticated via the link)
-    if (!session) {
-         // This might happen if the user navigates directly without the token,
-         // or if the token handling failed.
-        showMessage('Invalid session or expired link. Please request a new password reset link.');
-        console.error("Attempted password update without a valid session.");
-        setLoading(false);
-        return;
-    }
-
+    let supabaseClient;
     try {
-        // Update the user's password
-        const { data, error } = await _supabase.auth.updateUser({ password: password });
+        supabaseClient = window.supabase.createClient(
+            config.supabaseUrl,
+            config.supabasePublishableKey,
+            {
+                auth: {
+                    autoRefreshToken: false,
+                    detectSessionInUrl: hasImplicitRecoverySession,
+                    flowType: 'implicit',
+                    persistSession: false,
+                },
+            },
+        );
+    } catch (_) {
+        clearSensitiveUrl();
+        failClosed('Trang khôi phục chưa được cấu hình đúng. Vui lòng liên hệ hỗ trợ.');
+        return;
+    }
 
-        if (error) {
-            console.error('Error updating password:', error);
-            showMessage(`Error: ${error.message}`);
-        } else {
-            console.log('Password updated successfully:', data);
-            showMessage('Password updated successfully! You can now close this page and log in with your new password.', 'success');
-            // Optionally disable the form after success
+    supabaseClient.auth.onAuthStateChange((event, currentSession) => {
+        if (event === 'PASSWORD_RECOVERY' && currentSession) {
+            activateRecoverySession();
+            return;
+        }
+
+        if (event === 'SIGNED_OUT' && !updateSucceeded) {
+            clearSensitiveUrl();
+            failClosed('Liên kết không hợp lệ hoặc đã hết hạn. Vui lòng yêu cầu email khôi phục mới.');
+        }
+    });
+
+    if (hasTokenHashRecovery) {
+        clearSensitiveUrl();
+        void (async () => {
+            try {
+                const { data, error } = await supabaseClient.auth.verifyOtp({
+                    token_hash: recoveryTokenHash,
+                    type: 'recovery',
+                });
+                if (error || !data.session) {
+                    failClosed('Liên kết không hợp lệ hoặc đã hết hạn. Vui lòng yêu cầu email khôi phục mới.');
+                    return;
+                }
+                activateRecoverySession();
+            } catch (_) {
+                failClosed('Liên kết không hợp lệ hoặc đã hết hạn. Vui lòng yêu cầu email khôi phục mới.');
+            }
+        })();
+    } else {
+        window.setTimeout(() => {
+            if (!recoverySessionReady && !updateSucceeded) {
+                clearSensitiveUrl();
+                failClosed('Liên kết không hợp lệ hoặc đã hết hạn. Vui lòng yêu cầu email khôi phục mới.');
+            }
+        }, 15000);
+    }
+
+    form.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        hideMessage();
+
+        if (!recoverySessionReady) {
+            failClosed('Liên kết không hợp lệ hoặc đã hết hạn. Vui lòng yêu cầu email khôi phục mới.');
+            return;
+        }
+
+        const password = passwordInput.value;
+        const confirmation = confirmPasswordInput.value;
+
+        if (password.length < 6) {
+            showMessage('Mật khẩu phải có ít nhất 6 ký tự.');
+            return;
+        }
+
+        if (password !== confirmation) {
+            showMessage('Hai mật khẩu không khớp.');
+            return;
+        }
+
+        setLoading(true);
+
+        try {
+            const { error } = await supabaseClient.auth.updateUser({ password });
+            if (error) {
+                showMessage('Không thể cập nhật mật khẩu. Liên kết có thể đã hết hạn; vui lòng thử lại bằng email khôi phục mới.');
+                setLoading(false);
+                return;
+            }
+
+            updateSucceeded = true;
+            recoverySessionReady = false;
             form.reset();
             passwordInput.disabled = true;
             confirmPasswordInput.disabled = true;
             submitButton.disabled = true;
-            submitButton.textContent = 'Password Updated';
+            submitButton.textContent = 'Đã cập nhật mật khẩu';
+            clearSensitiveUrl();
+            showMessage('Mật khẩu đã được cập nhật. Bạn có thể đóng trang này và đăng nhập lại.', 'success');
+            await supabaseClient.auth.signOut({ scope: 'local' }).catch(() => {});
+        } catch (_) {
+            showMessage('Không thể cập nhật mật khẩu. Vui lòng yêu cầu email khôi phục mới và thử lại.');
+            setLoading(false);
+        } finally {
+            passwordInput.value = '';
+            confirmPasswordInput.value = '';
         }
-    } catch (err) {
-        console.error('Unexpected error during password update:', err);
-        showMessage('An unexpected error occurred. Please try again.');
-    } finally {
-        // Only set loading to false if there was an error and we want the user to retry
-        // If successful, the button remains disabled.
-        if (messageElement.classList.contains('error')) {
-             setLoading(false);
-        }
-    }
-});
+    });
 
-// Handle Auth State Changes (including redirect from email link)
-_supabase.auth.onAuthStateChange((event, newSession) => {
-    console.log('Auth State Change Event:', event, 'Session:', newSession);
-    session = newSession; // Store the latest session
-
-    if (event === 'PASSWORD_RECOVERY') {
-        // This event fires after the user clicks the link and Supabase processes the token in the URL fragment.
-        // The user is now temporarily authenticated in this browser session.
-        console.log('Password recovery event detected. User is ready to set a new password.');
-        hideMessage(); // Hide any previous messages
-        // Enable the form if it was disabled
-        passwordInput.disabled = false;
-        confirmPasswordInput.disabled = false;
-        submitButton.disabled = false;
-    } else if (event === 'SIGNED_IN' && session) {
-         console.log('User is signed in (might be from recovery link).');
-         // Potentially redundant with PASSWORD_RECOVERY but good to log
-    } else if (event === 'USER_UPDATED') {
-        console.log('User data updated (likely password).');
-    } else if (!session) {
-        // If there's no session after initial load or an event, the link might be invalid/expired
-        // or the user accessed the page directly.
-        console.warn('No active session found.');
-        // Consider showing a message only if the URL seems to have had a token initially
-        if (window.location.hash.includes('access_token')) {
-             showMessage('Link may be invalid or expired. Please request a new password reset link.');
-        } else {
-             showMessage('Please use the password reset link sent to your email.');
-        }
-        // Disable the form as the user isn't authenticated for password update
-        passwordInput.disabled = true;
-        confirmPasswordInput.disabled = true;
-        submitButton.disabled = true;
-    }
-});
-
-// Initial check in case the page loads and the event fires quickly
-(async () => {
-    const { data } = await _supabase.auth.getSession();
-    session = data.session;
-    if (!session && window.location.hash.includes('access_token')) {
-        console.log("Initial load detected hash fragment, waiting for onAuthStateChange...");
-        // onAuthStateChange should handle this soon
-    } else if (!session) {
-         console.log("Initial load: No session found and no token in URL.");
-         showMessage('Please use the password reset link sent to your email.');
-         passwordInput.disabled = true;
-         confirmPasswordInput.disabled = true;
-         submitButton.disabled = true;
-    } else {
-        console.log("Initial load: Session found.", session);
-        // User might already be logged in somehow, but PASSWORD_RECOVERY event is key
-    }
+    window.addEventListener('pagehide', () => {
+        passwordInput.value = '';
+        confirmPasswordInput.value = '';
+    });
 })();

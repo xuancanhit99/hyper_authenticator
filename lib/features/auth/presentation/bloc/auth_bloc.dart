@@ -10,8 +10,6 @@ import 'package:hyper_authenticator/features/auth/domain/repositories/auth_repos
 part 'auth_event.dart';
 part 'auth_state.dart';
 
-// Key must match the one used in SettingsBloc and LocalAuthBloc
-const String _biometricPrefKey = 'biometric_enabled';
 const String _rememberedEmailKey =
     'remembered_email'; // Key for remembered email
 const String _rememberedMeStateKey =
@@ -136,8 +134,6 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         emit(AuthFailure(failure.message));
       },
       (_) async {
-        // Disable biometric preference on successful sign out
-        await _sharedPreferences.setBool(_biometricPrefKey, false);
         // Also clear remembered email and state on sign out
         await _sharedPreferences.remove(_rememberedEmailKey);
         await _sharedPreferences.remove(_rememberedMeStateKey);

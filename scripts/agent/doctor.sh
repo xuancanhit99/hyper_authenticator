@@ -29,6 +29,7 @@ done
 
 for required_file in \
   AGENTS.md \
+  LICENSE \
   docs/README.md \
   docs/PROJECT_STATUS.md \
   docs/SECURITY.md \
@@ -50,6 +51,11 @@ if [[ -f .env ]]; then
       fail "$key_name is missing or empty"
     fi
   done
+  if rg -q '^PASSWORD_RECOVERY_URL=https://.+$' .env; then
+    ok "PASSWORD_RECOVERY_URL is set"
+  else
+    warn "PASSWORD_RECOVERY_URL is absent; Web password recovery will fail closed"
+  fi
 else
   warn ".env is absent; analyze/test still work, but running the app requires Supabase defines"
 fi

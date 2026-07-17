@@ -10,6 +10,17 @@ abstract class SyncState extends Equatable {
 /// Initial state before any sync operation has started.
 class SyncInitial extends SyncState {}
 
+/// Cloud sync is intentionally unavailable because its security contract is
+/// not safe for production use yet.
+class SyncUnavailable extends SyncState {
+  final String message;
+
+  const SyncUnavailable({required this.message});
+
+  @override
+  List<Object?> get props => [message];
+}
+
 /// State indicating a sync operation (check, upload, download) is in progress.
 class SyncInProgress extends SyncState {
   final String

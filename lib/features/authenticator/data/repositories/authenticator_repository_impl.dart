@@ -75,6 +75,22 @@ class AuthenticatorRepositoryImpl implements AuthenticatorRepository {
   }
 
   @override
+  Future<Either<Failure, AuthenticatorAccount>> saveAccount(
+    AuthenticatorAccount account,
+  ) async {
+    try {
+      final savedAccount = await localDataSource.saveAccount(account);
+      return Right(savedAccount);
+    } on StorageWriteException {
+      return const Left(StorageFailure('Failed to save account to storage.'));
+    } catch (_) {
+      return const Left(
+        StorageFailure('An unexpected error occurred while saving an account.'),
+      );
+    }
+  }
+
+  @override
   Future<Either<Failure, Unit>> deleteAccount(String id) async {
     try {
       await localDataSource.deleteAccount(id);

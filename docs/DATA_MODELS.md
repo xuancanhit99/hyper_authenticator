@@ -47,14 +47,38 @@ Local add hiện giữ nguyên algorithm/digits/period khi gán UUID.
 
 ## Local secure storage
 
+### Format legacy v1
+
 | Storage key | Giá trị |
 |---|---|
 | `authenticator_account_index` | JSON array account ID |
 | Mỗi account ID | JSON `AuthenticatorAccount` |
 
-Create ghi record rồi cập nhật index; delete xóa record rồi cập nhật index. Hai bước không transactional. Cần recovery cho index trỏ record thiếu, orphan record, JSON hỏng, ID trùng và storage failure.
+Reader v2 chỉ dùng v1 để migration/rollback và không ghi mutation mới về format này.
 
-Logout giữ nguyên namespace account. Storage ownership khi nhiều Supabase user đăng nhập cùng thiết bị chưa được quy định.
+### Format v2 đã triển khai
+
+| Prefix | Vai trò |
+|---|---|
+| `ha:v2:record:` | Immutable account JSON, key gồm stable ID và transaction ID |
+| `ha:v2:manifest:` | Generation cùng danh sách `id → recordKey` |
+| `ha:v2:commit:` | Publication marker trỏ manifest đã verify |
+
+Mutation được serialize trong data-source instance. Writer ghi/verify record và
+manifest trước, commit marker sau cùng. Reader chọn committed generation mới nhất
+hợp lệ và fallback generation trước nếu record/manifest mới hỏng.
+
+Migration lần đầu:
+
+1. Đọc legacy index và UUID-keyed record bằng `readAll`.
+2. Bỏ dangling ID/record hỏng, recover orphan có UUID/payload hợp lệ.
+3. Ghi và verify snapshot v2 rồi mới publish commit.
+4. Giữ nguyên legacy key; chưa có compaction/secure-deletion claim.
+
+Logout giữ nguyên namespace account. Local vault thuộc installation/profile local,
+không thuộc Supabase user. Xem
+[ADR-0002](adr/0002-versioned-local-vault-storage.md) và
+[ADR-0003](adr/0003-offline-first-local-vault.md).
 
 ## UserEntity
 
@@ -78,23 +102,65 @@ Entity không chứa mật khẩu hoặc session token.
 
 Thay đổi key cần compatibility/migration cho bản cài hiện có.
 
-## Supabase row contract đã quan sát
+## Supabase row contract đã triển khai
 
-Client upload JSON account rồi:
+Migration `supabase/migrations/20260717163000_create_synced_accounts.sql` tạo
+`public.synced_accounts`. Mapper tại data boundary chuyển model local camelCase
+sang PostgreSQL snake_case:
 
-- đổi `id` thành `account_id`;
-- thêm `user_id`;
-- giữ `issuer`, `accountName`, `secretKey`, `algorithm`, `digits`, `period`.
+| Local | Remote | Ghi chú |
+|---|---|---|
+| Session user | `user_id` | UUID owner, FK `auth.users` |
+| `id` | `account_id` | UUID, cùng `user_id` tạo primary key |
+| `issuer` | `issuer` | Text 1–255 |
+| `accountName` | `account_name` | Text 1–512 |
+| `secretKey` | `secret_key` | Plaintext credential 16–512 |
+| `algorithm` | `algorithm` | SHA1/SHA256/SHA512 |
+| `digits` | `digits` | 6–8 |
+| `period` | `period` | 1–300 |
+| — | `format_version` | Database default `1` |
+| — | `updated_at` | Database default UTC khi insert |
 
-Client download map `account_id` về `id`. `hasRemoteData` select `account_id`; last-upload query dùng `updated_at`. Repository chưa có schema migration nên không thể tái lập chính xác database production.
+Client download map đủ các field về entity. `hasRemoteData` select `account_id`;
+last-upload query dùng `updated_at`. Unit test mapper và remote RLS contract test
+xác minh round-trip algorithm/digits/period.
+
+Build client cũ còn gửi `accountName`/`secretKey` không tương thích với schema
+snake_case. Dữ liệu legacy không được import vào instance mới.
+
+## Encrypted vault snapshot v2
+
+**Đã triển khai trong source/migration, chưa deploy production.** Table
+`encrypted_vault_snapshots` giữ một snapshot hiện hành cho mỗi `user_id`:
+
+| Field | Contract |
+|---|---|
+| `format_version` | Envelope version `1` |
+| `revision` | Optimistic revision, bắt đầu từ 1 |
+| `cipher` | `AES-256-GCM` |
+| `nonce`, `ciphertext`, `auth_tag` | Snapshot encrypted/authenticated |
+| `key_format_version` | Wrapped-DEK version `1` |
+| `wrapped_key_*` | DEK wrap bằng recovery key do user giữ |
+| `updated_at` | Server timestamp |
+
+Plaintext trong cipher là JSON snapshot canonical gồm `format_version` và danh
+sách `AuthenticatorAccount` sort theo stable ID. AAD bind purpose/version,
+Supabase user ID và revision. RPC `publish_encrypted_vault_snapshot` chỉ commit
+khi `expected_revision` khớp rồi tăng revision atomically.
+
+Local DEK dùng secure-storage key `ha:e2ee:v1:dek:<supabase-user-id>` và không bị
+xóa khi logout. Recovery code dạng `HA1-<base64url-256-bit>` không được lưu remote
+plaintext. Migration v2 additive, không drop table plaintext.
 
 ## Remote identity và merge
 
 - Owner: `user_id`.
 - Record identity tại DB boundary: `account_id`.
-- Merge identity hiện tại: issuer viết thường + accountName viết thường.
+- Compatibility merge identity hiện tại: stable `account_id`.
 
-Identity merge không biểu diễn secret rotation, label trùng, deletion hoặc conflict hai thiết bị.
+Remote record chưa có được persist với nguyên ID; label trùng nhưng ID khác được
+giữ riêng. Khi cùng ID, local record tạm thắng. Protocol này vẫn chưa biểu diễn
+revision conflict, deletion/tombstone hoặc concurrent device.
 
 ## Protocol thay đổi model
 

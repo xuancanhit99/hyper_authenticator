@@ -2,7 +2,9 @@ import 'dart:async'; // Added for StreamSubscription
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 // Import Provider
+import 'package:hyper_authenticator/core/router/app_router.dart';
 import 'package:hyper_authenticator/features/auth/presentation/bloc/auth_bloc.dart'; // For logout
 import 'package:hyper_authenticator/features/settings/presentation/bloc/settings_bloc.dart';
 import 'package:hyper_authenticator/features/sync/presentation/bloc/sync_bloc.dart'; // Added
@@ -186,49 +188,59 @@ class SettingsPage extends StatelessWidget {
 
                         // --- Account Section (Moved to bottom) ---
                         // Add other settings here later
-
-                        // --- Logout Section ---
-                        ListTile(
-                          leading: const Icon(Icons.logout, color: Colors.red),
-                          title: const Text(
-                            'Logout',
-                            style: TextStyle(color: Colors.red),
-                          ),
-                          onTap: () {
-                            // Show confirmation dialog before logging out
-                            showDialog(
-                              context: context,
-                              builder: (dialogContext) => AlertDialog(
-                                title: const Text('Confirm Logout'),
-                                content: const Text(
-                                  'Are you sure you want to log out?',
-                                ),
-                                actions: [
-                                  TextButton(
-                                    onPressed: () =>
-                                        Navigator.pop(dialogContext),
-                                    child: const Text('Cancel'),
+                        if (currentUser == null)
+                          ListTile(
+                            leading: const Icon(Icons.login),
+                            title: const Text('Đăng nhập để dùng cloud sync'),
+                            subtitle: const Text(
+                              'Local vault vẫn hoạt động mà không cần tài khoản.',
+                            ),
+                            onTap: () => context.push(AppRoutes.login),
+                          )
+                        else
+                          ListTile(
+                            leading: const Icon(
+                              Icons.logout,
+                              color: Colors.red,
+                            ),
+                            title: const Text(
+                              'Đăng xuất',
+                              style: TextStyle(color: Colors.red),
+                            ),
+                            onTap: () {
+                              // Show confirmation dialog before logging out
+                              showDialog(
+                                context: context,
+                                builder: (dialogContext) => AlertDialog(
+                                  title: const Text('Xác nhận đăng xuất'),
+                                  content: const Text(
+                                    'Local vault và app lock sẽ được giữ nguyên.',
                                   ),
-                                  TextButton(
-                                    onPressed: () {
-                                      Navigator.pop(
-                                        dialogContext,
-                                      ); // Close dialog
-                                      context.read<AuthBloc>().add(
-                                        AuthSignOutRequested(), // Removed const
-                                      );
-                                      // Router redirect logic will handle navigation to login
-                                    },
-                                    child: const Text(
-                                      'Logout',
-                                      style: TextStyle(color: Colors.red),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () =>
+                                          Navigator.pop(dialogContext),
+                                      child: const Text('Hủy'),
                                     ),
-                                  ),
-                                ],
-                              ),
-                            );
-                          },
-                        ),
+                                    TextButton(
+                                      onPressed: () {
+                                        Navigator.pop(
+                                          dialogContext,
+                                        ); // Close dialog
+                                        context.read<AuthBloc>().add(
+                                          AuthSignOutRequested(), // Removed const
+                                        );
+                                      },
+                                      child: const Text(
+                                        'Đăng xuất',
+                                        style: TextStyle(color: Colors.red),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
+                          ),
                         // const Divider(),
                       ],
                     ),
@@ -300,6 +312,7 @@ class _SyncSectionState extends State<_SyncSection> {
         // Determine state variables directly from SyncBloc's state
         final isDarkMode = Theme.of(context).brightness == Brightness.dark;
         bool isCurrentlySyncEnabled = false; // Default to false
+        final bool isSyncAvailable = state is! SyncUnavailable;
         DateTime? lastSyncTime;
         bool isSyncing = state is SyncInProgress;
         String syncProgressMessage = '';
@@ -400,6 +413,24 @@ class _SyncSectionState extends State<_SyncSection> {
               // TextButton(onPressed: () => context.read<SyncBloc>().add(CheckSyncStatus()), child: Text('Retry'))
             ],
           );
+        } else if (state is SyncUnavailable) {
+          statusWidget = Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(
+                Icons.security,
+                color: Theme.of(context).colorScheme.tertiary,
+                size: 16,
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  state.message,
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ),
+            ],
+          );
         } else if (state is SyncSuccess) {
           // isCurrentlySyncEnabled, lastSyncTime already set above
           if (isCurrentlySyncEnabled && lastSyncTime != null) {
@@ -468,18 +499,22 @@ class _SyncSectionState extends State<_SyncSection> {
                       ? AppColors.cDarkIconBg
                       : AppColors.cLightIconBg,
                 ),
-                tooltip: isCurrentlySyncEnabled
+                tooltip: !isSyncAvailable
+                    ? 'Cloud sync tạm khóa vì chưa có E2EE'
+                    : isCurrentlySyncEnabled
                     ? 'Disable Sync'
                     : 'Enable Sync',
-                onPressed: () {
-                  // Dispatch event to BLoC to toggle the state
-                  context.read<SyncBloc>().add(
-                    ToggleSyncEnabled(
-                      isEnabled: !isCurrentlySyncEnabled,
-                    ), // Send the opposite of the current state
-                  );
-                  // UI will update automatically via BlocBuilder when state changes
-                },
+                onPressed: !isSyncAvailable
+                    ? null
+                    : () {
+                        // Dispatch event to BLoC to toggle the state
+                        context.read<SyncBloc>().add(
+                          ToggleSyncEnabled(
+                            isEnabled: !isCurrentlySyncEnabled,
+                          ), // Send the opposite of the current state
+                        );
+                        // UI will update automatically via BlocBuilder when state changes
+                      },
               ), // Removed custom contentPadding
             ),
             // Conditionally display the "Sync Now" button and last sync time
@@ -524,9 +559,7 @@ class _SyncSectionState extends State<_SyncSection> {
                                         ); // Close dialog
                                         // Dispatch the original SyncNowRequested event for merge logic
                                         context.read<SyncBloc>().add(
-                                          SyncNowRequested(
-                                            accountsToUpload: currentAccounts,
-                                          ),
+                                          const SyncNowRequested(),
                                         );
                                       },
                                     ),

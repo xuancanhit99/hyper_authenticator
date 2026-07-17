@@ -17,8 +17,9 @@ flowchart LR
     App --> DeviceAuth["Sinh trắc học / credential OS"]
     App --> SecureStorage["FlutterSecureStorage"]
     App --> Preferences["SharedPreferences"]
-    App --> SupabaseAuth["Supabase Auth"]
-    App --> SupabaseDB["Supabase synced_accounts"]
+    App --> Proxy["Reverse proxy HTTPS"]
+    Proxy --> SupabaseAuth["Supabase Auth / JWKS"]
+    Proxy --> SupabaseDB["PostgREST / synced_accounts + RLS"]
     Recovery["Trang recovery tĩnh"] --> SupabaseAuth
 ~~~
 
@@ -79,19 +80,23 @@ GetIt/Injectable quản lý dependency, BLoC quản lý feature state, Provider 
 2. `TotpUriParser` chỉ chấp nhận `otpauth://totp`, parse label/issuer và validate Base32, SHA1/SHA256/SHA512, digits 6–8, period dương.
 3. `AccountsBloc` gọi use case add.
 4. Local data source gán UUID nhưng giữ toàn bộ tham số TOTP.
-5. JSON được ghi vào secure storage, sau đó UUID được ghi vào index.
+5. Local data source serialize mutation, ghi immutable record cùng versioned
+   manifest rồi publish commit marker sau cùng.
 
-Record và index vẫn là hai thao tác không transactional; recovery khi partial write là việc còn mở.
+Local vault v2 fallback về committed generation trước nếu generation mới hỏng.
+Lần đọc đầu dual-read legacy index/record, repair dangling ID, recover UUID-keyed
+orphan hợp lệ và không xóa legacy key. Xem [ADR-0002](adr/0002-versioned-local-vault-storage.md).
 
 ### Tạo mã
 
-`GenerateTotpCode` dùng package `otp`, clock hiện tại và algorithm/digits/period đã lưu. Test có thể inject timestamp để chạy deterministic. UI refresh mỗi giây.
-
-Khoảng trống: countdown widget hiện dùng chu kỳ 30 giây thay vì period của từng account.
+`GenerateTotpCode` dùng package `otp`, clock hiện tại và algorithm/digits/period
+đã lưu. Countdown tính từ Unix epoch theo period của từng account; code cache theo
+time step và được đồng bộ lại khi app resume. Test có thể inject timestamp/clock.
 
 ### Cập nhật và xóa
 
-Update ghi đè JSON cùng ID. Delete xóa record rồi cập nhật index. Không có transaction cho hai bước này.
+Update/delete publish generation mới; active record/generation cũ không bị sửa
+trước commit. Compaction/retention lịch sử vẫn là khoảng trống đã biết.
 
 ## Khả năng theo platform
 
@@ -120,38 +125,65 @@ Preference `biometric_enabled` lưu trong SharedPreferences.
 
 ## Supabase authentication
 
-Data source bọc `signInWithPassword`, `signUp`, password recovery/update, `signOut` và auth-state stream. Remember Me chỉ lưu email cùng trạng thái checkbox trong SharedPreferences. Logout chỉ kết thúc session; không xóa TOTP local.
+Data source bọc `signInWithPassword`, `signUp`, password recovery/update, `signOut`
+và auth-state stream. Remember Me chỉ lưu email cùng trạng thái checkbox trong
+SharedPreferences. Supabase login là tùy chọn cho cloud feature; router không dùng
+session để chặn local vault. Logout chỉ kết thúc session, không xóa TOTP local hoặc
+tắt app lock.
+
+Self-hosted baseline dùng release official đã pin với PostgreSQL 17. Public traffic
+đi qua reverse proxy và Kong; session JWT mới ký ES256. Flutter chỉ mang
+publishable key, còn service-role/secret key ở server operator boundary.
 
 ## Đồng bộ
 
 Sync được kích hoạt thủ công; preference chỉ điều khiển availability trong UI.
+Do remote contract còn plaintext, sync bị khóa mặc định. Chỉ build migration/test
+có `ALLOW_INSECURE_PLAINTEXT_SYNC=true` mới đi qua cả BLoC và remote data source.
+
+E2EE v2 rollout theo ADR-0005: `VaultCipher` cung cấp AES-256-GCM snapshot/AAD và
+DEK wrapping; `VaultKeyStore` giữ DEK per Supabase user; migration tạo một encrypted
+snapshot/user cùng RPC optimistic revision. Các primitive chưa nối vào `SyncBloc`
+hoặc onboarding UI, nên release sync tiếp tục fail closed.
 
 ### Merge
 
 1. Download remote rows.
-2. Đọc local accounts.
-3. Tạo identity key từ issuer và account name viết thường.
-4. Thêm remote record chưa có ở local; không resolve field conflict.
-5. Nếu merge lỗi, emit failure và dừng.
-6. Upload snapshot local sau merge.
+2. `MergeAccountsUseCase` đọc local accounts và dùng stable `account_id` làm identity.
+3. Remote record chưa có được validate/persist với nguyên ID; local record thắng
+   trong compatibility bridge khi trùng ID.
+4. Nếu persistence lỗi, emit failure và dừng; UI reload chỉ sau commit local.
+5. Upload snapshot local sau merge khi dangerous development flag được bật.
+
+Merge không còn điều phối bằng Bloc-to-Bloc stream/completer nên không báo success
+trước khi persistence hoàn tất. Revision/conflict/deletion vẫn cần sync-v2 ADR.
 
 ### Overwrite/upload
 
 1. Xóa mọi row remote thuộc user.
-2. Chèn toàn bộ snapshot.
+2. `SupabaseAccountMapper` đổi camelCase local sang snake_case remote.
+3. Chèn toàn bộ snapshot.
 
 Thuộc tính chưa an toàn:
 
 - secret ở plaintext;
 - thao tác xóa-rồi-chèn không atomic;
-- không có tombstone, revision, optimistic concurrency hoặc migration;
-- schema/RLS không được track trong repository.
+- không có tombstone, revision, optimistic concurrency hoặc encrypted-format migration;
+- RLS chỉ authorization theo owner, không phải E2EE.
+
+Schema/RLS đã được version hóa trong `supabase/migrations`; force RLS và bốn policy
+CRUD dùng `auth.uid() = user_id`. Cross-user contract test chạy qua public API và
+dọn isolated user/row sau khi hoàn tất.
 
 Xem [Bảo mật](SECURITY.md), [Tích hợp Supabase](SUPABASE_INTEGRATION.md) và [Thiết kế E2EE](E2EE_DESIGN.md).
 
 ## Trang recovery
 
-`reset-password-web` là HTML/CSS/JavaScript tĩnh gọi Supabase Auth. Cấu hình URL/key vẫn để trống và Docker/Compose chưa inject được public config, nên chưa là artifact có thể deploy.
+`reset-password-web` là canonical recovery surface, container Nginx read-only/non-root. Entrypoint validate và
+runtime-inject URL/publishable key, response dùng CSP/no-store và frontend không
+log session. Flutter gửi `PASSWORD_RECOVERY_URL`; self-hosted template đóng gói
+dùng fragment `token_hash`, còn trang gọi `verifyOtp`. Template/allow-list và
+email-link E2E chưa deploy nên flow production vẫn chưa hoàn tất.
 
 ## Platform build
 

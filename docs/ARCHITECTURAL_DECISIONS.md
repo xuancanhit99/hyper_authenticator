@@ -20,6 +20,12 @@ Tài liệu này lập chỉ mục quyết định bền vững. Quyết định
 | A-012 | Logout giữ authenticator data local | Đã áp dụng | `AuthBloc` |
 | A-013 | Swift Package Manager là Apple dependency manager duy nhất | Đã áp dụng | iOS/macOS project |
 | A-014 | Capability theo platform được kiểm soát tập trung | Đã áp dụng | `PlatformCapabilities` |
+| A-015 | Pin self-hosted Supabase release và version hóa remote snake_case/RLS contract | Đã áp dụng | [ADR-0001](adr/0001-pin-self-hosted-supabase-and-remote-contract.md) |
+| A-016 | Local vault dùng versioned copy-on-write snapshot | Đã áp dụng | [ADR-0002](adr/0002-versioned-local-vault-storage.md) |
+| A-017 | Local vault offline độc lập Supabase identity | Chấp nhận | [ADR-0003](adr/0003-offline-first-local-vault.md) |
+| A-018 | Web là password-recovery surface canonical | Chấp nhận | [ADR-0004](adr/0004-web-password-recovery.md) |
+| A-019 | E2EE versioned snapshot và user-held recovery key | Chấp nhận theo giai đoạn | [ADR-0005](adr/0005-e2ee-versioned-snapshot-sync.md) |
+| A-020 | Source dùng Apache License 2.0 | Chấp nhận | [ADR-0006](adr/0006-apache-2-license.md) |
 
 Đã áp dụng không đồng nghĩa production-ready; defect/risk nằm trong `PROJECT_STATUS.md`.
 
@@ -27,14 +33,8 @@ Tài liệu này lập chỉ mục quyết định bền vững. Quyết định
 
 | ID đề xuất | Quyết định cần có | Lý do |
 |---|---|---|
-| P-001 | Offline-only hay bắt buộc Supabase auth | Router hiện bắt buộc authentication |
-| P-002 | E2EE key hierarchy, recovery và format | Plaintext cloud secret chặn release |
-| P-003 | Atomic sync, conflict, identity và deletion | Xóa-rồi-chèn có thể mất dữ liệu |
-| P-004 | Tách/ghép local TOTP giữa nhiều user trên một thiết bị | Logout giữ data nhưng ownership chưa rõ |
-| P-005 | Password recovery surface canonical | Mobile deep link và static Web chồng lấn |
 | P-006 | Platform support/SLA chính thức | Build matrix chưa phải product commitment |
 | P-007 | Tên identifier dài hạn | Display name đã thống nhất, bundle ID cũ được giữ để bảo toàn install identity |
-| P-008 | License | Chưa có file license |
 | P-009 | Web security/support level | Browser storage khác native secure storage |
 
 ## Khi nào cần ADR

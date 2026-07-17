@@ -26,19 +26,28 @@ import 'package:hyper_authenticator/core/router/app_router.dart'; // Import AppR
 // import 'edit_account_page.dart'; // Will create this later
 
 class AccountsPage extends StatefulWidget {
-  const AccountsPage({super.key});
+  const AccountsPage({
+    super.key,
+    this.now = DateTime.now,
+    this.generateTotpCode,
+  });
+
+  final DateTime Function() now;
+  final GenerateTotpCode? generateTotpCode;
 
   @override
   State<AccountsPage> createState() => _AccountsPageState();
 }
 
-class _AccountsPageState extends State<AccountsPage> {
+class _AccountsPageState extends State<AccountsPage>
+    with WidgetsBindingObserver {
   Timer? _timer;
-  int _secondsRemaining = 30;
+  late int _epochSeconds;
   // Store current codes to avoid recalculating every build
   final Map<String, String> _currentCodes = {};
+  final Map<String, _TotpCodeCacheEntry> _codeCache = {};
   // Inject GenerateTotpCode use case
-  final GenerateTotpCode _generateTotpCode = sl<GenerateTotpCode>();
+  late final GenerateTotpCode _generateTotpCode;
   // Search state
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
@@ -46,6 +55,9 @@ class _AccountsPageState extends State<AccountsPage> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _generateTotpCode = widget.generateTotpCode ?? sl<GenerateTotpCode>();
+    _epochSeconds = _readEpochSeconds();
     _searchController.addListener(
       _onSearchChanged,
     ); // Add listener for search input
@@ -62,6 +74,7 @@ class _AccountsPageState extends State<AccountsPage> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _timer?.cancel();
     _searchController.removeListener(_onSearchChanged); // Remove listener
     _searchController.dispose(); // Dispose controller
@@ -69,27 +82,41 @@ class _AccountsPageState extends State<AccountsPage> {
   }
 
   void _startTimer() {
-    _updateSecondsRemaining(); // Initial calculation
-    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      _updateSecondsRemaining();
-      // Regenerate codes when timer resets (or close to it)
-      if (_secondsRemaining == 30 || _secondsRemaining == 1) {
-        // Trigger a state rebuild to update codes if accounts are loaded
-        if (mounted && context.read<AccountsBloc>().state is AccountsLoaded) {
-          setState(() {});
-        }
-      } else {
-        // Only update timer display if codes don't need regeneration
-        setState(() {});
-      }
+    _timer?.cancel();
+    final now = widget.now();
+    final millisecondsUntilNextSecond =
+        1000 - (now.millisecondsSinceEpoch % 1000);
+    _timer = Timer(Duration(milliseconds: millisecondsUntilNextSecond), () {
+      _refreshClock();
+      if (!mounted) return;
+      _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+        _refreshClock();
+      });
     });
   }
 
-  void _updateSecondsRemaining() {
-    final now = DateTime.now();
-    final seconds = now.second;
-    // Calculate remaining seconds in the 30-second interval
-    _secondsRemaining = 30 - (seconds % 30);
+  int _readEpochSeconds() => widget.now().millisecondsSinceEpoch ~/ 1000;
+
+  void _refreshClock({bool force = false}) {
+    if (!mounted) return;
+    final nextEpochSeconds = _readEpochSeconds();
+    if (!force && nextEpochSeconds == _epochSeconds) return;
+    setState(() {
+      _epochSeconds = nextEpochSeconds;
+    });
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _refreshClock(force: true);
+      _startTimer();
+    } else if (state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.paused ||
+        state == AppLifecycleState.hidden ||
+        state == AppLifecycleState.detached) {
+      _timer?.cancel();
+    }
   }
 
   // Listener for search query changes
@@ -99,7 +126,31 @@ class _AccountsPageState extends State<AccountsPage> {
     });
   }
 
-  Future<String> _getCodeForAccount(AuthenticatorAccount account) async {
+  Future<String> _getCodeForAccount(
+    AuthenticatorAccount account,
+    TotpTimeWindow timeWindow,
+  ) {
+    final cached = _codeCache[account.id];
+    if (cached != null &&
+        cached.account == account &&
+        cached.timeStep == timeWindow.timeStep) {
+      return cached.future;
+    }
+
+    _currentCodes.remove(account.id);
+    final future = _generateCodeForAccount(account, timeWindow);
+    _codeCache[account.id] = _TotpCodeCacheEntry(
+      account: account,
+      timeStep: timeWindow.timeStep,
+      future: future,
+    );
+    return future;
+  }
+
+  Future<String> _generateCodeForAccount(
+    AuthenticatorAccount account,
+    TotpTimeWindow timeWindow,
+  ) async {
     // Pass all necessary parameters from the account to the use case
     final result = await _generateTotpCode(
       GenerateTotpCodeParams(
@@ -107,6 +158,10 @@ class _AccountsPageState extends State<AccountsPage> {
         algorithm: account.algorithm,
         digits: account.digits,
         period: account.period,
+        timestampMilliseconds:
+            timeWindow.timeStep *
+            account.period *
+            Duration.millisecondsPerSecond,
       ),
     );
     return result.fold(
@@ -264,6 +319,17 @@ class _AccountsPageState extends State<AccountsPage> {
             Expanded(
               child: BlocConsumer<AccountsBloc, AccountsState>(
                 listener: (context, state) {
+                  if (state is AccountsLoaded) {
+                    final accountIds = state.accounts
+                        .map((account) => account.id)
+                        .toSet();
+                    _codeCache.removeWhere(
+                      (accountId, _) => !accountIds.contains(accountId),
+                    );
+                    _currentCodes.removeWhere(
+                      (accountId, _) => !accountIds.contains(accountId),
+                    );
+                  }
                   if (state is AccountsError) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(content: Text('Error: ${state.message}')),
@@ -354,6 +420,10 @@ class _AccountsPageState extends State<AccountsPage> {
                           itemBuilder: (context, index) {
                             final account =
                                 filteredAccounts[index]; // Use filtered list item
+                            final timeWindow = TotpTimeWindow.fromEpochSeconds(
+                              epochSeconds: _epochSeconds,
+                              periodSeconds: account.period,
+                            );
                             // --- Start Slidable Widget ---
                             return Slidable(
                               key: Key(account.id),
@@ -400,7 +470,7 @@ class _AccountsPageState extends State<AccountsPage> {
                               ),
                               child: FutureBuilder<String>(
                                 // Use future builder to get the code asynchronously
-                                future: _getCodeForAccount(account),
+                                future: _getCodeForAccount(account, timeWindow),
                                 builder: (context, snapshot) {
                                   String displayCode = "------"; // Placeholder
                                   if (snapshot.connectionState ==
@@ -531,7 +601,9 @@ class _AccountsPageState extends State<AccountsPage> {
                                           ),
                                           const SizedBox(width: 8), // Spacing
                                           CircularCountdownTimer(
-                                            secondsRemaining: _secondsRemaining,
+                                            secondsRemaining:
+                                                timeWindow.secondsRemaining,
+                                            periodSeconds: account.period,
                                             size: 18,
                                             backgroundColor: Colors.transparent,
                                             progressColor: Colors.grey,
@@ -717,3 +789,15 @@ class _AccountsPageState extends State<AccountsPage> {
     );
   }
 } // End _AccountsPageState class
+
+class _TotpCodeCacheEntry {
+  const _TotpCodeCacheEntry({
+    required this.account,
+    required this.timeStep,
+    required this.future,
+  });
+
+  final AuthenticatorAccount account;
+  final int timeStep;
+  final Future<String> future;
+}

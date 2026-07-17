@@ -1,8 +1,39 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
+@immutable
+class TotpTimeWindow {
+  const TotpTimeWindow({
+    required this.timeStep,
+    required this.secondsRemaining,
+  });
+
+  factory TotpTimeWindow.fromEpochSeconds({
+    required int epochSeconds,
+    required int periodSeconds,
+  }) {
+    if (periodSeconds <= 0) {
+      throw ArgumentError.value(
+        periodSeconds,
+        'periodSeconds',
+        'must be greater than zero',
+      );
+    }
+
+    final timeStep = epochSeconds ~/ periodSeconds;
+    return TotpTimeWindow(
+      timeStep: timeStep,
+      secondsRemaining: periodSeconds - (epochSeconds % periodSeconds),
+    );
+  }
+
+  final int timeStep;
+  final int secondsRemaining;
+}
+
 class CircularCountdownTimer extends StatelessWidget {
   final int secondsRemaining;
+  final int periodSeconds;
   final double size;
   final Color progressColor;
   final Color backgroundColor;
@@ -10,10 +41,11 @@ class CircularCountdownTimer extends StatelessWidget {
   const CircularCountdownTimer({
     super.key,
     required this.secondsRemaining,
+    required this.periodSeconds,
     this.size = 24.0, // Giữ kích thước nhỏ gọn
     this.progressColor = Colors.blue, // Màu mặc định, có thể lấy từ theme
     this.backgroundColor = Colors.grey, // Màu nền mặc định
-  });
+  }) : assert(periodSeconds > 0);
 
   @override
   Widget build(BuildContext context) {
@@ -25,14 +57,19 @@ class CircularCountdownTimer extends StatelessWidget {
         ? Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.1)
         : backgroundColor;
 
-    return SizedBox(
-      width: size,
-      height: size,
-      child: CustomPaint(
-        painter: _SolidCountdownPainter(
-          secondsRemaining: secondsRemaining,
-          progressColor: effectiveProgressColor,
-          backgroundColor: effectiveBackgroundColor,
+    return Semantics(
+      label:
+          '$secondsRemaining seconds remaining of a $periodSeconds-second period',
+      child: SizedBox(
+        width: size,
+        height: size,
+        child: CustomPaint(
+          painter: _SolidCountdownPainter(
+            secondsRemaining: secondsRemaining,
+            periodSeconds: periodSeconds,
+            progressColor: effectiveProgressColor,
+            backgroundColor: effectiveBackgroundColor,
+          ),
         ),
       ),
     );
@@ -41,11 +78,13 @@ class CircularCountdownTimer extends StatelessWidget {
 
 class _SolidCountdownPainter extends CustomPainter {
   final int secondsRemaining;
+  final int periodSeconds;
   final Color progressColor;
   final Color backgroundColor;
 
   _SolidCountdownPainter({
     required this.secondsRemaining,
+    required this.periodSeconds,
     required this.progressColor,
     required this.backgroundColor,
   });
@@ -67,7 +106,8 @@ class _SolidCountdownPainter extends CustomPainter {
     canvas.drawCircle(center, radius, backgroundPaint);
 
     // Tính toán góc cho phần thời gian CÒN LẠI, vẽ theo chiều kim đồng hồ
-    final double remainingFraction = secondsRemaining / 30.0;
+    final double remainingFraction =
+        secondsRemaining.clamp(0, periodSeconds) / periodSeconds;
     final double elapsedFraction = 1.0 - remainingFraction;
 
     // Góc bắt đầu là vị trí 12h (-pi/2) cộng với góc đã trôi qua
@@ -91,6 +131,7 @@ class _SolidCountdownPainter extends CustomPainter {
   bool shouldRepaint(covariant _SolidCountdownPainter oldDelegate) {
     // Chỉ vẽ lại nếu giây thay đổi
     return oldDelegate.secondsRemaining != secondsRemaining ||
+        oldDelegate.periodSeconds != periodSeconds ||
         oldDelegate.progressColor != progressColor ||
         oldDelegate.backgroundColor != backgroundColor;
   }

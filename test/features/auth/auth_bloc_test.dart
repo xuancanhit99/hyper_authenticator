@@ -60,6 +60,23 @@ void main() {
 
     await states;
   });
+
+  test(
+    'sign out giữ nguyên app-lock preference và local vault boundary',
+    () async {
+      final preferences = await SharedPreferences.getInstance();
+      await preferences.setBool('biometric_enabled', true);
+      final states = expectLater(
+        bloc.stream,
+        emitsInOrder([isA<AuthLoading>(), isA<AuthUnauthenticated>()]),
+      );
+
+      bloc.add(AuthSignOutRequested());
+
+      await states;
+      expect(preferences.getBool('biometric_enabled'), isTrue);
+    },
+  );
 }
 
 class _FakeAuthRepository implements AuthRepository {

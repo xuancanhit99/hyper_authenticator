@@ -55,7 +55,11 @@ void main() {
           .listSync(recursive: true, followLinks: false)
           .whereType<File>()
           .where((file) => file.path.endsWith('.md'))
-          .where((file) => !ignoredPathParts.any(file.path.contains))
+          .where((file) {
+            final repositoryRelativePath =
+                '/${_relativeToRoot(root, file).replaceAll('\\', '/')}';
+            return !ignoredPathParts.any(repositoryRelativePath.contains);
+          })
           .toList()
         ..sort((left, right) => left.path.compareTo(right.path));
 

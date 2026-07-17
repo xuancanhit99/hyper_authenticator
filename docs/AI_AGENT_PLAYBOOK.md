@@ -12,6 +12,9 @@
 - `scripts/agent/context.sh`: định hướng repository an toàn.
 - `scripts/agent/doctor.sh`: kiểm tra environment và configuration.
 - `scripts/agent/check.sh`: documentation, quick và full gate.
+- `supabase/`: upstream pin, non-secret compose overlay, migration và backend contract.
+- `scripts/supabase/test_remote_contract.sh`: isolated Auth/RLS integration gate.
+- `docs/operations`: runbook backup/restore không chứa secret.
 
 ## Bắt đầu session
 

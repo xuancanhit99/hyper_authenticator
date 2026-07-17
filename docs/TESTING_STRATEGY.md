@@ -2,13 +2,13 @@
 
 ## Baseline hiện tại
 
-Ngày 17 tháng 7 năm 2026:
+Ngày 18 tháng 7 năm 2026:
 
 - `flutter analyze`: pass, không có diagnostic.
-- `flutter test`: 10 test pass.
+- `flutter test`: 41 test pass.
 - Format gate: pass.
 - CI đa nền tảng đã được track.
-- Chưa có widget test, BLoC test hoặc `integration_test` đầy đủ.
+- Đã có widget test countdown; chưa có BLoC test hoặc `integration_test` đầy đủ.
 
 Test hiện có:
 
@@ -19,6 +19,14 @@ Test hiện có:
 | `TotpValidator` | Chuẩn hóa Base32 và từ chối secret/algorithm/digits/period không hợp lệ |
 | `GenerateTotpCode` | RFC 6238 SHA1 known-answer vector tại mốc 59 giây |
 | `AuthBloc` | Sign-in emit authenticated và sign-up chờ email không mắc kẹt ở loading |
+| `SupabaseAccountMapper` | camelCase ↔ snake_case và round-trip đủ tham số TOTP |
+| Local storage v2 | Migration legacy, orphan/corruption, concurrent write, commit failure và fallback generation |
+| Countdown | Period tùy chỉnh, boundary, lifecycle resume và semantics |
+| Merge sync | Stable ID, same-label record, local-wins và persistence failure |
+| Plaintext sync guard | Chặn trước session/network và luôn chặn ở release |
+| Offline redirect/Auth | Local vault không cần session; app lock/logout boundary |
+| E2EE primitive | Round-trip, no-plaintext, tamper, wrong user/key và future version |
+| Vault key store | Verified DEK persistence, recovery unwrap và no-overwrite |
 
 ## Quality gate
 
@@ -43,7 +51,8 @@ Không biến lỗi baseline thành success giả. Platform không build đượ
 
 - RFC 6238 SHA1/SHA256/SHA512, digits và period khác nhau.
 - Base32 normalization và validation boundary.
-- Local storage CRUD, index corruption và partial write recovery.
+- Local storage compaction, commit-response ambiguity và device-backed recovery;
+  CRUD/index corruption/partial commit đã có regression test in-memory.
 - Failure mapping ở repository.
 - Merge identity, conflict, deletion và encrypted envelope sau khi có E2EE.
 
@@ -72,10 +81,45 @@ Plugin boundary cần wrapper hoặc fake để test không phụ thuộc camera
 4. Logout không làm mất TOTP local.
 5. Interrupted upload không làm mất snapshot hợp lệ gần nhất.
 6. Merge/concurrency hai thiết bị.
-7. User A không truy cập row của User B qua RLS.
+7. User A không truy cập row của User B qua RLS — đã có remote contract test;
+   còn thiếu orchestration từ Flutter client.
 8. Recovery link thành công, hết hạn, malformed và reuse.
 
 Dùng Supabase environment isolated và dữ liệu tổng hợp.
+
+### Recovery web
+
+    reset-password-web/test.sh
+
+Harness hiện xác minh JavaScript behavior, runtime config validation, dependency
+pin/SRI, container chạy non-root/read-only, CSP/security header, no-log và không
+copy `.env`. Nó chưa thay thế E2E recovery test qua email thật cho expired,
+malformed, reused và successful token.
+
+### Supabase remote contract
+
+Backend rollout chạy ba suite ngoài Flutter unit test:
+
+| Suite | Coverage | Baseline |
+|---|---|---:|
+| Official `test-self-hosted.sh` | Container, Studio, Auth, REST, Storage/TUS, Edge Functions, pg-meta, Realtime | 35 pass |
+| Official `test-auth-keys.sh` | Legacy/opaque key, ES256/JWKS, HS256 compatibility, WebSocket | 43 pass |
+| `scripts/supabase/test_remote_contract.sh` | Anonymous denial, mapper shape và owner/cross-user CRUD RLS | 17 pass |
+
+Contract script cần server `.env` có service role chỉ để tạo/dọn isolated user.
+Không copy credential đó vào client hoặc CI log. Script dùng placeholder được đánh
+dấu `TEST_ONLY`, không in response/session và cleanup bằng `trap`.
+
+Sau suite phải xác minh Auth user/audit, Storage bucket/object, Realtime message và
+`synced_accounts` không còn test data. Remote suite chưa chạy trong CI mặc định vì
+cần isolated self-hosted environment cùng secret operator.
+
+Additive E2EE migration có harness Docker không cần remote secret:
+
+    scripts/supabase/test_encrypted_vault_migration.sh
+
+Nó xác minh SQL apply, optimistic revision, conflict, anonymous denial và owner
+RLS trên PostgreSQL tạm. Vẫn cần PostgREST/Auth E2E sau staging deploy.
 
 ## Xác minh platform
 
@@ -102,7 +146,7 @@ Với mỗi platform được quảng bá:
 - macOS debug;
 - iOS simulator debug không codesign.
 
-CI pin Flutter 3.44.6 và Java 17 cho Android. Không đưa production credential vào CI; build không cần Supabase define, còn integration test tương lai chỉ nhận public client config của environment test.
+CI pin Flutter 3.44.6 và Java 17 cho Android. Không đưa production credential vào CI; build không cần Supabase define. Nếu tự động hóa remote contract sau này, dùng ephemeral environment riêng và secret store cho service-role cleanup credential.
 
 ## Fixture và báo lỗi
 

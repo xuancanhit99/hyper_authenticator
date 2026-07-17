@@ -1,5 +1,6 @@
 import java.util.Properties
 import java.io.FileInputStream
+import org.gradle.api.GradleException
 
 plugins {
     id("com.android.application")
@@ -12,8 +13,20 @@ val keystorePropertiesFile = file("../key.properties") // Go up one level to and
 val keystoreProperties = Properties()
 if (keystorePropertiesFile.exists()) {
     keystoreProperties.load(FileInputStream(keystorePropertiesFile))
-} else {
-    println("Warning: key.properties file not found at ${keystorePropertiesFile.absolutePath}")
+}
+
+val releaseStoreFile = keystoreProperties["storeFile"]
+    ?.toString()
+    ?.takeIf { it.isNotBlank() }
+    ?.let { file("../$it") }
+val hasReleaseSigningConfig =
+    keystorePropertiesFile.exists() &&
+    releaseStoreFile?.exists() == true &&
+    listOf("keyAlias", "keyPassword", "storePassword").all {
+        !keystoreProperties[it]?.toString().isNullOrBlank()
+    }
+val releaseTaskRequested = gradle.startParameter.taskNames.any {
+    it.contains("release", ignoreCase = true)
 }
 
 android {
@@ -29,13 +42,13 @@ android {
     // Define signing configurations
     signingConfigs {
         create("release") {
-            if (keystorePropertiesFile.exists()) {
+            if (hasReleaseSigningConfig) {
                 keyAlias = keystoreProperties["keyAlias"] as String?
                 keyPassword = keystoreProperties["keyPassword"] as String?
                 // Resolve storeFile path relative to this build script's directory (android/app)
                 // Path in properties (app/upload-keystore.jks) is relative to android/
                 // So, go up one level ('../') then append the path from properties.
-                storeFile = keystoreProperties["storeFile"]?.let { file("../${it}") }
+                storeFile = releaseStoreFile
                 storePassword = keystoreProperties["storePassword"] as String?
             }
         }
@@ -54,21 +67,13 @@ android {
 
     buildTypes {
         release {
-            val releaseSigningConfig = signingConfigs.findByName("release")
-            // Check if storeFile was successfully resolved and exists
-            val storeFileResolved = releaseSigningConfig?.storeFile
-            val storeFileExists = storeFileResolved?.exists() ?: false
-
-            if (keystorePropertiesFile.exists() && storeFileExists) {
-                signingConfig = releaseSigningConfig // Use the release config
-            } else {
-                // Print more detailed info for debugging
-                println("Warning: Falling back to debug signing for release build.")
-                println("  - key.properties found: ${keystorePropertiesFile.exists()} at ${keystorePropertiesFile.absolutePath}")
-                println("  - storeFile path from properties: ${keystoreProperties["storeFile"]}")
-                println("  - Resolved storeFile path: ${storeFileResolved?.absolutePath}")
-                println("  - Resolved storeFile exists: ${storeFileExists}")
-                signingConfig = signingConfigs.getByName("debug") // Fallback to debug
+            if (hasReleaseSigningConfig) {
+                signingConfig = signingConfigs.getByName("release")
+            } else if (releaseTaskRequested) {
+                throw GradleException(
+                    "Android release signing chưa được cấu hình đầy đủ. " +
+                        "Release build bị dừng để tránh tạo artifact debug-signed hoặc unsigned.",
+                )
             }
             // Re-add: Include native debug symbols in the release build
             ndk {

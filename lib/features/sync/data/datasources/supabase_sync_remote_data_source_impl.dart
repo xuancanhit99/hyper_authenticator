@@ -1,6 +1,8 @@
 import 'package:hyper_authenticator/core/error/exceptions.dart';
+import 'package:hyper_authenticator/core/config/app_config.dart';
 import 'package:hyper_authenticator/features/authenticator/domain/entities/authenticator_account.dart';
 import 'package:hyper_authenticator/features/sync/data/datasources/sync_remote_data_source.dart';
+import 'package:hyper_authenticator/features/sync/data/mappers/supabase_account_mapper.dart';
 import 'package:injectable/injectable.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -10,8 +12,20 @@ const String profilesTableName = 'user_profiles'; // Define profiles table name
 @LazySingleton(as: SyncRemoteDataSource)
 class SupabaseSyncRemoteDataSourceImpl implements SyncRemoteDataSource {
   final SupabaseClient supabaseClient;
+  final AppConfig appConfig;
 
-  SupabaseSyncRemoteDataSourceImpl({required this.supabaseClient});
+  SupabaseSyncRemoteDataSourceImpl({
+    required this.supabaseClient,
+    required this.appConfig,
+  });
+
+  void _requireExplicitPlaintextSyncOptIn() {
+    if (!appConfig.plaintextSyncAvailable) {
+      throw const ServerException(
+        'Cloud sync đang bị khóa vì remote payload chưa được mã hóa đầu cuối.',
+      );
+    }
+  }
 
   String _getCurrentUserId() {
     final user = supabaseClient.auth.currentUser;
@@ -23,6 +37,7 @@ class SupabaseSyncRemoteDataSourceImpl implements SyncRemoteDataSource {
 
   @override
   Future<List<AuthenticatorAccount>> downloadAccounts() async {
+    _requireExplicitPlaintextSyncOptIn();
     final userId = _getCurrentUserId();
     try {
       final response = await supabaseClient
@@ -35,13 +50,7 @@ class SupabaseSyncRemoteDataSourceImpl implements SyncRemoteDataSource {
         response,
       );
 
-      final accounts = data.map((json) {
-        // Supabase might return account_id, map it back to id for the entity
-        if (json.containsKey('account_id') && !json.containsKey('id')) {
-          json['id'] = json['account_id'];
-        }
-        return AuthenticatorAccount.fromJson(json);
-      }).toList();
+      final accounts = data.map(SupabaseAccountMapper.fromRow).toList();
 
       return accounts;
     } on PostgrestException catch (e) {
@@ -57,6 +66,7 @@ class SupabaseSyncRemoteDataSourceImpl implements SyncRemoteDataSource {
 
   @override
   Future<void> uploadAccounts(List<AuthenticatorAccount> accounts) async {
+    _requireExplicitPlaintextSyncOptIn();
     final userId = _getCurrentUserId();
     try {
       // 1. Delete existing accounts for the user (simple overwrite strategy)
@@ -67,13 +77,11 @@ class SupabaseSyncRemoteDataSourceImpl implements SyncRemoteDataSource {
 
       // 2. Insert new accounts if the list is not empty
       if (accounts.isNotEmpty) {
-        final List<Map<String, dynamic>> dataToInsert = accounts.map((account) {
-          final json = account.toJson();
-          // Map the 'id' from AuthenticatorAccount to 'account_id' column in Supabase
-          json['account_id'] = json.remove('id'); // Rename the key
-          json['user_id'] = userId; // Add user_id to each record
-          return json;
-        }).toList();
+        final List<Map<String, dynamic>> dataToInsert = accounts
+            .map(
+              (account) => SupabaseAccountMapper.toRow(account, userId: userId),
+            )
+            .toList();
 
         await supabaseClient.from(accountsTableName).insert(dataToInsert);
       }
@@ -92,6 +100,7 @@ class SupabaseSyncRemoteDataSourceImpl implements SyncRemoteDataSource {
 
   @override
   Future<bool> hasRemoteData() async {
+    _requireExplicitPlaintextSyncOptIn();
     final userId = _getCurrentUserId();
     try {
       final response = await supabaseClient
@@ -115,6 +124,7 @@ class SupabaseSyncRemoteDataSourceImpl implements SyncRemoteDataSource {
   // The updated_at column in synced_accounts handles this automatically on insert.
   @override
   Future<DateTime?> getLastUploadTime() async {
+    _requireExplicitPlaintextSyncOptIn();
     // Get the most recent 'updated_at' timestamp from the user's synced accounts.
     final userId = _getCurrentUserId();
     try {

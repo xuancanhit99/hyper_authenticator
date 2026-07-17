@@ -1,8 +1,15 @@
-# Thiết kế mã hóa đầu cuối đề xuất
+# Thiết kế mã hóa đầu cuối
 
-Trạng thái: **Dự kiến**. Không nội dung nào trong tài liệu này chứng minh E2EE đã được triển khai.
+Trạng thái: **Chấp nhận theo giai đoạn** trong
+[ADR-0005](adr/0005-e2ee-versioned-snapshot-sync.md).
 
-Architecture decision record phải chấp nhận thiết kế cuối cùng trước khi implementation.
+**Đã triển khai:** AES-256-GCM snapshot primitive, AAD bind user/revision, random
+DEK, user-held recovery key wrapping, secure key-store primitive, schema/RPC v2 và
+regression/migration test.
+
+**Khoảng trống đã biết:** onboarding/export/import recovery key UI, client remote
+orchestration, staging deployment, conflict UX và plaintext migration chưa hoàn tất;
+do đó release cloud sync vẫn bị khóa và chưa được mô tả là E2EE production.
 
 ## Mục tiêu
 
@@ -15,29 +22,25 @@ Supabase và network intermediary không thể đọc TOTP secret hoặc account
 - Tự phát minh cryptographic primitive.
 - Khẳng định có thể recovery khi chưa thiết kế key recovery rõ ràng.
 
-## Key hierarchy đề xuất
+## Key hierarchy đã chọn
 
 Dùng hai tầng key:
 
 1. Data Encryption Key (DEK) ngẫu nhiên mã hóa account payload.
 2. Key Encryption Key (KEK) wrap DEK cho từng thiết bị hoặc recovery method được cho phép.
 
-Nguồn KEK khả thi:
+Recovery key ngẫu nhiên 256-bit có prefix/version `HA1-` là KEK để wrap DEK.
+Thiết bị giữ DEK trong platform secure storage theo Supabase user ID. Thiết bị mới
+nhập recovery key, tải wrapped DEK rồi unwrap local; backend không nhận key plaintext.
+Supabase password không được dùng làm KEK/KDF.
 
-- key derive từ master password do user cung cấp bằng memory-hard KDF;
-- device key được bảo vệ bởi secure hardware hoặc platform secure storage;
-- recovery key được export rõ ràng cho user.
-
-Dự án phải quyết định cách thiết bị mới nhận DEK mà backend không nhận key material ở dạng plaintext.
-
-## Payload đề xuất
+## Payload đã chọn
 
 Versioned envelope có thể có dạng:
 
 ~~~json
 {
   "formatVersion": 1,
-  "recordId": "stable-record-id",
   "cipher": "AES-256-GCM",
   "nonce": "base64",
   "ciphertext": "base64",
@@ -46,39 +49,26 @@ Versioned envelope có thể có dạng:
 }
 ~~~
 
-Plaintext trước encryption chứa đầy đủ field `AuthenticatorAccount` cần để tạo mã. Associated authenticated data phải bind ít nhất:
+Plaintext là snapshot canonical chứa đầy đủ `AuthenticatorAccount`, sort theo stable
+ID. Associated authenticated data bind:
 
 - format version;
 - user identity hoặc tenant scope;
-- record ID;
 - purpose string;
-- revision nếu conflict protocol sử dụng.
+- revision.
 
 Nonce phải duy nhất với cùng một key. Dùng cryptography library để tạo nonce ngẫu nhiên và authenticated ciphertext.
 
-## Key derivation
+## Primitive và encoding
 
-Nếu chọn master password:
-
-- lưu random salt riêng cho mỗi user;
-- dùng memory-hard KDF đã review và chạy được trên mọi target;
-- định nghĩa parameter trong versioned envelope hoặc key metadata;
-- rate limit chỉ là defense in depth vì encrypted blob cho phép offline guessing;
-- không ngầm tái sử dụng mật khẩu đăng nhập Supabase;
-- không log password, derived key, salt, DEK hoặc recovery data.
-
-Nếu Dart stack được chọn không có KDF cross-platform phù hợp, phải xử lý dependency đó trước khi chấp nhận thiết kế.
+Client dùng package `cryptography` 2.9.0 và AES-256-GCM. Nonce được library sinh
+random cho mỗi encrypt. Nonce, ciphertext và tag dùng Base64URL. Không tự triển khai
+cipher/KDF và không dùng password-derived key trong format v1.
 
 ## Onboarding thiết bị
 
-Thiết kế cuối phải định nghĩa một hoặc nhiều cách:
-
-- quét QR truyền dữ liệu mã hóa device-to-device;
-- nhập recovery key entropy cao;
-- nhập master password để derive KEK;
-- phê duyệt thiết bị mới từ thiết bị tin cậy đang có.
-
-Chỉ xác thực Supabase không được làm lộ DEK.
+Version đầu dùng nhập recovery key entropy cao. UI phải hiển thị key một lần và yêu
+cầu user xác nhận đã lưu trước enable sync. QR/trusted-device transfer là mở rộng sau.
 
 ## Recovery
 
@@ -138,14 +128,10 @@ Trước khi bật E2EE ở production:
 - Không có plaintext secret trong remote request fixture, log, crash report hoặc database row.
 - Ghi lại performance trên target platform và giới hạn secure memory.
 
-## Quyết định mở
+## Quyết định triển khai còn mở
 
-- Cipher suite và library.
-- KDF và parameter.
-- Encryption theo record hay snapshot.
 - Key rotation và device revocation.
-- Recovery model.
-- Conflict protocol và field associated data.
-- Metadata privacy.
+- Conflict UX khi optimistic revision mismatch.
+- Metadata/timing privacy.
 - Kỳ vọng secure deletion theo platform.
 - Web support và browser threat model.

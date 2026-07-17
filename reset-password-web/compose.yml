@@ -1,14 +1,25 @@
-version: '3.8' # Specify docker-compose version
-
 services:
   reset-password-web:
     build:
-      context: . # Build the image from the Dockerfile in the current directory (.)
-      args:
-        # Docker Compose will automatically substitute these using the .env file in the same directory
-        - SUPABASE_URL=${SUPABASE_URL}
-        - SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
-    container_name: hyper-authenticator-reset-web # Optional: Name the container
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      SUPABASE_URL: ${SUPABASE_URL:?Thiếu SUPABASE_URL}
+      SUPABASE_PUBLISHABLE_KEY: ${SUPABASE_PUBLISHABLE_KEY:-}
+      SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY:-}
     ports:
-      - "8888:80" # Map port 8888 on the host to port 80 in the container (Adjust host port if needed)
-    restart: unless-stopped # Optional: Restart policy
+      - "127.0.0.1:${RESET_PASSWORD_PORT:-8888}:8080"
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp:size=1m,mode=1777
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O - http://127.0.0.1:8080/healthz | grep -qx healthy"]
+      interval: 30s
+      timeout: 3s
+      start_period: 5s
+      retries: 3

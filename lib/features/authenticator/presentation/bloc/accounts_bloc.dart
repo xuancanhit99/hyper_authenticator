@@ -30,7 +30,6 @@ class AccountsBloc extends Bloc<AccountsEvent, AccountsState> {
     on<LoadAccounts>(_onLoadAccounts);
     on<AddAccountRequested>(_onAddAccountRequested);
     on<DeleteAccountRequested>(_onDeleteAccountRequested);
-    on<ReplaceAccountsEvent>(_onReplaceAccounts); // Added handler
     on<UpdateAccountRequested>(
       _onUpdateAccountRequested,
     ); // Added handler for update
@@ -116,82 +115,6 @@ class AccountsBloc extends Bloc<AccountsEvent, AccountsState> {
       return failure.message;
     }
     return 'An unexpected error occurred.';
-  }
-
-  Future<void> _onReplaceAccounts(
-    ReplaceAccountsEvent event, // Contains downloadedAccounts
-    Emitter<AccountsState> emit,
-  ) async {
-    emit(AccountsLoading()); // Indicate processing state
-
-    // 1. Get current local accounts for comparison
-    final failureOrCurrentAccounts = await getAccounts(NoParams());
-
-    await failureOrCurrentAccounts.fold(
-      (failure) async {
-        // If fetching current accounts fails, emit error and stop
-        emit(
-          AccountsError(
-            'Failed to get current accounts before merging: ${_mapFailureToMessage(failure)}',
-          ),
-        );
-      },
-      (currentLocalAccounts) async {
-        // Create a set of identifiers for existing local accounts for efficient lookup
-        // Using issuer and accountName as the key for comparison (case-insensitive)
-        final existingLocalIdentifiers = currentLocalAccounts
-            .map(
-              (acc) =>
-                  '${acc.issuer.toLowerCase()}:${acc.accountName.toLowerCase()}',
-            )
-            .toSet();
-
-        // 2. Add only the accounts from the server that are not already present locally
-        bool hasAddError = false;
-        String firstAddErrorMessage = '';
-        for (final downloadedAccount in event.accounts) {
-          final downloadedIdentifier =
-              '${downloadedAccount.issuer.toLowerCase()}:${downloadedAccount.accountName.toLowerCase()}';
-
-          // Check if an account with the same issuer/name already exists locally
-          if (!existingLocalIdentifiers.contains(downloadedIdentifier)) {
-            // If not present, add it
-            final addResult = await addAccount(
-              AddAccountParams(
-                issuer: downloadedAccount.issuer,
-                accountName: downloadedAccount.accountName,
-                secretKey: downloadedAccount.secretKey,
-                algorithm: downloadedAccount.algorithm,
-                digits: downloadedAccount.digits,
-                period: downloadedAccount.period,
-              ),
-            );
-            await addResult.fold(
-              (failure) async {
-                if (!hasAddError) {
-                  hasAddError = true;
-                  firstAddErrorMessage = _mapFailureToMessage(failure);
-                }
-              },
-              (_) async {
-                // Add the newly added identifier to prevent adding duplicates
-                // if the server list somehow contained duplicates itself.
-                existingLocalIdentifiers.add(downloadedIdentifier);
-              },
-            );
-          }
-          // Method _onUpdateAccountRequested was moved out of this loop
-        }
-
-        if (hasAddError) {
-          emit(AccountsError(firstAddErrorMessage));
-          return;
-        }
-
-        // 3. Finally, reload the accounts to reflect the merged state
-        add(LoadAccounts());
-      },
-    );
   }
 
   Future<void> _onUpdateAccountRequested(

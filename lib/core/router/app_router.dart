@@ -30,6 +30,49 @@ class AppRoutes {
   static const editAccount = '/edit-account'; // Added for EditAccountPage
 }
 
+/// Pure redirect policy so offline-vault and app-lock behavior can be tested
+/// without constructing the widget tree.
+class AppRedirectPolicy {
+  static String? redirect({
+    required AuthState authState,
+    required LocalAuthState localAuthState,
+    required String location,
+  }) {
+    final isLogin = location == AppRoutes.login;
+    final isRegister = location == AppRoutes.register;
+    final isForgotPassword = location == AppRoutes.forgotPassword;
+    final isUpdatePassword = location == AppRoutes.updatePassword;
+    final isStartup = location == AppRoutes.startup;
+    final isLockScreen = location == AppRoutes.lockScreen;
+    final isPublicAuthRoute =
+        isLogin || isRegister || isForgotPassword || isUpdatePassword;
+
+    if (isPublicAuthRoute) {
+      if (authState is AuthAuthenticated && (isLogin || isRegister)) {
+        return AppRoutes.main;
+      }
+      return null;
+    }
+
+    if (localAuthState is LocalAuthInitial) {
+      return isStartup ? null : AppRoutes.startup;
+    }
+
+    if (localAuthState is LocalAuthRequired ||
+        localAuthState is LocalAuthError) {
+      return isLockScreen ? null : AppRoutes.lockScreen;
+    }
+
+    if ((localAuthState is LocalAuthSuccess ||
+            localAuthState is LocalAuthUnavailable) &&
+        (isStartup || isLockScreen)) {
+      return AppRoutes.main;
+    }
+
+    return null;
+  }
+}
+
 // Helper class to trigger GoRouter refresh on multiple Bloc stream changes
 class CombinedAuthRefreshStream extends ChangeNotifier {
   late final List<StreamSubscription<dynamic>> _subscriptions;
@@ -162,79 +205,11 @@ class AppRouter {
 
       // --- REDIRECT LOGIC (Simplified, based on original working version) ---
       redirect: (BuildContext context, GoRouterState state) {
-        final supabaseAuthState = authBloc.state;
-        final localAuthState = localAuthBloc.state;
-        final location = state.matchedLocation;
-
-        final isGoingToLogin = location == AppRoutes.login;
-        final isStartingUp = location == AppRoutes.startup;
-        final isGoingToLockScreen = location == AppRoutes.lockScreen;
-        // Add checks for other public routes
-        final isGoingToRegister = location == AppRoutes.register;
-        final isGoingToForgotPassword = location == AppRoutes.forgotPassword;
-        final isGoingToUpdatePassword = location == AppRoutes.updatePassword;
-
-        // 1. Chờ Supabase Auth load xong
-        if (supabaseAuthState is AuthInitial ||
-            supabaseAuthState is AuthLoading) {
-          final isOnPublicRoute =
-              isGoingToLogin ||
-              isGoingToRegister ||
-              isGoingToForgotPassword ||
-              isGoingToUpdatePassword;
-          return (isStartingUp || isOnPublicRoute) ? null : AppRoutes.startup;
-        }
-
-        final isSupabaseAuthenticated = supabaseAuthState is AuthAuthenticated;
-
-        // 2. Nếu CHƯA đăng nhập Supabase và KHÔNG ở trang Login -> Về Login
-        // 2. If NOT Supabase authenticated and NOT going to an allowed public route -> Go Login
-        // Allowed public routes: login, register, forgotPassword
-        if (!isSupabaseAuthenticated &&
-            !isGoingToLogin &&
-            !isGoingToRegister &&
-            !isGoingToForgotPassword &&
-            !isGoingToUpdatePassword) {
-          return AppRoutes.login;
-        }
-
-        // 3. Nếu ĐÃ đăng nhập Supabase và ĐANG ở trang Login -> Vào Main
-        // 4. Nếu ĐÃ đăng nhập Supabase VÀ ĐANG ở trang Login -> Vào Main
-        //    (Logic kiểm tra Local Auth sẽ chạy sau nếu cần khi đã ở Main hoặc Lock)
-        // --- Local Authentication Checks (only if Supabase authenticated) ---
-        if (isSupabaseAuthenticated) {
-          // 5. Chờ Local Auth load xong (nếu cần)
-          if (localAuthState is LocalAuthInitial) {
-            return isStartingUp ? null : AppRoutes.startup;
-          }
-
-          if ((localAuthState is LocalAuthRequired ||
-                  localAuthState is LocalAuthError) &&
-              !isGoingToLockScreen) {
-            return AppRoutes.lockScreen;
-          }
-
-          // 7. Nếu Local Auth THÀNH CÔNG và ĐANG ở màn hình khóa -> Vào Main
-          if (localAuthState is LocalAuthSuccess && isGoingToLockScreen) {
-            return AppRoutes.main;
-          }
-
-          // 8. Nếu Local Auth KHÔNG CÓ SẴN và ĐANG ở màn hình khóa -> Vào Main
-          // (Shouldn't happen if LocalAuthSuccess is emitted correctly, but as a safeguard)
-          if (localAuthState is LocalAuthUnavailable && isGoingToLockScreen) {
-            return AppRoutes.main;
-          }
-
-          if ((isGoingToLogin || isStartingUp) &&
-              (localAuthState is LocalAuthSuccess ||
-                  localAuthState is LocalAuthUnavailable)) {
-            return AppRoutes.main;
-          }
-        }
-
-        // Các trường hợp khác (đã đăng nhập và ở trang main, chưa đăng nhập và ở trang login) -> không cần redirect
-        // Các trường hợp khác không cần redirect
-        return null;
+        return AppRedirectPolicy.redirect(
+          authState: authBloc.state,
+          localAuthState: localAuthBloc.state,
+          location: state.matchedLocation,
+        );
       },
       errorBuilder: (context, state) =>
           Scaffold(body: Center(child: Text('Page not found: ${state.error}'))),
