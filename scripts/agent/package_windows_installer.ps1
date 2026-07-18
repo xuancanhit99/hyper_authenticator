@@ -130,7 +130,7 @@ $hash = (Get-FileHash -LiteralPath $installerPath -Algorithm SHA256).Hash.ToLowe
 $checksumPath = "$installerPath.sha256"
 [IO.File]::WriteAllText(
   $checksumPath,
-  "$hash  $installerName$([Environment]::NewLine)",
+  "$hash  $installerName`n",
   [Text.Encoding]::ASCII
 )
 
