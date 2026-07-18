@@ -73,7 +73,7 @@ behavior an toàn, backend có backup/restore/health harness và release gate t�
 | Web browser smoke | Pass `/` và direct `/settings` trên production TLS origin; console sạch |
 | Web production-serving contract | Pass TLS/proxy/CSP/cache/SPA/read-only/no-log; browser image render sạch |
 | Linux release compile | Pass `linux/arm64`, Flutter 3.44.6, Ubuntu 24.04 isolated |
-| GitHub Actions run `29633535829` | Pass toàn bộ Web, Android debug, Apple compile, Linux, Windows và quality gates |
+| GitHub Actions run `29642230864` | Pass 7/7 Web, Android debug, Apple compile, Linux, Windows, secret và quality gates tại commit `f88506d` |
 | Windows configured artifact | Pass PE x64; 22/22 SHA-256 checksum; không chứa `.env` hoặc signing key |
 | Android configured release | Fail closed vì thiếu upload keystore |
 | Android Pixel AVD E2E | Pass login return, setup revision 1, recovery-key rotation revision 2, vault-key rotation revision 3, fresh-device recovery revision 3 và SDK bulk revoke 2→1 session; cleanup user/row/app data |
@@ -85,6 +85,7 @@ behavior an toàn, backend có backup/restore/health harness và release gate t�
 | Studio proxy contract | Pass |
 | Backup restore rehearsal | Full restore DB tạm + schema/FORCE RLS/active-session guard pass |
 | Auth smoke load | 100/100 HTTP 200, concurrency 10, p95 ~0,38 giây |
+| Web production rollout | Image `1.1.0-f88506d` `linux/amd64` healthy; local/container/public SHA-256 khớp; `/`, `/settings`, `/login`, `/reset-password` trả 200; TLS/HSTS/CSP/cache/Permissions-Policy pass |
 
 Full `scripts/agent/check.sh full` pass: docs, generated drift, format, analyzer,
 platform config, 98 test và encrypted migration/active-session contract.

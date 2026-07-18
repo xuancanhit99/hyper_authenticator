@@ -6,7 +6,12 @@ source hoặc `.env` vào Docker build context.
 Build artifact và image:
 
     scripts/agent/build.sh web .env
-    web-deployment/build-image.sh hyper-authenticator-web:1.1.0
+    web-deployment/build-image.sh hyper-authenticator-web:1.1.0-<commit> linux/amd64
+
+Đối số thứ hai pin kiến trúc của host chạy container. Production hiện dùng
+`linux/amd64`; truyền sai hoặc bỏ đối số khi cross-build trên Apple Silicon có thể
+tạo image `linux/arm64` không chạy đúng trên server. Contract test local có thể bỏ
+đối số để dùng kiến trúc native.
 
 Khi chạy, truyền cùng `SUPABASE_URL` đã dùng lúc compile để entrypoint tạo CSP:
 

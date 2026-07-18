@@ -71,7 +71,7 @@ artifact đó chỉ chứng minh compile và không được chạy/phân phối
 
     scripts/agent/build.sh web .env.production
     web-deployment/test.sh
-    web-deployment/build-image.sh hyper-authenticator-web:1.1.0
+    web-deployment/build-image.sh hyper-authenticator-web:1.1.0-<commit> linux/amd64
 
 E2EE sync bị tắt theo capability. Deploy immutable artifact qua HTTPS với CSP,
 `nosniff`, referrer/permissions policy phù hợp; smoke login/local TOTP/camera trên
@@ -84,14 +84,23 @@ Image Nginx pin digest, chạy non-root/read-only và chỉ nhận `SUPABASE_URL
 CSP chặn. Build context dùng tar allowlist nên không chứa `.env`, source hoặc Git
 metadata. Noto Sans fallback của Flutter và `zxing-wasm` scanner vẫn là external
 runtime resource đã giới hạn origin trong CSP; self-host chúng nếu policy cấm CDN.
+Đối số platform là bắt buộc trong quy trình production cross-build: server hiện
+chạy `linux/amd64`, trong khi máy build Apple Silicon mặc định tạo `linux/arm64`.
+Phải kiểm tra `docker image inspect <image> --format '{{.Architecture}}'` trước
+khi chuyển image; health check không được dùng làm cơ chế phát hiện đầu tiên.
 
-Server dùng `web-deployment/docker-compose.production.yml`. Tạo file `.env` mode
-0600 cạnh compose với `WEB_IMAGE` đã pin theo commit và cùng `SUPABASE_URL` HTTPS,
-sau đó chạy:
+Source canonical là `web-deployment/docker-compose.production.yml`; bản cài trên
+server nằm tại `/opt/stacks/hyper-authenticator-web/compose.yml`. Tạo file `.env`
+mode 0600 cạnh compose với `WEB_IMAGE` đã pin theo commit và cùng `SUPABASE_URL`
+HTTPS. Trước khi đổi image, giữ image cũ và tạo bản sao `.env` mode 0600. Sau đó chạy:
 
-    docker compose config --quiet
-    docker compose up -d
+    docker compose -f compose.yml config --quiet
+    docker compose -f compose.yml up -d
     docker inspect --format '{{.State.Health.Status}}' hyper-authenticator-web
+
+Nếu container không `healthy` trong cửa sổ rollout, khôi phục `.env` đã sao lưu
+và chạy lại `docker compose -f compose.yml up -d`. Chỉ xóa image cũ sau khi public
+hash, route và header đã được xác minh; không in `SUPABASE_URL` khi thao tác `.env`.
 
 Container không publish host port; reverse proxy phải cùng external network
 `proxy-network` và forward tới `hyper-authenticator-web:8080`. Nginx Proxy Manager
