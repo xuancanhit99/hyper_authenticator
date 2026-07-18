@@ -87,7 +87,7 @@ behavior an toàn, backend có backup/restore/health harness và release gate t�
 | Web production-serving contract | Pass TLS/proxy/CSP/cache/SPA/read-only/no-log; browser image render sạch |
 | Linux configured release + runtime | Pass `linux/x64`; private keyring/Xvfb đi đủ bootstrap, add, storage round-trip, lifecycle, reload, navigation và cleanup |
 | Linux Debian artifact | `1.1.0+10` amd64, SHA-256 `b90f880c…f0eaf561`, root entry 0755; dependency/install/launch/metadata-upgrade/remove và package-level data retention pass trong Ubuntu 24.04 sạch |
-| Linux distro compatibility local | Cùng release bundle đóng gói trên Ubuntu 22.04 arm64 có glibc floor 2.34; sau regression fix explicit `libegl1`, `libgles2`, `libgl1`, package tự cài và launch với private Secret Service/Xvfb trên Ubuntu 22.04/24.04, Debian 12/13 |
+| Linux distro compatibility local | Cùng release bundle đóng gói trên Ubuntu 22.04 arm64 có glibc floor 2.34; sau regression fix explicit `libegl1`, `libgles2`, `libgl1`, `gnome-keyring`, exact matrix script pass private Secret Service + X11/Wayland trên Ubuntu 22.04/24.04 và Debian 12/13 |
 | Linux authenticated E2EE operator gate | Pass hai lượt trên Ubuntu 24.04 arm64/private Secret Service: setup revision 1, sync revision 2, fresh recovery, recovery-key rotation revision 3 + reject key cũ, vault-key rotation revision 4 + recovery; mỗi lượt xóa isolated user và DB probe cuối trả `test_users=0`, `test_vault_rows=0` |
 | GitHub Actions run `29646554828` | Pass 7/7 Web, Android debug, Apple compile, Linux runtime/package, Windows runtime/installer, secret và quality gates tại commit `e077032` |
 | Windows runtime + NSIS candidate | Windows Server 2025 local-vault UI/secure-storage/lifecycle pass; configured x64 bundle; NSIS 3.12 install/launch/metadata-upgrade/uninstall giữ AppData pass; unsigned installer SHA-256 `fc267661…331388b3` audit portable trên macOS; bundle + installer artifact giữ 14 ngày |
@@ -115,8 +115,8 @@ platform config, 105 test và encrypted migration/active-session contract.
 - Windows còn code signing và physical-device/Windows Hello; historical upgrade
   từ `1.0.0+9` đã pass hosted runtime và branch-head CI.
 - Flutter Web còn camera permission/QR scan smoke trên browser-device thật.
-- Linux còn hosted amd64 historical upgrade, KDE/Wayland/physical desktop và
-  release-channel signing/support metadata. Local arm64 distro matrix đã pass;
+- Linux còn hosted amd64 historical upgrade, KDE login/unlock/physical desktop và
+  release-channel signing/support metadata. Local arm64 X11/Wayland matrix đã pass;
   authenticated E2EE vẫn là debug container, chưa phải signed amd64 package/public
   distribution smoke.
 - E2EE v1 đã có DEK rotation và bulk revoke session khác; device registry/revoke

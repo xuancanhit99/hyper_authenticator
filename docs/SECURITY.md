@@ -120,9 +120,10 @@ representation; equality vẫn hoạt động nhưng transition log không lộ 
   Ubuntu container tạm, kiểm tra `/` giữ mode 0755 và XDG sentinel còn nguyên sau
   metadata upgrade/remove; historical-release vault migration vẫn là gate riêng.
 - Distro matrix chỉ mutate bốn container Ubuntu/Debian pin digest trên hosted
-  Linux runner, dùng XDG mode 0700 và private `gnome-keyring`; không mount home,
-  keyring hoặc vault người dùng. Package khai báo explicit EGL/GLES/GL loader để
-  không phụ thuộc dependency tình cờ của distro mới.
+  Linux runner, dùng XDG mode 0700, package-provided `gnome-keyring`, Xvfb và
+  Weston headless; không mount home, keyring hoặc vault người dùng. Package khai
+  báo explicit EGL/GLES/GL loader và Secret Service provider để không phụ thuộc
+  dependency tình cờ của distro/desktop.
 - Windows NSIS uninstaller chỉ xóa program directory/shortcut/registry metadata,
   không xóa AppData. Hosted-runner smoke kiểm tra sentinel còn nguyên qua metadata
   upgrade và uninstall; guard từ chối workstation/self-hosted runner. Historical

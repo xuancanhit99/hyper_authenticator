@@ -46,7 +46,7 @@ các credential gate tương ứng pass.
 | iOS 26.5 simulator debug | Pass build/runtime với Supabase init và local-vault integration smoke có cleanup |
 | Android release | Fail closed đúng thiết kế vì chưa có upload keystore |
 | macOS release | Bị chặn vì chưa có development/distribution certificate |
-| Linux release + Debian artifact | Pass configured `linux/x64`, private-keyring UI smoke và `.deb` `1.1.0+10` amd64; local arm64 package với explicit EGL/GLES/GL dependency pass Ubuntu 22.04/24.04 + Debian 12/13; clean-container transition/user-data retention pass |
+| Linux release + Debian artifact | Pass configured `linux/x64`, private-keyring UI smoke và `.deb` `1.1.0+10` amd64; local arm64 package tự kéo EGL/GLES/GL + `gnome-keyring`, pass X11/Wayland trên Ubuntu 22.04/24.04 + Debian 12/13; clean-container transition/retention pass |
 | Linux authenticated E2EE runtime | Pass trên Ubuntu 24.04 arm64 container tạm: client thật đăng nhập production Supabase, setup revision 1, sync revision 2, fresh-device recovery, recovery-key rotation revision 3, reject key cũ, vault-key rotation revision 4 và recovery cuối; operator xóa user/row và admin probe xác nhận 404 |
 | Windows release + installer | Pass upgrade vault thật từ source `1.0.0+9`/plugin 3.1.2 sang current COW v2, configured x64 bundle, local-vault runtime và NSIS 3.12 unsigned candidate; install/launch/metadata-upgrade/uninstall giữ AppData pass, bundle + installer/checksum giữ 14 ngày |
 
@@ -142,8 +142,8 @@ Capability là hành vi source hiện tại, không thay thế device test và s
 7. Windows đã có unsigned NSIS candidate, hosted-runner package transition và
    upgrade thật từ source `1.0.0+9`; còn code signing và physical-device/Windows Hello.
    Linux đã có `.deb` candidate, clean-container package transition, local arm64
-   distro matrix và authenticated E2EE client runtime; còn hosted amd64 historical
-   upgrade, KDE/Wayland/physical desktop, release-channel signing và
+   X11/Wayland distro matrix và authenticated E2EE client runtime; còn hosted
+   amd64 historical upgrade, KDE login/unlock/physical desktop, release signing và
    maintainer/support metadata trước phân phối công khai. E2EE evidence hiện là
    debug arm64 container, không phải signed amd64 package runtime.
 8. Privacy policy cần được host tại URL công khai và điền kênh support trước store submission.

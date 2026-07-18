@@ -53,7 +53,7 @@ fi
 
 apt-get update -qq
 apt-get install -y -qq \
-  dbus-x11 desktop-file-utils gnome-keyring libgl1-mesa-dri \
+  dbus-x11 desktop-file-utils libgl1-mesa-dri \
   libsecret-tools xauth xvfb >/dev/null
 
 runtime=$(mktemp -d)
@@ -74,7 +74,7 @@ trap cleanup_container EXIT
 apt-get install -y -qq /packages/baseline.deb >/dev/null
 [[ $(stat -c '%a' /) == 755 ]]
 [[ $(dpkg-query -W -f='${Version}' hyper-authenticator) == "$baseline_version" ]]
-for runtime_package in libegl1 libgles2 libgl1; do
+for runtime_package in gnome-keyring libegl1 libgles2 libgl1; do
   [[ $(dpkg-query -W -f='${Status}' "$runtime_package") == \
     'install ok installed' ]]
 done

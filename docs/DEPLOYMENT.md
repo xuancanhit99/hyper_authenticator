@@ -164,11 +164,12 @@ Debian candidate và checksum:
       build/linux/x64/release/bundle build/linux/deb
 
 `.deb` build baseline từ Ubuntu 22.04 để giữ glibc floor 2.34, khai báo explicit
-EGL/GLES/GL loader và đã pass local Docker arm64 trên Ubuntu 22.04/24.04 cùng
-Debian 12/13 với private Secret Service/Xvfb. Clean Ubuntu package transition và
-data retention cũng pass. Gate còn lại: hosted amd64 + historical-release upgrade,
-KDE/Wayland/physical desktop, signed package E2EE runtime, maintainer/support
-metadata và release-channel signing.
+EGL/GLES/GL loader + `gnome-keyring` provider và đã pass exact local Docker arm64
+matrix trên Ubuntu 22.04/24.04 cùng Debian 12/13 với private Secret Service,
+Xvfb và Weston Wayland. Clean Ubuntu package transition/data retention cũng pass.
+Gate còn lại: hosted amd64 + historical-release upgrade, KDE login/unlock/physical
+desktop, signed package E2EE runtime, maintainer/support metadata và release-channel
+signing.
 Local authentication/scanner bị ẩn theo thiết kế.
 
 ## Supabase rollout

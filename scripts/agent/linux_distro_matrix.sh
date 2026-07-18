@@ -54,13 +54,13 @@ export DEBIAN_FRONTEND=noninteractive
 
 apt-get update -qq
 apt-get install -y -qq \
-  dbus-x11 desktop-file-utils gnome-keyring libgl1-mesa-dri \
+  dbus-x11 desktop-file-utils libgl1-mesa-dri \
   libsecret-tools xauth xvfb /package/app.deb >/dev/null
 
 test -x /usr/bin/hyper-authenticator
 test -f /usr/share/applications/app.hyperz.authenticator.desktop
 desktop-file-validate /usr/share/applications/app.hyperz.authenticator.desktop
-for runtime_package in libegl1 libgles2 libgl1; do
+for runtime_package in gnome-keyring libegl1 libgles2 libgl1; do
   if [[ $(dpkg-query -W -f='${Status}' "$runtime_package") != \
     'install ok installed' ]]; then
     printf 'Package thiếu runtime dependency: %s\n' "$runtime_package" >&2
@@ -97,7 +97,15 @@ probe_attribute="hyper-auth-distro-${HYPER_AUTH_DISTRO_LABEL}"
 clear_probe() {
   secret-tool clear purpose "$probe_attribute" >/dev/null 2>&1 || true
 }
-trap clear_probe EXIT
+weston_pid=''
+cleanup_session() {
+  clear_probe
+  if [[ -n "$weston_pid" ]]; then
+    kill "$weston_pid" >/dev/null 2>&1 || true
+    wait "$weston_pid" >/dev/null 2>&1 || true
+  fi
+}
+trap cleanup_session EXIT
 
 printf 'test-only' | secret-tool store \
   --label='Hyper Authenticator distro probe' \
@@ -119,11 +127,39 @@ if [[ $exit_code -ne 124 ]]; then
   printf 'Installed app thoát sớm với code %s.\n' "$exit_code" >&2
   exit 1
 fi
+
+apt-get install -y -qq weston >/dev/null
+weston --backend=headless-backend.so \
+  --socket=wayland-1 --idle-time=0 \
+  --log="$XDG_RUNTIME_DIR/weston.log" &
+weston_pid=$!
+for _ in $(seq 1 50); do
+  [[ -S "$XDG_RUNTIME_DIR/wayland-1" ]] && break
+  sleep 0.1
+done
+if [[ ! -S "$XDG_RUNTIME_DIR/wayland-1" ]]; then
+  cat "$XDG_RUNTIME_DIR/weston.log" >&2
+  printf '%s\n' 'Weston headless không tạo Wayland socket.' >&2
+  exit 1
+fi
+
+set +e
+GDK_BACKEND=wayland WAYLAND_DISPLAY=wayland-1 \
+  timeout --signal=TERM 8s /usr/bin/hyper-authenticator \
+  >"$XDG_RUNTIME_DIR/app-wayland.log" 2>&1
+exit_code=$?
+set -e
+if [[ $exit_code -ne 124 ]]; then
+  cat "$XDG_RUNTIME_DIR/weston.log" >&2
+  sed -n '1,120p' "$XDG_RUNTIME_DIR/app-wayland.log" >&2
+  printf 'Wayland app thoát sớm với code %s.\n' "$exit_code" >&2
+  exit 1
+fi
 SESSION
 
-printf 'Distro runtime pass: %s\n' "$HYPER_AUTH_DISTRO_LABEL"
+printf 'Distro X11/Wayland runtime pass: %s\n' "$HYPER_AUTH_DISTRO_LABEL"
 CONTAINER
 done
 
 printf '%s\n' \
-  'Linux distro matrix pass: Ubuntu 22.04/24.04 và Debian 12/13, private Secret Service + Xvfb.'
+  'Linux distro matrix pass: Ubuntu 22.04/24.04 và Debian 12/13, package-provided Secret Service + Xvfb/Wayland.'

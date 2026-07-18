@@ -97,17 +97,19 @@ Runtime này là Linux arm64 debug trong container, không thay signed/package r
 
 Debian packaging gate sinh dependency trực tiếp từ mọi ELF bằng `dpkg-shlibdeps`,
 thêm explicit `libegl1`, `libgles2`, `libgl1` vì Flutter dùng `dlopen`, từ chối
-env/source-map/debug artifact và tạo SHA-256. Ubuntu 24.04 container sạch
+env/source-map/debug artifact, kéo `gnome-keyring` làm Secret Service provider và
+tạo SHA-256. Ubuntu 24.04 container sạch
 cài package baseline metadata, launch installed release, nâng lên `1.1.0+10`, giữ
 XDG sentinel, launch lại rồi remove package trong khi user data còn nguyên. Gate
 cũng khóa archive root và container `/` ở mode 0755. Nó chứng minh package-level
 transition, không chứng minh migration từ binary/data của một release lịch sử thật.
 
 Distro matrix cài cùng current `.deb` trên Ubuntu 22.04/24.04 và Debian 12/13,
-probe private `gnome-keyring` Secret Service rồi giữ app sống trong Xvfb. Lượt
-Docker arm64 ngày 18-07-2026 đã tái hiện lỗi thiếu `libEGL.so.1` rồi
-`libGLESv2.so.2`; package sau fix pass cả bốn image. Hosted amd64 gate và
-KDE/Wayland/physical desktop vẫn là bằng chứng tách biệt.
+yêu cầu package tự kéo `gnome-keyring`, probe private Secret Service rồi giữ app
+sống trong cả Xvfb và Weston Wayland headless. Lượt Docker arm64 ngày 18-07-2026
+đã tái hiện lỗi thiếu `libEGL.so.1` rồi `libGLESv2.so.2`; package sau fix pass
+toàn bộ X11/Wayland matrix. Hosted amd64 và KDE login/unlock/physical desktop vẫn
+là bằng chứng tách biệt.
 
 Remote script cần service-role key nên chỉ chạy trong protected operator context,
 không trong untrusted fork CI.
@@ -121,7 +123,7 @@ không trong untrusted fork CI.
 | macOS | Unsigned compile CI; signed runtime + notarized release trước phân phối |
 | Web | Configured release + hardened image contract + CSP browser smoke |
 | Windows | Hosted local-vault runtime + historical `1.0.0+9` vault-upgrade harness + configured x64 + NSIS install/launch/metadata-upgrade/uninstall retention; bundle/installer SHA-256 artifact 14 ngày; physical device/signing trước phân phối |
-| Linux | Configured x64 + private-keyring runtime + `.deb` transition; authenticated E2EE debug arm64; local arm64 package pass Ubuntu 22.04/24.04 + Debian 12/13; historical upgrade, hosted amd64/KDE/Wayland và release signing trước phân phối |
+| Linux | Configured x64 + private-keyring runtime + `.deb` transition; authenticated E2EE debug arm64; local arm64 package pass X11/Wayland trên Ubuntu 22.04/24.04 + Debian 12/13; historical upgrade, hosted amd64/KDE login và release signing trước phân phối |
 
 ## Regression rule
 
@@ -172,5 +174,5 @@ không trong untrusted fork CI.
 4. Chưa có long-duration soak hoặc production-scale load test.
 5. Windows còn code signing và physical-device/Windows Hello; historical
    `1.0.0+9` upgrade đã pass hosted runtime. Linux còn hosted historical upgrade,
-   amd64/KDE/Wayland/physical desktop, signed package E2EE runtime và public
+   amd64/KDE login-unlock/physical desktop, signed package E2EE runtime và public
    release-channel verification.

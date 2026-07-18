@@ -131,6 +131,12 @@ for runtime_dependency in libegl1 libgles2 libgl1; do
     DEPENDENCIES="$DEPENDENCIES, $runtime_dependency"
   fi
 done
+# libsecret là client library; một desktop tối giản hoặc KDE/KWallet thuần không
+# nhất thiết có org.freedesktop.secrets. Package kéo gnome-keyring để luôn có
+# provider tương thích, còn unlock/login integration vẫn cần desktop smoke thật.
+if ! grep -Eq '(^|, )gnome-keyring([ (>,]|$)' <<<"$DEPENDENCIES"; then
+  DEPENDENCIES="$DEPENDENCIES, gnome-keyring"
+fi
 
 INSTALLED_SIZE=$(du -sk "$PACKAGE_ROOT" | awk '{print $1}')
 MAINTAINER=${LINUX_PACKAGE_MAINTAINER:-Hyperz}
