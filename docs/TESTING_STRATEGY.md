@@ -58,7 +58,7 @@ không trong untrusted fork CI.
 | iOS | Simulator build mỗi CI; signed archive + device/TestFlight trước store |
 | macOS | Unsigned compile CI; signed runtime + notarized release trước phân phối |
 | Web | Configured release + hardened image contract + CSP browser smoke |
-| Windows | Native release CI; installer/device/signing trước phân phối |
+| Windows | Configured native release CI + SHA-256 artifact 14 ngày; installer/device/signing trước phân phối |
 | Linux | Isolated release compile + native CI; package/keyring/device smoke trước phân phối |
 
 ## Regression rule

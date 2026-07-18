@@ -82,13 +82,39 @@ CSP chặn. Build context dùng tar allowlist nên không chứa `.env`, source 
 metadata. Noto Sans fallback của Flutter và `zxing-wasm` scanner vẫn là external
 runtime resource đã giới hạn origin trong CSP; self-host chúng nếu policy cấm CDN.
 
+Server dùng `web-deployment/docker-compose.production.yml`. Tạo file `.env` mode
+0600 cạnh compose với `WEB_IMAGE` đã pin theo commit và cùng `SUPABASE_URL` HTTPS,
+sau đó chạy:
+
+    docker compose config --quiet
+    docker compose up -d
+    docker inspect --format '{{.State.Health.Status}}' hyper-authenticator-web
+
+Container không publish host port; reverse proxy phải cùng external network
+`proxy-network` và forward tới `hyper-authenticator-web:8080`. Nginx Proxy Manager
+sở hữu certificate/redirect TLS cho `authenticator.hyperz.xyz`. Sau rollout phải
+test `/`, `/settings`, `/privacy` nếu legal page đã publish, header bảo mật và
+browser console trên public HTTPS origin.
+
 ## Windows
 
     flutter build windows --release --dart-define-from-file=.env.production
 
-Gate: Windows CI artifact, secure storage/app-lock behavior, installer upgrade/
-uninstall data retention, Auth HTTPS và code signing nếu phân phối công khai.
-Scanner bị ẩn theo thiết kế.
+Windows CI chỉ tạo artifact runtime khi repository có ba Actions variables public:
+
+- `SUPABASE_URL`;
+- `SUPABASE_PUBLISHABLE_KEY`;
+- `PASSWORD_RECOVERY_URL`.
+
+Workflow validate config, khóa plaintext sync, build bundle x64, tạo
+`SHA256SUMS.txt` rồi giữ artifact theo commit trong 14 ngày. Artifact không chứa
+file config nguồn hoặc private server credential; public runtime values vẫn được
+compile vào client theo thiết kế. Đây là unsigned bundle phục vụ build/device
+gate, chưa phải installer production.
+
+Gate: Windows CI artifact pass, xác minh checksum sau download, secure storage/
+app-lock behavior, installer upgrade/uninstall data retention, Auth HTTPS và code
+signing nếu phân phối công khai. Scanner bị ẩn theo thiết kế.
 
 ## Linux
 

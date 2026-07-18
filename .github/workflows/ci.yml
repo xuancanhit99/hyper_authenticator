@@ -105,8 +105,12 @@ jobs:
       - run: flutter build linux --release
 
   windows:
-    name: Windows release
+    name: Windows configured release artifact
     runs-on: windows-latest
+    env:
+      SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+      SUPABASE_PUBLISHABLE_KEY: ${{ vars.SUPABASE_PUBLISHABLE_KEY }}
+      PASSWORD_RECOVERY_URL: ${{ vars.PASSWORD_RECOVERY_URL }}
     steps:
       - uses: actions/checkout@v6
       - uses: subosito/flutter-action@v2
@@ -115,7 +119,60 @@ jobs:
           channel: stable
           cache: true
       - run: flutter pub get
-      - run: flutter build windows --release
+      - name: Tạo và xác minh public runtime config
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $configPath = Join-Path $env:RUNNER_TEMP 'release-config.json'
+          $config = [ordered]@{
+            SUPABASE_URL = $env:SUPABASE_URL
+            SUPABASE_PUBLISHABLE_KEY = $env:SUPABASE_PUBLISHABLE_KEY
+            PASSWORD_RECOVERY_URL = $env:PASSWORD_RECOVERY_URL
+            ALLOW_INSECURE_PLAINTEXT_SYNC = $false
+          } | ConvertTo-Json
+          [IO.File]::WriteAllText($configPath, $config)
+          dart run tool/agent/check_release_config.dart $configPath
+          "RELEASE_CONFIG_PATH=$configPath" >> $env:GITHUB_ENV
+      - name: Build Windows release đã cấu hình
+        shell: pwsh
+        run: >-
+          flutter build windows --release
+          "--dart-define-from-file=$env:RELEASE_CONFIG_PATH"
+      - name: Chuẩn bị bundle và manifest SHA-256
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $releasePath = Join-Path $PWD 'build/windows/x64/runner/Release'
+          if (-not (Test-Path -LiteralPath $releasePath -PathType Container)) {
+            throw "Không tìm thấy Windows release bundle: $releasePath"
+          }
+
+          $artifactPath = Join-Path $env:RUNNER_TEMP 'hyper-authenticator-windows-x64'
+          New-Item -ItemType Directory -Path $artifactPath -Force | Out-Null
+          Copy-Item -Path (Join-Path $releasePath '*') `
+            -Destination $artifactPath -Recurse -Force
+
+          $root = [IO.Path]::GetFullPath($artifactPath)
+          $files = @(Get-ChildItem -LiteralPath $artifactPath -Recurse -File |
+            Sort-Object FullName)
+          if ($files.Count -eq 0) {
+            throw 'Windows release bundle rỗng.'
+          }
+          $checksums = @($files | ForEach-Object {
+            $relativePath = [IO.Path]::GetRelativePath($root, $_.FullName).Replace('\', '/')
+            $hash = (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+            "$hash  $relativePath"
+          })
+          $manifestPath = Join-Path $artifactPath 'SHA256SUMS.txt'
+          [IO.File]::WriteAllLines($manifestPath, $checksums, [Text.Encoding]::ASCII)
+      - name: Lưu Windows release artifact trong 14 ngày
+        uses: actions/upload-artifact@v4
+        with:
+          name: hyper-authenticator-windows-x64-${{ github.sha }}
+          path: ${{ runner.temp }}/hyper-authenticator-windows-x64
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 9
 
   apple:
     name: Apple compile builds

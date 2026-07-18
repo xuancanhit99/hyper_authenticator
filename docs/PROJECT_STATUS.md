@@ -44,7 +44,7 @@ các credential gate tương ứng pass.
 | Android release | Fail closed đúng thiết kế vì chưa có upload keystore |
 | macOS release | Bị chặn vì chưa có development/distribution certificate |
 | Linux release compile | Pass `linux/arm64` với Flutter 3.44.6 trên Ubuntu 24.04 isolated |
-| Windows release | Có CI job native; cần artifact/device gate trên Windows |
+| Windows release | Workflow native tạo configured bundle + SHA-256 artifact 14 ngày; cần chạy remote CI và device gate trên Windows |
 
 Build không có `--dart-define-from-file` chỉ chứng minh compile. Runtime/release
 verification phải inject `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY` và
@@ -126,7 +126,9 @@ Capability là hành vi source hiện tại, không thay thế device test và s
 
 - `.github/workflows/ci.yml` chạy secret history, docs/generated-code/format/
   analyze/test và compile Android, iOS simulator, macOS unsigned, Web, Windows,
-  Linux. macOS unsigned không thay thế signed runtime gate.
+  Linux. Windows job yêu cầu ba repository variables public rồi tạo configured
+  bundle, manifest SHA-256 và artifact 14 ngày; macOS unsigned không thay thế
+  signed runtime gate.
 - `.github/dependabot.yml` kiểm tra Pub và GitHub Actions hằng tuần.
 - `scripts/agent/check.sh full` là quality gate canonical.
 - `scripts/supabase/` giữ remote contract, backup, health, restore và off-host harness.
