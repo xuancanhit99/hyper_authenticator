@@ -110,6 +110,9 @@ representation; equality vẫn hoạt động nhưng transition log không lộ 
 - Linux local-vault suite chỉ chạy khi `CI=true`, dùng XDG sandbox mode 0700,
   private D-Bus Secret Service và Xvfb; nó probe keyring trước test rồi xóa sandbox
   bằng trap, không dùng keyring hoặc local vault của desktop user.
+- Debian package không có maintainer script xóa user data. Package smoke mutate
+  Ubuntu container tạm, kiểm tra `/` giữ mode 0755 và XDG sentinel còn nguyên sau
+  metadata upgrade/remove; historical-release vault migration vẫn là gate riêng.
 
 ## Logging và fixture
 

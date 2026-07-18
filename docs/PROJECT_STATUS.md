@@ -46,7 +46,7 @@ các credential gate tương ứng pass.
 | iOS 26.5 simulator debug | Pass build/runtime với Supabase init và local-vault integration smoke có cleanup |
 | Android release | Fail closed đúng thiết kế vì chưa có upload keystore |
 | macOS release | Bị chặn vì chưa có development/distribution certificate |
-| Linux release + CI runtime | Pass configured `linux/x64` release; private D-Bus Secret Service + Xvfb smoke xác minh UI, libsecret round-trip, lifecycle, BLoC reload, navigation và cleanup |
+| Linux release + Debian artifact | Pass configured `linux/x64`, private-keyring UI smoke và `.deb` `1.1.0+10` amd64; dependency scan, checksum, archive root 0755, clean-container install/launch/upgrade/remove và package-level user-data retention pass |
 | Windows release | Remote CI pass configured x64 bundle; artifact 14 ngày và 22/22 checksum pass; còn device/installer/signing gate trên Windows |
 
 Build không có `--dart-define-from-file` chỉ chứng minh compile. Runtime/release
@@ -134,9 +134,10 @@ Capability là hành vi source hiện tại, không thay thế device test và s
 6. Local-vault integration smoke đã pass Android emulator và iOS Simulator; secure
    storage/biometric/camera vẫn cần test trên thiết bị thật. Harness hiện chủ động
    từ chối target thật/macOS vì nó reset toàn bộ local vault.
-7. Windows build còn dựa trên CI. Windows installer/signing/device chưa xong;
-   Linux đã pass private-keyring CI runtime nhưng package/install/update và desktop
-   environment matrix trên máy đại diện vẫn chưa được chứng minh.
+7. Windows build còn dựa trên CI và chưa có installer/signing/device. Linux đã có
+   `.deb` candidate cùng clean-container package transition smoke; còn representative
+   desktop/distro matrix, upgrade từ release lịch sử thật, authenticated E2EE runtime,
+   release-channel signing và maintainer/support metadata trước phân phối công khai.
 8. Privacy policy cần được host tại URL công khai và điền kênh support trước store submission.
 9. Flutter Web đã pass TLS/reverse proxy và runtime smoke trên production domain;
    permission pending/error UX đã có regression test trên VM và Chrome test
@@ -146,9 +147,10 @@ Capability là hành vi source hiện tại, không thay thế device test và s
 
 - `.github/workflows/ci.yml` chạy secret history, docs/generated-code/format/
   analyze/test và compile Android, iOS simulator, macOS unsigned, Web, Windows,
-  Linux. Linux job build configured x64 rồi chạy local-vault integration trong
-  private keyring/Xvfb; Windows tạo configured bundle, manifest SHA-256 và artifact
-  14 ngày. Các gate này không thay thế signed/packaged runtime trên máy đại diện.
+  Linux. Linux job build configured x64, chạy private-keyring integration, tạo `.deb`,
+  smoke package transition trong Ubuntu sạch rồi lưu checksum + artifact 14 ngày;
+  Windows tạo configured bundle và manifest SHA-256. Các gate này không thay thế
+  signed runtime hoặc representative-device/distro matrix.
 - `.github/dependabot.yml` kiểm tra Pub và GitHub Actions hằng tuần.
 - `scripts/agent/check.sh full` là quality gate canonical; baseline hiện có 98 test,
   analyze/format cả device integration source nhưng không tự boot virtual device.

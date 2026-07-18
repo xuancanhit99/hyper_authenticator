@@ -142,9 +142,16 @@ Cross-compile evidence tái hiện được từ committed ref:
     scripts/agent/build_linux_container.sh
 
 Configured x64 release và private libsecret keyring/Xvfb runtime đã pass trong CI.
-Gate còn lại: package dependency, installer/update behavior, representative desktop
-environment matrix và authenticated E2EE smoke. Local authentication/scanner bị
-ẩn theo thiết kế.
+Debian candidate và checksum:
+
+    scripts/agent/package_linux_deb.sh \
+      build/linux/x64/release/bundle build/linux/deb
+
+`.deb` hiện đã pass generated dependency, archive permission, clean Ubuntu
+install/launch/metadata-upgrade/remove và package-level data retention. Gate còn
+lại: historical-release upgrade, representative distro/desktop matrix,
+authenticated E2EE smoke, maintainer/support metadata và release-channel signing.
+Local authentication/scanner bị ẩn theo thiết kế.
 
 ## Supabase rollout
 

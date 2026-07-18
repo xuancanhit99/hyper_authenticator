@@ -51,7 +51,8 @@ policy và backend rollback evidence.
 
 - [ ] Windows installer, signing và device smoke.
 - [x] Linux configured release + private libsecret/keyring headless smoke.
-- [ ] Linux package/install/update và representative desktop environment matrix.
+- [x] Linux `.deb` dependency/checksum + clean-container package transition smoke.
+- [ ] Linux historical upgrade, distro/desktop matrix, E2EE và signed release channel.
 - [ ] Quyết định Web encrypted sync sau browser threat model; mặc định vẫn tắt.
 - [ ] Đánh giá alternative scanner nếu upstream Built-in Kotlin migration chậm.
 

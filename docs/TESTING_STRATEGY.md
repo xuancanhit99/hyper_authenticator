@@ -77,8 +77,15 @@ Linux CI dùng cùng behavioral suite nhưng chạy trong private D-Bus Secret S
 Xvfb và XDG sandbox mode 0700. Harness chỉ chạy khi `CI=true`, kiểm tra keyring
 trước khi boot app và xóa toàn bộ sandbox bằng trap. Run `29643037143` xác minh đủ
 phase add, libsecret round-trip, lifecycle, reload, navigation và cleanup trên x64.
-Đây là headless runtime evidence, chưa thay package/install/update hoặc desktop
-environment matrix trên máy đại diện.
+Riêng gate behavioral này là headless runtime evidence; package transition được
+kiểm tra bằng gate tách biệt dưới đây và cả hai vẫn chưa thay desktop/distro matrix.
+
+Debian packaging gate sinh dependency trực tiếp từ mọi ELF bằng `dpkg-shlibdeps`,
+từ chối env/source-map/debug artifact và tạo SHA-256. Ubuntu 24.04 container sạch
+cài package baseline metadata, launch installed release, nâng lên `1.1.0+10`, giữ
+XDG sentinel, launch lại rồi remove package trong khi user data còn nguyên. Gate
+cũng khóa archive root và container `/` ở mode 0755. Nó chứng minh package-level
+transition, không chứng minh migration từ binary/data của một release lịch sử thật.
 
 Remote script cần service-role key nên chỉ chạy trong protected operator context,
 không trong untrusted fork CI.
@@ -92,7 +99,7 @@ không trong untrusted fork CI.
 | macOS | Unsigned compile CI; signed runtime + notarized release trước phân phối |
 | Web | Configured release + hardened image contract + CSP browser smoke |
 | Windows | Configured native release CI + SHA-256 artifact 14 ngày; installer/device/signing trước phân phối |
-| Linux | Configured x64 release + private-keyring/Xvfb runtime CI; package/install/update và representative desktop matrix trước phân phối |
+| Linux | Configured x64 + private-keyring runtime + `.deb` checksum/clean-container transition; historical-release upgrade, distro/desktop matrix, E2EE và release-channel signing trước phân phối |
 
 ## Regression rule
 
@@ -117,6 +124,8 @@ không trong untrusted fork CI.
   pin digest, clone đúng Flutter 3.44.6 và xác minh Linux executable.
 - `scripts/agent/linux_integration.sh` từ chối non-Linux/non-CI, dùng XDG sandbox,
   private Secret Service và explicit vault-reset opt-in trước local-vault smoke.
+- `scripts/agent/package_linux_deb.sh` scan ELF dependency, khóa archive mode và
+  tạo `.deb` + SHA-256; `linux_package_smoke.sh` chỉ mutate Ubuntu container tạm.
 
 ## Khoảng trống đã biết
 
@@ -126,5 +135,5 @@ không trong untrusted fork CI.
 2. Chưa có two-device physical E2EE test.
 3. Chưa có mailbox SMTP/expired-link E2E.
 4. Chưa có long-duration soak hoặc production-scale load test.
-5. Windows installer chưa smoke test; Linux chưa có package/install/update và
-   desktop environment matrix trên máy đại diện.
+5. Windows installer chưa smoke test. Linux còn upgrade từ release lịch sử thật,
+   representative distro/desktop matrix và public release-channel verification.

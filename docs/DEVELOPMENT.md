@@ -154,8 +154,25 @@ Linux CI chạy cùng suite trong Xvfb và private D-Bus Secret Service:
 Harness yêu cầu Linux, `dbus-run-session`, `gnome-keyring-daemon`, `secret-tool`
 và `xvfb-run`; tạo XDG sandbox mode 0700, probe keyring, rồi cleanup bằng trap.
 Nó từ chối chạy ngoài CI để không chạm keyring/vault của desktop người dùng.
-GitHub workflow là entrypoint canonical; package/install test phải dùng harness
-riêng trên máy Linux đại diện.
+GitHub workflow là entrypoint canonical cho headless behavior. Package transition
+CI và representative desktop/distro matrix là hai gate tách biệt.
+
+Sau configured release build trên Linux, tạo Debian candidate:
+
+    scripts/agent/package_linux_deb.sh \
+      build/linux/x64/release/bundle build/linux/deb
+
+Builder nhận version từ `pubspec.yaml`, phát hiện amd64/arm64 từ ELF, sinh Depends
+bằng `dpkg-shlibdeps`, từ chối env/source-map/debug artifact, khóa archive root
+0755 và tạo file `.deb.sha256`. CI còn chạy:
+
+    CI=true scripts/agent/linux_package_smoke.sh \
+      baseline.deb current.deb --allow-container-package-install
+
+Smoke chỉ install trong Ubuntu 24.04 container pin digest; nó xác minh desktop
+entry, shared library, release launch, metadata upgrade, remove và XDG data retention.
+Baseline dùng cùng tested bundle với version thấp hơn, nên không được dùng làm bằng
+chứng migration từ một release lịch sử thật.
 
 ## Dependency
 
