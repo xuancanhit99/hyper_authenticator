@@ -51,6 +51,14 @@ khác. `sb_secret_*` và legacy `service_role` bị từ chối mà không đưa
 - Repository chuyển exception sang typed `Failure` bằng `Either`.
 - `injection_container.config.dart` được generate, không sửa thủ công.
 
+## Biên triển khai Web
+
+Flutter Web artifact được phục vụ bởi `web-deployment` qua Nginx non-root. Runtime
+entrypoint chỉ nhận public Supabase HTTPS origin để tạo CSP; client key vẫn được
+embed lúc Flutter compile theo public-config contract. HTML dùng `no-store`, asset
+revalidate, SPA fallback về `index.html`; access log tắt để query material không
+vào container log. Reverse proxy bên ngoài sở hữu TLS và domain routing.
+
 ## Local vault
 
 `AuthenticatorLocalDataSource` serialize mutation bằng critical section:

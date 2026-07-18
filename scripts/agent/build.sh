@@ -61,7 +61,7 @@ build_target() {
       flutter build ios --simulator --debug "${define_args[@]}"
       ;;
     web)
-      flutter build web --release "${define_args[@]}"
+      flutter build web --release --no-web-resources-cdn "${define_args[@]}"
       ;;
     macos)
       build_macos

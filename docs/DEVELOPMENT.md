@@ -97,6 +97,17 @@ Trên macOS không có signing identity, script dùng `xcodebuild` với environ
 allowlist và code signing tắt để lấy compile evidence. Artifact đó không chạy được
 Keychain và không được dùng như runtime/release evidence.
 
+Linux compile cô lập từ committed ref, không mount workspace hoặc truyền `.env`:
+
+    scripts/agent/build_linux_container.sh
+    scripts/agent/build_linux_container.sh <git-ref>
+
+Flutter Web production-serving contract:
+
+    scripts/agent/build.sh web .env
+    web-deployment/test.sh
+    web-deployment/build-image.sh hyper-authenticator-web:test
+
 Runtime-configured build:
 
     flutter build web --release --dart-define-from-file=.env

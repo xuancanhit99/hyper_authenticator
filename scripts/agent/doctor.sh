@@ -33,6 +33,12 @@ else
   warn "gitleaks is required only for scripts/agent/check_secrets.sh"
 fi
 
+if command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1; then
+  ok "Docker is available for Web serving and isolated Linux gates"
+else
+  warn "Docker is optional; Web container and isolated Linux gates will be skipped"
+fi
+
 for required_file in \
   AGENTS.md \
   LICENSE \

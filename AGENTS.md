@@ -40,6 +40,7 @@ Các thay đổi có sẵn trong working tree thuộc về người dùng. Khôn
 - `assets`: font, branding và bản đồ logo authenticator.
 - `android`, `ios`, `macos`, `web`, `windows`, `linux`: platform runner.
 - `reset-password-web`: trang Supabase recovery tĩnh, tách biệt.
+- `web-deployment`: Nginx production image và serving contract cho Flutter Web.
 - `docs`: tài liệu product và engineering canonical.
 - `scripts/agent`: helper định hướng và quality gate có tính quyết định.
 

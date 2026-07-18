@@ -38,12 +38,13 @@ các credential gate tương ứng pass.
 | Release config validator | Pass với `.env` public hiện tại, không in key |
 | Gitleaks full history | Pass sau exact allowlist RFC 6238 test vector |
 | Android debug APK | Pass |
-| Web release + Wasm dry-run + browser runtime | Pass, console sạch |
+| Web release + hardened Nginx image | Pass serving contract và CSP browser runtime, console sạch |
 | macOS debug compile unsigned | Pass; không phải runtime/signing evidence |
 | iOS 26.5 simulator debug | Pass build và runtime launch với Supabase init |
 | Android release | Fail closed đúng thiết kế vì chưa có upload keystore |
 | macOS release | Bị chặn vì chưa có development/distribution certificate |
-| Windows/Linux release | Có CI job native; cần artifact/device gate trên host tương ứng |
+| Linux release compile | Pass `linux/arm64` với Flutter 3.44.6 trên Ubuntu 24.04 isolated |
+| Windows release | Có CI job native; cần artifact/device gate trên Windows |
 
 Build không có `--dart-define-from-file` chỉ chứng minh compile. Runtime/release
 verification phải inject `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY` và
@@ -115,10 +116,11 @@ Capability là hành vi source hiện tại, không thay thế device test và s
 5. E2EE v1 chưa có device revocation, key rotation, tombstone hoặc Web trust model.
 6. Chưa có Flutter device/integration suite đầy đủ; secure storage/biometric/camera
    vẫn cần test trên thiết bị thật.
-7. Windows/Linux build dựa trên CI; installer, signing và device smoke test chưa xong.
+7. Windows build còn dựa trên CI. Windows installer/signing/device và Linux
+   package/keyring/device smoke test chưa xong.
 8. Privacy policy cần được host tại URL công khai và điền kênh support trước store submission.
-9. Flutter Web mới có local release/browser smoke; production host còn phải chứng
-   minh HTTPS, CSP/HSTS/security headers, cache policy và camera smoke thực tế.
+9. Flutter Web có hardened image/serving contract và local CSP browser smoke;
+   production domain vẫn phải chứng minh TLS/reverse proxy và camera smoke thực tế.
 
 ## Automation
 

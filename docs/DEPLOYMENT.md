@@ -68,11 +68,19 @@ artifact đó chỉ chứng minh compile và không được chạy/phân phối
 
 ## Web
 
-    flutter build web --release --dart-define-from-file=.env.production
+    scripts/agent/build.sh web .env.production
+    web-deployment/test.sh
+    web-deployment/build-image.sh hyper-authenticator-web:1.1.0
 
 E2EE sync bị tắt theo capability. Deploy immutable artifact qua HTTPS với CSP,
 HSTS, `nosniff`, referrer/permissions policy phù hợp; smoke login/local TOTP/camera
 trên browser hỗ trợ. Không cache HTML/config lâu hơn asset hashed.
+
+Image Nginx pin digest, chạy non-root/read-only và chỉ nhận `SUPABASE_URL` public
+để tạo CSP. Phải truyền cùng origin đã dùng lúc compile; mismatch làm request bị
+CSP chặn. Build context dùng tar allowlist nên không chứa `.env`, source hoặc Git
+metadata. Noto Sans fallback của Flutter và `zxing-wasm` scanner vẫn là external
+runtime resource đã giới hạn origin trong CSP; self-host chúng nếu policy cấm CDN.
 
 ## Windows
 
@@ -85,6 +93,10 @@ Scanner bị ẩn theo thiết kế.
 ## Linux
 
     flutter build linux --release --dart-define-from-file=.env.production
+
+Cross-compile evidence tái hiện được từ committed ref:
+
+    scripts/agent/build_linux_container.sh
 
 Gate: libsecret/desktop keyring, package dependency, installer/update behavior và
 manual-entry/E2EE smoke. Local authentication/scanner bị ẩn theo thiết kế.

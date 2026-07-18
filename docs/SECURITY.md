@@ -61,6 +61,9 @@ không bao giờ được đặt trong Flutter `.env`, asset, build log hoặc b
   gate chống regression khi runner được regenerate.
 - CI pin Gitleaks binary/checksum và scan toàn bộ Git history. Allowlist chỉ có
   fingerprint của public RFC 6238 vector, không dùng regex bỏ qua diện rộng.
+- Flutter Web image dùng tar build context allowlist, Nginx pin digest, non-root,
+  filesystem read-only, CSP theo Supabase origin và không access-log query. HTML
+  không cache; source map và file môi trường làm image build fail.
 
 ## Recovery semantics
 

@@ -73,6 +73,12 @@ Build theo host hoặc target:
     scripts/agent/build.sh android
     scripts/agent/build.sh web
 
+Web production image và Linux compile cô lập:
+
+    web-deployment/test.sh
+    web-deployment/build-image.sh hyper-authenticator-web:1.1.0
+    scripts/agent/build_linux_container.sh
+
 Command có đối số `.env` validate public release contract trước khi build; không
 có đối số chỉ là compile smoke. Xem [Hướng dẫn phát triển](docs/DEVELOPMENT.md)
 và [Chiến lược kiểm thử](docs/TESTING_STRATEGY.md).
@@ -84,9 +90,9 @@ và [Chiến lược kiểm thử](docs/TESTING_STRATEGY.md).
 | Android | Đã xác minh debug | Camera QR và device authentication |
 | iOS | Đã xác minh simulator | Cần device và signing để release |
 | macOS | Đã xác minh compile unsigned | Cần signing để test Keychain/runtime và release |
-| Web | Đã xác minh release | Không có device authentication hoặc E2EE sync |
+| Web | Release image + serving contract | Không có device authentication hoặc E2EE sync |
 | Windows | Runner + CI | Nhập thủ công + E2EE; không có camera QR |
-| Linux | Runner + CI | Nhập thủ công + E2EE; không có camera QR/device authentication |
+| Linux | Đã xác minh release compile | Nhập thủ công + E2EE; chưa device/keyring smoke |
 
 `scripts/agent/build.sh` tự từ chối target không thể build trên host hiện tại.
 

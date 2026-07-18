@@ -63,6 +63,8 @@ behavior an toàn, backend có backup/restore/health harness và release gate t�
 | iOS 26.5 configured simulator | Pass build + launch; Supabase init thành công |
 | Web configured release | Pass + Wasm dry-run |
 | Web browser smoke | Pass render/Settings capability; console sạch |
+| Web production-serving contract | Pass CSP/cache/SPA/read-only/no-log; browser image render sạch |
+| Linux release compile | Pass `linux/arm64`, Flutter 3.44.6, Ubuntu 24.04 isolated |
 | Android configured release | Fail closed vì thiếu upload keystore |
 | macOS configured release | Bị chặn vì thiếu certificate |
 | Remote encrypted contract | 11/11 pass |
@@ -77,7 +79,7 @@ platform config, 67 test và encrypted migration contract.
 ## Rủi ro còn lại
 
 - Signing/store/device/SMTP/alert destination là external gate, không phải source defect.
-- Flutter Web còn production hosting/header/cache/camera smoke trên domain thật.
+- Flutter Web còn TLS/reverse-proxy và camera smoke trên production domain thật.
 - E2EE v1 chưa có revoke/rotation/Web.
 - `mobile_scanner` upstream còn Kotlin legacy warning.
 - Off-host backup đang phụ thuộc máy Mac thay vì dedicated backup host.

@@ -73,7 +73,7 @@ jobs:
       - run: flutter build apk --debug
 
   web:
-    name: Web release
+    name: Web release and serving contract
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -83,7 +83,8 @@ jobs:
           channel: stable
           cache: true
       - run: flutter pub get
-      - run: flutter build web --release
+      - run: bash scripts/agent/build.sh web
+      - run: bash web-deployment/test.sh
 
   linux:
     name: Linux release

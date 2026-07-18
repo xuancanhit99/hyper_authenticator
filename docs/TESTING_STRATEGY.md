@@ -57,9 +57,9 @@ không trong untrusted fork CI.
 | Android | Debug build mỗi CI; signed release trước store |
 | iOS | Simulator build mỗi CI; signed archive + device/TestFlight trước store |
 | macOS | Unsigned compile CI; signed runtime + notarized release trước phân phối |
-| Web | Configured release + browser render/console/capability smoke |
+| Web | Configured release + hardened image contract + CSP browser smoke |
 | Windows | Native release CI; installer/device/signing trước phân phối |
-| Linux | Native release CI; package/device smoke trước phân phối |
+| Linux | Isolated release compile + native CI; package/keyring/device smoke trước phân phối |
 
 ## Regression rule
 
@@ -78,6 +78,10 @@ không trong untrusted fork CI.
 - Không bật shell tracing cho operator harness.
 - `scripts/agent/check_secrets.sh` scan toàn bộ Git history và staged diff bằng
   Gitleaks; CI tải binary đã pin sau khi xác minh SHA-256.
+- `web-deployment/test.sh` build image từ tar allowlist rồi kiểm tra CSP/cache/SPA,
+  read-only, dotfile, no-log và không chứa `.env`.
+- `scripts/agent/build_linux_container.sh` archive committed ref vào Ubuntu 24.04
+  pin digest, clone đúng Flutter 3.44.6 và xác minh Linux executable.
 
 ## Khoảng trống đã biết
 
