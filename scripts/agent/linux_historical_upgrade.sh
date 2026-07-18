@@ -64,19 +64,36 @@ git archive --format=tar --output="$ARCHIVE" "$HISTORICAL_COMMIT"
 tar -xf "$ARCHIVE" -C "$HISTORICAL_ROOT"
 
 historical_pubspec="$HISTORICAL_ROOT/pubspec.yaml"
+historical_linux_cmake="$HISTORICAL_ROOT/linux/CMakeLists.txt"
 grep -Fqx "version: $HISTORICAL_VERSION" "$historical_pubspec"
-python3 - "$historical_pubspec" <<'PYTHON'
+python3 - "$historical_pubspec" "$historical_linux_cmake" <<'PYTHON'
 from pathlib import Path
 import sys
 
-path = Path(sys.argv[1])
-contents = path.read_text()
+pubspec_path = Path(sys.argv[1])
+contents = pubspec_path.read_text()
 anchor = 'dev_dependencies:\n'
 if anchor not in contents:
     raise SystemExit('Không tìm thấy dev_dependencies anchor trong historical pubspec.')
-path.write_text(contents.replace(
+pubspec_path.write_text(contents.replace(
     anchor,
     'dev_dependencies:\n  integration_test:\n    sdk: flutter\n',
+    1,
+))
+
+cmake_path = Path(sys.argv[2])
+cmake_contents = cmake_path.read_text()
+cmake_anchor = 'set(APPLICATION_ID "app.hyperz.authenticator")\n'
+cmake_compatibility = (
+    cmake_anchor
+    + '# Plugin Linux lịch sử dùng APPLICATION_ID ngoài scope runner.\n'
+    + 'add_compile_definitions(APPLICATION_ID="${APPLICATION_ID}")\n'
+)
+if cmake_contents.count(cmake_anchor) != 1:
+    raise SystemExit('Historical Linux APPLICATION_ID anchor đã drift.')
+cmake_path.write_text(cmake_contents.replace(
+    cmake_anchor,
+    cmake_compatibility,
     1,
 ))
 PYTHON
