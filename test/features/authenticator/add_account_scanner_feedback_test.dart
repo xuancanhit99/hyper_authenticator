@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fpdart/fpdart.dart';
 import 'package:hyper_authenticator/core/error/failures.dart';
+import 'package:hyper_authenticator/core/theme/app_theme.dart';
 import 'package:hyper_authenticator/features/authenticator/domain/entities/authenticator_account.dart';
 import 'package:hyper_authenticator/features/authenticator/domain/repositories/authenticator_repository.dart';
 import 'package:hyper_authenticator/features/authenticator/domain/usecases/add_account.dart';
@@ -75,31 +76,35 @@ void main() {
     },
   );
 
-  testWidgets(
-    'form thêm account pass semantics và tap target ở text scale 200%',
-    (tester) async {
-      final semantics = tester.ensureSemantics();
-      tester.view.devicePixelRatio = 1;
-      tester.view.physicalSize = const Size(320, 640);
-      addTearDown(tester.view.resetPhysicalSize);
-      addTearDown(tester.view.resetDevicePixelRatio);
-      final controller = _FakeScannerController();
-      final accountsBloc = _accountsBloc();
-      addTearDown(accountsBloc.close);
+  for (final themeMode in [ThemeMode.light, ThemeMode.dark]) {
+    testWidgets(
+      'form thêm account pass accessibility/contrast ${themeMode.name} ở text scale 200%',
+      (tester) async {
+        final semantics = tester.ensureSemantics();
+        tester.view.devicePixelRatio = 1;
+        tester.view.physicalSize = const Size(320, 640);
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+        final controller = _FakeScannerController();
+        final accountsBloc = _accountsBloc();
+        addTearDown(accountsBloc.close);
 
-      await _pumpPage(
-        tester,
-        accountsBloc,
-        controller,
-        textScaler: const TextScaler.linear(2),
-      );
+        await _pumpPage(
+          tester,
+          accountsBloc,
+          controller,
+          textScaler: const TextScaler.linear(2),
+          themeMode: themeMode,
+        );
 
-      expect(tester.takeException(), isNull);
-      await expectLater(tester, meetsGuideline(labeledTapTargetGuideline));
-      await expectLater(tester, meetsGuideline(androidTapTargetGuideline));
-      semantics.dispose();
-    },
-  );
+        expect(tester.takeException(), isNull);
+        await expectLater(tester, meetsGuideline(labeledTapTargetGuideline));
+        await expectLater(tester, meetsGuideline(androidTapTargetGuideline));
+        await expectLater(tester, meetsGuideline(textContrastGuideline));
+        semantics.dispose();
+      },
+    );
+  }
 }
 
 Future<void> _pumpPage(
@@ -107,11 +112,15 @@ Future<void> _pumpPage(
   AccountsBloc accountsBloc,
   MobileScannerController controller, {
   TextScaler? textScaler,
+  ThemeMode themeMode = ThemeMode.light,
 }) async {
   await tester.pumpWidget(
     BlocProvider.value(
       value: accountsBloc,
       child: MaterialApp(
+        theme: AppTheme.lightTheme,
+        darkTheme: AppTheme.darkTheme,
+        themeMode: themeMode,
         builder: textScaler == null
             ? null
             : (context, child) => MediaQuery(

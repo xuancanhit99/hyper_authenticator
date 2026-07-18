@@ -4,24 +4,21 @@ import 'package:hyper_authenticator/core/constants/app_colors.dart';
 import 'package:hyper_authenticator/core/theme/widget_themes/elevated_button_theme.dart';
 import 'package:hyper_authenticator/core/theme/widget_themes/outlined_button_theme.dart';
 import 'package:hyper_authenticator/core/theme/widget_themes/text_field_theme.dart';
-import 'package:hyper_authenticator/core/theme/widget_themes/text_theme.dart'; // Import custom colors
+import 'package:hyper_authenticator/core/theme/widget_themes/text_theme.dart';
 
 class AppTheme {
   // Prevent instantiation
   AppTheme._();
 
   static final ThemeData lightTheme = ThemeData(
-    useMaterial3: true, // Enable Material 3 features
+    useMaterial3: true,
     brightness: Brightness.light,
-    // primarySwatch: Colors.blue, // Not needed when using ColorScheme.fromSeed effectively
-    primaryColor: AppColors.facebookBlue, // Use Facebook blue
-    scaffoldBackgroundColor:
-        AppColors.lightBackground, // White or light gray background
+    primaryColor: AppColors.primaryLight,
+    scaffoldBackgroundColor: AppColors.lightBackground,
     appBarTheme: AppBarTheme(
-      // Facebook style AppBar (usually light)
-      backgroundColor: AppColors.lightBackground, // White or light gray
-      foregroundColor: AppColors.textPrimaryLight, // Dark title and icons
-      elevation: 0.5, // Subtle elevation or 0
+      backgroundColor: AppColors.lightBackground,
+      foregroundColor: AppColors.textPrimaryLight,
+      elevation: 0.5,
       titleTextStyle: TextStyle(
         color: AppColors.textPrimaryLight,
         fontSize: 20,
@@ -35,14 +32,14 @@ class AppTheme {
     inputDecorationTheme: CTextFormFieldTheme.lightInputDecorationTheme,
     navigationBarTheme: NavigationBarThemeData(
       backgroundColor: AppColors.lightBackground,
-      indicatorColor: AppColors.facebookBlue.withValues(alpha: 0.15),
+      indicatorColor: AppColors.primaryLight.withValues(alpha: 0.15),
       indicatorShape: const StadiumBorder(),
       labelTextStyle: WidgetStateProperty.resolveWith((states) {
         if (states.contains(WidgetState.selected)) {
           return TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w600,
-            color: AppColors.facebookBlue,
+            color: AppColors.primaryLight,
           );
         }
         return TextStyle(
@@ -53,43 +50,17 @@ class AppTheme {
       }),
       iconTheme: WidgetStateProperty.resolveWith((states) {
         if (states.contains(WidgetState.selected)) {
-          return IconThemeData(color: AppColors.facebookBlue);
+          return IconThemeData(color: AppColors.primaryLight);
         }
         return IconThemeData(color: AppColors.textSecondaryLight);
       }),
       elevation: 0,
     ),
-    // elevatedButtonTheme: ElevatedButtonThemeData(
-    //   style: ElevatedButton.styleFrom(
-    //     backgroundColor: AppColors.facebookBlue, // Facebook blue button
-    //     foregroundColor: Colors.white, // White text on button
-    //     shape: RoundedRectangleBorder(
-    //       borderRadius: BorderRadius.circular(8.0),
-    //     ),
-    //     padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-    //   ),
-    // ),
-    // inputDecorationTheme: InputDecorationTheme(
-    //   border: OutlineInputBorder(
-    //     borderRadius: BorderRadius.circular(8.0),
-    //     borderSide: BorderSide(color: Colors.grey[400]!),
-    //   ),
-    //   focusedBorder: OutlineInputBorder(
-    //     borderRadius: BorderRadius.circular(8.0),
-    //     borderSide: BorderSide(
-    //         color: AppColors.facebookBlue,
-    //         width: 2.0), // Facebook blue focus border
-    //   ),
-    //   labelStyle: TextStyle(
-    //       color:
-    //           AppColors.textSecondaryLight), // Use defined secondary text color
-    // ),
-    // Add other theme properties as needed (textTheme, cardTheme, etc.)
     colorScheme: ColorScheme.fromSeed(
-      seedColor: AppColors.facebookBlue, // Use Facebook blue as seed
+      seedColor: AppColors.primaryLight,
       brightness: Brightness.light,
-      // Override specific scheme colors if needed
-      primary: AppColors.facebookBlue,
+      primary: AppColors.primaryLight,
+      onPrimary: Colors.white,
       surface: AppColors.lightBackground,
       onSurface: AppColors.textPrimaryLight,
     ),
@@ -98,16 +69,12 @@ class AppTheme {
   static final ThemeData darkTheme = ThemeData(
     useMaterial3: true,
     brightness: Brightness.dark,
-    // primarySwatch: Colors.blue,
-    primaryColor:
-        AppColors.facebookBlue, // Use Facebook blue (adjust if needed for dark)
-    scaffoldBackgroundColor:
-        AppColors.darkBackground, // Use defined dark background
+    primaryColor: AppColors.primaryDark,
+    scaffoldBackgroundColor: AppColors.darkBackground,
     appBarTheme: AppBarTheme(
-      // backgroundColor: AppColors.darkSurface, // Use defined dark surface
-      backgroundColor: AppColors.cDarkColor, // Use defined dark surface
-      foregroundColor: AppColors.textPrimaryDark, // Light title and icons
-      elevation: 0.5, // Subtle elevation or 0
+      backgroundColor: AppColors.cDarkColor,
+      foregroundColor: AppColors.textPrimaryDark,
+      elevation: 0.5,
       titleTextStyle: TextStyle(
         color: AppColors.textPrimaryDark,
         fontSize: 20,
@@ -118,14 +85,14 @@ class AppTheme {
     // Set color cDarkColor for background bottomNavigationBar
     navigationBarTheme: NavigationBarThemeData(
       backgroundColor: AppColors.cDarkColor,
-      indicatorColor: AppColors.cBlueColor.withValues(alpha: 0.25),
+      indicatorColor: AppColors.primaryDark.withValues(alpha: 0.25),
       indicatorShape: const StadiumBorder(),
       labelTextStyle: WidgetStateProperty.resolveWith((states) {
         if (states.contains(WidgetState.selected)) {
           return TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w600,
-            color: AppColors.cBlueColor,
+            color: AppColors.primaryDark,
           );
         }
         return TextStyle(
@@ -136,7 +103,7 @@ class AppTheme {
       }),
       iconTheme: WidgetStateProperty.resolveWith((states) {
         if (states.contains(WidgetState.selected)) {
-          return IconThemeData(color: AppColors.cBlueColor);
+          return IconThemeData(color: AppColors.primaryDark);
         }
         return IconThemeData(color: AppColors.textSecondaryDark);
       }),
@@ -146,46 +113,13 @@ class AppTheme {
     outlinedButtonTheme: COutlinedButtonTheme.darkOutlinedButtonTheme,
     elevatedButtonTheme: CElevatedButtonTheme.darkElevatedButtonTheme,
     inputDecorationTheme: CTextFormFieldTheme.darkInputDecorationTheme,
-    // elevatedButtonTheme: ElevatedButtonThemeData(
-    //   style: ElevatedButton.styleFrom(
-    //     backgroundColor: AppColors.facebookBlue, // Facebook blue button
-    //     foregroundColor: Colors.white, // White text on button
-    //     shape: RoundedRectangleBorder(
-    //       borderRadius: BorderRadius.circular(8.0),
-    //     ),
-    //     padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-    //   ),
-    // ),
-    // inputDecorationTheme: InputDecorationTheme(
-    //   border: OutlineInputBorder(
-    //     borderRadius: BorderRadius.circular(8.0),
-    //     borderSide: BorderSide(color: Colors.grey[700]!),
-    //   ),
-    //   focusedBorder: OutlineInputBorder(
-    //     borderRadius: BorderRadius.circular(8.0),
-    //     borderSide: BorderSide(
-    //         color: AppColors.facebookBlue,
-    //         width: 2.0), // Facebook blue focus border
-    //   ),
-    //   labelStyle: TextStyle(
-    //       color:
-    //           AppColors.textSecondaryDark), // Use defined secondary text color
-    //   hintStyle: TextStyle(color: AppColors.textSecondaryDark.withOpacity(0.7)),
-    //   // Ensure prefix/suffix icon colors contrast well
-    //   iconColor: AppColors.textSecondaryDark,
-    //   prefixIconColor: AppColors.textSecondaryDark,
-    //   suffixIconColor: AppColors.textSecondaryDark,
-    // ),
-    // Add other theme properties
     colorScheme: ColorScheme.fromSeed(
-      seedColor: AppColors.facebookBlue, // Use Facebook blue as seed
+      seedColor: AppColors.primaryDark,
       brightness: Brightness.dark,
-      // Override specific scheme colors for better dark theme control
-      primary: AppColors.facebookBlue, // Keep primary blue
+      primary: AppColors.primaryDark,
       surface: AppColors.darkSurface,
-      onPrimary: Colors.white, // Text on primary color button
+      onPrimary: AppColors.onPrimaryDark,
       onSurface: AppColors.textPrimaryDark,
-      // You might need to adjust secondary, error colors etc. based on the seed generation
     ),
   );
 }
