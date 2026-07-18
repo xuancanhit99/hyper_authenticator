@@ -75,13 +75,14 @@ try {
   if ($historicalPubspec -notmatch [regex]::Escape("version: $historicalVersion")) {
     throw "Historical source không có version $historicalVersion."
   }
-  $dependencyAnchor = "dev_dependencies:`n  flutter_test:"
+  $newline = if ($historicalPubspec.Contains("`r`n")) { "`r`n" } else { "`n" }
+  $dependencyAnchor = "dev_dependencies:$newline"
   if (-not $historicalPubspec.Contains($dependencyAnchor)) {
     throw 'Không tìm thấy dev_dependencies anchor trong historical pubspec.'
   }
   $historicalPubspec = $historicalPubspec.Replace(
     $dependencyAnchor,
-    "dev_dependencies:`n  integration_test:`n    sdk: flutter`n  flutter_test:"
+    "dev_dependencies:$newline  integration_test:$newline    sdk: flutter$newline"
   )
   [IO.File]::WriteAllText($historicalPubspecPath, $historicalPubspec)
 
