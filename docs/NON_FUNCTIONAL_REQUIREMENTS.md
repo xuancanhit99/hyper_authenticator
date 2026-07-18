@@ -61,14 +61,24 @@ Bắt buộc:
 
 ## Usability và accessibility
 
-Mục tiêu đề xuất:
+Baseline automated đã triển khai cho Auth, danh sách TOTP và form thêm account:
 
-- mọi critical flow dùng được bằng screen reader;
-- text tuân theo system scaling mà không bị cắt;
+- control có tap action pass labeled tap target và Android 48×48 guideline;
+- password visibility, tìm kiếm, copy TOTP và account action có accessible name
+  tiếng Việt;
+- viewport 320×640 ở system text scale 200% không overflow;
+- semantics của account copy chỉ công bố issuer, account, TOTP đang hiển thị và
+  countdown; không công bố secret key hoặc URI `otpauth`.
+
+Mục tiêu còn lại:
+
+- chạy TalkBack/VoiceOver và keyboard/focus audit trên runtime đại diện;
+- mở rộng text scaling/guideline test sang Settings, recovery/conflict dialog và
+  mọi trạng thái lỗi;
 - action không phụ thuộc riêng vào màu;
 - destructive action giải thích chính xác tác động dữ liệu;
 - feedback copy không làm lộ secret đã sao chép;
-- định nghĩa localization strategy trước khi thêm hard-coded text.
+- contrast, reduced motion và screenshot/privacy review.
 
 ## Khả năng bảo trì
 

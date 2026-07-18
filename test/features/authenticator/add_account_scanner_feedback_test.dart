@@ -23,9 +23,23 @@ void main() {
       addTearDown(accountsBloc.close);
 
       await _pumpPage(tester, accountsBloc, controller);
+      expect(
+        find.descendant(
+          of: find.byType(AppBar),
+          matching: find.text('Thêm tài khoản'),
+        ),
+        findsOneWidget,
+      );
       await tester.tap(find.byTooltip('Quét mã QR'));
       await tester.pump();
 
+      expect(
+        find.descendant(
+          of: find.byType(AppBar),
+          matching: find.text('Quét mã QR'),
+        ),
+        findsOneWidget,
+      );
       expect(find.byKey(AddAccountPage.scannerLoadingKey), findsOneWidget);
       expect(find.text('Đang khởi động camera…'), findsOneWidget);
       expect(find.textContaining('hãy chọn Cho phép'), findsOneWidget);
@@ -60,17 +74,52 @@ void main() {
       expect(controller.stopCount, 2);
     },
   );
+
+  testWidgets(
+    'form thêm account pass semantics và tap target ở text scale 200%',
+    (tester) async {
+      final semantics = tester.ensureSemantics();
+      tester.view.devicePixelRatio = 1;
+      tester.view.physicalSize = const Size(320, 640);
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final controller = _FakeScannerController();
+      final accountsBloc = _accountsBloc();
+      addTearDown(accountsBloc.close);
+
+      await _pumpPage(
+        tester,
+        accountsBloc,
+        controller,
+        textScaler: const TextScaler.linear(2),
+      );
+
+      expect(tester.takeException(), isNull);
+      await expectLater(tester, meetsGuideline(labeledTapTargetGuideline));
+      await expectLater(tester, meetsGuideline(androidTapTargetGuideline));
+      semantics.dispose();
+    },
+  );
 }
 
 Future<void> _pumpPage(
   WidgetTester tester,
   AccountsBloc accountsBloc,
-  MobileScannerController controller,
-) async {
+  MobileScannerController controller, {
+  TextScaler? textScaler,
+}) async {
   await tester.pumpWidget(
     BlocProvider.value(
       value: accountsBloc,
-      child: MaterialApp(home: AddAccountPage(scannerController: controller)),
+      child: MaterialApp(
+        builder: textScaler == null
+            ? null
+            : (context, child) => MediaQuery(
+                data: MediaQuery.of(context).copyWith(textScaler: textScaler),
+                child: child!,
+              ),
+        home: AddAccountPage(scannerController: controller),
+      ),
     ),
   );
 }
