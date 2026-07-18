@@ -86,6 +86,20 @@ try {
   )
   [IO.File]::WriteAllText($historicalPubspecPath, $historicalPubspec)
 
+  # Source cũ dùng local_auth_windows 1.0.11 với <experimental/coroutine>.
+  # MSVC 14.51 chỉ cần explicit opt-in; shim này không đổi storage contract.
+  $historicalCmakePath = Join-Path $historicalRoot 'windows/CMakeLists.txt'
+  $historicalCmake = [IO.File]::ReadAllText($historicalCmakePath)
+  $cmakeAnchor = '  target_compile_definitions(${TARGET} PRIVATE "_HAS_EXCEPTIONS=0")'
+  if (-not $historicalCmake.Contains($cmakeAnchor)) {
+    throw 'Không tìm thấy MSVC compatibility anchor trong historical CMake.'
+  }
+  $historicalCmake = $historicalCmake.Replace(
+    $cmakeAnchor,
+    "$cmakeAnchor$newline  target_compile_definitions(`${TARGET} PRIVATE `"_SILENCE_EXPERIMENTAL_COROUTINE_DEPRECATION_WARNINGS`")"
+  )
+  [IO.File]::WriteAllText($historicalCmakePath, $historicalCmake)
+
   [IO.File]::WriteAllText(
     (Join-Path $historicalRoot '.env'),
     "SUPABASE_URL=https://example.invalid`nSUPABASE_ANON_KEY=TEST_ONLY_PUBLIC_KEY`n"

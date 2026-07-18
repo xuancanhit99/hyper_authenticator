@@ -33,7 +33,9 @@ migrate chúng sang `flutter_secure_storage.dat`, nhưng chỉ khi physical path
 - Nếu source và target cùng có vault nhưng tập tên/byte khác nhau, app dừng với
   thông báo recovery an toàn; không merge, chọn newest hoặc overwrite tự động.
 - CI pin source `1.0.0+9` và dependency lock lịch sử để chứng minh logical upgrade
-  thật trên GitHub-hosted Windows, không chạy destructive harness trên workstation.
+  thật trên GitHub-hosted Windows. Build tạm chỉ thêm compile-definition mà MSVC
+  14.51 yêu cầu cho `local_auth_windows 1.0.11`; không đổi storage code/metadata.
+  Destructive harness không chạy trên workstation.
 
 ## Phương án đã cân nhắc
 
