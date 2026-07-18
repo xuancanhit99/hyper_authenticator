@@ -1,6 +1,6 @@
 # Trạng thái dự án
 
-Baseline được xác minh ngày **18 tháng 7 năm 2026** trên macOS 26.5.1.
+Baseline được xác minh ngày **19 tháng 7 năm 2026** trên macOS 26.5.1.
 
 ## Kết luận hiện tại
 
@@ -50,6 +50,7 @@ owner; không mô tả preview là stable production release.
 | Linux release + Debian artifact | Pass configured `linux/x64`, historical `1.0.0+9` vault upgrade, private-keyring UI smoke và `.deb` `1.1.0+10` amd64; hosted amd64 pass clean transition/retention + X11/Wayland trên Ubuntu 22.04/24.04 và Debian 12/13 |
 | Linux authenticated E2EE runtime | Pass trên Ubuntu 24.04 arm64 container tạm: client thật đăng nhập production Supabase, setup revision 1, sync revision 2, fresh-device recovery, recovery-key rotation revision 3, reject key cũ, vault-key rotation revision 4 và recovery cuối; operator xóa user/row và admin probe xác nhận 404 |
 | Windows release + installer | Pass upgrade vault thật từ source `1.0.0+9`/plugin 3.1.2 sang current COW v2, configured x64 bundle, local-vault runtime và NSIS 3.12 unsigned candidate; install/launch/metadata-upgrade/uninstall giữ AppData pass, bundle + installer/checksum giữ 14 ngày |
+| GitHub Desktop Preview | `v1.1.0-preview.1` public pre-release tại commit `6c3bd4b`; Windows x64 NSIS và Linux amd64 `.deb` cùng individual checksum + `SHA256SUMS.txt`; public unauthenticated re-download khớp SHA-256 |
 
 Build không có `--dart-define-from-file` chỉ chứng minh compile. Runtime/release
 verification phải inject `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY` và
@@ -151,7 +152,7 @@ Capability là hành vi source hiện tại, không thay thế device test và s
    upgrade thật từ source `1.0.0+9`; còn code signing và physical-device/Windows Hello.
    Linux đã có `.deb` candidate, hosted amd64 historical upgrade, clean-container
    package transition, X11/Wayland distro matrix và authenticated E2EE client runtime;
-   hai package chỉ đủ điều kiện GitHub Preview. Trước stable còn KDE
+   hai package đã public trong `v1.1.0-preview.1` với nhãn unsigned. Trước stable còn KDE
    login/unlock/physical desktop, release signing và maintainer/support metadata.
    E2EE evidence hiện là
    debug arm64 container, không phải signed amd64 package runtime.
@@ -175,6 +176,10 @@ Capability là hành vi source hiện tại, không thay thế device test và s
 - GitHub Actions run `29652820428` tại `ae1ab36` pass 7/7; locale fix được xác
   minh cùng Linux hosted historical/package/distro, Windows historical/runtime/
   installer, Apple, Android, Web, quality và secret history gate.
+- Tag CI run `29656402708` tại `v1.1.0-preview.1`/`6c3bd4b` pass 7/7. Release
+  public có pre-release flag, không phải draft, đúng năm asset; Windows SHA-256
+  `5bccb8f8…07a47`, Linux SHA-256 `2628ca05…46d33` đã được tải lại không auth và
+  xác minh bằng manifest công khai.
 - `.github/dependabot.yml` kiểm tra Pub và GitHub Actions hằng tuần.
 - `release-preview.yml` cùng `github_preview_release.sh` fail closed theo
   tag/version/successful tag CI và chỉ publish Windows/Linux allowlist với checksum;

@@ -25,7 +25,7 @@ Roadmap ưu tiên theo rủi ro. Checkbox chỉ được đánh dấu khi có so
 
 - [x] Chấp nhận contract GitHub Preview unsigned cho Windows x64/Linux amd64.
 - [x] Harness bắt buộc tag/version/tag-CI/checksum/asset allowlist và pre-release flag.
-- [ ] Publish preview tag đầu tiên và xác minh lại public download/checksum.
+- [x] Publish `v1.1.0-preview.1` và xác minh lại public download/checksum.
 - [x] Công bố private security reporting trên GitHub.
 
 Exit criteria: GitHub pre-release public có Windows/Linux artifact đúng contract,

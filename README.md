@@ -14,7 +14,7 @@ nhập/xuất QR và giao diện sáng/tối.
 ## Tải ứng dụng
 
 - Web: [authenticator.hyperz.xyz](https://authenticator.hyperz.xyz/).
-- Desktop Preview: [GitHub Releases](https://github.com/xuancanhit99/hyper_authenticator/releases).
+- Desktop Preview hiện tại: [v1.1.0-preview.1](https://github.com/xuancanhit99/hyper_authenticator/releases/tag/v1.1.0-preview.1).
 
 GitHub Preview hiện chỉ dành cho Windows x64 và Linux amd64. Luôn kiểm tra
 `SHA256SUMS.txt`; Windows SmartScreen có thể cảnh báo vì installer chưa code-sign.

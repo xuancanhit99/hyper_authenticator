@@ -1,6 +1,6 @@
 # Task: Mở kênh tải GitHub Preview
 
-- Trạng thái: Đang thực hiện
+- Trạng thái: Hoàn tất
 - Bắt đầu: 2026-07-19
 - Owner: Hyperz
 - Issue hoặc ADR liên quan: ADR-0010
@@ -19,10 +19,10 @@ GitHub pre-release public, có checksum và provenance về tag/commit/CI.
 
 ## Acceptance criteria
 
-- [ ] Tag preview khớp package version và có tag CI pass toàn bộ.
-- [ ] Harness fail closed khi tag, confirmation, CI hoặc asset contract sai.
-- [ ] GitHub pre-release public có đúng Windows/Linux installer và checksum.
-- [ ] Public download được xác minh lại bằng SHA-256.
+- [x] Tag preview khớp package version và có tag CI pass toàn bộ.
+- [x] Harness fail closed khi tag, confirmation, CI hoặc asset contract sai.
+- [x] GitHub pre-release public có đúng Windows/Linux installer và checksum.
+- [x] Public download được xác minh lại bằng SHA-256.
 - [x] Canonical docs phân biệt preview unsigned với stable/store release.
 
 ## Bằng chứng hiện tại
@@ -47,8 +47,8 @@ GitHub pre-release public, có checksum và provenance về tag/commit/CI.
 - [x] Audit CI artifact và release hiện có.
 - [x] Tạo release harness, asset validator và workflow thủ công.
 - [x] Cập nhật canonical docs và ADR index.
-- [ ] Chạy full gate, commit và push branch.
-- [ ] Tạo tag, chờ tag CI pass, publish và verify public download.
+- [x] Chạy full gate, commit và push branch.
+- [x] Tạo tag, chờ tag CI pass, publish và verify public download.
 
 ## Nhật ký xác minh
 
@@ -58,6 +58,9 @@ GitHub pre-release public, có checksum và provenance về tag/commit/CI.
 | `scripts/agent/check.sh full` | Pass: docs/generated/format/analyze/platform/release harness, 106 test và encrypted migration | 2026-07-19 |
 | `scripts/agent/check_secrets.sh` | Pass toàn bộ 115 commit, không có leak | 2026-07-19 |
 | GitHub Private Vulnerability Reporting API | `enabled=true` | 2026-07-19 |
+| Branch CI `29656082645` tại `6c3bd4b` | Pass 7/7 | 2026-07-19 |
+| Tag CI `29656402708` tại `v1.1.0-preview.1` | Pass 7/7 | 2026-07-19 |
+| GitHub Release API/public download | Pre-release public, 5 asset; Windows/Linux SHA-256 khớp manifest | 2026-07-19 |
 
 ## Tác động tài liệu
 
@@ -69,4 +72,8 @@ GitHub pre-release public, có checksum và provenance về tag/commit/CI.
 
 ## Bàn giao
 
-Sẽ hoàn tất sau khi public release và checksum được xác minh.
+GitHub Preview đầu tiên đã public tại
+`https://github.com/xuancanhit99/hyper_authenticator/releases/tag/v1.1.0-preview.1`.
+Không đổi local/cloud data contract. Windows/Linux artifact vẫn unsigned; SMTP,
+stable signing, app store, physical-device và public legal/support gate được bảo
+toàn trong roadmap. Không có thay đổi không liên quan trong working tree.
