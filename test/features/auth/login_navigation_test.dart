@@ -8,6 +8,8 @@ import 'package:hyper_authenticator/features/auth/domain/entities/user_entity.da
 import 'package:hyper_authenticator/features/auth/domain/repositories/auth_repository.dart';
 import 'package:hyper_authenticator/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:hyper_authenticator/features/auth/presentation/pages/login_page.dart';
+import 'package:hyper_authenticator/features/auth/presentation/pages/register_page.dart';
+import 'package:hyper_authenticator/features/auth/presentation/pages/update_password_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
@@ -23,7 +25,15 @@ void main() {
   Future<void> pumpApp(
     WidgetTester tester, {
     required String initialLocation,
+    Size? viewSize,
+    TextScaler? textScaler,
   }) async {
+    if (viewSize != null) {
+      tester.view.devicePixelRatio = 1;
+      tester.view.physicalSize = viewSize;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+    }
     SharedPreferences.setMockInitialValues({});
     authBloc = AuthBloc(
       const _SuccessfulAuthRepository(user),
@@ -41,6 +51,11 @@ void main() {
           builder: (_, _) => const Scaffold(body: Text('Settings host')),
         ),
         GoRoute(path: '/login', builder: (_, _) => const LoginPage()),
+        GoRoute(path: '/register', builder: (_, _) => const RegisterPage()),
+        GoRoute(
+          path: '/update-password',
+          builder: (_, _) => const UpdatePasswordPage(),
+        ),
       ],
     );
     addTearDown(() async {
@@ -50,7 +65,15 @@ void main() {
     await tester.pumpWidget(
       BlocProvider<AuthBloc>.value(
         value: authBloc,
-        child: MaterialApp.router(routerConfig: router),
+        child: MaterialApp.router(
+          routerConfig: router,
+          builder: textScaler == null
+              ? null
+              : (context, child) => MediaQuery(
+                  data: MediaQuery.of(context).copyWith(textScaler: textScaler),
+                  child: child!,
+                ),
+        ),
       ),
     );
     await tester.pumpAndSettle();
@@ -95,6 +118,33 @@ void main() {
     expect(find.text('Settings host'), findsOneWidget);
     expect(find.text('Chào mừng bạn trở lại!'), findsNothing);
   });
+
+  testWidgets(
+    'auth có accessible name, tap target và không overflow ở text scale 200%',
+    (tester) async {
+      final semantics = tester.ensureSemantics();
+      await pumpApp(
+        tester,
+        initialLocation: '/login',
+        viewSize: const Size(320, 640),
+        textScaler: const TextScaler.linear(2),
+      );
+
+      expect(find.byTooltip('Hiện mật khẩu'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      await expectLater(tester, meetsGuideline(labeledTapTargetGuideline));
+      await expectLater(tester, meetsGuideline(androidTapTargetGuideline));
+
+      router.go('/register');
+      await tester.pumpAndSettle();
+      expect(find.byTooltip('Hiện mật khẩu'), findsNWidgets(2));
+
+      router.go('/update-password');
+      await tester.pumpAndSettle();
+      expect(find.byTooltip('Hiện mật khẩu'), findsNWidgets(2));
+      semantics.dispose();
+    },
+  );
 
   test('auth event/state string redact password và user identity', () {
     const email = 'sensitive@example.invalid';

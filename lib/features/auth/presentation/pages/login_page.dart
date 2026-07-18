@@ -136,6 +136,9 @@ class _LoginPageState extends State<LoginPage> {
                         prefixIcon: const Icon(Icons.lock_outline),
                         // Add suffix icon for password visibility toggle
                         suffixIcon: IconButton(
+                          tooltip: _obscurePassword
+                              ? 'Hiện mật khẩu'
+                              : 'Ẩn mật khẩu',
                           icon: Icon(
                             _obscurePassword
                                 ? Icons.visibility_off_outlined
@@ -155,58 +158,25 @@ class _LoginPageState extends State<LoginPage> {
                       onFieldSubmitted: (_) => _login(context),
                     ),
                     const SizedBox(height: 16),
-                    // --- Remember Me & Forgot Password Row ---
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        // Remember Me part
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            SizedBox(
-                              height: 24.0, // Constrain height
-                              width: 24.0, // Constrain width
-                              child: Checkbox(
-                                value: _rememberMe,
-                                onChanged: (newValue) {
-                                  setState(() {
-                                    _rememberMe = newValue ?? false;
-                                  });
-                                },
-                                visualDensity: VisualDensity
-                                    .compact, // Make checkbox smaller
-                                materialTapTargetSize: MaterialTapTargetSize
-                                    .shrinkWrap, // Reduce tap area
-                              ),
-                            ),
-                            const SizedBox(
-                              width: 4,
-                            ), // Small space between checkbox and text
-                            InkWell(
-                              onTap: () {
-                                setState(() {
-                                  _rememberMe = !_rememberMe;
-                                });
-                              },
-                              child: const Text('Ghi nhớ đăng nhập'),
-                            ),
-                          ],
-                        ),
-                        // Forgot Password part
-                        TextButton(
-                          onPressed: () {
-                            context.push(AppRoutes.forgotPassword);
-                          },
-                          style: TextButton.styleFrom(
-                            padding: EdgeInsets.zero, // Remove default padding
-                            minimumSize:
-                                Size.zero, // Remove minimum size constraint
-                            tapTargetSize: MaterialTapTargetSize
-                                .shrinkWrap, // Reduce tap area
-                          ),
-                          child: const Text('Quên mật khẩu?'),
-                        ),
-                      ],
+                    CheckboxListTile(
+                      contentPadding: EdgeInsets.zero,
+                      controlAffinity: ListTileControlAffinity.leading,
+                      value: _rememberMe,
+                      onChanged: (newValue) {
+                        setState(() {
+                          _rememberMe = newValue ?? false;
+                        });
+                      },
+                      title: const Text('Ghi nhớ đăng nhập'),
+                    ),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: TextButton(
+                        onPressed: () {
+                          context.push(AppRoutes.forgotPassword);
+                        },
+                        child: const Text('Quên mật khẩu?'),
+                      ),
                     ),
                     const SizedBox(height: 24),
                     // Use BlocBuilder to handle loading state
@@ -242,23 +212,18 @@ class _LoginPageState extends State<LoginPage> {
                       },
                     ),
                     const SizedBox(height: 16),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
+                    Wrap(
+                      alignment: WrapAlignment.center,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      spacing: 8,
+                      runSpacing: 4,
                       children: [
                         const Text('Chưa có tài khoản?'),
                         TextButton(
                           onPressed: () {
                             // Navigate to Register page
                             context.push(AppRoutes.register);
-                            // print('Navigate to Register'); // Keep for debugging if needed
                           },
-                          style: TextButton.styleFrom(
-                            padding: EdgeInsets.zero, // Remove default padding
-                            // minimumSize:
-                            // Size.zero, // Remove minimum size constraint
-                            tapTargetSize: MaterialTapTargetSize
-                                .shrinkWrap, // Reduce tap area
-                          ),
                           child: const Text('Đăng ký'),
                         ),
                       ],

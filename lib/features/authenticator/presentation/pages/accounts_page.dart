@@ -259,6 +259,7 @@ class _AccountsPageState extends State<AccountsPage>
       ),
       body: GestureDetector(
         // Wrap with GestureDetector
+        excludeFromSemantics: true,
         onTap: () => FocusScope.of(context).unfocus(), // Unfocus on tap outside
         child: Column(
           // Wrap body content in a Column
@@ -299,6 +300,7 @@ class _AccountsPageState extends State<AccountsPage>
                   suffixIcon: _searchQuery.isNotEmpty
                       ? IconButton(
                           icon: const Icon(Icons.clear),
+                          tooltip: 'Xóa nội dung tìm kiếm',
                           onPressed: () {
                             _searchController.clear();
                             // _onSearchChanged will be called by the listener
@@ -435,7 +437,7 @@ class _AccountsPageState extends State<AccountsPage>
                                     backgroundColor: Colors.blue,
                                     foregroundColor: Colors.white,
                                     icon: Icons.qr_code,
-                                    // label: 'QR Code',
+                                    label: 'QR',
                                   ),
                                   SlidableAction(
                                     onPressed: (_) {
@@ -447,7 +449,7 @@ class _AccountsPageState extends State<AccountsPage>
                                     backgroundColor: Colors.orange,
                                     foregroundColor: Colors.white,
                                     icon: Icons.edit,
-                                    // label: 'Edit',
+                                    label: 'Sửa',
                                   ),
                                   SlidableAction(
                                     onPressed: (_) =>
@@ -458,7 +460,7 @@ class _AccountsPageState extends State<AccountsPage>
                                     backgroundColor: Colors.red,
                                     foregroundColor: Colors.white,
                                     icon: Icons.delete,
-                                    // label: 'Delete',
+                                    label: 'Xóa',
                                   ),
                                 ],
                               ),
@@ -486,92 +488,102 @@ class _AccountsPageState extends State<AccountsPage>
                                             .id]!; // Use cached code during refresh
                                   }
 
+                                  final rawCode = displayCode.replaceAll(
+                                    ' ',
+                                    '',
+                                  );
+                                  final canCopy = RegExp(
+                                    r'^\d{6,8}$',
+                                  ).hasMatch(rawCode);
+                                  final semanticValue = canCopy
+                                      ? 'Mã ${rawCode.split('').join(' ')}, còn ${timeWindow.secondsRemaining} giây'
+                                      : 'Đang tạo mã';
+
                                   // --- Start New Row Layout ---
-                                  return InkWell(
-                                    // Wrap with InkWell for onTap
-                                    onTap: () {
-                                      Clipboard.setData(
-                                        ClipboardData(
-                                          text: displayCode.replaceAll(' ', ''),
+                                  return Semantics(
+                                    label:
+                                        'Sao chép mã TOTP của ${account.issuer}, ${account.accountName}',
+                                    value: semanticValue,
+                                    button: true,
+                                    enabled: canCopy,
+                                    excludeSemantics: true,
+                                    child: InkWell(
+                                      onTap: canCopy
+                                          ? () {
+                                              Clipboard.setData(
+                                                ClipboardData(text: rawCode),
+                                              );
+                                              ScaffoldMessenger.of(
+                                                context,
+                                              ).showSnackBar(
+                                                const SnackBar(
+                                                  content: Text(
+                                                    'Đã sao chép mã TOTP.',
+                                                  ),
+                                                  duration: Duration(
+                                                    seconds: 1,
+                                                  ),
+                                                ),
+                                              );
+                                            }
+                                          : null,
+                                      child: Padding(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 8.0,
+                                          vertical: 10.0,
                                         ),
-                                      );
-                                      ScaffoldMessenger.of(
-                                        context,
-                                      ).showSnackBar(
-                                        const SnackBar(
-                                          content: Text(
-                                            'Code copied to clipboard',
-                                          ),
-                                          duration: Duration(
-                                            seconds: 1,
-                                          ), // Shorter duration
-                                        ),
-                                      );
-                                    },
-                                    child: Padding(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 8.0,
-                                        vertical: 10.0,
-                                      ), // Padding for the row
-                                      child: Row(
-                                        children: [
-                                          // 1. Logo (Cropped with rounded corners) - Updated
-                                          AccountAvatar(issuer: account.issuer),
-                                          const SizedBox(width: 12), // Spacing
-                                          // 2. Issuer / Account Name
-                                          Expanded(
-                                            // Takes available space
-                                            child: Column(
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.start,
-                                              children: [
-                                                Text(
-                                                  account.issuer,
-                                                  style: Theme.of(context)
-                                                      .textTheme
-                                                      .bodyMedium
-                                                      ?.copyWith(
-                                                        fontWeight:
-                                                            FontWeight.w500,
+                                        child: LayoutBuilder(
+                                          builder: (context, constraints) {
+                                            final useStackedLayout =
+                                                MediaQuery.textScalerOf(
+                                                  context,
+                                                ).scale(21) >
+                                                28;
+                                            final identity = _AccountIdentity(
+                                              account: account,
+                                            );
+                                            final codeAndCountdown =
+                                                _CodeAndCountdown(
+                                                  displayCode: displayCode,
+                                                  timeWindow: timeWindow,
+                                                  periodSeconds: account.period,
+                                                );
+                                            if (useStackedLayout) {
+                                              return Column(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.stretch,
+                                                children: [
+                                                  Row(
+                                                    children: [
+                                                      AccountAvatar(
+                                                        issuer: account.issuer,
                                                       ),
-                                                  overflow:
-                                                      TextOverflow.ellipsis,
+                                                      const SizedBox(width: 12),
+                                                      Expanded(child: identity),
+                                                    ],
+                                                  ),
+                                                  const SizedBox(height: 8),
+                                                  Align(
+                                                    alignment:
+                                                        Alignment.centerRight,
+                                                    child: codeAndCountdown,
+                                                  ),
+                                                ],
+                                              );
+                                            }
+                                            return Row(
+                                              children: [
+                                                AccountAvatar(
+                                                  issuer: account.issuer,
                                                 ),
-                                                Text(
-                                                  account.accountName,
-                                                  style: Theme.of(
-                                                    context,
-                                                  ).textTheme.bodySmall,
-                                                  overflow:
-                                                      TextOverflow.ellipsis,
-                                                  maxLines: 1,
-                                                ),
+                                                const SizedBox(width: 12),
+                                                Expanded(child: identity),
+                                                const SizedBox(width: 8),
+                                                codeAndCountdown,
                                               ],
-                                            ),
-                                          ),
-                                          const SizedBox(width: 8), // Spacing
-                                          // 3. TOTP Code và 4. Countdown Timer trong hàng ngang với căn giữa theo trục dọc
-                                          Text(
-                                            displayCode,
-                                            style: const TextStyle(
-                                              fontSize: 21,
-                                              fontWeight: FontWeight.bold,
-                                              letterSpacing: 1.3,
-                                              fontFeatures: [
-                                                FontFeature.tabularFigures(),
-                                              ],
-                                            ),
-                                          ),
-                                          const SizedBox(width: 8), // Spacing
-                                          CircularCountdownTimer(
-                                            secondsRemaining:
-                                                timeWindow.secondsRemaining,
-                                            periodSeconds: account.period,
-                                            size: 18,
-                                            backgroundColor: Colors.transparent,
-                                            progressColor: Colors.grey,
-                                          ),
-                                        ],
+                                            );
+                                          },
+                                        ),
                                       ),
                                     ),
                                   );
@@ -727,6 +739,74 @@ class _AccountsPageState extends State<AccountsPage>
     );
   }
 } // End _AccountsPageState class
+
+class _AccountIdentity extends StatelessWidget {
+  const _AccountIdentity({required this.account});
+
+  final AuthenticatorAccount account;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          account.issuer,
+          style: Theme.of(
+            context,
+          ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500),
+          overflow: TextOverflow.ellipsis,
+        ),
+        Text(
+          account.accountName,
+          style: Theme.of(context).textTheme.bodySmall,
+          overflow: TextOverflow.ellipsis,
+          maxLines: 1,
+        ),
+      ],
+    );
+  }
+}
+
+class _CodeAndCountdown extends StatelessWidget {
+  const _CodeAndCountdown({
+    required this.displayCode,
+    required this.timeWindow,
+    required this.periodSeconds,
+  });
+
+  final String displayCode;
+  final TotpTimeWindow timeWindow;
+  final int periodSeconds;
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      alignment: WrapAlignment.end,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      spacing: 8,
+      runSpacing: 8,
+      children: [
+        Text(
+          displayCode,
+          style: const TextStyle(
+            fontSize: 21,
+            fontWeight: FontWeight.bold,
+            letterSpacing: 1.3,
+            fontFeatures: [FontFeature.tabularFigures()],
+          ),
+        ),
+        CircularCountdownTimer(
+          secondsRemaining: timeWindow.secondsRemaining,
+          periodSeconds: periodSeconds,
+          size: 18,
+          backgroundColor: Colors.transparent,
+          progressColor: Colors.grey,
+        ),
+      ],
+    );
+  }
+}
 
 class _TotpCodeCacheEntry {
   const _TotpCodeCacheEntry({

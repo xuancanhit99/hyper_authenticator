@@ -113,6 +113,9 @@ class _UpdatePasswordPageState extends State<UpdatePasswordPage> {
                         prefixIcon: const Icon(Icons.lock_outline),
                         border: const OutlineInputBorder(),
                         suffixIcon: IconButton(
+                          tooltip: _obscurePassword
+                              ? 'Hiện mật khẩu'
+                              : 'Ẩn mật khẩu',
                           icon: Icon(
                             _obscurePassword
                                 ? Icons.visibility_off_outlined
@@ -137,6 +140,9 @@ class _UpdatePasswordPageState extends State<UpdatePasswordPage> {
                         prefixIcon: const Icon(Icons.lock_outline),
                         border: const OutlineInputBorder(),
                         suffixIcon: IconButton(
+                          tooltip: _obscureConfirmPassword
+                              ? 'Hiện mật khẩu'
+                              : 'Ẩn mật khẩu',
                           icon: Icon(
                             _obscureConfirmPassword
                                 ? Icons.visibility_off_outlined

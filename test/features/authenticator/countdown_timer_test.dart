@@ -57,7 +57,7 @@ void main() {
     );
 
     expect(
-      find.bySemanticsLabel('29 seconds remaining of a 60-second period'),
+      find.bySemanticsLabel('Còn 29 giây trong chu kỳ 60 giây'),
       findsOneWidget,
     );
   });
