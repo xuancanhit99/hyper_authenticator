@@ -65,6 +65,8 @@ behavior an toàn, backend có backup/restore/health harness và release gate t�
 | Web browser smoke | Pass `/` và direct `/settings` trên production TLS origin; console sạch |
 | Web production-serving contract | Pass TLS/proxy/CSP/cache/SPA/read-only/no-log; browser image render sạch |
 | Linux release compile | Pass `linux/arm64`, Flutter 3.44.6, Ubuntu 24.04 isolated |
+| GitHub Actions run `29633535829` | Pass toàn bộ Web, Android debug, Apple compile, Linux, Windows và quality gates |
+| Windows configured artifact | Pass PE x64; 22/22 SHA-256 checksum; không chứa `.env` hoặc signing key |
 | Android configured release | Fail closed vì thiếu upload keystore |
 | macOS configured release | Bị chặn vì thiếu certificate |
 | Remote encrypted contract | 11/11 pass |

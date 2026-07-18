@@ -47,7 +47,7 @@ các credential gate tương ứng pass.
 | Android release | Fail closed đúng thiết kế vì chưa có upload keystore |
 | macOS release | Bị chặn vì chưa có development/distribution certificate |
 | Linux release compile | Pass `linux/arm64` với Flutter 3.44.6 trên Ubuntu 24.04 isolated |
-| Windows release | Workflow native tạo configured bundle + SHA-256 artifact 14 ngày; cần chạy remote CI và device gate trên Windows |
+| Windows release | Remote CI pass configured x64 bundle; artifact 14 ngày và 22/22 checksum pass; còn device/installer/signing gate trên Windows |
 
 Build không có `--dart-define-from-file` chỉ chứng minh compile. Runtime/release
 verification phải inject `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY` và
