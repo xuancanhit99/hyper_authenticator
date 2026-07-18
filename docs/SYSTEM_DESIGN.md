@@ -120,7 +120,9 @@ dùng xoay vault key trước rồi revoke các session khác.
 
 1. Xác minh user đã đăng nhập và cloud vault chưa tồn tại.
 2. Sinh DEK 256-bit cùng recovery key `HA1-...`.
-3. Hiển thị recovery key một lần; user phải xác nhận đã lưu.
+3. Hiển thị recovery key một lần; user phải xác nhận đã lưu. Raw key bị loại khỏi
+   semantics tree tự động; assistive user dùng action “Sao chép recovery key” có
+   nhãn rõ ràng để chuyển key sang password manager.
 4. Encrypt snapshot local revision 1, atomic publish với expected revision 0.
 5. Download/read-after-write verify revision và envelope.
 6. Chỉ sau đó persist DEK vào secure storage và bật sync metadata.
@@ -148,6 +150,10 @@ cloud, UI yêu cầu chọn:
 - **Giữ local:** encrypt local và compare-and-swap thành revision mới.
 
 Nếu cloud đổi tiếp trong lúc chọn, thao tác dừng và yêu cầu review lại.
+Dialog conflict và sensitive operation mặc định keyboard focus vào **Hủy**; content
+scroll được ở viewport hẹp hoặc text scale lớn. Sync status progress/conflict/
+success/failure là live region, còn switch sinh trắc học/encrypted sync gắn trực
+tiếp accessible name với title của setting.
 
 ### Xoay recovery key
 

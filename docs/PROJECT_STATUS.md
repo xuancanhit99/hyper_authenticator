@@ -38,9 +38,9 @@ mô tả preview là stable production release.
 |---|---|
 | `flutter doctor -v` | Pass, không có lỗi toolchain |
 | `flutter analyze` | Pass, 0 diagnostic |
-| `flutter test` | 109 test pass |
+| `flutter test` | 115 test pass |
 | Vietnamese UI contract | Primary auth/accounts/settings/add-edit surface đã dùng tiếng Việt; app khóa `Locale('vi')` cùng Material/Widgets/Cupertino localization delegate và widget test xác minh locale runtime, vẫn giữ thuật ngữ technical cần thiết |
-| Core accessibility automation | Auth/accounts/add-account pass labeled tap target + Android 48×48 guideline ở viewport 320×640/text scale 200%; TOTP copy/countdown và password/search action có semantics tiếng Việt, không đưa secret key vào semantics |
+| Core accessibility automation | Auth/accounts/add-account và Settings recovery/conflict/session dialog pass labeled tap target + Android 48×48 guideline ở viewport 320×640/text scale 200%; TOTP secret key/raw recovery key không vào semantics tree, copy/password/search action có accessible name, sensitive dialog keyboard mặc định Hủy |
 | Platform configuration gate | Pass network/backup/signing/Keychain/ID |
 | Release config validator | Pass với `.env` public hiện tại, không in key |
 | Gitleaks full history | Pass sau exact allowlist RFC 6238 test vector |
@@ -168,9 +168,10 @@ Capability là hành vi source hiện tại, không thay thế device test và s
 10. Flutter Web đã pass TLS/reverse proxy và runtime smoke trên production domain;
    permission pending/error UX đã có regression test trên VM và Chrome test
    platform, nhưng camera/QR decode vẫn cần browser-device smoke thực tế.
-11. Accessibility automation mới bao phủ Auth, account list và form thêm account;
-    chưa có TalkBack/VoiceOver, keyboard/focus, contrast, screenshot/privacy hoặc
-    full Settings/recovery/conflict-dialog audit trên runtime đại diện.
+11. Accessibility automation đã bao phủ Auth, account list, form thêm account và
+    Settings recovery/conflict/session dialog; chưa có TalkBack/VoiceOver runtime,
+    full keyboard traversal, contrast, screenshot/privacy hoặc audit toàn bộ
+    Settings page trên runtime đại diện.
 
 ## Automation
 
@@ -205,7 +206,7 @@ Capability là hành vi source hiện tại, không thay thế device test và s
   `29660968360` từ default branch đã pass sau merge.
 - GitHub Private Vulnerability Reporting đã bật; `.github/SECURITY.md` hướng dẫn
   gửi báo cáo riêng tư và cấm đưa credential vào public issue.
-- `scripts/agent/check.sh full` là quality gate canonical; baseline hiện có 109 test,
+- `scripts/agent/check.sh full` là quality gate canonical; baseline hiện có 115 test,
   analyze/format cả device integration source nhưng không tự boot virtual device.
 - `scripts/supabase/` giữ remote contract, backup, health, restore và off-host harness.
 - Scheduled restore contract nằm trong full gate; production systemd timer/health
