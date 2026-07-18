@@ -24,6 +24,12 @@ class EncryptedSyncRecoveryKeyRotationReady extends EncryptedSyncResult {
   const EncryptedSyncRecoveryKeyRotationReady(this.recoveryCode);
 }
 
+class EncryptedSyncVaultKeyRotationReady extends EncryptedSyncResult {
+  final String recoveryCode;
+
+  const EncryptedSyncVaultKeyRotationReady(this.recoveryCode);
+}
+
 class EncryptedSyncReady extends EncryptedSyncResult {
   final bool isEnabled;
   final int revision;

@@ -86,20 +86,23 @@ publish() {
   local expected_revision=$2
   local output=$3
   local wrapped_key_ciphertext=${4:-TEST_ONLY_WRAPPED_KEY_CIPHERTEXT_1234567890}
+  local ciphertext=${5:-TEST_ONLY_CIPHERTEXT_REVISION_1}
   jq -cn \
     --argjson expected "$expected_revision" \
-    --arg wrapped_key_ciphertext "$wrapped_key_ciphertext" '{
+    --arg wrapped_key_ciphertext "$wrapped_key_ciphertext" \
+    --arg ciphertext "$ciphertext" '{
     p_expected_revision: $expected,
     p_format_version: 1,
     p_cipher: "AES-256-GCM",
     p_nonce: "AAAAAAAAAAAAAAAA",
-    p_ciphertext: "TEST_ONLY_CIPHERTEXT",
+    p_ciphertext: $ciphertext,
     p_auth_tag: "AAAAAAAAAAAAAAAAAAAAAA==",
     p_key_format_version: 1,
     p_wrapped_key_nonce: "BBBBBBBBBBBBBBBB",
     p_wrapped_key_ciphertext: $wrapped_key_ciphertext,
     p_wrapped_key_auth_tag: "BBBBBBBBBBBBBBBBBBBBBB=="
-  }' | curl --max-time 15 -sS -o "$output" -w '%{http_code}' \
+  }' | \
+    curl --max-time 15 -sS -o "$output" -w '%{http_code}' \
       "$BASE_URL/rest/v1/rpc/publish_encrypted_vault_snapshot" -X POST \
       -H "apikey: $PUBLISHABLE_KEY" \
       -H "Authorization: Bearer $token" \
@@ -161,19 +164,23 @@ check 'Conflict không trả encrypted payload' jq -e \
   '(.message // "") | contains("revision_conflict")' "$tmp_dir/stale.json"
 
 rotated_wrapped_key='TEST_ONLY_ROTATED_WRAPPED_KEY_CIPHERTEXT_123456'
+rotated_ciphertext='TEST_ONLY_CIPHERTEXT_REVISION_2_WITH_NEW_DEK'
 second_status=$(publish \
-  "$token_a" 1 "$tmp_dir/publish-2.json" "$rotated_wrapped_key")
+  "$token_a" 1 "$tmp_dir/publish-2.json" "$rotated_wrapped_key" \
+  "$rotated_ciphertext")
 check 'Expected revision đúng publish được' test "$second_status" -eq 200
 check 'Server tăng revision lên 2' jq -e '.[0].revision == 2' \
   "$tmp_dir/publish-2.json"
 
 curl --max-time 15 -fsS \
-  "$BASE_URL/rest/v1/encrypted_vault_snapshots?select=revision,wrapped_key_ciphertext" \
+  "$BASE_URL/rest/v1/encrypted_vault_snapshots?select=revision,ciphertext,wrapped_key_ciphertext" \
   -H "apikey: $PUBLISHABLE_KEY" -H "Authorization: Bearer $token_a" \
   >"$tmp_dir/select-rotated-key.json"
-check 'Revision mới atomically thay wrapped recovery key' jq -e \
+check 'Revision mới atomically thay ciphertext và wrapped key' jq -e \
   --arg wrapped_key "$rotated_wrapped_key" \
+  --arg ciphertext "$rotated_ciphertext" \
   'length == 1 and .[0].revision == 2 and
+   .[0].ciphertext == $ciphertext and
    .[0].wrapped_key_ciphertext == $wrapped_key' \
   "$tmp_dir/select-rotated-key.json"
 

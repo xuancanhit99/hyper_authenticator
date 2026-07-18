@@ -36,11 +36,11 @@ các credential gate tương ứng pass.
 |---|---|
 | `flutter doctor -v` | Pass, không có lỗi toolchain |
 | `flutter analyze` | Pass, 0 diagnostic |
-| `flutter test` | 79 test pass |
+| `flutter test` | 89 test pass |
 | Platform configuration gate | Pass network/backup/signing/Keychain/ID |
 | Release config validator | Pass với `.env` public hiện tại, không in key |
 | Gitleaks full history | Pass sau exact allowlist RFC 6238 test vector |
-| Android debug + Pixel AVD runtime | Pass build/install, Supabase auth, setup + recovery-key rotation tới remote revision 2, post-login return và render Accounts/Settings |
+| Android debug + Pixel AVD runtime | Pass build/install, Supabase auth, setup revision 1, recovery-key rotation revision 2, vault-key rotation revision 3 và fresh-device recovery về revision 3; dialog teardown không còn assertion |
 | Web release + hardened Nginx image | Pass public TLS/proxy, serving contract, `/` + `/settings` browser runtime và console sạch |
 | macOS debug compile unsigned | Pass; không phải runtime/signing evidence |
 | iOS 26.5 simulator debug | Pass build và runtime launch với Supabase init |
@@ -70,6 +70,9 @@ verification phải inject `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY` và
   dùng cloud chỉ replace khi revision vẫn đúng revision đã review.
 - Recovery key có thể xoay bằng re-wrap cùng DEK và atomic publish revision mới;
   cancel/conflict giữ key cũ, ambiguous verification cảnh báo giữ key mới.
+- Vault key có thể xoay bằng DEK + recovery key mới; current snapshot được
+  re-encrypt atomically, DEK local chỉ thay sau verify và thiết bị giữ DEK cũ phải
+  recovery lại.
 - Remote request bind với Supabase user ID hiện tại để chặn race đổi session.
 - Web Settings không mời đăng nhập để dùng cloud sync khi capability bị tắt.
 - Logo dịch vụ và font Averta không rõ license đã bị loại khỏi release; UI dùng
@@ -118,8 +121,9 @@ Capability là hành vi source hiện tại, không thay thế device test và s
 3. Monitoring mới ghi journal/exit status; chưa có alert channel ngoài host.
 4. Off-host backup hiện phụ thuộc máy Mac/LaunchAgent đang hoạt động; cần đích
    object storage hoặc backup host độc lập nếu yêu cầu SLA cao.
-5. E2EE v1 chưa có device revocation, DEK rotation, tombstone hoặc Web trust
-   model. Recovery-key re-wrap rotation đã có nhưng không revoke thiết bị/backup cũ.
+5. E2EE v1 đã có DEK rotation để thu hồi khả năng đọc current snapshot của client
+   tuân thủ, nhưng chưa có individual device/auth-session revocation, tombstone/
+   history hoặc Web trust model. Backup cũ vẫn dùng key generation cũ.
 6. Chưa có Flutter device/integration suite đầy đủ; secure storage/biometric/camera
    vẫn cần test trên thiết bị thật.
 7. Windows build còn dựa trên CI. Windows installer/signing/device và Linux

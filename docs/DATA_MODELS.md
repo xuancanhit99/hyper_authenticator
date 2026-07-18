@@ -101,6 +101,12 @@ mới, re-wrap DEK, re-encrypt snapshot bằng nonce mới và atomic publish re
 kế tiếp. Vì table chỉ giữ current snapshot, wrapped key mới thay wrapped key cũ;
 backup lịch sử vẫn có thể chứa wrapped key cũ.
 
+Xoay vault key cũng không đổi schema/key format nhưng sinh DEK và recovery key
+mới. Current snapshot được re-encrypt bằng DEK mới; ciphertext và wrapped DEK mới
+được publish trong cùng RPC/revision. Sau verify, secure storage thay DEK cũ bằng
+DEK mới. Thiết bị chỉ giữ DEK cũ không thể decrypt current envelope; backup lịch
+sử vẫn giữ envelope/key generation cũ.
+
 ## PostgreSQL encrypted contract
 
 Table `public.encrypted_vault_snapshots`:

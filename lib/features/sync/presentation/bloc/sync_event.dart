@@ -27,6 +27,14 @@ class ConfirmRecoveryKeyRotation extends SyncEvent {
   const ConfirmRecoveryKeyRotation();
 }
 
+class BeginVaultKeyRotation extends SyncEvent {
+  const BeginVaultKeyRotation();
+}
+
+class ConfirmVaultKeyRotation extends SyncEvent {
+  const ConfirmVaultKeyRotation();
+}
+
 class RecoverEncryptedSync extends SyncEvent {
   final String recoveryCode;
 

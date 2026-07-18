@@ -66,6 +66,18 @@ class SyncRecoveryKeyRotationReady extends SyncState {
   String toString() => 'SyncRecoveryKeyRotationReady(recoveryCode: [REDACTED])';
 }
 
+class SyncVaultKeyRotationReady extends SyncState {
+  final String recoveryCode;
+
+  const SyncVaultKeyRotationReady(this.recoveryCode);
+
+  @override
+  List<Object?> get props => [recoveryCode];
+
+  @override
+  String toString() => 'SyncVaultKeyRotationReady(recoveryCode: [REDACTED])';
+}
+
 class SyncReady extends SyncState {
   final bool isEnabled;
   final int revision;

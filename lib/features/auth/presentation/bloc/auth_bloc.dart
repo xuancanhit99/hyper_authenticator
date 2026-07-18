@@ -59,9 +59,13 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   }
 
   void _onAuthUserChanged(_AuthUserChanged event, Emitter<AuthState> emit) {
+    // Supabase can deliver a previously queued null session event after a
+    // successful password sign-in. Reconcile it with the repository's current
+    // session so a stale stream event cannot overwrite AuthAuthenticated.
+    final currentUser = event.user ?? _authRepository.currentUserEntity;
     emit(
-      event.user != null
-          ? AuthAuthenticated(event.user!)
+      currentUser != null
+          ? AuthAuthenticated(currentUser)
           : AuthUnauthenticated(),
     );
   }

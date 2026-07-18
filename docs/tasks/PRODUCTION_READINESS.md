@@ -24,8 +24,10 @@ behavior an toàn, backend có backup/restore/health harness và release gate t�
 - [x] Device mới import key; decrypt failure không overwrite local.
 - [x] Conflict/network/retry không delete snapshot hợp lệ.
 - [x] Recovery-key rotation atomic; cancel/conflict giữ key cũ và lỗi verify cảnh báo trạng thái mơ hồ.
+- [x] DEK + recovery-key rotation atomic; thiết bị giữ DEK cũ cần recovery và
+  post-commit ambiguity không nâng metadata mù.
 - [x] Không có secret thật trong log/fixture/remote plaintext request.
-- [x] 79 test + analyzer + platform/release-config gate pass.
+- [x] 89 test + analyzer + platform/release-config gate pass.
 - [x] Remote E2EE/recovery/Studio contract pass.
 - [x] Daily backup, restore rehearsal, encrypted off-host copy và health timer pass.
 - [x] Asset/font không rõ license bị loại khỏi release.
@@ -57,7 +59,7 @@ behavior an toàn, backend có backup/restore/health harness và release gate t�
 | Command/gate | Kết quả |
 |---|---|
 | `flutter analyze` | Pass, 0 diagnostic |
-| `flutter test` | 79 pass |
+| `flutter test` | 89 pass |
 | Platform/release config | Pass; Android network + Apple Keychain regression gate |
 | Gitleaks full history | Pass; chỉ allowlist exact public RFC test vector |
 | `scripts/agent/build.sh host .env` | Android/Web pass; macOS unsigned compile pass |
@@ -69,22 +71,23 @@ behavior an toàn, backend có backup/restore/health harness và release gate t�
 | GitHub Actions run `29633535829` | Pass toàn bộ Web, Android debug, Apple compile, Linux, Windows và quality gates |
 | Windows configured artifact | Pass PE x64; 22/22 SHA-256 checksum; không chứa `.env` hoặc signing key |
 | Android configured release | Fail closed vì thiếu upload keystore |
-| Android Pixel AVD E2EE | Pass login return, setup revision 1, recovery-key rotation và RLS read revision 2; cleanup user/row/app data |
+| Android Pixel AVD E2E | Pass login return, setup revision 1, recovery-key rotation revision 2, vault-key rotation revision 3 và fresh-device recovery revision 3; cleanup user/row/app data |
 | macOS configured release | Bị chặn vì thiếu certificate |
-| Remote encrypted contract | 12/12 pass, gồm atomic wrapped-key rotation |
+| Remote encrypted contract | 12/12 pass, gồm atomic ciphertext/wrapped-key rotation |
 | Remote recovery contract | 8/8 pass |
 | Studio proxy contract | Pass |
 | Backup restore rehearsal | Full restore DB tạm + schema/FORCE RLS pass |
 | Auth smoke load | 100/100 HTTP 200, concurrency 10, p95 ~0,38 giây |
 
 Full `scripts/agent/check.sh full` pass: docs, generated drift, format, analyzer,
-platform config, 79 test và encrypted migration contract.
+platform config, 89 test và encrypted migration contract.
 
 ## Rủi ro còn lại
 
 - Signing/store/device/SMTP/alert destination là external gate, không phải source defect.
 - Flutter Web còn camera permission/QR scan smoke trên browser-device thật.
-- E2EE v1 chưa có device revoke/DEK rotation/Web; recovery-key rotation đã có.
+- E2EE v1 đã có DEK rotation; individual device/auth-session revoke và Web trust
+  model vẫn chưa có.
 - `mobile_scanner` upstream còn Kotlin legacy warning.
 - Off-host backup đang phụ thuộc máy Mac thay vì dedicated backup host.
 

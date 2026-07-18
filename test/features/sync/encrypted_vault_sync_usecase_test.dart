@@ -246,6 +246,253 @@ void main() {
   });
 
   test(
+    'transport lỗi sau recovery-key commit được báo là trạng thái mơ hồ',
+    () async {
+      final oldRecoveryCode = await seedRemote([first]);
+      final prepared = _right(await useCase.prepareRecoveryKeyRotation());
+      final newRecoveryCode =
+          (prepared as EncryptedSyncRecoveryKeyRotationReady).recoveryCode;
+      remote.failNextPublishAfterCommit = true;
+
+      final result = await useCase.confirmRecoveryKeyRotation();
+
+      final failure = result.fold((value) => value, (_) => null);
+      expect(failure, isA<SyncOperationFailure>());
+      expect(failure?.message, contains('đã commit hay chưa'));
+      expect(remote.snapshot!.envelope.revision, 2);
+      expect(metadata.revisions[userId], 1);
+      await expectLater(
+        cipher.unwrapDataKey(
+          wrappedKey: remote.snapshot!.wrappedDataKey,
+          recoveryCode: oldRecoveryCode,
+          userId: userId,
+        ),
+        throwsA(isA<VaultCryptoException>()),
+      );
+      expect(
+        await cipher.unwrapDataKey(
+          wrappedKey: remote.snapshot!.wrappedDataKey,
+          recoveryCode: newRecoveryCode,
+          userId: userId,
+        ),
+        keys.values[userId],
+      );
+    },
+  );
+
+  test(
+    'xoay vault key thay DEK và buộc thiết bị giữ key cũ recovery lại',
+    () async {
+      final oldRecoveryCode = await seedRemote([first, second]);
+      final oldDataKey = List<int>.from(keys.values[userId]!);
+      final oldWrappedKey = remote.snapshot!.wrappedDataKey;
+
+      final prepared = _right(await useCase.prepareVaultKeyRotation());
+      expect(prepared, isA<EncryptedSyncVaultKeyRotationReady>());
+      final newRecoveryCode =
+          (prepared as EncryptedSyncVaultKeyRotationReady).recoveryCode;
+
+      final completed = _right(await useCase.confirmVaultKeyRotation());
+
+      expect(completed, isA<EncryptedSyncCompleted>());
+      expect(remote.snapshot!.envelope.revision, 2);
+      expect(remote.snapshot!.wrappedDataKey, isNot(oldWrappedKey));
+      expect(keys.values[userId], isNot(oldDataKey));
+      expect(metadata.revisions[userId], 2);
+      await expectLater(
+        cipher.decryptAccounts(
+          envelope: remote.snapshot!.envelope,
+          dataKeyBytes: oldDataKey,
+          userId: userId,
+        ),
+        throwsA(isA<VaultCryptoException>()),
+      );
+      await expectLater(
+        cipher.unwrapDataKey(
+          wrappedKey: remote.snapshot!.wrappedDataKey,
+          recoveryCode: oldRecoveryCode,
+          userId: userId,
+        ),
+        throwsA(isA<VaultCryptoException>()),
+      );
+      final newDataKey = await cipher.unwrapDataKey(
+        wrappedKey: remote.snapshot!.wrappedDataKey,
+        recoveryCode: newRecoveryCode,
+        userId: userId,
+      );
+      expect(newDataKey, keys.values[userId]);
+      expect(
+        await cipher.decryptAccounts(
+          envelope: remote.snapshot!.envelope,
+          dataKeyBytes: newDataKey,
+          userId: userId,
+        ),
+        [first, second],
+      );
+
+      final staleDeviceKeys = _MemoryVaultKeyRepository()
+        ..values[userId] = oldDataKey;
+      final staleDevice = _createUseCase(
+        userId: userId,
+        cipher: cipher,
+        remote: remote,
+        local: _MemoryAuthenticatorRepository(const [first, second]),
+        keys: staleDeviceKeys,
+        metadata: _MemoryMetadataRepository(),
+      );
+      expect(
+        _right(await staleDevice.inspect()),
+        isA<EncryptedSyncRecoveryRequired>(),
+      );
+    },
+  );
+
+  test('hủy xoay vault key giữ nguyên DEK, recovery key và remote', () async {
+    final oldRecoveryCode = await seedRemote([first]);
+    final oldDataKey = List<int>.from(keys.values[userId]!);
+    final oldSnapshot = remote.snapshot!;
+
+    _right(await useCase.prepareVaultKeyRotation());
+    useCase.cancelSensitiveOperation();
+
+    final result = await useCase.confirmVaultKeyRotation();
+    expect(result.isLeft(), isTrue);
+    expect(remote.snapshot, same(oldSnapshot));
+    expect(keys.values[userId], oldDataKey);
+    expect(
+      await cipher.unwrapDataKey(
+        wrappedKey: remote.snapshot!.wrappedDataKey,
+        recoveryCode: oldRecoveryCode,
+        userId: userId,
+      ),
+      oldDataKey,
+    );
+  });
+
+  test(
+    'conflict khi xoay vault key không thay key local hoặc cloud mới',
+    () async {
+      await seedRemote([first]);
+      final oldDataKey = List<int>.from(keys.values[userId]!);
+      final oldWrappedKey = remote.snapshot!.wrappedDataKey;
+      _right(await useCase.prepareVaultKeyRotation());
+      final concurrentEnvelope = await cipher.encryptAccounts(
+        accounts: const [second],
+        dataKeyBytes: oldDataKey,
+        userId: userId,
+        revision: 2,
+      );
+      await remote.publish(
+        userId: userId,
+        expectedRevision: 1,
+        envelope: concurrentEnvelope,
+        wrappedDataKey: oldWrappedKey,
+      );
+
+      final result = await useCase.confirmVaultKeyRotation();
+
+      expect(
+        result.fold((failure) => failure, (_) => null),
+        isA<SyncRevisionConflictFailure>(),
+      );
+      expect(remote.snapshot!.envelope, concurrentEnvelope);
+      expect(remote.snapshot!.wrappedDataKey, oldWrappedKey);
+      expect(keys.values[userId], oldDataKey);
+    },
+  );
+
+  test(
+    'verify lỗi sau vault-key publish giữ DEK cũ và yêu cầu giữ key mới',
+    () async {
+      await seedRemote([first]);
+      final oldDataKey = List<int>.from(keys.values[userId]!);
+      final prepared = _right(await useCase.prepareVaultKeyRotation());
+      final newRecoveryCode =
+          (prepared as EncryptedSyncVaultKeyRotationReady).recoveryCode;
+      remote.tamperNextDownloadAfterPublish = true;
+
+      final result = await useCase.confirmVaultKeyRotation();
+
+      final failure = result.fold((value) => value, (_) => null);
+      expect(failure, isA<SyncOperationFailure>());
+      expect(failure?.message, contains('giữ recovery key mới'));
+      expect(remote.snapshot!.envelope.revision, 2);
+      expect(keys.values[userId], oldDataKey);
+      expect(metadata.revisions[userId], 1);
+      final newDataKey = await cipher.unwrapDataKey(
+        wrappedKey: remote.snapshot!.wrappedDataKey,
+        recoveryCode: newRecoveryCode,
+        userId: userId,
+      );
+      expect(newDataKey, isNot(oldDataKey));
+    },
+  );
+
+  test(
+    'transport lỗi sau vault-key commit giữ DEK cũ và recovery key mới',
+    () async {
+      await seedRemote([first]);
+      final oldDataKey = List<int>.from(keys.values[userId]!);
+      final prepared = _right(await useCase.prepareVaultKeyRotation());
+      final newRecoveryCode =
+          (prepared as EncryptedSyncVaultKeyRotationReady).recoveryCode;
+      remote.failNextPublishAfterCommit = true;
+
+      final result = await useCase.confirmVaultKeyRotation();
+
+      final failure = result.fold((value) => value, (_) => null);
+      expect(failure, isA<SyncOperationFailure>());
+      expect(failure?.message, contains('đã commit hay chưa'));
+      expect(remote.snapshot!.envelope.revision, 2);
+      expect(keys.values[userId], oldDataKey);
+      expect(metadata.revisions[userId], 1);
+      final newDataKey = await cipher.unwrapDataKey(
+        wrappedKey: remote.snapshot!.wrappedDataKey,
+        recoveryCode: newRecoveryCode,
+        userId: userId,
+      );
+      expect(newDataKey, isNot(oldDataKey));
+      expect(
+        await cipher.decryptAccounts(
+          envelope: remote.snapshot!.envelope,
+          dataKeyBytes: newDataKey,
+          userId: userId,
+        ),
+        [first],
+      );
+    },
+  );
+
+  test(
+    'lỗi persist DEK sau vault-key publish giữ recovery path rõ ràng',
+    () async {
+      await seedRemote([first]);
+      final oldDataKey = List<int>.from(keys.values[userId]!);
+      final prepared = _right(await useCase.prepareVaultKeyRotation());
+      final newRecoveryCode =
+          (prepared as EncryptedSyncVaultKeyRotationReady).recoveryCode;
+      keys.failNextWrite = true;
+
+      final result = await useCase.confirmVaultKeyRotation();
+
+      final failure = result.fold((value) => value, (_) => null);
+      expect(failure, isA<SyncOperationFailure>());
+      expect(failure?.message, contains('chạy recovery'));
+      expect(remote.snapshot!.envelope.revision, 2);
+      expect(keys.values[userId], oldDataKey);
+      expect(metadata.revisions[userId], 1);
+      expect(
+        await cipher.unwrapDataKey(
+          wrappedKey: remote.snapshot!.wrappedDataKey,
+          recoveryCode: newRecoveryCode,
+          userId: userId,
+        ),
+        isNot(oldDataKey),
+      );
+    },
+  );
+
+  test(
     'recovery trên thiết bị mới decrypt rồi atomically replace local',
     () async {
       final recoveryCode = await seedRemote([first, second]);
@@ -426,6 +673,7 @@ T _right<T>(Either<Failure, T> result) => result.fold(
 class _MemoryEncryptedVaultRepository implements EncryptedVaultRepository {
   EncryptedVaultSnapshot? snapshot;
   bool failNextPublishWithConflict = false;
+  bool failNextPublishAfterCommit = false;
   bool tamperNextDownloadAfterPublish = false;
   bool _tamperNextDownload = false;
 
@@ -477,6 +725,12 @@ class _MemoryEncryptedVaultRepository implements EncryptedVaultRepository {
       wrappedDataKey: wrappedDataKey,
       updatedAt: DateTime.utc(2026, 7, 18, 12, envelope.revision),
     );
+    if (failNextPublishAfterCommit) {
+      failNextPublishAfterCommit = false;
+      return const Left(
+        SyncOperationFailure('TEST_ONLY transport failed after commit'),
+      );
+    }
     if (tamperNextDownloadAfterPublish) {
       tamperNextDownloadAfterPublish = false;
       _tamperNextDownload = true;
@@ -487,6 +741,7 @@ class _MemoryEncryptedVaultRepository implements EncryptedVaultRepository {
 
 class _MemoryVaultKeyRepository implements VaultKeyRepository {
   final Map<String, List<int>> values = {};
+  bool failNextWrite = false;
 
   @override
   Future<Either<Failure, List<int>?>> read(String userId) async =>
@@ -497,6 +752,10 @@ class _MemoryVaultKeyRepository implements VaultKeyRepository {
     String userId,
     List<int> dataKeyBytes,
   ) async {
+    if (failNextWrite) {
+      failNextWrite = false;
+      return const Left(StorageFailure('TEST_ONLY key write failure'));
+    }
     values[userId] = List.unmodifiable(dataKeyBytes);
     return const Right(unit);
   }

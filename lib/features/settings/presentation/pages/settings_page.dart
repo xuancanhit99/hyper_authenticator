@@ -9,6 +9,7 @@ import 'package:hyper_authenticator/features/auth/domain/entities/user_entity.da
 import 'package:hyper_authenticator/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:hyper_authenticator/features/settings/presentation/bloc/settings_bloc.dart';
 import 'package:hyper_authenticator/features/settings/presentation/widgets/encrypted_sync_unavailable_tile.dart';
+import 'package:hyper_authenticator/features/settings/presentation/widgets/recovery_import_dialog.dart';
 import 'package:hyper_authenticator/features/sync/presentation/bloc/sync_bloc.dart';
 import 'package:hyper_authenticator/injection_container.dart';
 import 'package:intl/intl.dart';
@@ -230,13 +231,19 @@ class _EncryptedSyncSectionState extends State<_EncryptedSyncSection> {
           await _showRecoveryKeyDialog(
             context,
             state.recoveryCode,
-            isRotation: false,
+            operation: _RecoveryKeyOperation.setup,
           );
         } else if (state is SyncRecoveryKeyRotationReady) {
           await _showRecoveryKeyDialog(
             context,
             state.recoveryCode,
-            isRotation: true,
+            operation: _RecoveryKeyOperation.recoveryKeyRotation,
+          );
+        } else if (state is SyncVaultKeyRotationReady) {
+          await _showRecoveryKeyDialog(
+            context,
+            state.recoveryCode,
+            operation: _RecoveryKeyOperation.vaultKeyRotation,
           );
         } else if (state is SyncSuccess) {
           ScaffoldMessenger.of(context)
@@ -308,6 +315,9 @@ class _EncryptedSyncSectionState extends State<_EncryptedSyncSection> {
       SyncRecoveryKeyRotationReady() => const Text(
         'Đang chờ xác nhận recovery key mới.',
       ),
+      SyncVaultKeyRotationReady() => const Text(
+        'Đang chờ xác nhận vault key và recovery key mới.',
+      ),
       SyncReady(:final isEnabled, :final revision, :final updatedAt) => Text(
         '${isEnabled ? 'Đang bật' : 'Đang tắt'} · revision $revision · ${_format(updatedAt)}',
       ),
@@ -328,7 +338,8 @@ class _EncryptedSyncSectionState extends State<_EncryptedSyncSection> {
   Widget _actions(BuildContext context, SyncState state) {
     if (state is SyncInProgress ||
         state is SyncRecoveryKeyReady ||
-        state is SyncRecoveryKeyRotationReady) {
+        state is SyncRecoveryKeyRotationReady ||
+        state is SyncVaultKeyRotationReady) {
       return const SizedBox.shrink();
     }
     if (state is SyncSetupRequired) {
@@ -362,6 +373,13 @@ class _EncryptedSyncSectionState extends State<_EncryptedSyncSection> {
         ],
       );
     }
+    if (state is SyncFailure) {
+      return OutlinedButton.icon(
+        onPressed: () => context.read<SyncBloc>().add(const CheckSyncStatus()),
+        icon: const Icon(Icons.refresh),
+        label: const Text('Kiểm tra lại'),
+      );
+    }
     final canSync = switch (state) {
       SyncReady(:final isEnabled) => isEnabled,
       SyncSuccess() => true,
@@ -387,6 +405,13 @@ class _EncryptedSyncSectionState extends State<_EncryptedSyncSection> {
             icon: const Icon(Icons.key),
             label: const Text('Đổi recovery key'),
           ),
+        if (canRotate)
+          OutlinedButton.icon(
+            onPressed: () =>
+                context.read<SyncBloc>().add(const BeginVaultKeyRotation()),
+            icon: const Icon(Icons.security_update_warning),
+            label: const Text('Xoay vault key'),
+          ),
       ],
     );
   }
@@ -394,7 +419,7 @@ class _EncryptedSyncSectionState extends State<_EncryptedSyncSection> {
   Future<void> _showRecoveryKeyDialog(
     BuildContext context,
     String recoveryCode, {
-    required bool isRotation,
+    required _RecoveryKeyOperation operation,
   }) async {
     var confirmedSaved = false;
     final accepted = await showDialog<bool>(
@@ -402,17 +427,24 @@ class _EncryptedSyncSectionState extends State<_EncryptedSyncSection> {
       barrierDismissible: false,
       builder: (dialogContext) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          title: Text(isRotation ? 'Lưu recovery key mới' : 'Lưu recovery key'),
+          title: Text(
+            operation == _RecoveryKeyOperation.setup
+                ? 'Lưu recovery key'
+                : 'Lưu recovery key mới',
+          ),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  isRotation
-                      ? 'Sau khi hoàn tất, recovery key cũ không thể mở cloud vault nữa. Thiết bị đã giữ vault key vẫn tiếp tục hoạt động.'
-                      : 'Key này không được gửi lên server. Mất mọi thiết bị và key sẽ không thể khôi phục cloud vault.',
-                ),
+                Text(switch (operation) {
+                  _RecoveryKeyOperation.setup =>
+                    'Key này không được gửi lên server. Mất mọi thiết bị và key sẽ không thể khôi phục cloud vault.',
+                  _RecoveryKeyOperation.recoveryKeyRotation =>
+                    'Recovery key cũ không thể mở snapshot hiện tại sau khi hoàn tất. Thiết bị đã giữ vault key vẫn tiếp tục hoạt động.',
+                  _RecoveryKeyOperation.vaultKeyRotation =>
+                    'Cả vault key và recovery key sẽ đổi. Thiết bị khác chỉ giữ vault key cũ sẽ không đọc được snapshot mới và phải nhập recovery key mới. Thao tác không đăng xuất session Supabase khác và không xóa backup lịch sử.',
+                }),
                 const SizedBox(height: 16),
                 DecoratedBox(
                   decoration: BoxDecoration(
@@ -451,9 +483,12 @@ class _EncryptedSyncSectionState extends State<_EncryptedSyncSection> {
               onPressed: confirmedSaved
                   ? () => Navigator.pop(dialogContext, true)
                   : null,
-              child: Text(
-                isRotation ? 'Xoay recovery key' : 'Bật encrypted sync',
-              ),
+              child: Text(switch (operation) {
+                _RecoveryKeyOperation.setup => 'Bật encrypted sync',
+                _RecoveryKeyOperation.recoveryKeyRotation =>
+                  'Xoay recovery key',
+                _RecoveryKeyOperation.vaultKeyRotation => 'Xoay vault key',
+              }),
             ),
           ],
         ),
@@ -461,45 +496,20 @@ class _EncryptedSyncSectionState extends State<_EncryptedSyncSection> {
     );
     if (!context.mounted) return;
     if (accepted == true) {
-      context.read<SyncBloc>().add(
-        isRotation
-            ? const ConfirmRecoveryKeyRotation()
-            : const ConfirmRecoveryKeySaved(),
-      );
+      context.read<SyncBloc>().add(switch (operation) {
+        _RecoveryKeyOperation.setup => const ConfirmRecoveryKeySaved(),
+        _RecoveryKeyOperation.recoveryKeyRotation =>
+          const ConfirmRecoveryKeyRotation(),
+        _RecoveryKeyOperation.vaultKeyRotation =>
+          const ConfirmVaultKeyRotation(),
+      });
     } else {
       context.read<SyncBloc>().add(const CancelSensitiveSyncOperation());
     }
   }
 
   Future<void> _showRecoveryImportDialog(BuildContext context) async {
-    final controller = TextEditingController();
-    final recoveryCode = await showDialog<String>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Nhập recovery key'),
-        content: TextField(
-          controller: controller,
-          obscureText: true,
-          autocorrect: false,
-          enableSuggestions: false,
-          decoration: const InputDecoration(
-            labelText: 'HA1-…',
-            helperText: 'Key chỉ được xử lý trong thiết bị này.',
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Hủy'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(dialogContext, controller.text),
-            child: const Text('Khôi phục'),
-          ),
-        ],
-      ),
-    );
-    controller.dispose();
+    final recoveryCode = await showRecoveryImportDialog(context);
     if (recoveryCode?.trim().isNotEmpty == true && context.mounted) {
       context.read<SyncBloc>().add(RecoverEncryptedSync(recoveryCode!.trim()));
     }
@@ -559,3 +569,5 @@ class _EncryptedSyncSectionState extends State<_EncryptedSyncSection> {
   String _format(DateTime value) =>
       DateFormat.yMd().add_Hm().format(value.toLocal());
 }
+
+enum _RecoveryKeyOperation { setup, recoveryKeyRotation, vaultKeyRotation }

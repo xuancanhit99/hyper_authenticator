@@ -71,6 +71,28 @@ khi publish.
 - Backup lịch sử giữ wrapped DEK cũ nên key cũ có thể mở snapshot backup cũ;
   rotation không xóa hoặc viết lại backup.
 
+## Xoay vault encryption key đã triển khai
+
+Thiết bị đang giữ DEK hợp lệ có thể sinh **DEK mới và recovery key mới** trong
+memory. Client decrypt snapshot remote hiện tại bằng DEK cũ, re-encrypt cùng
+plaintext bằng DEK mới ở revision kế tiếp và atomic publish ciphertext cùng
+wrapped DEK mới. Chỉ sau read-after-write verification client mới thay DEK trong
+secure storage và cập nhật last-seen revision.
+
+- User phải xác nhận đã lưu recovery key mới trước publish.
+- Hủy hoặc revision conflict giữ nguyên DEK, recovery key và snapshot cũ.
+- Thiết bị chỉ giữ DEK cũ không decrypt được current snapshot và chuyển sang flow
+  recovery; đây là bulk cryptographic read revocation cho client tuân thủ.
+- Lỗi transport sau request, lỗi verify hoặc lỗi persist DEK là trạng thái mơ hồ:
+  metadata không được nâng revision, UI bắt buộc giữ recovery key mới và recovery
+  lại nếu inspect yêu cầu.
+- Rotation không đổi local account snapshot. Local mutation chưa sync vẫn còn và
+  được xử lý bởi conflict/sync flow ở lần tiếp theo.
+- Đây chưa phải individual device/session revocation. Auth session cũ vẫn cần bị
+  revoke ở Supabase; client bị kiểm soát có thể gửi ciphertext tùy ý qua RPC.
+- Backup lịch sử vẫn có ciphertext/wrapped DEK cũ. Xoay key không crypto-erase
+  backup đã tạo và không làm thiết bị cũ quên DEK plaintext đã giữ.
+
 ## Optimistic revision
 
 Một row/user, monotonic revision. Client encrypt revision `N+1` và RPC chỉ publish
@@ -108,14 +130,17 @@ cho rollback/audit; runtime client không inject bridge. Nếu môi trường kh
 - Crypto/key-store/model tests: tamper, wrong user/key, future format, round-trip.
 - Use-case tests: setup/cancel/recovery/conflict/publish conflict/read-after-write.
 - Remote contract: 12 checks cho anonymous/RLS/two-user/revision/RPC và atomic
-  thay wrapped recovery key.
-- Android Pixel AVD E2E: Supabase login, setup vault rỗng revision 1, xoay key qua
-  UI và authenticated RLS read xác nhận remote revision 2; test user/row được xóa.
+  thay ciphertext cùng wrapped key.
+- Android Pixel AVD E2E: Supabase login, setup vault rỗng revision 1, xoay recovery
+  key tới revision 2, xoay DEK + recovery key tới revision 3, xóa app data để mô
+  phỏng thiết bị mới rồi recovery thành công về revision 3; authenticated RLS read
+  xác nhận remote và test user/row được xóa sau kiểm tra.
 - Release plaintext guard và DI generation test path.
 
 ## Khoảng trống đã biết
 
-- Device revocation và DEK rotation.
+- Individual device registry, auth-session revocation và device-specific key wrap;
+  DEK rotation hiện chỉ thu hồi khả năng đọc current snapshot của client tuân thủ.
 - Trusted-device/QR transfer.
 - Tombstone hoặc history ngoài một current snapshot.
 - Browser E2EE threat model.

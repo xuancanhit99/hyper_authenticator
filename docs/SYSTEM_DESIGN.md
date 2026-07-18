@@ -138,6 +138,18 @@ cũ. User phải lưu key mới trước commit vì nếu publish thành công n
 read-after-write lỗi thì key mới có thể đã hiệu lực. Flow này không revoke thiết
 bị vì DEK không đổi.
 
+### Xoay vault key
+
+Client tạo DEK và recovery key mới sau khi xác thực DEK hiện tại với current remote
+snapshot. Khi user xác nhận đã lưu key, client re-download đúng revision, decrypt
+bằng DEK cũ, re-encrypt bằng DEK mới rồi atomic publish ciphertext/wrapped key ở
+revision kế tiếp. DEK secure storage chỉ được thay sau read-after-write verify.
+
+Conflict/cancel không đổi key. Publish transport, verify hoặc key-store failure sau
+request được báo là trạng thái mơ hồ và last-seen revision không tăng; recovery key
+mới là đường khôi phục. Thiết bị tuân thủ chỉ có DEK cũ không đọc được current
+snapshot, nhưng auth session và backup cũ không tự bị revoke.
+
 ## Backend
 
 - Một row `encrypted_vault_snapshots` cho mỗi `auth.users.id`.
@@ -173,7 +185,7 @@ Web chỉ có local TOTP + camera QR.
 
 ## Khoảng trống đã biết
 
-- E2EE v1 đã có recovery-key re-wrap rotation nhưng chưa có DEK rotation, revoke
-  device, tombstone hoặc Web support.
+- E2EE v1 đã có recovery-key re-wrap và DEK rotation; chưa có individual device/
+  auth-session revocation, tombstone/history hoặc Web support.
 - Device-level camera/biometric/secure-storage integration coverage chưa đầy đủ.
 - Alerting backend chưa có external notification channel.

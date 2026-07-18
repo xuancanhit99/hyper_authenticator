@@ -8,6 +8,7 @@ void main() {
       const RecoverEncryptedSync(recoveryCode),
       const SyncRecoveryKeyReady(recoveryCode),
       const SyncRecoveryKeyRotationReady(recoveryCode),
+      const SyncVaultKeyRotationReady(recoveryCode),
     ];
 
     for (final value in values) {

@@ -47,6 +47,11 @@ không bao giờ được đặt trong Flutter `.env`, asset, build log hoặc b
 - Verification lỗi sau publish được xem là trạng thái mơ hồ: user phải giữ key mới,
   client không tự nâng revision metadata. Rotation không revoke thiết bị đã có DEK
   và không vô hiệu key cũ đối với encrypted backup lịch sử.
+- Vault-key rotation sinh DEK + recovery key mới, re-encrypt current snapshot và
+  atomic publish cả ciphertext/wrapped key. DEK local chỉ thay sau remote verify;
+  cancel/conflict giữ key cũ. Thiết bị chỉ có DEK cũ phải recovery lại.
+- Publish/verify/secure-storage failure sau request được coi là mơ hồ; client giữ
+  last-seen revision cũ và hướng user giữ recovery key mới thay vì retry mù.
 
 ### Backend và operations
 
@@ -119,8 +124,9 @@ Không dùng command liệt kê toàn bộ process environment trong báo cáo.
 
 1. Chưa có external alert channel/SIEM; systemd failure hiện chỉ vào journal.
 2. Chưa có independent cryptographic/security review.
-3. Device revocation và DEK rotation chưa có trong envelope v1; recovery-key
-   re-wrap rotation đã có nhưng không revoke thiết bị hoặc viết lại backup cũ.
+3. DEK rotation đã có bulk cryptographic read revocation cho current snapshot,
+   nhưng chưa có individual device registry, revoke auth session hoặc
+   device-specific wrapped key. Backup cũ vẫn decrypt được bằng key material cũ.
 4. SMTP delivery tới mailbox thật và expired recovery link chưa được E2E test.
 5. Signing key/certificate chưa được owner cung cấp trên môi trường build.
 6. Browser local vault có trust model yếu hơn native dù cloud sync đã tắt.

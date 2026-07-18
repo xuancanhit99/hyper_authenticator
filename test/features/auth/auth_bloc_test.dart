@@ -43,6 +43,22 @@ void main() {
     },
   );
 
+  test('stale null auth event không ghi đè session vừa đăng nhập', () async {
+    bloc.add(
+      const AuthSignInRequested(
+        email: 'user@example.invalid',
+        password: 'TEST_ONLY_password',
+        rememberMe: false,
+      ),
+    );
+    await bloc.stream.firstWhere((state) => state is AuthAuthenticated);
+
+    repository.emitAuthChange(null);
+    await Future<void>.delayed(Duration.zero);
+
+    expect(bloc.state, isA<AuthAuthenticated>());
+  });
+
   test('sign up yêu cầu xác minh email không mắc kẹt ở loading', () async {
     repository.hasSessionAfterSignUp = false;
     final states = expectLater(
@@ -91,6 +107,8 @@ class _FakeAuthRepository implements AuthRepository {
   bool hasSessionAfterSignUp = true;
 
   Future<void> close() => _changes.close();
+
+  void emitAuthChange(UserEntity? user) => _changes.add(user);
 
   @override
   UserEntity? get currentUserEntity => _currentUser;
