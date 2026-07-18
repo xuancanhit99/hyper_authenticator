@@ -141,8 +141,10 @@ Cross-compile evidence tái hiện được từ committed ref:
 
     scripts/agent/build_linux_container.sh
 
-Gate: libsecret/desktop keyring, package dependency, installer/update behavior và
-manual-entry/E2EE smoke. Local authentication/scanner bị ẩn theo thiết kế.
+Configured x64 release và private libsecret keyring/Xvfb runtime đã pass trong CI.
+Gate còn lại: package dependency, installer/update behavior, representative desktop
+environment matrix và authenticated E2EE smoke. Local authentication/scanner bị
+ẩn theo thiết kế.
 
 ## Supabase rollout
 

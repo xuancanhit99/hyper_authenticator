@@ -32,6 +32,8 @@ behavior an toàn, backend có backup/restore/health harness và release gate t�
   trong khi session hiện tại và local vault được giữ.
 - [x] Local-vault integration smoke pass trên Android emulator và iOS Simulator,
   có explicit reset opt-in và cleanup fixture.
+- [x] Linux configured release và local-vault smoke pass trong private D-Bus
+  Secret Service/Xvfb sandbox, không chạm keyring hoặc vault người dùng.
 - [x] Remote E2EE/recovery/Studio contract pass.
 - [x] Daily backup, restore rehearsal, encrypted off-host copy và health timer pass.
 - [x] Asset/font không rõ license bị loại khỏi release.
@@ -72,8 +74,8 @@ behavior an toàn, backend có backup/restore/health harness và release gate t�
 | Web configured release | Pass + Wasm dry-run |
 | Web browser smoke | Pass `/` và direct `/settings` trên production TLS origin; console sạch |
 | Web production-serving contract | Pass TLS/proxy/CSP/cache/SPA/read-only/no-log; browser image render sạch |
-| Linux release compile | Pass `linux/arm64`, Flutter 3.44.6, Ubuntu 24.04 isolated |
-| GitHub Actions run `29642230864` | Pass 7/7 Web, Android debug, Apple compile, Linux, Windows, secret và quality gates tại commit `f88506d` |
+| Linux configured release + runtime | Pass `linux/x64`; private keyring/Xvfb đi đủ bootstrap, add, storage round-trip, lifecycle, reload, navigation và cleanup |
+| GitHub Actions run `29643037143` | Pass 7/7 Web, Android debug, Apple compile, Linux runtime, Windows, secret và quality gates tại commit `2742a7a` |
 | Windows configured artifact | Pass PE x64; 22/22 SHA-256 checksum; không chứa `.env` hoặc signing key |
 | Android configured release | Fail closed vì thiếu upload keystore |
 | Android Pixel AVD E2E | Pass login return, setup revision 1, recovery-key rotation revision 2, vault-key rotation revision 3, fresh-device recovery revision 3 và SDK bulk revoke 2→1 session; cleanup user/row/app data |
@@ -94,6 +96,8 @@ platform config, 98 test và encrypted migration/active-session contract.
 
 - Signing/store/physical-device/SMTP/alert destination là external gate, không phải source defect.
 - Flutter Web còn camera permission/QR scan smoke trên browser-device thật.
+- Linux còn package/install/update và representative desktop environment matrix;
+  private-keyring CI không thay thế distribution smoke.
 - E2EE v1 đã có DEK rotation và bulk revoke session khác; device registry/revoke
   riêng từng thiết bị, device-specific key wrap và Web trust model vẫn chưa có.
 - `mobile_scanner` upstream còn Kotlin legacy warning.

@@ -146,6 +146,17 @@ Tham số đầu cũng có thể là UUID của iOS Simulator đang boot. Harnes
 Không nới guard để chạy trên thiết bị người dùng. Device test cho biometric/camera
 phải dùng flow riêng, dữ liệu isolated và không được reset vault ngầm.
 
+Linux CI chạy cùng suite trong Xvfb và private D-Bus Secret Service:
+
+    CI=true scripts/agent/linux_integration.sh \
+      /path/to/public-release-config.json --allow-test-vault-reset
+
+Harness yêu cầu Linux, `dbus-run-session`, `gnome-keyring-daemon`, `secret-tool`
+và `xvfb-run`; tạo XDG sandbox mode 0700, probe keyring, rồi cleanup bằng trap.
+Nó từ chối chạy ngoài CI để không chạm keyring/vault của desktop người dùng.
+GitHub workflow là entrypoint canonical; package/install test phải dùng harness
+riêng trên máy Linux đại diện.
+
 ## Dependency
 
     flutter pub outdated

@@ -73,6 +73,13 @@ foreground/hidden, BLoC reload, chuyển Settings/Accounts và local-vault clean
 Runner chỉ chấp nhận Android emulator hoặc iOS Simulator; thiết bị thật và macOS
 bị từ chối để không chạm vault người dùng.
 
+Linux CI dùng cùng behavioral suite nhưng chạy trong private D-Bus Secret Service,
+Xvfb và XDG sandbox mode 0700. Harness chỉ chạy khi `CI=true`, kiểm tra keyring
+trước khi boot app và xóa toàn bộ sandbox bằng trap. Run `29643037143` xác minh đủ
+phase add, libsecret round-trip, lifecycle, reload, navigation và cleanup trên x64.
+Đây là headless runtime evidence, chưa thay package/install/update hoặc desktop
+environment matrix trên máy đại diện.
+
 Remote script cần service-role key nên chỉ chạy trong protected operator context,
 không trong untrusted fork CI.
 
@@ -85,7 +92,7 @@ không trong untrusted fork CI.
 | macOS | Unsigned compile CI; signed runtime + notarized release trước phân phối |
 | Web | Configured release + hardened image contract + CSP browser smoke |
 | Windows | Configured native release CI + SHA-256 artifact 14 ngày; installer/device/signing trước phân phối |
-| Linux | Isolated release compile + native CI; package/keyring/device smoke trước phân phối |
+| Linux | Configured x64 release + private-keyring/Xvfb runtime CI; package/install/update và representative desktop matrix trước phân phối |
 
 ## Regression rule
 
@@ -108,6 +115,8 @@ không trong untrusted fork CI.
   read-only, dotfile, no-log và không chứa `.env`.
 - `scripts/agent/build_linux_container.sh` archive committed ref vào Ubuntu 24.04
   pin digest, clone đúng Flutter 3.44.6 và xác minh Linux executable.
+- `scripts/agent/linux_integration.sh` từ chối non-Linux/non-CI, dùng XDG sandbox,
+  private Secret Service và explicit vault-reset opt-in trước local-vault smoke.
 
 ## Khoảng trống đã biết
 
@@ -117,4 +126,5 @@ không trong untrusted fork CI.
 2. Chưa có two-device physical E2EE test.
 3. Chưa có mailbox SMTP/expired-link E2E.
 4. Chưa có long-duration soak hoặc production-scale load test.
-5. Windows/Linux installer chưa smoke test trên máy người dùng.
+5. Windows installer chưa smoke test; Linux chưa có package/install/update và
+   desktop environment matrix trên máy đại diện.

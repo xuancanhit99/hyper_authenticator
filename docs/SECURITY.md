@@ -107,6 +107,9 @@ representation; equality vẫn hoạt động nhưng transition log không lộ 
 - Device integration local-vault suite chỉ chạy trên Android emulator/iOS Simulator,
   cần opt-in rõ ràng và luôn cleanup fixture; runner từ chối máy thật/macOS để tránh
   thay vault người dùng.
+- Linux local-vault suite chỉ chạy khi `CI=true`, dùng XDG sandbox mode 0700,
+  private D-Bus Secret Service và Xvfb; nó probe keyring trước test rồi xóa sandbox
+  bằng trap, không dùng keyring hoặc local vault của desktop user.
 
 ## Logging và fixture
 

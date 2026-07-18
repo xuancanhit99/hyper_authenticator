@@ -50,7 +50,8 @@ policy và backend rollback evidence.
 ## Ưu tiên P2 — Platform expansion
 
 - [ ] Windows installer, signing và device smoke.
-- [ ] Linux package, libsecret/keyring matrix và device smoke.
+- [x] Linux configured release + private libsecret/keyring headless smoke.
+- [ ] Linux package/install/update và representative desktop environment matrix.
 - [ ] Quyết định Web encrypted sync sau browser threat model; mặc định vẫn tắt.
 - [ ] Đánh giá alternative scanner nếu upstream Built-in Kotlin migration chậm.
 
