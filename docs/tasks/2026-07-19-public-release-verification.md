@@ -61,6 +61,7 @@ CI, GitHub digest, individual checksum, manifest tổng cùng file signature.
 | Verifier với tag stable `v1.1.0` | Fail closed: tag format không hợp lệ | 2026-07-19 |
 | Asset validator với historical package version override | Pass; verifier không phụ thuộc current `pubspec.yaml` | 2026-07-19 |
 | `scripts/agent/check.sh full` | Pass docs/generated/format/analyze/platform/offline release contract, 106 Flutter test và encrypted migration | 2026-07-19 |
+| CI `29657661620` Quality lần đầu | Fail sau app test/migration: Ubuntu runner không có `rg`; thêm deterministic `grep` fallback | 2026-07-19 |
 
 ## Tác động tài liệu
 

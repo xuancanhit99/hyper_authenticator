@@ -24,13 +24,33 @@ expect_failure invalid-repository \
 expect_failure invalid-expected-commit \
   "$VERIFIER" v1.1.0-preview.1 xuancanhit99/hyper_authenticator not-a-commit
 
-if rg -n -- '(--header|-H)[[:space:]]+.*Authorization' "$VERIFIER" \
+search_regex() {
+  local pattern=$1
+  local path=$2
+  if command -v rg >/dev/null 2>&1; then
+    rg -n -- "$pattern" "$path"
+  else
+    grep -En -- "$pattern" "$path"
+  fi
+}
+
+search_fixed() {
+  local pattern=$1
+  local path=$2
+  if command -v rg >/dev/null 2>&1; then
+    rg -F -- "$pattern" "$path"
+  else
+    grep -F -- "$pattern" "$path"
+  fi
+}
+
+if search_regex '(--header|-H)[[:space:]]+.*Authorization' "$VERIFIER" \
   >/dev/null; then
   printf '%s\n' \
     'Public verifier không được cấu hình Authorization header.' >&2
   exit 1
 fi
-if ! rg -F 'gh release edit "$TAG" --repo "$repo" --draft' \
+if ! search_fixed 'gh release edit "$TAG" --repo "$repo" --draft' \
   "$PUBLISHER" >/dev/null; then
   printf '%s\n' 'Publisher thiếu fail-closed draft rollback.' >&2
   exit 1
