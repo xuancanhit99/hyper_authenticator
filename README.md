@@ -5,11 +5,12 @@ mã dùng một lần theo RFC 6238. Local vault hoạt động offline không c
 Supabase authentication chỉ phục vụ tính năng cloud tùy chọn. Ứng dụng có app lock,
 nhập/xuất QR và giao diện sáng/tối.
 
-> Trạng thái dự án: **production baseline kỹ thuật; ưu tiên GitHub Preview trước
-> app store**. Web đang chạy production. Windows/Linux có package đã vượt hosted
-> CI nhưng chưa ký; chỉ được phát hành dưới dạng pre-release với checksum và cảnh
-> báo rõ ràng. Signed stable/store, device test, SMTP mailbox và public legal/support
-> metadata vẫn để ở giai đoạn sau. Xem [Trạng thái dự án](docs/PROJECT_STATUS.md).
+> Trạng thái dự án: **production baseline kỹ thuật; GitHub Releases là kênh phân
+> phối binary ưu tiên trong giai đoạn hiện tại**. Web đang chạy production.
+> Windows/Linux có package đã vượt hosted CI nhưng chưa ký; chỉ được phát hành dưới
+> dạng pre-release với checksum và cảnh báo rõ ràng. App store, signing cho stable,
+> device test, SMTP mailbox và public legal/support metadata được hoãn sang giai
+> đoạn sau. Xem [Trạng thái dự án](docs/PROJECT_STATUS.md).
 
 ## Tải ứng dụng
 
@@ -18,7 +19,9 @@ nhập/xuất QR và giao diện sáng/tối.
 
 GitHub Preview hiện chỉ dành cho Windows x64 và Linux amd64. Luôn kiểm tra
 `SHA256SUMS.txt`; Windows SmartScreen có thể cảnh báo vì installer chưa code-sign.
-Android, iOS và macOS chưa được phân phối binary ở giai đoạn này.
+Android, iOS và macOS chưa được phân phối binary ở giai đoạn này. Android signed
+APK và macOS signed/notarized package có thể được bổ sung vào GitHub Releases sau
+khi đủ credential cùng runtime gate; iOS vẫn cần kênh phân phối do Apple cho phép.
 
 ## Chức năng
 

@@ -1,4 +1,4 @@
-# ADR-0010: Phát hành GitHub Preview trước app store
+# ADR-0010: Ưu tiên GitHub Releases trước app store
 
 - Trạng thái: Chấp nhận
 - Ngày: 2026-07-19
@@ -15,7 +15,8 @@ Chờ toàn bộ app store gate sẽ trì hoãn việc cho người dùng thử 
 
 ## Quyết định
 
-GitHub Releases là kênh tải binary đầu tiên. Cho phép phát hành **pre-release** có
+GitHub Releases là kênh phân phối binary công khai ưu tiên cho giai đoạn hiện tại,
+không chỉ là bước tạm chờ app store. Cho phép phát hành **pre-release** có
 nhãn rõ ràng là **unsigned preview** cho Windows x64 và Linux amd64 khi:
 
 1. tag dạng `vX.Y.Z-preview.N` khớp version trong `pubspec.yaml`;
@@ -25,9 +26,17 @@ nhãn rõ ràng là **unsigned preview** cho Windows x64 và Linux amd64 khi:
 5. release note nêu signing, platform, SMTP và recovery-key limitation.
 
 Android debug APK, Apple compile build và Windows portable CI bundle không được
-đưa vào GitHub Release. “Stable” vẫn yêu cầu release signing, device test, public
-legal/support metadata và các gate tương ứng platform. App store được hoãn, không
-bị loại khỏi roadmap.
+đưa vào GitHub Release. Android signed APK có thể tham gia kênh này sau khi owner
+cung cấp upload keystore và runtime/upgrade gate pass; việc đó không phụ thuộc Play
+Store. macOS package tải từ GitHub vẫn cần Developer ID, hardened runtime,
+notarization và device test. iOS không phát hành public binary qua GitHub vì vẫn
+phụ thuộc cơ chế signing/provisioning và kênh phân phối của Apple.
+
+“Stable” vẫn yêu cầu release signing, device test, public legal/support metadata
+và các gate tương ứng platform. App store được hoãn tới khi owner chủ động mở lại
+milestone, không bị loại khỏi roadmap. SMTP cũng được hoãn và không chặn binary
+GitHub Preview; release note phải tiếp tục nói rõ email recovery chưa được xác minh
+tới mailbox thật.
 
 ## Phương án đã cân nhắc
 
@@ -48,11 +57,15 @@ hay contract cảnh báo/checksum dễ kiểm chứng.
 - Người dùng có URL release ổn định và checksum công khai.
 - Published binary truy ngược được về tag, commit và successful CI run.
 - Store/signing có thể hoàn thiện sau mà không chặn vòng phản hồi desktop đầu tiên.
+- Có thể mở rộng cùng GitHub channel sang Android/macOS khi từng platform đủ gate,
+  không buộc đồng thời mở app store.
 
 ### Tiêu cực
 
 - Windows có thể hiện SmartScreen; Linux không có package-repository signature.
 - GitHub Preview không đại diện cho device/runtime coverage của Android và Apple.
+- Email recovery có thể chưa tới người dùng cho đến khi SMTP được cấu hình và E2E
+  test pass; không được quảng bá delivery là đã hoạt động.
 
 ### Rủi ro
 
@@ -88,5 +101,6 @@ local vault của người dùng đã cài.
 3. Chạy workflow thủ công với confirmation bắt buộc; trước khi workflow có trên
    default branch, chạy đúng cùng harness từ trusted maintainer workstation.
 4. Xác minh public URL, asset list và checksum sau download.
-5. Khi đủ signing/device/legal/support gate, tạo ADR hoặc cập nhật contract để mở
-   stable release và app store channel.
+5. Khi đủ signing/device/legal/support gate, cập nhật contract để mở stable GitHub
+   Release cho platform tương ứng. App store là milestone riêng, chỉ mở khi owner
+   quyết định.

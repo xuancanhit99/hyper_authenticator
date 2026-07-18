@@ -38,7 +38,19 @@ Sau đó:
   bắt buộc trước stable/store release;
 - tag đúng tested commit và tạo SHA-256 cho artifact.
 
-## GitHub Preview — kênh binary đầu tiên
+## GitHub Releases — kênh binary ưu tiên
+
+Trong giai đoạn hiện tại, GitHub Releases là kênh phân phối binary mặc định; app
+store chưa nằm trên critical path. Mỗi platform vẫn phải vượt gate riêng:
+
+| Platform | Kênh hiện tại | Điều kiện để thêm binary vào GitHub Releases |
+|---|---|---|
+| Windows x64 | Unsigned pre-release | Đã đủ gate preview; code signing + device test trước stable |
+| Linux amd64 | Unsigned pre-release | Đã đủ gate preview; signed channel + physical desktop trước stable |
+| Android | Chưa phát hành | Upload keystore, signed APK, emulator/device và upgrade gate; không cần chờ Play Store |
+| macOS | Chưa phát hành | Developer ID, hardened runtime, notarization, staple và runtime test |
+| iOS | Không phân phối public qua GitHub | Signing/provisioning và kênh Apple phù hợp |
+| Web | Production URL | Deploy image độc lập, không đóng gói vào GitHub Release |
 
 GitHub Preview chỉ gồm Windows x64 NSIS installer và Linux amd64 Debian package.
 Tag phải có dạng `vX.Y.Z-preview.N`, khớp app version và trỏ tới commit có workflow
@@ -81,9 +93,11 @@ version mà không tin local tag content làm provenance:
     scripts/agent/verify_github_preview_release.sh \
       v1.1.0-preview.1 xuancanhit99/hyper_authenticator
 
-SMTP production chưa được cấu hình ở giai đoạn này. Release note phải nói rõ email
-khôi phục mật khẩu có thể chưa tới mailbox thật; credential SMTP chỉ được đặt trên
-server, không đưa vào Flutter `.env` hay GitHub Actions.
+SMTP production chưa được cấu hình ở giai đoạn này và không chặn phát hành binary
+qua GitHub. Release note phải nói rõ email khôi phục mật khẩu có thể chưa tới
+mailbox thật; credential SMTP chỉ được đặt trên server, không đưa vào Flutter
+`.env` hay GitHub Actions. Chỉ bỏ cảnh báo sau khi delivery và expired-link E2E
+đã pass với mailbox thật.
 
 ## Android
 
@@ -94,8 +108,9 @@ Build script đã fail nếu release signing thiếu:
       --dart-define-from-file=.env.production \
       --split-debug-info=build/symbols/android
 
-Gate: Play App Signing/upload certificate, target SDK review, camera/biometric test,
-backup policy, data safety form và upgrade test từ version trước.
+Gate cho signed APK trên GitHub: upload keystore, target SDK review,
+camera/biometric test, backup policy và upgrade test từ version trước. Play App
+Signing, data safety form và internal track chỉ trở thành gate khi mở Play Store.
 
 ## iOS
 
