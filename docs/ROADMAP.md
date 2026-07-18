@@ -40,8 +40,9 @@ tag CI xanh, checksum tải lại khớp và release note nêu signing/SMTP/plat
   health freshness gate.
 - [x] Low-concurrency public Auth load có budget và acceptance threshold.
 - [ ] Long-duration soak và production-scale workload có budget riêng.
-- [ ] Incident response exercise và release rollback drill; periodic database
-  restore đã tự động hóa riêng.
+- [x] Flutter Web live rollback→forward drill với auto-restore và exact artifact gate.
+- [ ] Incident response exercise và non-Web release rollback drill; periodic
+  database restore và Web rollback đã tự động hóa riêng.
 
 ## Ưu tiên P1 — Product/security
 

@@ -40,6 +40,7 @@ Tài liệu theo component:
 - [Rollout password recovery](operations/SUPABASE_RECOVERY_ROLLOUT.md)
 - [Supabase backend harness](../supabase/README.md)
 - [Vận hành Supabase production](operations/SUPABASE_PRODUCTION_OPERATIONS.md)
+- [Flutter Web production serving và rollback](../web-deployment/README.md)
 
 ## Từ vựng trạng thái
 

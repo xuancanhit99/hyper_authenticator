@@ -42,7 +42,7 @@ owner; không mô tả preview là stable production release.
 | Release config validator | Pass với `.env` public hiện tại, không in key |
 | Gitleaks full history | Pass sau exact allowlist RFC 6238 test vector |
 | Android debug + Pixel AVD runtime | Pass build/install, Supabase auth, setup revision 1, recovery-key rotation revision 2, vault-key rotation revision 3, fresh-device recovery revision 3, bulk revoke session thật 2→1 và local-vault integration smoke có cleanup |
-| Web release + hardened Nginx image | `1.1.0-ae1ab36` `linux/amd64` đang healthy trên production; local/public `main.dart.js` SHA-256 `1a0d63a6…f66ea6` khớp, 5 SPA route và TLS/HSTS/CSP/cache/Permissions-Policy pass; browser xác minh runtime `lang=vi`, Flutter render và console sạch |
+| Web release + hardened Nginx image | `1.1.0-ae1ab36` `linux/amd64` đang healthy trên production; local/public `main.dart.js` SHA-256 `1a0d63a6…f66ea6` khớp, 5 SPA route và TLS/HSTS/CSP/cache/Permissions-Policy pass; browser xác minh runtime `lang=vi`, Flutter render và console sạch; live rollback về `1.1.0-12fce73` rồi forward lại current pass exact image/hash/route |
 | macOS debug compile unsigned | Pass; không phải runtime/signing evidence |
 | iOS 26.5 simulator debug | Pass build/runtime với Supabase init và local-vault integration smoke có cleanup |
 | Android release | Fail closed đúng thiết kế vì chưa có upload keystore |
@@ -199,6 +199,8 @@ Capability là hành vi source hiện tại, không thay thế device test và s
 - `scripts/supabase/` giữ remote contract, backup, health, restore và off-host harness.
 - Scheduled restore contract nằm trong full gate; production systemd timer/health
   đã pass với atomic evidence và shared backup lock.
+- Web rollback regression nằm trong full gate; production live drill đã preflight
+  shadow, rollback→forward và giữ current image healthy với evidence 0600.
 - `scripts/agent/linux_e2ee_operator.sh` giữ service-role key ngoài repository và
   ngoài client process, tạo isolated user, chạy Flutter E2EE trong Ubuntu/private
   keyring rồi xóa user và xác minh cleanup. Đây là protected operator gate, không

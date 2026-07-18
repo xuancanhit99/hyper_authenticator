@@ -52,6 +52,7 @@ run_release_harness() {
   printf '\n%s\n' "== GitHub Preview release harness gate =="
   scripts/agent/test_github_preview_assets.sh
   scripts/agent/test_github_preview_release_contract.sh
+  web-deployment/test-production-rollback-contract.sh
 }
 
 run_operations_harness() {

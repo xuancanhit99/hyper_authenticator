@@ -165,6 +165,13 @@ Regression tối thiểu của harness:
   rollback contract mà không phụ thuộc network; live public gate nằm trong
   publisher và workflow riêng để không khóa development trước khi có tag mới.
 
+Web rollback contract dùng fake Docker/curl state machine để chứng minh confirmation
+fail trước mutation, success đi previous→current và public failure kích hoạt
+auto-restore exact original env/image mà không ghi đè evidence pass cũ. Live gate
+không chạy trong CI: operator production phải cung cấp exact image/hash. Lượt
+19-07-2026 đã rollback thật `1.1.0-ae1ab36` → `1.1.0-12fce73` rồi forward lại;
+post-probe current image/health/hash và 5/5 public SPA route pass.
+
 ## Regression rule
 
 - Bug phải có test fail trên behavior cũ nếu có thể tái hiện deterministically.
@@ -184,6 +191,8 @@ Regression tối thiểu của harness:
   Gitleaks; CI tải binary đã pin sau khi xác minh SHA-256.
 - `web-deployment/test.sh` build image từ tar allowlist rồi kiểm tra CSP/cache/SPA,
   read-only, dotfile, no-log và không chứa `.env`.
+- `test-production-rollback-contract.sh` không dùng Docker/network thật; fake live
+  state bao phủ rollback/forward và failure auto-restore trong full gate.
 - `scripts/agent/build_linux_container.sh` archive committed ref vào Ubuntu 22.04
   pin digest, clone đúng Flutter 3.44.6 và xác minh Linux executable.
 - `scripts/agent/linux_integration.sh` từ chối non-Linux/non-CI, dùng XDG sandbox,

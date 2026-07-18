@@ -94,6 +94,10 @@ không bao giờ được đặt trong Flutter `.env`, asset, build log hoặc b
 - Post-publish verifier không gửi Authorization, đối chiếu public tag/commit/tag-CI,
   exact năm asset, GitHub SHA-256 digest, checksum/manifest và file signature. Gate
   lỗi yêu cầu publisher chuyển release về draft thay vì để public trạng thái mơ hồ.
+- Web live rollback harness chỉ nhận image pin semantic-version + commit hex và
+  exact JS hash. Nó không source/in deployment env, preflight shadow trước mutation,
+  atomic đổi riêng `WEB_IMAGE`, giữ snapshot 0600 và auto-restore original image
+  khi verification fail. Evidence không chứa `SUPABASE_URL` hoặc credential.
 
 ## Recovery semantics
 
@@ -137,6 +141,9 @@ representation; equality vẫn hoạt động nhưng transition log không lộ 
   harness cũng chỉ nhận runner tạm, build source pin `1.0.0+9`, ghi vault bằng
   plugin 3.1.2 rồi yêu cầu current app đọc/publish COW v2 và cleanup. Physical
   device/Windows Hello vẫn là gate riêng.
+- Web rollback drill mutate container stateless, không truy cập browser local vault.
+  EXIT trap khôi phục current image nhưng không bảo vệ được `SIGKILL`, host/Docker
+  crash; snapshot env/current image phải được giữ cho manual recovery.
 - Authenticated Linux E2EE gate chỉ nhận service-role key trong parent operator
   shell từ file 0600 ngoài repository. Key dùng qua temp header 0600, không export
   sang Docker/Flutter và không lưu ở GitHub Actions. Container chỉ nhận credential
