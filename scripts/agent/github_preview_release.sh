@@ -142,5 +142,16 @@ gh release create "$TAG" "${release_assets[@]}" \
   --title "Hyper Authenticator $TAG" \
   --notes-file "$notes_path"
 
+if ! scripts/agent/verify_github_preview_release.sh \
+  "$TAG" "$repo" "$tag_commit"; then
+  printf '%s\n' \
+    'Public verification thất bại; chuyển release về draft để fail closed.' >&2
+  if ! gh release edit "$TAG" --repo "$repo" --draft; then
+    printf '%s\n' \
+      'CRITICAL: Không chuyển được release lỗi về draft; cần maintainer xử lý ngay.' >&2
+  fi
+  exit 1
+fi
+
 gh release view "$TAG" --repo "$repo" \
   --json url,isPrerelease,tagName,targetCommitish,publishedAt,assets

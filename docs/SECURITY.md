@@ -90,6 +90,9 @@ không bao giờ được đặt trong Flutter `.env`, asset, build log hoặc b
 - GitHub Preview harness chỉ nhận Windows/Linux installer từ successful CI run của
   chính tag, kiểm tra version/checksum/allowlist và tạo manifest tổng. Publish cần
   confirmation rõ ràng; release luôn mang pre-release flag và cảnh báo unsigned.
+- Post-publish verifier không gửi Authorization, đối chiếu public tag/commit/tag-CI,
+  exact năm asset, GitHub SHA-256 digest, checksum/manifest và file signature. Gate
+  lỗi yêu cầu publisher chuyển release về draft thay vì để public trạng thái mơ hồ.
 
 ## Recovery semantics
 

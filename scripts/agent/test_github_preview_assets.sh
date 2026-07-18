@@ -78,6 +78,13 @@ expect_failure version \
   "$ROOT/scripts/agent/check_github_preview_assets.sh" \
   "$version_input" "$version_output"
 
+override_output="$WORK_ROOT/version-override-output"
+mkdir -p "$override_output"
+PACKAGE_VERSION_OVERRIDE='1.1.0+9' \
+  "$ROOT/scripts/agent/check_github_preview_assets.sh" \
+  "$version_input" "$override_output" >/dev/null
+printf '%s\n' '✓ Historical package version override pass'
+
 forbidden_input="$WORK_ROOT/forbidden-input"
 forbidden_output="$WORK_ROOT/forbidden-output"
 make_fixture "$forbidden_input"

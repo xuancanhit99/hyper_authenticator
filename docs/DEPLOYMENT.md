@@ -64,9 +64,22 @@ Maintainer workstation tin cậy có thể chạy cùng fail-closed harness:
 Harness xác minh repository public, tag/HEAD/version, successful tag CI, release
 chưa tồn tại, exact artifact name, checksum và denylist env/source-map/debug file.
 Nó chỉ tải artifact từ CI run của tag, tạo `SHA256SUMS.txt`, release note bắt buộc
-và publish với GitHub pre-release flag. Sau publish phải tải lại asset từ public
-URL và xác minh SHA-256. Xóa pre-release là rollback channel; không xóa source tag
-hoặc local vault của người dùng.
+và publish với GitHub pre-release flag. Sau publish,
+`verify_github_preview_release.sh` cố ý không gửi Authorization và yêu cầu public
+API/download pass exact release state, tag/commit/successful tag CI, năm asset,
+GitHub digest, checksum/manifest cùng Debian/PE32 signature. Nếu gate lỗi, publisher
+chuyển release về draft; nếu cả rollback API lỗi, command phát cảnh báo `CRITICAL`
+và exit non-zero. Xóa hoặc chuyển pre-release về draft là rollback channel; không
+xóa source tag hoặc local vault của người dùng.
+
+Workflow `Verify Public GitHub Preview` chạy lại gate khi preview được publish và
+cho phép manual verification theo tag sau khi workflow đã có trên default branch.
+Workflow checkout verifier từ default branch, còn package version được đọc từ
+release note đã đóng băng; vì vậy vẫn xác minh được preview cũ sau khi source tăng
+version mà không tin local tag content làm provenance:
+
+    scripts/agent/verify_github_preview_release.sh \
+      v1.1.0-preview.1 xuancanhit99/hyper_authenticator
 
 SMTP production chưa được cấu hình ở giai đoạn này. Release note phải nói rõ email
 khôi phục mật khẩu có thể chưa tới mailbox thật; credential SMTP chỉ được đặt trên

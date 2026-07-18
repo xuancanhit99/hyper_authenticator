@@ -16,9 +16,9 @@ if [[ ! -d "$ARTIFACT_ROOT" ]]; then
   exit 66
 fi
 
-package_version=$(
+package_version=${PACKAGE_VERSION_OVERRIDE:-$(
   awk '$1 == "version:" { print $2; exit }' "$ROOT/pubspec.yaml"
-)
+)}
 if [[ -z "$package_version" ]]; then
   printf '%s\n' 'Không đọc được version từ pubspec.yaml.' >&2
   exit 65

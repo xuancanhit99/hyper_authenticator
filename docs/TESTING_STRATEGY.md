@@ -22,7 +22,7 @@ PostgreSQL migration contract. Nó không tự boot emulator/simulator.
 
 ## Coverage hiện tại
 
-105 Flutter tests bao phủ:
+106 Flutter tests bao phủ:
 
 - router/auth/logout/offline-local-vault boundary;
 - post-login navigation trực tiếp hoặc return an toàn về Settings, stale null auth
@@ -135,14 +135,28 @@ không trong untrusted fork CI.
 `pubspec.yaml`, trỏ đúng checkout và có workflow `CI` push thành công của chính tag.
 `check_github_preview_assets.sh` yêu cầu đúng một `.deb`/checksum và một Windows
 setup/checksum, từ chối env/source-map/debug symbol rồi tạo manifest SHA-256 tổng.
+`verify_github_preview_release.sh` là post-upload gate độc lập credential: public
+API phải chứng minh non-draft pre-release, annotated tag tới exact commit, successful
+CI run đúng tag/commit và release note provenance; public download phải có exact
+năm asset, khớp GitHub digest, individual checksum, manifest tái tạo và Debian/PE32
+signature. Publisher chuyển gate lỗi về draft; workflow `Verify Public GitHub
+Preview` chạy trên release `published` hoặc manual tag. Workflow dùng verifier từ
+default branch nhưng lấy package version đã đóng băng trong public release note,
+nên release cũ không phụ thuộc `pubspec.yaml` hiện tại.
 
 Regression tối thiểu của harness:
 
 - fixture hợp lệ tạo đúng năm release asset;
 - checksum sai, sai version, asset thừa thuộc denylist hoặc output không rỗng đều fail;
+- explicit historical package-version override cho public release cũ phải pass;
 - release tồn tại, repository private, tag/HEAD mismatch hoặc tag CI chưa xanh đều
   fail trước lệnh publish;
 - sau publish, tải asset qua public GitHub URL và xác minh `SHA256SUMS.txt`.
+- sai expected commit/tag hoặc public metadata/provenance/asset digest đều fail
+  trước khi release được xem là hoàn tất.
+- canonical full gate chạy syntax/invalid-input/no-Authorization/static draft-
+  rollback contract mà không phụ thuộc network; live public gate nằm trong
+  publisher và workflow riêng để không khóa development trước khi có tag mới.
 
 ## Regression rule
 

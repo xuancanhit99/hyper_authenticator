@@ -184,6 +184,10 @@ Capability là hành vi source hiện tại, không thay thế device test và s
 - `release-preview.yml` cùng `github_preview_release.sh` fail closed theo
   tag/version/successful tag CI và chỉ publish Windows/Linux allowlist với checksum;
   workflow thủ công chỉ hoạt động sau khi file có trên default branch.
+- `verify-release.yml` và `verify_github_preview_release.sh` đóng gate sau upload
+  bằng public API/download không Authorization. Lượt hiện tại xác minh lại
+  `v1.1.0-preview.1`, exact commit/run/năm asset, API digest, checksum/manifest và
+  Debian/PE32 signature; sai expected commit/tag fail closed.
 - GitHub Private Vulnerability Reporting đã bật; `.github/SECURITY.md` hướng dẫn
   gửi báo cáo riêng tư và cấm đưa credential vào public issue.
 - `scripts/agent/check.sh full` là quality gate canonical; baseline hiện có 106 test,

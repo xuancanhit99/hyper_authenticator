@@ -51,6 +51,7 @@ run_platform() {
 run_release_harness() {
   printf '\n%s\n' "== GitHub Preview release harness gate =="
   scripts/agent/test_github_preview_assets.sh
+  scripts/agent/test_github_preview_release_contract.sh
 }
 
 run_quick() {
