@@ -49,7 +49,9 @@ policy và backend rollback evidence.
 
 ## Ưu tiên P2 — Platform expansion
 
-- [ ] Windows installer, signing và device smoke.
+- [x] Windows NSIS unsigned candidate + hosted install/launch/metadata-upgrade/
+  uninstall data-retention smoke.
+- [ ] Windows code signing, physical-device/Windows Hello và historical-release upgrade.
 - [x] Linux configured release + private libsecret/keyring headless smoke.
 - [x] Linux `.deb` dependency/checksum + clean-container package transition smoke.
 - [x] Linux authenticated E2EE debug runtime với isolated production test user.

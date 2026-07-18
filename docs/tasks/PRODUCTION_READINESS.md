@@ -39,6 +39,8 @@ behavior an toàn, backend có backup/restore/health harness và release gate t�
 - [x] Linux authenticated E2EE client runtime pass qua production Supabase với
   isolated user: setup/sync/recovery/recovery-key rotation/vault-key rotation và
   remote cleanup được xác minh, không đưa service-role key vào client hoặc CI.
+- [x] Windows hosted local-vault runtime và NSIS unsigned candidate pass
+  install/launch/metadata-upgrade/uninstall, giữ AppData và checksum portable.
 - [x] Remote E2EE/recovery/Studio contract pass.
 - [x] Daily backup, restore rehearsal, encrypted off-host copy và health timer pass.
 - [x] Asset/font không rõ license bị loại khỏi release.
@@ -82,8 +84,8 @@ behavior an toàn, backend có backup/restore/health harness và release gate t�
 | Linux configured release + runtime | Pass `linux/x64`; private keyring/Xvfb đi đủ bootstrap, add, storage round-trip, lifecycle, reload, navigation và cleanup |
 | Linux Debian artifact | `1.1.0+10` amd64, SHA-256 `b90f880c…f0eaf561`, root entry 0755; dependency/install/launch/metadata-upgrade/remove và package-level data retention pass trong Ubuntu 24.04 sạch |
 | Linux authenticated E2EE operator gate | Pass hai lượt trên Ubuntu 24.04 arm64/private Secret Service: setup revision 1, sync revision 2, fresh recovery, recovery-key rotation revision 3 + reject key cũ, vault-key rotation revision 4 + recovery; mỗi lượt xóa isolated user và DB probe cuối trả `test_users=0`, `test_vault_rows=0` |
-| GitHub Actions run `29643962397` | Pass 7/7 Web, Android debug, Apple compile, Linux runtime/package, Windows, secret và quality gates tại commit `0128171` |
-| Windows configured artifact | Pass PE x64; 22/22 SHA-256 checksum; không chứa `.env` hoặc signing key |
+| GitHub Actions run `29646554828` | Pass 7/7 Web, Android debug, Apple compile, Linux runtime/package, Windows runtime/installer, secret và quality gates tại commit `e077032` |
+| Windows runtime + NSIS candidate | Windows Server 2025 local-vault UI/secure-storage/lifecycle pass; configured x64 bundle; NSIS 3.12 install/launch/metadata-upgrade/uninstall giữ AppData pass; unsigned installer SHA-256 `fc267661…331388b3` audit portable trên macOS; bundle + installer artifact giữ 14 ngày |
 | Android configured release | Fail closed vì thiếu upload keystore |
 | Android Pixel AVD E2E | Pass login return, setup revision 1, recovery-key rotation revision 2, vault-key rotation revision 3, fresh-device recovery revision 3 và SDK bulk revoke 2→1 session; cleanup user/row/app data |
 | Android Pixel AVD local-vault smoke | Pass UI add, storage round-trip, lifecycle, BLoC reload, navigation và cleanup |
@@ -102,6 +104,8 @@ platform config, 98 test và encrypted migration/active-session contract.
 ## Rủi ro còn lại
 
 - Signing/store/physical-device/SMTP/alert destination là external gate, không phải source defect.
+- Windows còn code signing, physical-device/Windows Hello và upgrade từ release
+  lịch sử thật; hosted baseline chỉ đổi version metadata trên cùng tested bundle.
 - Flutter Web còn camera permission/QR scan smoke trên browser-device thật.
 - Linux còn representative desktop/distro matrix, upgrade từ release lịch sử thật
   và release-channel signing/support metadata. Authenticated E2EE đã pass trên

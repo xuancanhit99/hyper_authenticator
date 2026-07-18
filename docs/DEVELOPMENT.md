@@ -157,6 +157,21 @@ Nó từ chối chạy ngoài CI để không chạm keyring/vault của desktop
 GitHub workflow là entrypoint canonical cho headless behavior. Package transition
 CI và representative desktop/distro matrix là hai gate tách biệt.
 
+Windows CI chạy cùng integration test bằng guard riêng:
+
+    ./scripts/agent/windows_integration.ps1 `
+      -EnvFile C:\path\release-config.json `
+      -Confirmation '--allow-test-vault-reset'
+
+Script chỉ nhận `CI=true`, `GITHUB_ACTIONS=true`, `RUNNER_OS=Windows` và
+`RUNNER_ENVIRONMENT=github-hosted`; không nới guard để chạy trên workstation.
+Sau configured release, `install_nsis.ps1` tải NSIS 3.12 đã pin checksum,
+`package_windows_installer.ps1` tạo unsigned installer/checksum và
+`windows_installer_smoke.ps1` kiểm tra install/launch/metadata-upgrade/uninstall
+giữ AppData. Smoke chỉ nhận hosted runner tạm và explicit
+`--allow-ephemeral-install`. Baseline dùng cùng bundle với version metadata thấp
+hơn, không thay historical-release migration test.
+
 Sau configured release build trên Linux, tạo Debian candidate:
 
     scripts/agent/package_linux_deb.sh \

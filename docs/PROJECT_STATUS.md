@@ -48,7 +48,7 @@ các credential gate tương ứng pass.
 | macOS release | Bị chặn vì chưa có development/distribution certificate |
 | Linux release + Debian artifact | Pass configured `linux/x64`, private-keyring UI smoke và `.deb` `1.1.0+10` amd64; dependency scan, checksum, archive root 0755, clean-container install/launch/upgrade/remove và package-level user-data retention pass |
 | Linux authenticated E2EE runtime | Pass trên Ubuntu 24.04 arm64 container tạm: client thật đăng nhập production Supabase, setup revision 1, sync revision 2, fresh-device recovery, recovery-key rotation revision 3, reject key cũ, vault-key rotation revision 4 và recovery cuối; operator xóa user/row và admin probe xác nhận 404 |
-| Windows release | Remote CI pass configured x64 bundle; artifact 14 ngày và 22/22 checksum pass; còn device/installer/signing gate trên Windows |
+| Windows release + installer | Pass configured x64 bundle, local-vault runtime trên GitHub-hosted Windows Server 2025 và NSIS 3.12 unsigned candidate; install/launch/metadata-upgrade/uninstall giữ AppData pass, bundle + installer/checksum giữ 14 ngày |
 
 Build không có `--dart-define-from-file` chỉ chứng minh compile. Runtime/release
 verification phải inject `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY` và
@@ -132,15 +132,18 @@ Capability là hành vi source hiện tại, không thay thế device test và s
    enforcement. Chưa có device registry/revoke riêng từng thiết bị, device-specific
    key wrap, tombstone/history hoặc Web trust model. Backup cũ vẫn dùng key
    generation cũ.
-6. Local-vault integration smoke đã pass Android emulator và iOS Simulator; secure
-   storage/biometric/camera vẫn cần test trên thiết bị thật. Harness hiện chủ động
-   từ chối target thật/macOS vì nó reset toàn bộ local vault.
-7. Windows build còn dựa trên CI và chưa có installer/signing/device. Linux đã có
-   `.deb` candidate, clean-container package transition và authenticated E2EE
-   client runtime; còn representative desktop/distro matrix, upgrade từ release
-   lịch sử thật, release-channel signing và maintainer/support metadata trước phân
-   phối công khai. E2EE evidence hiện là debug arm64 container, không phải signed
-   amd64 package runtime.
+6. Local-vault integration smoke đã pass Android emulator, iOS Simulator và
+   GitHub-hosted Windows Server 2025; biometric/camera và secure-storage behavior
+   trên thiết bị thật vẫn chưa được chứng minh. Mobile harness chủ động từ chối
+   target thật/macOS vì nó reset toàn bộ local vault; Windows harness chỉ nhận
+   hosted runner tạm.
+7. Windows đã có unsigned NSIS candidate và hosted-runner package transition,
+   nhưng còn code signing, physical-device/Windows Hello và upgrade từ release
+   lịch sử thật. Linux đã có `.deb` candidate, clean-container package transition
+   và authenticated E2EE client runtime; còn representative desktop/distro matrix,
+   upgrade từ release lịch sử thật, release-channel signing và maintainer/support
+   metadata trước phân phối công khai. E2EE evidence hiện là debug arm64 container,
+   không phải signed amd64 package runtime.
 8. Privacy policy cần được host tại URL công khai và điền kênh support trước store submission.
 9. Flutter Web đã pass TLS/reverse proxy và runtime smoke trên production domain;
    permission pending/error UX đã có regression test trên VM và Chrome test
@@ -152,8 +155,10 @@ Capability là hành vi source hiện tại, không thay thế device test và s
   analyze/test và compile Android, iOS simulator, macOS unsigned, Web, Windows,
   Linux. Linux job build configured x64, chạy private-keyring integration, tạo `.deb`,
   smoke package transition trong Ubuntu sạch rồi lưu checksum + artifact 14 ngày;
-  Windows tạo configured bundle và manifest SHA-256. Các gate này không thay thế
-  signed runtime hoặc representative-device/distro matrix.
+  Windows chạy local-vault integration, build configured bundle, tạo NSIS candidate,
+  smoke install/launch/metadata-upgrade/uninstall giữ AppData và lưu hai artifact
+  theo commit 14 ngày. Các gate này không thay signed runtime hoặc
+  representative-device/distro matrix.
 - `.github/dependabot.yml` kiểm tra Pub và GitHub Actions hằng tuần.
 - `scripts/agent/check.sh full` là quality gate canonical; baseline hiện có 98 test,
   analyze/format cả device integration source nhưng không tự boot virtual device.

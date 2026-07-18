@@ -118,15 +118,27 @@ Windows CI chỉ tạo artifact runtime khi repository có ba Actions variables 
 - `SUPABASE_PUBLISHABLE_KEY`;
 - `PASSWORD_RECOVERY_URL`.
 
-Workflow validate config, khóa plaintext sync, build bundle x64, tạo
-`SHA256SUMS.txt` rồi giữ artifact theo commit trong 14 ngày. Artifact không chứa
-file config nguồn hoặc private server credential; public runtime values vẫn được
-compile vào client theo thiết kế. Đây là unsigned bundle phục vụ build/device
-gate, chưa phải installer production.
+Workflow pin `windows-2025`, validate config, khóa plaintext sync và chạy
+`windows_integration.ps1` với explicit vault-reset opt-in trên hosted runner tạm.
+Sau configured x64 release, workflow tạo hai artifact theo commit và giữ 14 ngày:
 
-Gate: Windows CI artifact pass, xác minh checksum sau download, secure storage/
-app-lock behavior, installer upgrade/uninstall data retention, Auth HTTPS và code
-signing nếu phân phối công khai. Scanner bị ẩn theo thiết kế.
+- bundle cùng `SHA256SUMS.txt`;
+- NSIS 3.12 per-user installer cùng file `.sha256` dùng LF, kiểm tra được từ
+  Windows, macOS hoặc Linux.
+
+NSIS tool ZIP được tải từ upstream chính thức, pin SHA-256 và xác minh
+`makensis v3.12` trước khi compile. Installer mặc định vào
+`%LOCALAPPDATA%\Programs\Hyper Authenticator`; uninstaller chỉ xóa program
+directory, shortcut và uninstall metadata, không xóa local vault dưới AppData.
+CI đã pass install, launch release, nâng metadata baseline lên `1.1.0+10`, launch
+lại, uninstall và data-retention sentinel. Baseline dùng cùng tested bundle với
+version thấp hơn nên không phải bằng chứng migration từ release lịch sử thật.
+
+Artifact không chứa file config nguồn hoặc private server credential; public
+runtime values vẫn được compile vào client theo thiết kế. Installer hiện **unsigned**
+và chỉ là release candidate. Gate trước phân phối công khai còn Windows code
+signing certificate, xác minh chữ ký sau download, physical-device/Windows Hello,
+Auth HTTPS và historical-release upgrade. Scanner bị ẩn theo thiết kế.
 
 `local_auth_windows` 2.0.1 còn phụ thuộc `/await` experimental. Project hiện opt in
 warning-suppression mà MSVC 14.51 yêu cầu để giữ native CI chạy được; đây không phải

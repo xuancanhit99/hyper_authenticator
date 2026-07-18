@@ -81,6 +81,9 @@ không bao giờ được đặt trong Flutter `.env`, asset, build log hoặc b
 - Flutter Web image dùng tar build context allowlist, Nginx pin digest, non-root,
   filesystem read-only, CSP theo Supabase origin và không access-log query. HTML
   không cache; source map và file môi trường làm image build fail.
+- Windows installer toolchain pin NSIS 3.12 archive SHA-256 và xác minh compiler
+  version. Builder từ chối env/source-map/debug artifact; unsigned candidate có
+  checksum LF portable và không được mô tả là signed release.
 
 ## Recovery semantics
 
@@ -113,6 +116,10 @@ representation; equality vẫn hoạt động nhưng transition log không lộ 
 - Debian package không có maintainer script xóa user data. Package smoke mutate
   Ubuntu container tạm, kiểm tra `/` giữ mode 0755 và XDG sentinel còn nguyên sau
   metadata upgrade/remove; historical-release vault migration vẫn là gate riêng.
+- Windows NSIS uninstaller chỉ xóa program directory/shortcut/registry metadata,
+  không xóa AppData. Hosted-runner smoke kiểm tra sentinel còn nguyên qua metadata
+  upgrade và uninstall; guard từ chối workstation/self-hosted runner. Physical
+  device và historical-release vault migration vẫn là gate riêng.
 - Authenticated Linux E2EE gate chỉ nhận service-role key trong parent operator
   shell từ file 0600 ngoài repository. Key dùng qua temp header 0600, không export
   sang Docker/Flutter và không lưu ở GitHub Actions. Container chỉ nhận credential
