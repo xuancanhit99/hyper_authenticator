@@ -44,6 +44,23 @@ record và model; nếu active generation lỗi thì thử rollback generation. 
 giữ hai generation hợp lệ gần nhất, không xóa active/rollback trước khi generation
 mới được verify.
 
+### Windows storage layout
+
+Application-support path canonical giữ metadata lịch sử:
+
+    %APPDATA%\app.hyperz.authenticator\hyper_authenticator
+
+Một số pre-release từng dùng sibling `Hyper Authenticator`. Trước DI, migrator chỉ
+nhận `flutter_secure_storage.dat`, top-level `*.secure` và
+`shared_preferences.json`; không theo symlink, không xóa nguồn và chỉ ghi marker
+`.ha-storage-layout-v1-imported` sau atomic import thành công. Hai tập vault cùng
+tồn tại nhưng khác tên file hoặc byte là conflict, không có merge tự động.
+
+Sau khi physical layout đã canonical, `flutter_secure_storage_windows` đọc các
+file `*.secure` của 9.2.4/Windows plugin 3.1.2 và current local datasource publish
+logical account sang COW v2. Các field `algorithm`, `digits`, `period` phải
+round-trip; legacy source không bị app layout migrator xóa.
+
 ## Encrypted plaintext snapshot trước khi mã hóa
 
 Payload canonical là object versioned chứa danh sách account sort theo stable ID.

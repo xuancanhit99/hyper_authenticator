@@ -113,7 +113,7 @@ không trong untrusted fork CI.
 | iOS | Simulator build mỗi CI; signed archive + device/TestFlight trước store |
 | macOS | Unsigned compile CI; signed runtime + notarized release trước phân phối |
 | Web | Configured release + hardened image contract + CSP browser smoke |
-| Windows | Hosted local-vault runtime + configured x64 + NSIS install/launch/metadata-upgrade/uninstall retention; bundle/installer SHA-256 artifact 14 ngày; physical device/signing/historical upgrade trước phân phối |
+| Windows | Hosted local-vault runtime + historical `1.0.0+9` vault-upgrade harness + configured x64 + NSIS install/launch/metadata-upgrade/uninstall retention; bundle/installer SHA-256 artifact 14 ngày; physical device/signing trước phân phối |
 | Linux | Configured x64 + private-keyring runtime + `.deb` transition; authenticated E2EE debug arm64 container; historical-release upgrade, distro/desktop matrix và release-channel signing trước phân phối |
 
 ## Regression rule
@@ -146,6 +146,10 @@ không trong untrusted fork CI.
   service-role key không được lưu ở GitHub Actions secret hoặc truyền vào Flutter.
 - `windows_integration.ps1` và `windows_installer_smoke.ps1` chỉ nhận GitHub-hosted
   Windows runner tạm cùng explicit mutation opt-in; không chạy trên máy người dùng.
+- `windows_historical_upgrade.ps1` pin source `1.0.0+9` cùng storage plugin 3.1.2,
+  seed account có non-default TOTP field rồi yêu cầu current app nhìn thấy, publish
+  COW v2 và cleanup. Engine unit test bao phủ source vắng, atomic copy, marker,
+  symlink, conflict byte-level và rollback giữa chừng.
 - `install_nsis.ps1` pin NSIS version + archive SHA-256; package builder từ chối
   env/source-map/debug artifact và tạo checksum LF portable.
 
@@ -157,6 +161,6 @@ không trong untrusted fork CI.
 2. Chưa có two-device physical E2EE test.
 3. Chưa có mailbox SMTP/expired-link E2E.
 4. Chưa có long-duration soak hoặc production-scale load test.
-5. Windows còn code signing, physical-device/Windows Hello và historical-release
-   upgrade. Linux còn upgrade từ release lịch sử thật, representative distro/
+5. Windows còn code signing và physical-device/Windows Hello; historical harness
+   đã có trong CI nhưng chỉ được ghi nhận pass sau hosted runtime. Linux còn upgrade từ release lịch sử thật, representative distro/
    desktop matrix, signed package E2EE runtime và public release-channel verification.

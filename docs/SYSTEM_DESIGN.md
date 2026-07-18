@@ -30,14 +30,17 @@ hiểu browser profile compromise nằm ngoài native trust boundary.
 ## Bootstrap
 
 1. Khởi tạo Flutter binding.
-2. Injectable/GetIt đăng ký dependency và pre-resolve SharedPreferences.
-3. `AppConfig` đọc compile-time define; `.env` không được bundle làm asset.
+2. Trên Windows, nhập layout AppData từng dùng ở pre-release vào layout
+   canonical trước khi bất kỳ secure storage/SharedPreferences nào khởi tạo.
+   Hai vault khác nhau làm bootstrap fail closed; nguồn không bị xóa.
+3. Injectable/GetIt đăng ký dependency và pre-resolve SharedPreferences.
+4. `AppConfig` đọc compile-time define; `.env` không được bundle làm asset.
    Validator chỉ nhận HTTPS Supabase origin cùng `sb_publishable_*` hoặc legacy
    JWT có role `anon`; release bắt buộc recovery URL và plaintext flag tắt.
-4. Khởi tạo Supabase client.
-5. Cấp shared `AuthBloc`, `AccountsBloc`, `LocalAuthBloc`, `SettingsBloc`; tạo
+5. Khởi tạo Supabase client.
+6. Cấp shared `AuthBloc`, `AccountsBloc`, `LocalAuthBloc`, `SettingsBloc`; tạo
    `SyncBloc` dùng chính `AccountsBloc` đó.
-6. Router kết hợp Auth và local-lock state để chọn public route, startup, lock
+7. Router kết hợp Auth và local-lock state để chọn public route, startup, lock
    hoặc main navigation.
 
 Thiếu/sai URL hoặc key gây bootstrap error rõ ràng, không fallback tới server
@@ -79,6 +82,14 @@ router truyền selected index trở lại shell để refresh/back giữ đúng
 Nếu generation mới hỏng, reader fallback generation trước. Legacy index/record
 được dual-read và repair nhưng không bị xóa ngay, giúp rollback. `replaceAccounts`
 dùng cùng transaction copy-on-write và là primitive duy nhất cho cloud recovery.
+
+Trên Windows, `CompanyName=app.hyperz.authenticator` và
+`ProductName=hyper_authenticator` là storage identity canonical từ bản lịch sử
+`1.0.0+9`. Tên cửa sổ, installer và `FileDescription` vẫn là “Hyper
+Authenticator”. Startup migrator chỉ copy atomic file secure storage/preference
+đã allowlist từ layout pre-release `Hyper Authenticator`, giữ nguyên nguồn và ghi
+marker sau khi hoàn tất. Nếu cả hai layout chứa vault không byte-identical, app
+dừng trước DI để không tự chọn hoặc ghi đè dữ liệu.
 
 ## TOTP
 

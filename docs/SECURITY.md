@@ -31,6 +31,9 @@ không bao giờ được đặt trong Flutter `.env`, asset, build log hoặc b
 - Logout không xóa vault.
 - App lock fail closed và relock theo lifecycle.
 - Platform capability chặn plugin không hỗ trợ thay vì gọi rồi fallback không an toàn.
+- Windows đóng băng AppData identity tương thích `1.0.0+9`. Layout migrator chạy
+  trước DI, chỉ copy atomic allowlist, không theo symlink/không xóa nguồn và dừng
+  bootstrap nếu hai vault khác nhau.
 
 ### Encrypted sync
 
@@ -118,8 +121,10 @@ representation; equality vẫn hoạt động nhưng transition log không lộ 
   metadata upgrade/remove; historical-release vault migration vẫn là gate riêng.
 - Windows NSIS uninstaller chỉ xóa program directory/shortcut/registry metadata,
   không xóa AppData. Hosted-runner smoke kiểm tra sentinel còn nguyên qua metadata
-  upgrade và uninstall; guard từ chối workstation/self-hosted runner. Physical
-  device và historical-release vault migration vẫn là gate riêng.
+  upgrade và uninstall; guard từ chối workstation/self-hosted runner. Historical
+  harness cũng chỉ nhận runner tạm, build source pin `1.0.0+9`, ghi vault bằng
+  plugin 3.1.2 rồi yêu cầu current app đọc/publish COW v2 và cleanup. Physical
+  device/Windows Hello vẫn là gate riêng.
 - Authenticated Linux E2EE gate chỉ nhận service-role key trong parent operator
   shell từ file 0600 ngoài repository. Key dùng qua temp header 0600, không export
   sang Docker/Flutter và không lưu ở GitHub Actions. Container chỉ nhận credential

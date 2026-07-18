@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:hyper_authenticator/app.dart';
 import 'package:hyper_authenticator/core/config/app_config.dart';
 import 'package:hyper_authenticator/core/router/app_url_strategy.dart';
+import 'package:hyper_authenticator/core/storage/windows_storage_migrator.dart';
 import 'package:hyper_authenticator/core/theme/theme_provider.dart';
 import 'package:hyper_authenticator/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:hyper_authenticator/features/authenticator/presentation/bloc/accounts_bloc.dart';
@@ -19,6 +20,7 @@ Future<void> main() async {
   configureAppUrlStrategy();
 
   try {
+    await migrateWindowsStorageLayout();
     await di.configureDependencies();
     final appConfig = di.sl<AppConfig>();
     await Supabase.initialize(
@@ -48,22 +50,41 @@ Future<void> main() async {
         child: const MyApp(),
       ),
     );
+  } on WindowsStorageMigrationConflict catch (error) {
+    debugPrint('Không thể nhập kho dữ liệu Windows (${error.runtimeType}).');
+    runApp(const _StartupFailureApp(message: _windowsStorageConflictMessage));
+  } on WindowsStorageMigrationException catch (error) {
+    debugPrint('Không thể nhập kho dữ liệu Windows (${error.runtimeType}).');
+    runApp(const _StartupFailureApp(message: _windowsStorageFailureMessage));
   } catch (error) {
     debugPrint('Không thể khởi tạo ứng dụng (${error.runtimeType}).');
-    runApp(
-      const MaterialApp(
-        home: Scaffold(
-          body: Center(
-            child: Padding(
-              padding: EdgeInsets.all(24),
-              child: Text(
-                'Không thể khởi động ứng dụng. Hãy kiểm tra cấu hình Supabase.',
-                textAlign: TextAlign.center,
-              ),
-            ),
-          ),
+    runApp(const _StartupFailureApp(message: _genericStartupFailureMessage));
+  }
+}
+
+const _windowsStorageConflictMessage =
+    'Phát hiện xung đột khi nâng cấp kho dữ liệu Windows. Ứng dụng đã dừng để '
+    'tránh ghi đè dữ liệu. Hãy sao lưu AppData và liên hệ hỗ trợ.';
+const _windowsStorageFailureMessage =
+    'Không thể hoàn tất nâng cấp kho dữ liệu Windows. Ứng dụng đã dừng để tránh '
+    'ghi đè dữ liệu. Hãy sao lưu AppData rồi thử lại hoặc liên hệ hỗ trợ.';
+const _genericStartupFailureMessage =
+    'Không thể khởi động ứng dụng. Hãy kiểm tra cấu hình và thử lại.';
+
+class _StartupFailureApp extends StatelessWidget {
+  const _StartupFailureApp({required this.message});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) => MaterialApp(
+    home: Scaffold(
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Text(message, textAlign: TextAlign.center),
         ),
       ),
-    );
-  }
+    ),
+  );
 }

@@ -165,6 +165,17 @@ Windows CI chạy cùng integration test bằng guard riêng:
 
 Script chỉ nhận `CI=true`, `GITHUB_ACTIONS=true`, `RUNNER_OS=Windows` và
 `RUNNER_ENVIRONMENT=github-hosted`; không nới guard để chạy trên workstation.
+Historical upgrade gate chạy trước local-vault smoke để profile còn sạch:
+
+    ./scripts/agent/windows_historical_upgrade.ps1 `
+      -EnvFile C:\path\release-config.json `
+      -Confirmation '--allow-historical-vault-migration'
+
+Script archive commit pin `8e381debfe680ac906de391b4d9274e49acf9c06`
+(`1.0.0+9`), giữ lock `flutter_secure_storage_windows 3.1.2`, ghi fixture vào
+AppData thật của hosted runner rồi chạy current integration test. Guard từ chối
+workstation/self-hosted runner và cleanup cả hai layout trong `finally`.
+
 Sau configured release, `install_nsis.ps1` tải NSIS 3.12 đã pin checksum,
 `package_windows_installer.ps1` tạo unsigned installer/checksum và
 `windows_installer_smoke.ps1` kiểm tra install/launch/metadata-upgrade/uninstall

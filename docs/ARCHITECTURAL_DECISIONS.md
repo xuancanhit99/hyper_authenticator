@@ -28,6 +28,7 @@ Tài liệu này lập chỉ mục quyết định bền vững. Quyết định
 | A-020 | Source dùng Apache License 2.0 | Chấp nhận | [ADR-0006](adr/0006-apache-2-license.md) |
 | A-021 | Chỉ phân phối asset có provenance/license rõ ràng | Chấp nhận | [ADR-0007](adr/0007-require-provenance-for-distributed-assets.md) |
 | A-022 | Encrypted vault chỉ cho auth session còn active; client bulk revoke session khác | Chấp nhận | [ADR-0008](adr/0008-enforce-active-session-for-encrypted-vault.md) |
+| A-023 | Đóng băng Windows storage identity tương thích release lịch sử | Chấp nhận | [ADR-0009](adr/0009-freeze-windows-storage-identity.md) |
 
 Đã áp dụng không đồng nghĩa production-ready; defect/risk nằm trong `PROJECT_STATUS.md`.
 

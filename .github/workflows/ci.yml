@@ -176,6 +176,8 @@ jobs:
       PASSWORD_RECOVERY_URL: ${{ vars.PASSWORD_RECOVERY_URL }}
     steps:
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
@@ -196,6 +198,12 @@ jobs:
           [IO.File]::WriteAllText($configPath, $config)
           dart run tool/agent/check_release_config.dart $configPath
           "RELEASE_CONFIG_PATH=$configPath" >> $env:GITHUB_ENV
+      - name: Xác minh nâng cấp vault thật từ 1.0.0+9
+        shell: pwsh
+        run: >-
+          ./scripts/agent/windows_historical_upgrade.ps1
+          -EnvFile $env:RELEASE_CONFIG_PATH
+          -Confirmation '--allow-historical-vault-migration'
       - name: Chạy local-vault smoke trên Windows runner tạm
         shell: pwsh
         run: >-

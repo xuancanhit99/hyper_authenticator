@@ -119,7 +119,8 @@ Windows CI chỉ tạo artifact runtime khi repository có ba Actions variables 
 - `PASSWORD_RECOVERY_URL`.
 
 Workflow pin `windows-2025`, validate config, khóa plaintext sync và chạy
-`windows_integration.ps1` với explicit vault-reset opt-in trên hosted runner tạm.
+historical `1.0.0+9` vault upgrade trước `windows_integration.ps1`; cả hai có
+explicit mutation opt-in và chỉ nhận hosted runner tạm.
 Sau configured x64 release, workflow tạo hai artifact theo commit và giữ 14 ngày:
 
 - bundle cùng `SHA256SUMS.txt`;
@@ -131,14 +132,16 @@ NSIS tool ZIP được tải từ upstream chính thức, pin SHA-256 và xác m
 `%LOCALAPPDATA%\Programs\Hyper Authenticator`; uninstaller chỉ xóa program
 directory, shortcut và uninstall metadata, không xóa local vault dưới AppData.
 CI đã pass install, launch release, nâng metadata baseline lên `1.1.0+10`, launch
-lại, uninstall và data-retention sentinel. Baseline dùng cùng tested bundle với
-version thấp hơn nên không phải bằng chứng migration từ release lịch sử thật.
+lại, uninstall và data-retention sentinel. Package baseline vẫn dùng cùng tested
+bundle với version thấp hơn. Gate storage tách biệt archive source pin
+`1.0.0+9`, ghi legacy `*.secure` bằng plugin 3.1.2, rồi yêu cầu current app đọc đủ
+field và publish COW v2; chỉ cập nhật evidence thành pass sau hosted run xanh.
 
 Artifact không chứa file config nguồn hoặc private server credential; public
 runtime values vẫn được compile vào client theo thiết kế. Installer hiện **unsigned**
 và chỉ là release candidate. Gate trước phân phối công khai còn Windows code
 signing certificate, xác minh chữ ký sau download, physical-device/Windows Hello,
-Auth HTTPS và historical-release upgrade. Scanner bị ẩn theo thiết kế.
+và Auth HTTPS. Scanner bị ẩn theo thiết kế.
 
 `local_auth_windows` 2.0.1 còn phụ thuộc `/await` experimental. Project hiện opt in
 warning-suppression mà MSVC 14.51 yêu cầu để giữ native CI chạy được; đây không phải

@@ -36,7 +36,7 @@ các credential gate tương ứng pass.
 |---|---|
 | `flutter doctor -v` | Pass, không có lỗi toolchain |
 | `flutter analyze` | Pass, 0 diagnostic |
-| `flutter test` | 98 test pass |
+| `flutter test` | 105 test pass |
 | Platform configuration gate | Pass network/backup/signing/Keychain/ID |
 | Release config validator | Pass với `.env` public hiện tại, không in key |
 | Gitleaks full history | Pass sau exact allowlist RFC 6238 test vector |
@@ -60,6 +60,8 @@ verification phải inject `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY` và
   digits 6–8 và period dương.
 - Local vault dùng versioned copy-on-write generation, commit marker, rollback
   generation và compaction giữ hai generation hợp lệ gần nhất.
+- Windows khóa AppData identity tương thích `1.0.0+9`; startup migrator nhập
+  atomic layout pre-release, giữ source và fail closed khi hai vault khác nhau.
 - Logout không xóa vault; app lock fail closed và relock khi rời foreground.
 - Encrypted sync chỉ được đăng ký trong runtime DI; plaintext compatibility
   bridge còn source cho migration/test nhưng không được inject và release luôn khóa.
@@ -137,9 +139,10 @@ Capability là hành vi source hiện tại, không thay thế device test và s
    trên thiết bị thật vẫn chưa được chứng minh. Mobile harness chủ động từ chối
    target thật/macOS vì nó reset toàn bộ local vault; Windows harness chỉ nhận
    hosted runner tạm.
-7. Windows đã có unsigned NSIS candidate và hosted-runner package transition,
-   nhưng còn code signing, physical-device/Windows Hello và upgrade từ release
-   lịch sử thật. Linux đã có `.deb` candidate, clean-container package transition
+7. Windows đã có unsigned NSIS candidate và hosted-runner package transition;
+   historical source/plugin upgrade harness đã được triển khai nhưng chưa có run
+   xanh trên commit hiện tại. Còn code signing và physical-device/Windows Hello.
+   Linux đã có `.deb` candidate, clean-container package transition
    và authenticated E2EE client runtime; còn representative desktop/distro matrix,
    upgrade từ release lịch sử thật, release-channel signing và maintainer/support
    metadata trước phân phối công khai. E2EE evidence hiện là debug arm64 container,
@@ -155,12 +158,13 @@ Capability là hành vi source hiện tại, không thay thế device test và s
   analyze/test và compile Android, iOS simulator, macOS unsigned, Web, Windows,
   Linux. Linux job build configured x64, chạy private-keyring integration, tạo `.deb`,
   smoke package transition trong Ubuntu sạch rồi lưu checksum + artifact 14 ngày;
-  Windows chạy local-vault integration, build configured bundle, tạo NSIS candidate,
+  Windows chạy historical `1.0.0+9` vault upgrade và local-vault integration,
+  build configured bundle, tạo NSIS candidate,
   smoke install/launch/metadata-upgrade/uninstall giữ AppData và lưu hai artifact
   theo commit 14 ngày. Các gate này không thay signed runtime hoặc
   representative-device/distro matrix.
 - `.github/dependabot.yml` kiểm tra Pub và GitHub Actions hằng tuần.
-- `scripts/agent/check.sh full` là quality gate canonical; baseline hiện có 98 test,
+- `scripts/agent/check.sh full` là quality gate canonical; baseline hiện có 105 test,
   analyze/format cả device integration source nhưng không tự boot virtual device.
 - `scripts/supabase/` giữ remote contract, backup, health, restore và off-host harness.
 - `scripts/agent/linux_e2ee_operator.sh` giữ service-role key ngoài repository và

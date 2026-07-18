@@ -148,8 +148,8 @@ void main() {
   );
   requireText(
     'windows/runner/Runner.rc',
-    'VALUE "ProductName", "Hyper Authenticator"',
-    'Windows product metadata',
+    'VALUE "ProductName", "hyper_authenticator"',
+    'Windows ProductName tương thích đường dẫn vault lịch sử',
   );
   requireText(
     'windows/CMakeLists.txt',
@@ -165,6 +165,11 @@ void main() {
     '.github/workflows/ci.yml',
     'scripts/agent/windows_integration.ps1',
     'Windows local-vault runtime gate',
+  );
+  requireText(
+    '.github/workflows/ci.yml',
+    'scripts/agent/windows_historical_upgrade.ps1',
+    'Windows historical vault upgrade gate',
   );
   requireText(
     '.github/workflows/ci.yml',
@@ -185,6 +190,16 @@ void main() {
     'scripts/agent/windows_installer_smoke.ps1',
     "RUNNER_ENVIRONMENT -ne 'github-hosted'",
     'Windows installer hosted-runner guard',
+  );
+  requireText(
+    'scripts/agent/windows_historical_upgrade.ps1',
+    "RUNNER_ENVIRONMENT -ne 'github-hosted'",
+    'Windows historical upgrade hosted-runner guard',
+  );
+  requireText(
+    'scripts/agent/windows_historical_upgrade.ps1',
+    '8e381debfe680ac906de391b4d9274e49acf9c06',
+    'Windows historical source pin',
   );
   requireText(
     'scripts/agent/install_nsis.ps1',
