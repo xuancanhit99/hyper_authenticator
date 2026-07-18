@@ -242,8 +242,15 @@ Runbook: `docs/operations/SUPABASE_PRODUCTION_OPERATIONS.md`.
 
 - Daily local retention: 7.
 - Encrypted off-host retention: 14.
-- Restore rehearsal dùng database tạm, không overwrite production.
+- Scheduled restore drill trigger hằng ngày nhưng chỉ restore tối đa mỗi 7 ngày;
+  failure được retry ngày sau. Health fail nếu evidence quá 9 ngày.
+- Restore rehearsal dùng database tạm, không overwrite production, dùng chung lock
+  với backup và chỉ ghi atomic evidence sau full security probe pass.
 - Signing key, age identity và backup checksum phải nằm ngoài repo.
+
+Khi rollout automation, phải chạy một drill thật trước khi cài health script mới;
+không tạo evidence thủ công để làm health xanh. Disable timer + khôi phục script
+health/rehearsal là rollback code path; backup/data/evidence được giữ để audit.
 
 ## Gate còn phụ thuộc owner/hệ thống ngoài
 

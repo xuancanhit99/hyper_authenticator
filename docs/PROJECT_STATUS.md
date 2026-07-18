@@ -112,6 +112,10 @@ verification phải inject `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY` và
   có SHA-256, permission 0700/0600 và validation catalog/tar.
 - Full restore rehearsal đã pass vào database tạm rồi tự động drop; xác minh
   `auth.users`, encrypted table và `FORCE RLS`.
+- Restore drill timer đã enable: trigger hằng ngày, thực thi tối đa mỗi 7 ngày và
+  retry ngày sau khi fail. Lượt production 19-07-2026 restore backup
+  `supabase-20260718T100222Z` pass; evidence 0600/checksum khớp, health kiểm tra
+  freshness 9 ngày và probe xác nhận không còn database tạm.
 - Encrypted off-host copy qua `age` chạy bằng macOS LaunchAgent, giữ 14 bản;
   stream không tạo plaintext archive trên máy nhận.
 
@@ -193,6 +197,8 @@ Capability là hành vi source hiện tại, không thay thế device test và s
 - `scripts/agent/check.sh full` là quality gate canonical; baseline hiện có 106 test,
   analyze/format cả device integration source nhưng không tự boot virtual device.
 - `scripts/supabase/` giữ remote contract, backup, health, restore và off-host harness.
+- Scheduled restore contract nằm trong full gate; production systemd timer/health
+  đã pass với atomic evidence và shared backup lock.
 - `scripts/agent/linux_e2ee_operator.sh` giữ service-role key ngoài repository và
   ngoài client process, tạo isolated user, chạy Flutter E2EE trong Ubuntu/private
   keyring rồi xóa user và xác minh cleanup. Đây là protected operator gate, không

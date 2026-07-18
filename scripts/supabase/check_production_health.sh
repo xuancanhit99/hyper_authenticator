@@ -8,6 +8,9 @@ RECOVERY_ORIGIN=${RECOVERY_ORIGIN:-}
 MAX_DISK_PERCENT=${MAX_DISK_PERCENT:-85}
 MIN_AVAILABLE_MEMORY_KIB=${MIN_AVAILABLE_MEMORY_KIB:-1048576}
 MAX_BACKUP_AGE_SECONDS=${MAX_BACKUP_AGE_SECONDS:-108000}
+RESTORE_DRILL_STATE=${RESTORE_DRILL_STATE:-$BACKUP_ROOT/.restore-drill/last-success.env}
+MAX_RESTORE_DRILL_AGE_SECONDS=${MAX_RESTORE_DRILL_AGE_SECONDS:-777600}
+SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
 
 required_containers=(
   supabase-db
@@ -104,5 +107,8 @@ latest_epoch=${latest_epoch%.*}
 backup_age=$(( $(date +%s) - latest_epoch ))
 ((backup_age <= MAX_BACKUP_AGE_SECONDS))
 
+"$SCRIPT_DIR/check_restore_drill_state.sh" \
+  "$RESTORE_DRILL_STATE" "$MAX_RESTORE_DRILL_AGE_SECONDS" >/dev/null
+
 printf '%s\n' \
-  'Supabase production health pass: containers, capacity, active-session RLS, HTTPS và backup freshness.'
+  'Supabase production health pass: containers, capacity, active-session RLS, HTTPS, backup và restore-drill freshness.'

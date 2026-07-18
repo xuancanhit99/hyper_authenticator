@@ -68,7 +68,8 @@ không bao giờ được đặt trong Flutter `.env`, asset, build log hoặc b
   `auth.uid()` và active `session_id`.
 - Public HTTPS; Studio có Basic Auth; database/Kong/Supavisor không expose trực tiếp.
 - Secret/key server đã rotate trong đợt rebuild; JWT mới dùng ES256/JWKS.
-- Health timer 5 phút; daily verified backup; encrypted off-host copy; full restore rehearsal.
+- Health timer 5 phút; daily verified backup; encrypted off-host copy; scheduled
+  restore drill với freshness evidence và full security probe.
 - SSH chỉ public key, log level INFO; journal có retention/size limit.
 
 ### Build và supply chain
@@ -141,6 +142,10 @@ representation; equality vẫn hoạt động nhưng transition log không lộ 
   sang Docker/Flutter và không lưu ở GitHub Actions. Container chỉ nhận credential
   của isolated `.invalid` user, chạy trong XDG/private-keyring sandbox; operator
   luôn xóa user, dựa vào FK CASCADE để xóa vault row và probe admin 404.
+- Scheduled restore runner chỉ chọn backup basename canonical, từ chối backup quá
+  hạn/symlink, khóa cùng daily backup và restore vào database tạm có prefix cố định.
+  Evidence mode 0600 chỉ được atomic replace sau pass; failure giữ evidence cũ để
+  health gate phát hiện. Systemd giới hạn timeout, CPU/IO priority và writable path.
 
 ## Logging và fixture
 

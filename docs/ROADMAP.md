@@ -36,9 +36,12 @@ tag CI xanh, checksum tải lại khớp và release note nêu signing/SMTP/plat
 - [ ] Đưa encrypted off-host backup lên backup host/object storage độc lập Mac cá nhân.
 - [ ] Alerting + dashboard/SLO cho Auth latency, container health, disk, backup age.
 - [ ] Staging upgrade rehearsal định kỳ theo official Supabase pin.
+- [x] Scheduled restore drill với retry, shared backup lock, atomic evidence và
+  health freshness gate.
 - [x] Low-concurrency public Auth load có budget và acceptance threshold.
 - [ ] Long-duration soak và production-scale workload có budget riêng.
-- [ ] Incident response, restore drill lịch định kỳ và release rollback drill.
+- [ ] Incident response exercise và release rollback drill; periodic database
+  restore đã tự động hóa riêng.
 
 ## Ưu tiên P1 — Product/security
 

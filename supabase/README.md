@@ -9,7 +9,8 @@ Secret, URL thật, database volume và backup thật không được commit.
 - `docker-compose.public-proxy.yml`: loopback/public proxy network boundary.
 - `docker-compose.recovery-web.yml`: Recovery Web template URL injection.
 - `migrations/`: plaintext compatibility và encrypted snapshot/RPC schema.
-- `systemd/`: daily backup và 5-minute health service/timer templates.
+- `systemd/`: daily backup, scheduled restore drill và 5-minute health
+  service/timer templates.
 - `launchd/`: encrypted off-host pull LaunchAgent template.
 - `../scripts/supabase/`: migration, remote contract, backup, health và restore harness.
 
@@ -58,6 +59,8 @@ Các script cần service-role key để tạo/dọn isolated user. Không copy 
 - `backup_production.sh`: DB/globals/Storage/config + checksum/catalog/tar verify.
 - `check_production_health.sh`: container/resource/RLS/public endpoint/backup age.
 - `rehearse_backup_restore.sh`: full restore vào DB tạm, probe schema/FORCE RLS, drop.
+- `run_scheduled_restore_drill.sh`: due/retry orchestration, shared backup lock và
+  atomic 0600 evidence; health kiểm tra freshness qua `check_restore_drill_state.sh`.
 - `pull_encrypted_backup.sh`: SSH stream → `age`, không tạo plaintext local archive.
 
 Chi tiết deploy/service/retention/incident:
@@ -69,8 +72,9 @@ Chi tiết deploy/service/retention/incident:
 - Encrypted remote contract 20/20, gồm revoke session cũ và active-session RLS/RPC.
 - Recovery contract 8/8.
 - Studio HTTPS + Basic Auth proxy contract pass.
-- Daily backup service, restore rehearsal và encrypted off-host LaunchAgent pass.
-- Health/backup timers active.
+- Daily backup service, scheduled restore rehearsal và encrypted off-host
+  LaunchAgent pass.
+- Health/backup/restore-drill timers active.
 - Restore rehearsal xác minh FORCE RLS và active-session guard.
 
 ## Compatibility và rollback

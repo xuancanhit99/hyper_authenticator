@@ -166,6 +166,12 @@ Xem `docs/operations/SUPABASE_PRODUCTION_OPERATIONS.md`. Backup production gồm
 database full dump, globals, quiesced Storage và config; mỗi bản phải checksum và
 restore rehearsal được. Service-role/server env chỉ ở operator host.
 
+Restore drill production được trigger hằng ngày, chỉ chạy khi evidence đã đủ 7
+ngày và retry ngày sau nếu fail. Rehearsal dùng database tạm, dùng chung backup
+lock và chỉ ghi evidence 0600 sau checksum/catalog/schema/FORCE RLS/session-guard
+probe pass. Health gate yêu cầu evidence chưa quá 9 ngày. Baseline 19-07-2026 pass
+và cleanup không còn database rehearsal.
+
 ## Khoảng trống đã biết
 
 - SMTP mailbox delivery/expired-token E2E chưa có.

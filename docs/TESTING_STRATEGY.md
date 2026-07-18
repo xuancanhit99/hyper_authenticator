@@ -63,6 +63,8 @@ Production/staging test dùng isolated user và tự cleanup:
 - Studio network/upstream/Basic Auth contract;
 - backup checksum/catalog/tar validation;
 - full restore vào database tạm + schema/FORCE RLS probe;
+- scheduled restore contract không Docker: due/skip, failure giữ evidence cũ,
+  backup quá hạn, evidence mode/schema và systemd sandbox/timer;
 - public Auth health load budget: 100 request, concurrency 10, 100% HTTP 200,
   p95 tối đa 1 giây và single-request tối đa 2 giây.
 
@@ -117,6 +119,11 @@ là bằng chứng tách biệt.
 
 Remote script cần service-role key nên chỉ chạy trong protected operator context,
 không trong untrusted fork CI.
+
+Production scheduled drill ngày 19-07-2026 restore backup
+`supabase-20260718T100222Z`, pass checksum/catalog/full restore cùng schema/FORCE
+RLS/active-session guard. Evidence 0600 khớp manifest; probe sau drill xác nhận 0
+database `ha_restore_rehearsal_*`. Health và timer systemd đều pass.
 
 ## Build matrix
 
@@ -190,6 +197,8 @@ Regression tối thiểu của harness:
   service-role key không được lưu ở GitHub Actions secret hoặc truyền vào Flutter.
 - `scripts/supabase/test_auth_load_budget.sh` chỉ dùng public publishable key,
   không tạo user/payload và fail khi HTTP hoặc latency vượt budget.
+- `test_scheduled_restore_drill_contract.sh` dùng backup/rehearsal fixture tạm,
+  không đọc Docker hoặc backup thật; full gate chạy contract này trên mọi platform.
 - `windows_integration.ps1` và `windows_installer_smoke.ps1` chỉ nhận GitHub-hosted
   Windows runner tạm cùng explicit mutation opt-in; không chạy trên máy người dùng.
 - `windows_historical_upgrade.ps1` pin source `1.0.0+9` cùng storage plugin 3.1.2,

@@ -3,6 +3,16 @@ set -euo pipefail
 
 BACKUP_DIR=${1:?Usage: rehearse_backup_restore.sh BACKUP_DIR}
 DB_CONTAINER=${DB_CONTAINER:-supabase-db}
+RESTORE_LOCK_FILE=${RESTORE_LOCK_FILE:-$(dirname "$BACKUP_DIR")/.backup.lock}
+
+umask 077
+
+command -v flock >/dev/null 2>&1
+exec 9>"$RESTORE_LOCK_FILE"
+if ! flock -n 9; then
+  printf '%s\n' 'Backup hoặc restore drill khác đang chạy.' >&2
+  exit 75
+fi
 
 [[ -d "$BACKUP_DIR" ]]
 [[ -f "$BACKUP_DIR/database-full.dump" ]]

@@ -54,6 +54,11 @@ run_release_harness() {
   scripts/agent/test_github_preview_release_contract.sh
 }
 
+run_operations_harness() {
+  printf '\n%s\n' "== Supabase operations harness gate =="
+  scripts/supabase/test_scheduled_restore_drill_contract.sh
+}
+
 run_quick() {
   local status=0
   run_docs || status=1
@@ -71,6 +76,7 @@ run_full() {
   run_quick || status=1
   run_platform || status=1
   run_release_harness || status=1
+  run_operations_harness || status=1
   printf '\n%s\n' "== Flutter test gate =="
   flutter test || status=1
   printf '\n%s\n' "== Supabase encrypted migration gate =="

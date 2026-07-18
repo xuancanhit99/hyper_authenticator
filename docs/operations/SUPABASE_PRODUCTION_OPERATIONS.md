@@ -73,6 +73,54 @@ sau khi xác nhận không có session cần giữ.
 Baseline 18-07-2026: full restore rehearsal pass với scheduled backup đã checksum,
 gồm schema/FORCE RLS/active-session guard.
 
+## Scheduled restore drill
+
+Scripts:
+
+- `scripts/supabase/run_scheduled_restore_drill.sh`;
+- `scripts/supabase/check_restore_drill_state.sh`;
+- `scripts/supabase/rehearse_backup_restore.sh`.
+
+Systemd timer được trigger hằng ngày lúc 04:30 UTC với randomized delay 15 phút,
+nhưng wrapper chỉ restore khi evidence cuối đã ít nhất 7 ngày. Cách này cho phép
+lượt fail tự retry vào ngày sau thay vì chờ thêm một tuần. Backup mới nhất phải có
+tên canonical, manifest thường, không quá 36 giờ và pass checksum/catalog/full
+restore. Rehearsal cùng daily backup dùng chung `flock`; hai job không mutate
+cluster đồng thời.
+
+Evidence chỉ được atomic replace sau toàn bộ rehearsal pass:
+
+    /home/xuancanhit/backups/hyper-authenticator/scheduled/.restore-drill/last-success.env
+
+Directory có mode 0700, file 0600. Evidence chỉ chứa format, thời điểm, basename
+backup và SHA-256 của manifest; không chứa database data hoặc credential. Health
+gate chạy mỗi 5 phút yêu cầu evidence đúng schema, không ở tương lai và chưa quá
+9 ngày.
+
+Unit source:
+
+- `supabase/systemd/hyper-auth-supabase-restore-drill.service`;
+- `supabase/systemd/hyper-auth-supabase-restore-drill.timer`.
+
+Service có timeout 2 giờ, CPU/IO priority thấp và filesystem sandbox. Triển khai
+theo thứ tự: cài checker/runner/rehearsal, chạy một drill thật, sau đó mới cài
+health script mới và enable timer. Thứ tự ngược lại sẽ tạo health failure đúng
+thiết kế do chưa có evidence.
+
+Kiểm tra:
+
+    systemctl status hyper-auth-supabase-restore-drill.timer
+    systemctl show hyper-auth-supabase-restore-drill.service -p Result
+    journalctl -u hyper-auth-supabase-restore-drill.service --since today
+
+Rollback automation bằng cách disable timer và khôi phục health/rehearsal script
+trước đó. Không xóa backup hoặc evidence khi rollback cho tới khi xác minh xong.
+
+Baseline production 19-07-2026: scheduled runner restore backup
+`supabase-20260718T100222Z` pass checksum/catalog/full restore/schema/FORCE RLS/
+active-session guard; database tạm được drop, evidence/manifest checksum khớp,
+timer và health service đều `success`.
+
 ## Encrypted off-host copy
 
 Script: `scripts/supabase/pull_encrypted_backup.sh`.
@@ -152,4 +200,3 @@ không mix database mới với service cũ nếu upstream không bảo đảm c
 - Chưa có external alert delivery.
 - Chưa có PITR/continuous WAL archive.
 - Off-host copy chưa ở dedicated backup system.
-- Chưa có scheduled automated restore drill; hiện rehearsal chạy thủ công sau thay đổi.
