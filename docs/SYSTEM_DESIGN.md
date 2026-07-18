@@ -93,7 +93,12 @@ dùng cùng transaction copy-on-write và là primitive duy nhất cho cloud rec
 
 Local-auth preference nằm trong SharedPreferences; OS challenge do `local_auth`.
 Khi lock đã bật, plugin error là locked state. App relock khi rời foreground.
-Logout chỉ kết thúc Supabase session, giữ local vault và lock preference.
+Logout chỉ kết thúc Supabase session hiện tại, giữ local vault và lock preference.
+
+Settings có `SessionSecurityBloc` riêng để revoke mọi Supabase session khác mà
+không đưa `AuthBloc` ra khỏi trạng thái authenticated. Action này giữ session,
+local vault và DEK của thiết bị hiện tại. Với thiết bị nghi bị lộ, UI hướng người
+dùng xoay vault key trước rồi revoke các session khác.
 
 ## Encrypted sync
 
@@ -153,8 +158,11 @@ snapshot, nhưng auth session và backup cũ không tự bị revoke.
 ## Backend
 
 - Một row `encrypted_vault_snapshots` cho mỗi `auth.users.id`.
-- Client authenticated chỉ có SELECT row của chính mình qua `FORCE RLS`.
-- Write chỉ qua `SECURITY DEFINER` RPC dùng `auth.uid()`.
+- Client authenticated chỉ có SELECT row của chính mình qua `FORCE RLS` khi JWT
+  `session_id` vẫn tồn tại cho cùng `auth.uid()` trong `auth.sessions`.
+- Write chỉ qua `SECURITY DEFINER` RPC dùng cùng owner + active-session guard.
+- `SignOutScope.others` xóa các session khác; RLS trả 0 row và RPC trả
+  `session_revoked` cho JWT cũ ngay cả trước khi JWT hết hạn.
 - Expected revision sai trả SQLSTATE `PT409`/`revision_conflict`.
 - `synced_accounts` plaintext còn là compatibility schema, không nằm trong runtime DI.
 
@@ -181,11 +189,14 @@ Web chỉ có local TOTP + camera QR.
 - Local commit failure: generation cũ vẫn active.
 - Publish conflict/network failure: cloud snapshot cũ vẫn tồn tại.
 - Session đổi giữa operation: request bị từ chối trước network/write kế tiếp.
+- Session đã revoke: RLS không trả snapshot; RPC fail `session_revoked`; local
+  vault không bị xóa và session hiện tại không bị sign out.
 - Secure key write không verify được: setup/recovery trả failure.
 
 ## Khoảng trống đã biết
 
-- E2EE v1 đã có recovery-key re-wrap và DEK rotation; chưa có individual device/
-  auth-session revocation, tombstone/history hoặc Web support.
+- E2EE v1 đã có recovery-key re-wrap, DEK rotation và bulk revoke mọi session
+  khác; chưa có device registry/revoke riêng từng thiết bị, device-specific key
+  wrap, tombstone/history hoặc Web support.
 - Device-level camera/biometric/secure-storage integration coverage chưa đầy đủ.
 - Alerting backend chưa có external notification channel.

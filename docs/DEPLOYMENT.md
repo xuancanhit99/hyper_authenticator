@@ -11,7 +11,8 @@ runtime config, schema compatibility, test evidence, checksum và signing proven
 - Version hiện tại: `1.1.0+10`.
 - Flutter: 3.44.6 stable.
 - Public config qua `--dart-define-from-file=<protected-file>`.
-- Supabase migration E2EE đã deploy và remote contract pass.
+- Supabase migration E2EE + active-session guard đã deploy và remote contract
+  20/20 pass.
 - `ALLOW_INSECURE_PLAINTEXT_SYNC=false` bắt buộc.
 - Service-role/SSH/SMTP/database credential không được đưa vào client define file.
 
@@ -138,8 +139,10 @@ manual-entry/E2EE smoke. Local authentication/scanner bị ẩn theo thiết k�
 
 1. Full verified backup và off-host encrypted copy.
 2. Diff official upstream pin/compose/env; staging upgrade trước.
-3. Apply additive migration.
-4. Chạy official smoke + project remote contracts.
+3. Apply additive encrypted snapshot migration rồi active-session guard migration
+   theo thứ tự filename, bằng role owner `supabase_admin`.
+4. Chạy official smoke + project remote contracts; phải chứng minh JWT của session
+   vừa revoke bị RLS/RPC chặn nhưng session hiện tại vẫn hoạt động.
 5. Deploy client chỉ ghi encrypted snapshot.
 6. Theo dõi health/journal/revision conflict; không xóa compatibility table.
 7. Rollback client bằng cách tắt sync capability/release, giữ local vault và

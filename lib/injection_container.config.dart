@@ -36,6 +36,8 @@ import 'features/authenticator/domain/usecases/get_accounts.dart' as _i572;
 import 'features/authenticator/domain/usecases/update_account.dart' as _i827;
 import 'features/authenticator/presentation/bloc/accounts_bloc.dart' as _i467;
 import 'features/authenticator/presentation/bloc/local_auth_bloc.dart' as _i534;
+import 'features/settings/presentation/bloc/session_security_bloc.dart'
+    as _i469;
 import 'features/settings/presentation/bloc/settings_bloc.dart' as _i421;
 import 'features/sync/data/datasources/encrypted_vault_remote_data_source.dart'
     as _i667;
@@ -147,6 +149,9 @@ extension GetItInjectableX on _i174.GetIt {
       () => _i111.AuthRepositoryImpl(
         remoteDataSource: gh<_i767.AuthRemoteDataSource>(),
       ),
+    );
+    gh.factory<_i469.SessionSecurityBloc>(
+      () => _i469.SessionSecurityBloc(gh<_i1015.AuthRepository>()),
     );
     gh.lazySingleton<_i564.EncryptedVaultSyncUseCase>(
       () => _i564.EncryptedVaultSyncUseCase(

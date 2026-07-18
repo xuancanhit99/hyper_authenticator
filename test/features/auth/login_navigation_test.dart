@@ -156,6 +156,10 @@ class _SuccessfulAuthRepository implements AuthRepository {
       const Right(null);
 
   @override
+  Future<Either<Failure, void>> revokeOtherSessions() async =>
+      const Right(null);
+
+  @override
   Future<Either<Failure, void>> signOut() async => const Right(null);
 
   @override

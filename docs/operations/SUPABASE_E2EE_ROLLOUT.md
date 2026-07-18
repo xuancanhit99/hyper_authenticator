@@ -11,12 +11,15 @@ public URL, key, token, user ID hoặc nội dung backup trong repository.
 - owner-only RLS và `FORCE ROW LEVEL SECURITY`;
 - RPC `public.publish_encrypted_vault_snapshot` chạy atomic theo
   `expected_revision`;
+- migration active-session guard buộc RLS/RPC đối chiếu JWT `session_id` với
+  `auth.sessions` và optional `not_after`;
+- client có bulk revoke mọi session khác, giữ session/local vault/DEK hiện tại;
 - revision conflict dùng SQLSTATE `PT409`, được PostgREST trả về HTTP 409;
 - table compatibility `public.synced_accounts` không bị drop hoặc sửa.
 
-Client release vẫn khóa cloud sync. Rollout này chỉ đưa server contract vào trạng
-thái sẵn sàng để tiếp tục làm recovery-key onboarding, orchestration và conflict
-UX; nó không biến tính năng E2EE sync thành tính năng đã hoàn tất.
+Native client đã bật encrypted sync cùng onboarding/recovery/conflict/key-rotation
+flow. Plaintext compatibility bridge và Web cloud sync vẫn bị khóa; rollback không
+được bật lại plaintext write.
 
 ## Backup trước thay đổi
 
@@ -35,13 +38,16 @@ tree, ngoài repository:
 
 Migration được rehearsal bằng PostgreSQL ephemeral trước khi áp dụng. Sau deploy,
 `scripts/supabase/test_remote_encrypted_vault_contract.sh` chạy qua public HTTPS
-endpoint với hai isolated user và **11 kiểm tra pass**:
+endpoint với hai isolated user, hai session cho User A và **20 kiểm tra pass**:
 
 - anonymous không đọc được encrypted table;
 - User A publish revision 1 và chỉ nhận encrypted envelope shape;
 - User B không đọc row của User A;
 - stale revision trả `revision_conflict`;
 - đúng expected revision publish được revision 2;
+- session cũ đọc được trước revoke, rồi bị RLS/RPC chặn ngay sau
+  `scope=others` dù JWT chưa hết hạn;
+- session hiện tại vẫn đọc/publish được sau revoke;
 - User B không thể dùng RPC để update row User A.
 
 Cleanup sau suite xác nhận `encrypted_vault_snapshots` còn 0 test row và không còn
@@ -50,8 +56,12 @@ không in session/response và không dùng key đó trong Flutter client.
 
 ## Rollback
 
-Vì migration additive và client chưa enable E2EE sync, rollback ưu tiên là dừng
-client rollout, giữ table/RPC để điều tra. Nếu bắt buộc gỡ schema:
+Rollback active-session guard ưu tiên giữ schema/data và revert riêng policy/RPC
+về định nghĩa trong migration `20260718190000`; hệ quả là JWT của session vừa
+revoke có thể truy cập vault tới `exp`. Chỉ drop helper sau khi policy/RPC không
+còn dependency. Không cần và không được xóa encrypted row khi rollback control này.
+
+Nếu bắt buộc gỡ toàn bộ encrypted schema:
 
 1. xác nhận không có client đang ghi và backup mới nhất đã verify;
 2. revoke execute RPC khỏi `authenticated`;
@@ -66,5 +76,5 @@ Không rollback bằng cách bật lại plaintext sync cho release build.
 
 - Recovery Web, TLS, Auth template, redirect allow-list và local
   `PASSWORD_RECOVERY_URL` đã deploy; còn SMTP mailbox/expired-token E2E.
-- Hoàn thiện recovery-key onboarding/export/import và E2EE orchestration.
-- Thêm monitoring, backup off-host được mã hóa và restore rehearsal định kỳ.
+- Device registry/revoke riêng từng thiết bị và device-specific key wrap.
+- External alert channel, dedicated off-host backup và scheduled restore drill.

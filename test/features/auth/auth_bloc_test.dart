@@ -144,6 +144,10 @@ class _FakeAuthRepository implements AuthRepository {
       const Right(null);
 
   @override
+  Future<Either<Failure, void>> revokeOtherSessions() async =>
+      const Right(null);
+
+  @override
   Future<Either<Failure, void>> signOut() async {
     _currentUser = null;
     return const Right(null);

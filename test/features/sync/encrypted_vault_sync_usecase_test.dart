@@ -873,6 +873,10 @@ class _MemoryAuthRepository implements AuthRepository {
       throw UnimplementedError();
 
   @override
+  Future<Either<Failure, void>> revokeOtherSessions() async =>
+      throw UnimplementedError();
+
+  @override
   Future<Either<Failure, void>> signOut() async => throw UnimplementedError();
 
   @override

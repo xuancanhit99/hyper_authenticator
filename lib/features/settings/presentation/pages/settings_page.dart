@@ -2,13 +2,13 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:go_router/go_router.dart';
 import 'package:hyper_authenticator/core/platform/platform_capabilities.dart';
-import 'package:hyper_authenticator/core/router/app_router.dart';
 import 'package:hyper_authenticator/features/auth/domain/entities/user_entity.dart';
 import 'package:hyper_authenticator/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:hyper_authenticator/features/settings/presentation/bloc/settings_bloc.dart';
+import 'package:hyper_authenticator/features/settings/presentation/bloc/session_security_bloc.dart';
 import 'package:hyper_authenticator/features/settings/presentation/widgets/encrypted_sync_unavailable_tile.dart';
+import 'package:hyper_authenticator/features/settings/presentation/widgets/authentication_session_tile.dart';
 import 'package:hyper_authenticator/features/settings/presentation/widgets/recovery_import_dialog.dart';
 import 'package:hyper_authenticator/features/sync/presentation/bloc/sync_bloc.dart';
 import 'package:hyper_authenticator/injection_container.dart';
@@ -23,6 +23,7 @@ class SettingsPage extends StatelessWidget {
       providers: [
         BlocProvider(create: (_) => sl<SettingsBloc>()..add(LoadSettings())),
         BlocProvider(create: (_) => sl<SyncBloc>()),
+        BlocProvider(create: (_) => sl<SessionSecurityBloc>()),
       ],
       child: const _SettingsView(),
     );
@@ -39,53 +40,74 @@ class _SettingsView extends StatelessWidget {
     final encryptedSyncSupported =
         PlatformCapabilities.supportsEncryptedCloudSync;
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Cài đặt')),
-      body: BlocBuilder<SettingsBloc, SettingsState>(
-        builder: (context, state) {
-          if (state is SettingsLoading) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          final loaded = state is SettingsLoaded ? state : null;
-          return ListView(
-            padding: const EdgeInsets.all(16),
-            children: [
-              if (currentUser != null) _UserCard(currentUser),
-              Card(
-                child: Column(
-                  children: [
-                    ListTile(
-                      leading: const Icon(Icons.fingerprint),
-                      title: const Text('Khóa bằng sinh trắc học'),
-                      subtitle: Text(
-                        loaded?.canCheckBiometrics == true
-                            ? 'Dùng Face ID, vân tay hoặc mã khóa thiết bị.'
-                            : 'Thiết bị hoặc platform không hỗ trợ.',
+    return BlocListener<SessionSecurityBloc, SessionSecurityState>(
+      listener: (context, state) {
+        final message = switch (state) {
+          SessionSecuritySuccess() =>
+            'Đã đăng xuất tất cả phiên khác. Thiết bị này vẫn đăng nhập.',
+          SessionSecurityFailure(:final message) => message,
+          _ => null,
+        };
+        if (message != null) {
+          ScaffoldMessenger.of(context)
+            ..hideCurrentSnackBar()
+            ..showSnackBar(SnackBar(content: Text(message)));
+        }
+      },
+      child: Scaffold(
+        appBar: AppBar(title: const Text('Cài đặt')),
+        body: BlocBuilder<SettingsBloc, SettingsState>(
+          builder: (context, state) {
+            if (state is SettingsLoading) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            final loaded = state is SettingsLoaded ? state : null;
+            return ListView(
+              padding: const EdgeInsets.all(16),
+              children: [
+                if (currentUser != null) _UserCard(currentUser),
+                Card(
+                  child: Column(
+                    children: [
+                      ListTile(
+                        leading: const Icon(Icons.fingerprint),
+                        title: const Text('Khóa bằng sinh trắc học'),
+                        subtitle: Text(
+                          loaded?.canCheckBiometrics == true
+                              ? 'Dùng Face ID, vân tay hoặc mã khóa thiết bị.'
+                              : 'Thiết bị hoặc platform không hỗ trợ.',
+                        ),
+                        trailing: loaded?.canCheckBiometrics == true
+                            ? Switch(
+                                value: loaded!.isBiometricEnabled,
+                                onChanged: (enabled) => context
+                                    .read<SettingsBloc>()
+                                    .add(ToggleBiometric(isEnabled: enabled)),
+                              )
+                            : null,
                       ),
-                      trailing: loaded?.canCheckBiometrics == true
-                          ? Switch(
-                              value: loaded!.isBiometricEnabled,
-                              onChanged: (enabled) => context
-                                  .read<SettingsBloc>()
-                                  .add(ToggleBiometric(isEnabled: enabled)),
-                            )
-                          : null,
-                    ),
-                    const Divider(height: 1),
-                    _EncryptedSyncSection(
-                      currentUser: currentUser,
-                      isSupported: encryptedSyncSupported,
-                    ),
-                    if (currentUser != null || encryptedSyncSupported) ...[
                       const Divider(height: 1),
-                      _AuthenticationTile(currentUser: currentUser),
+                      _EncryptedSyncSection(
+                        currentUser: currentUser,
+                        isSupported: encryptedSyncSupported,
+                      ),
+                      if (currentUser != null || encryptedSyncSupported) ...[
+                        const Divider(height: 1),
+                        BlocBuilder<SessionSecurityBloc, SessionSecurityState>(
+                          builder: (context, sessionSecurityState) =>
+                              AuthenticationSessionTile(
+                                currentUser: currentUser,
+                                sessionSecurityState: sessionSecurityState,
+                              ),
+                        ),
+                      ],
                     ],
-                  ],
+                  ),
                 ),
-              ),
-            ],
-          );
-        },
+              ],
+            );
+          },
+        ),
       ),
     );
   }
@@ -115,60 +137,6 @@ class _UserCard extends StatelessWidget {
         subtitle: email?.isNotEmpty == true ? Text(email!) : null,
       ),
     );
-  }
-}
-
-class _AuthenticationTile extends StatelessWidget {
-  final UserEntity? currentUser;
-
-  const _AuthenticationTile({required this.currentUser});
-
-  @override
-  Widget build(BuildContext context) {
-    if (currentUser == null) {
-      return ListTile(
-        leading: const Icon(Icons.login),
-        title: const Text('Đăng nhập để dùng encrypted cloud sync'),
-        subtitle: const Text('Local vault vẫn hoạt động khi offline.'),
-        onTap: () => context.push(
-          Uri(
-            path: AppRoutes.login,
-            queryParameters: {'returnTo': AppRoutes.settings},
-          ).toString(),
-        ),
-      );
-    }
-    return ListTile(
-      leading: const Icon(Icons.logout, color: Colors.red),
-      title: const Text('Đăng xuất', style: TextStyle(color: Colors.red)),
-      subtitle: const Text('Local vault và app lock được giữ nguyên.'),
-      onTap: () => _confirmLogout(context),
-    );
-  }
-
-  Future<void> _confirmLogout(BuildContext context) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Xác nhận đăng xuất'),
-        content: const Text(
-          'Dữ liệu TOTP local không bị xóa. Vault key vẫn được giữ trong secure storage của thiết bị này.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('Hủy'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(dialogContext, true),
-            child: const Text('Đăng xuất'),
-          ),
-        ],
-      ),
-    );
-    if (confirmed == true && context.mounted) {
-      context.read<AuthBloc>().add(AuthSignOutRequested());
-    }
   }
 }
 

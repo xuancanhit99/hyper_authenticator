@@ -31,6 +31,10 @@ Apply E2EE migration:
       psql -X -v ON_ERROR_STOP=1 -U supabase_admin -d postgres \
       < supabase/migrations/20260718190000_create_encrypted_vault_snapshots.sql
 
+    docker exec -i supabase-db \
+      psql -X -v ON_ERROR_STOP=1 -U supabase_admin -d postgres \
+      < supabase/migrations/20260718230000_enforce_active_vault_sessions.sql
+
 Test migration local:
 
     scripts/supabase/test_encrypted_vault_migration.sh
@@ -62,11 +66,12 @@ Chi tiết deploy/service/retention/incident:
 ## Trạng thái production đã xác minh
 
 - 11 core container healthy.
-- Encrypted remote contract 11/11.
+- Encrypted remote contract 20/20, gồm revoke session cũ và active-session RLS/RPC.
 - Recovery contract 8/8.
 - Studio HTTPS + Basic Auth proxy contract pass.
 - Daily backup service, restore rehearsal và encrypted off-host LaunchAgent pass.
 - Health/backup timers active.
+- Restore rehearsal xác minh FORCE RLS và active-session guard.
 
 ## Compatibility và rollback
 

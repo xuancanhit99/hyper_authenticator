@@ -40,10 +40,40 @@ rls_ready=$(docker exec "$DB_CONTAINER" psql \
   "select relrowsecurity and relforcerowsecurity from pg_class where oid = 'public.encrypted_vault_snapshots'::regclass")
 [[ "$rls_ready" == t ]]
 
+session_guard_ready=$(docker exec "$DB_CONTAINER" psql \
+  -X -v ON_ERROR_STOP=1 -U supabase_admin -d "$database_name" -Atqc \
+  "select
+     to_regprocedure('private.is_current_auth_session_active()') is not null
+     and exists (
+       select 1 from pg_proc
+       where oid = 'private.is_current_auth_session_active()'::regprocedure
+         and prosecdef
+     )
+     and exists (
+       select 1 from pg_policies
+       where schemaname = 'public'
+         and tablename = 'encrypted_vault_snapshots'
+         and policyname = 'encrypted_vault_select_own'
+         and position('is_current_auth_session_active' in qual) > 0
+     )
+     and position(
+       'is_current_auth_session_active'
+       in pg_get_functiondef(
+         'public.publish_encrypted_vault_snapshot(bigint,smallint,text,text,text,text,smallint,text,text,text)'::regprocedure
+       )
+     ) > 0
+     and position(
+       'session_revoked'
+       in pg_get_functiondef(
+         'public.publish_encrypted_vault_snapshot(bigint,smallint,text,text,text,text,smallint,text,text,text)'::regprocedure
+       )
+     ) > 0")
+[[ "$session_guard_ready" == t ]]
+
 data_probe=$(docker exec "$DB_CONTAINER" psql \
   -X -v ON_ERROR_STOP=1 -U supabase_admin -d "$database_name" -Atqc \
   "select count(*) >= 0 from auth.users; select count(*) >= 0 from public.encrypted_vault_snapshots")
 [[ $(printf '%s\n' "$data_probe" | grep -c '^t$') -eq 2 ]]
 
 printf '%s\n' \
-  'Supabase restore rehearsal pass: checksum, catalog, full restore, schema và force-RLS.'
+  'Supabase restore rehearsal pass: checksum, catalog, full restore, schema, force-RLS và active-session guard.'

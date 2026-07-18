@@ -25,7 +25,10 @@ bật. Error validation không chứa key. Preflight:
 ## Auth
 
 - Email/password sign-up và sign-in dùng Supabase Auth.
-- Logout giữ local TOTP vault.
+- Logout hiện tại dùng scope `local` và giữ local TOTP vault.
+- Settings có action `others` để hủy mọi session khác nhưng giữ session hiện tại.
+  RLS/RPC của encrypted vault kiểm tra `auth.sessions`, nên JWT thuộc session đã
+  revoke mất quyền vault ngay cả khi JWT chưa tới `exp`.
 - Password recovery canonical là `reset-password-web` qua exact HTTPS redirect.
 - GoTrue email template phải dùng one-time `token_hash` cho Web recovery.
 - Password reset không phục hồi E2EE recovery key.
@@ -36,9 +39,10 @@ SMTP delivery tới mailbox thật.
 
 ## Encrypted database contract
 
-Migration:
+Migration theo thứ tự:
 
     supabase/migrations/20260718190000_create_encrypted_vault_snapshots.sql
+    supabase/migrations/20260718230000_enforce_active_vault_sessions.sql
 
 `encrypted_vault_snapshots` có một row/user, `FORCE RLS`, chỉ grant SELECT cho
 authenticated. Insert/update không được grant trực tiếp; client gọi
@@ -47,6 +51,8 @@ authenticated. Insert/update không được grant trực tiếp; client gọi
 RPC behavior:
 
 - lấy owner từ `auth.uid()`, không nhận `user_id` từ client;
+- yêu cầu JWT `session_id` còn tồn tại cho cùng user trong `auth.sessions` và chưa
+  qua `not_after`; session đã revoke trả `42501`/`session_revoked`;
 - expected revision 0 chỉ insert row mới revision 1;
 - expected revision N chỉ update khi current revision bằng N;
 - update atomic thành N+1;
@@ -97,13 +103,16 @@ Chạy trên server/operator environment có service-role key; không bật shel
     scripts/supabase/test_remote_encrypted_vault_contract.sh \
       /path/to/supabase/.env https://api.example.com
 
-Contract tạo hai isolated user và tự dọn:
+Contract tạo hai isolated user, hai session cho User A và tự dọn:
 
 - anonymous không SELECT;
 - user A không lộ row cho user B;
 - payload chỉ có encrypted shape;
 - first publish, monotonic revision, stale conflict và atomic ciphertext/wrapped-key
   replacement;
+- session cũ đọc được trước revoke; sau `scope=others`, RLS chặn SELECT và RPC trả
+  `session_revoked` dù access JWT cũ chưa hết hạn;
+- session hiện tại vẫn SELECT/publish bình thường sau revoke;
 - user B không update row user A qua RPC.
 
 Recovery và Studio:
@@ -114,8 +123,8 @@ Recovery và Studio:
 
     scripts/supabase/test_remote_studio_proxy.sh https://studio.example.com
 
-Baseline production ngày 18-07-2026: encrypted 12/12, recovery 8/8 và Studio
-proxy contract pass.
+Baseline production ngày 18-07-2026: encrypted **20/20**, recovery 8/8 và Studio
+proxy contract pass. Sau contract, test user và encrypted row đều được cleanup.
 
 ## Self-hosted stack
 

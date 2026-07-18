@@ -52,10 +52,17 @@ không bao giờ được đặt trong Flutter `.env`, asset, build log hoặc b
   cancel/conflict giữ key cũ. Thiết bị chỉ có DEK cũ phải recovery lại.
 - Publish/verify/secure-storage failure sau request được coi là mơ hồ; client giữ
   last-seen revision cũ và hướng user giữ recovery key mới thay vì retry mù.
+- Settings cho phép một phiên tin cậy gọi Supabase `SignOutScope.others`: phiên
+  hiện tại và local vault/DEK được giữ, refresh token của mọi phiên khác bị thu hồi.
+- RLS SELECT và RPC publish còn yêu cầu JWT `session_id` khớp row còn hiệu lực
+  trong `auth.sessions` của `auth.uid()`. Vì vậy access JWT đã cấp cho session vừa
+  revoke vẫn có thể còn hợp lệ về chữ ký/thời hạn nhưng không đọc hoặc ghi được
+  encrypted vault.
 
 ### Backend và operations
 
-- `FORCE RLS`; owner SELECT; write chỉ qua RPC dùng `auth.uid()`.
+- `FORCE RLS`; owner + active-session SELECT; write chỉ qua RPC kiểm tra
+  `auth.uid()` và active `session_id`.
 - Public HTTPS; Studio có Basic Auth; database/Kong/Supavisor không expose trực tiếp.
 - Secret/key server đã rotate trong đợt rebuild; JWT mới dùng ES256/JWKS.
 - Health timer 5 phút; daily verified backup; encrypted off-host copy; full restore rehearsal.
@@ -124,9 +131,9 @@ Không dùng command liệt kê toàn bộ process environment trong báo cáo.
 
 1. Chưa có external alert channel/SIEM; systemd failure hiện chỉ vào journal.
 2. Chưa có independent cryptographic/security review.
-3. DEK rotation đã có bulk cryptographic read revocation cho current snapshot,
-   nhưng chưa có individual device registry, revoke auth session hoặc
-   device-specific wrapped key. Backup cũ vẫn decrypt được bằng key material cũ.
+3. Đã có bulk revoke mọi auth session khác và server-side active-session guard cho
+   encrypted vault, nhưng chưa có device registry/list, revoke riêng từng thiết bị
+   hoặc device-specific wrapped key. Backup cũ vẫn decrypt được bằng key material cũ.
 4. SMTP delivery tới mailbox thật và expired recovery link chưa được E2E test.
 5. Signing key/certificate chưa được owner cung cấp trên môi trường build.
 6. Browser local vault có trust model yếu hơn native dù cloud sync đã tắt.

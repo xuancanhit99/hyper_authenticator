@@ -36,11 +36,11 @@ các credential gate tương ứng pass.
 |---|---|
 | `flutter doctor -v` | Pass, không có lỗi toolchain |
 | `flutter analyze` | Pass, 0 diagnostic |
-| `flutter test` | 89 test pass |
+| `flutter test` | 96 test pass |
 | Platform configuration gate | Pass network/backup/signing/Keychain/ID |
 | Release config validator | Pass với `.env` public hiện tại, không in key |
 | Gitleaks full history | Pass sau exact allowlist RFC 6238 test vector |
-| Android debug + Pixel AVD runtime | Pass build/install, Supabase auth, setup revision 1, recovery-key rotation revision 2, vault-key rotation revision 3 và fresh-device recovery về revision 3; dialog teardown không còn assertion |
+| Android debug + Pixel AVD runtime | Pass build/install, Supabase auth, setup revision 1, recovery-key rotation revision 2, vault-key rotation revision 3, fresh-device recovery revision 3 và bulk revoke session thật 2→1 trong khi current session vẫn authenticated |
 | Web release + hardened Nginx image | Pass public TLS/proxy, serving contract, `/` + `/settings` browser runtime và console sạch |
 | macOS debug compile unsigned | Pass; không phải runtime/signing evidence |
 | iOS 26.5 simulator debug | Pass build và runtime launch với Supabase init |
@@ -74,6 +74,9 @@ verification phải inject `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY` và
   re-encrypt atomically, DEK local chỉ thay sau verify và thiết bị giữ DEK cũ phải
   recovery lại.
 - Remote request bind với Supabase user ID hiện tại để chặn race đổi session.
+- Settings có bulk revoke mọi Supabase session khác; session hiện tại, local vault
+  và DEK được giữ. Backend đối chiếu JWT `session_id` với `auth.sessions` trong cả
+  RLS/RPC nên session đã revoke mất quyền encrypted vault ngay.
 - Web Settings không mời đăng nhập để dùng cloud sync khi capability bị tắt.
 - Logo dịch vụ và font Averta không rõ license đã bị loại khỏi release; UI dùng
   avatar ký tự render bằng code. Data contract không thay đổi vì logo không persist.
@@ -84,9 +87,10 @@ verification phải inject `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY` và
   container healthy và PostgreSQL 17.6.1.136.
 - Public API qua HTTPS; Studio qua HTTPS + Basic Auth; Kong/Supavisor không mở
   trực tiếp ra Internet.
-- `encrypted_vault_snapshots` chỉ cấp SELECT cho authenticated owner, bật và
-  force RLS. Atomic RPC chỉ dùng `auth.uid()` và trả `PT409` khi revision lệch.
-- Remote encrypted contract: 12/12 pass; recovery contract: 8/8 pass; Studio
+- `encrypted_vault_snapshots` chỉ cấp SELECT cho authenticated owner có active
+  session, bật và force RLS. Atomic RPC kiểm tra `auth.uid()` + `session_id` và trả
+  `PT409` khi revision lệch hoặc `session_revoked` khi phiên đã bị thu hồi.
+- Remote encrypted contract: 20/20 pass; recovery contract: 8/8 pass; Studio
   proxy/DNS/upstream/Basic Auth contract pass.
 - Smoke load có API key: 100/100 HTTP 200 ở concurrency 10; p95 khoảng 0,38 giây,
   max khoảng 0,40 giây. Sau test 11 Supabase container vẫn healthy, RAM available
@@ -121,9 +125,10 @@ Capability là hành vi source hiện tại, không thay thế device test và s
 3. Monitoring mới ghi journal/exit status; chưa có alert channel ngoài host.
 4. Off-host backup hiện phụ thuộc máy Mac/LaunchAgent đang hoạt động; cần đích
    object storage hoặc backup host độc lập nếu yêu cầu SLA cao.
-5. E2EE v1 đã có DEK rotation để thu hồi khả năng đọc current snapshot của client
-   tuân thủ, nhưng chưa có individual device/auth-session revocation, tombstone/
-   history hoặc Web trust model. Backup cũ vẫn dùng key generation cũ.
+5. E2EE v1 đã có DEK rotation và bulk revoke mọi auth session khác với server-side
+   enforcement. Chưa có device registry/revoke riêng từng thiết bị, device-specific
+   key wrap, tombstone/history hoặc Web trust model. Backup cũ vẫn dùng key
+   generation cũ.
 6. Chưa có Flutter device/integration suite đầy đủ; secure storage/biometric/camera
    vẫn cần test trên thiết bị thật.
 7. Windows build còn dựa trên CI. Windows installer/signing/device và Linux
@@ -140,7 +145,7 @@ Capability là hành vi source hiện tại, không thay thế device test và s
   bundle, manifest SHA-256 và artifact 14 ngày; macOS unsigned không thay thế
   signed runtime gate.
 - `.github/dependabot.yml` kiểm tra Pub và GitHub Actions hằng tuần.
-- `scripts/agent/check.sh full` là quality gate canonical.
+- `scripts/agent/check.sh full` là quality gate canonical; baseline hiện có 96 test.
 - `scripts/supabase/` giữ remote contract, backup, health, restore và off-host harness.
 
 Chỉ đổi trạng thái ở file này khi có test hoặc runtime evidence tái hiện được.

@@ -24,6 +24,8 @@ abstract class AuthRemoteDataSource {
 
   Future<void> signOut();
 
+  Future<void> revokeOtherSessions();
+
   // Added method for updating password
   Future<void> updatePassword(String newPassword);
 }
@@ -128,9 +130,20 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   @override
   Future<void> signOut() async {
     try {
-      await _supabaseClient.auth.signOut();
+      await _supabaseClient.auth.signOut(scope: SignOutScope.local);
     } catch (_) {
       throw ServerException('An error occurred during sign out.');
+    }
+  }
+
+  @override
+  Future<void> revokeOtherSessions() async {
+    try {
+      await _supabaseClient.auth.signOut(scope: SignOutScope.others);
+    } on AuthException catch (e) {
+      throw AuthServerException(e.message);
+    } catch (_) {
+      throw ServerException('An error occurred while revoking other sessions.');
     }
   }
 

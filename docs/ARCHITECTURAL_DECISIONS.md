@@ -27,6 +27,7 @@ Tài liệu này lập chỉ mục quyết định bền vững. Quyết định
 | A-019 | E2EE versioned snapshot và user-held recovery key | Chấp nhận theo giai đoạn | [ADR-0005](adr/0005-e2ee-versioned-snapshot-sync.md) |
 | A-020 | Source dùng Apache License 2.0 | Chấp nhận | [ADR-0006](adr/0006-apache-2-license.md) |
 | A-021 | Chỉ phân phối asset có provenance/license rõ ràng | Chấp nhận | [ADR-0007](adr/0007-require-provenance-for-distributed-assets.md) |
+| A-022 | Encrypted vault chỉ cho auth session còn active; client bulk revoke session khác | Chấp nhận | [ADR-0008](adr/0008-enforce-active-session-for-encrypted-vault.md) |
 
 Đã áp dụng không đồng nghĩa production-ready; defect/risk nằm trong `PROJECT_STATUS.md`.
 

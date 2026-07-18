@@ -21,11 +21,13 @@ entitlement contract, Flutter test và encrypted PostgreSQL migration contract.
 
 ## Coverage hiện tại
 
-89 Flutter tests bao phủ:
+96 Flutter tests bao phủ:
 
 - router/auth/logout/offline-local-vault boundary;
 - post-login navigation trực tiếp hoặc return an toàn về Settings, stale null auth
   event không ghi đè session hiện tại và auth log redaction;
+- repository/BLoC/widget flow revoke session khác: typed failure, confirmation,
+  loading chống submit lại và không làm mất authenticated state;
 - main-navigation URL/tab mapping và deep-link return qua app-lock bootstrap;
 - TOTP URI/validator, countdown nhiều period và lifecycle resume;
 - local vault migration, concurrent mutation, corruption rollback, atomic replace
@@ -48,12 +50,18 @@ entitlement contract, Flutter test và encrypted PostgreSQL migration contract.
 
 Production/staging test dùng isolated user và tự cleanup:
 
-- encrypted RLS/RPC contract: 12 checks, gồm atomic ciphertext/wrapped-key rotation;
+- encrypted RLS/RPC contract: 20 checks, gồm atomic ciphertext/wrapped-key rotation,
+  hai session cùng user, revoke session cũ, RLS/RPC chặn JWT cũ ngay và session
+  hiện tại tiếp tục hoạt động;
 - password recovery token contract: 8 checks;
 - Studio network/upstream/Basic Auth contract;
 - backup checksum/catalog/tar validation;
 - full restore vào database tạm + schema/FORCE RLS probe;
 - low-concurrency public Auth health smoke load.
+
+Android Pixel AVD còn xác minh SDK thật gọi bulk revoke: isolated user có hai
+session, UI xác nhận action, session count giảm 2→1, current session vẫn ở Settings
+và test user/row/app data được cleanup.
 
 Remote script cần service-role key nên chỉ chạy trong protected operator context,
 không trong untrusted fork CI.

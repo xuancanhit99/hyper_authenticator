@@ -126,6 +126,12 @@ Table `public.encrypted_vault_snapshots`:
 field. Nó insert revision 1 khi expected=0 hoặc update revision+1 khi current
 revision khớp; ngược lại trả `PT409`.
 
+Authorization không thêm column vào encrypted table. JWT phải có `session_id` do
+Supabase Auth cấp; helper `private.is_current_auth_session_active()` chỉ trả true
+khi `auth.sessions.id`, `auth.sessions.user_id` và optional `not_after` còn hợp lệ
+cho `auth.uid()`. Session ID/token không được persist trong snapshot hoặc
+SharedPreferences của feature sync.
+
 ## Metadata thiết bị
 
 SharedPreferences giữ theo Supabase user ID:
