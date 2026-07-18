@@ -73,8 +73,10 @@ artifact đó chỉ chứng minh compile và không được chạy/phân phối
     web-deployment/build-image.sh hyper-authenticator-web:1.1.0
 
 E2EE sync bị tắt theo capability. Deploy immutable artifact qua HTTPS với CSP,
-HSTS, `nosniff`, referrer/permissions policy phù hợp; smoke login/local TOTP/camera
-trên browser hỗ trợ. Không cache HTML/config lâu hơn asset hashed.
+`nosniff`, referrer/permissions policy phù hợp; smoke login/local TOTP/camera trên
+browser hỗ trợ. Edge reverse proxy kết thúc TLS là lớp duy nhất phát HSTS; không
+đồng thời bật HSTS trong container HTTP nội bộ. Không cache HTML/config lâu hơn
+asset hashed.
 
 Image Nginx pin digest, chạy non-root/read-only và chỉ nhận `SUPABASE_URL` public
 để tạo CSP. Phải truyền cùng origin đã dùng lúc compile; mismatch làm request bị

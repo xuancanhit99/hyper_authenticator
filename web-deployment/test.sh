@@ -11,7 +11,10 @@ grep -Fq 'camera=(self)' web-deployment/nginx-site.conf.template
 grep -Fq 'https://cdn.jsdelivr.net' web-deployment/nginx-site.conf.template
 grep -Fq 'https://fastly.jsdelivr.net' web-deployment/nginx-site.conf.template
 grep -Fq 'https://fonts.gstatic.com' web-deployment/nginx-site.conf.template
-grep -Fq 'Strict-Transport-Security' web-deployment/nginx-site.conf.template
+if grep -Fq 'Strict-Transport-Security' web-deployment/nginx-site.conf.template; then
+  printf '%s\n' 'HSTS phải do reverse proxy kết thúc TLS quản lý.' >&2
+  exit 1
+fi
 grep -Fq 'try_files $uri $uri/ /index.html' web-deployment/nginx-site.conf.template
 
 if ! command -v docker >/dev/null 2>&1 || ! docker info >/dev/null 2>&1; then
@@ -77,7 +80,10 @@ printf '%s' "$root_headers" | grep -Fiq 'Content-Security-Policy:'
 printf '%s' "$root_headers" | grep -Fiq 'https://supabase.test.invalid'
 printf '%s' "$root_headers" | grep -Fiq 'wss://supabase.test.invalid'
 printf '%s' "$root_headers" | grep -Fiq 'Permissions-Policy: camera=(self)'
-printf '%s' "$root_headers" | grep -Fiq 'Strict-Transport-Security:'
+if printf '%s' "$root_headers" | grep -Fiq 'Strict-Transport-Security:'; then
+  printf '%s\n' 'Container HTTP nội bộ không được tự phát HSTS.' >&2
+  exit 1
+fi
 
 js_headers=$(docker exec "$name" wget -S -q -O /dev/null \
   http://127.0.0.1:8080/flutter_bootstrap.js 2>&1)

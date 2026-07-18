@@ -16,8 +16,10 @@ Khi chạy, truyền cùng `SUPABASE_URL` đã dùng lúc compile để entrypoi
       --publish 127.0.0.1:8080:8080 \
       hyper-authenticator-web:1.1.0
 
-Reverse proxy phía trước chịu trách nhiệm TLS. Image tự thêm HSTS, CSP, header
-chống framing/sniffing, camera same-origin, HTML `no-store` và asset revalidation.
+Reverse proxy phía trước chịu trách nhiệm TLS và là lớp duy nhất phát HSTS. Image
+tự thêm CSP, header chống framing/sniffing, camera same-origin, HTML `no-store` và
+asset revalidation. Không bật HSTS trong container HTTP nội bộ vì sẽ tạo header
+trùng khi edge proxy đã cấu hình HSTS.
 Scanner Web hiện dùng `zxing-wasm 3.1.1` được pin bởi `mobile_scanner`; CSP mở
 jsDelivr/Fastly cho script/WASM fallback. Flutter engine dùng Noto Sans fallback
 từ `fonts.gstatic.com`; cả `connect-src` và `font-src` chỉ mở đúng origin này.
