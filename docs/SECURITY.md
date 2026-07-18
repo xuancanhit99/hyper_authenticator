@@ -149,6 +149,10 @@ Không log/request fixture chứa:
 Test dùng placeholder `TEST_ONLY_*`. Shell operator script không chạy với `set -x`.
 Không dùng command liệt kê toàn bộ process environment trong báo cáo.
 
+Auth load gate chỉ gọi health endpoint bằng public publishable key; không tạo user,
+session hoặc request payload, không in key và chỉ lưu status/duration trong temp
+directory mode 0700 rồi cleanup bằng trap.
+
 ## Dependency và asset supply chain
 
 - Lockfile được commit; CI pin Flutter và secret scanner checksum.

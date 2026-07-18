@@ -60,7 +60,8 @@ Production/staging test dùng isolated user và tự cleanup:
 - Studio network/upstream/Basic Auth contract;
 - backup checksum/catalog/tar validation;
 - full restore vào database tạm + schema/FORCE RLS probe;
-- low-concurrency public Auth health smoke load.
+- public Auth health load budget: 100 request, concurrency 10, 100% HTTP 200,
+  p95 tối đa 1 giây và single-request tối đa 2 giây.
 
 Android Pixel AVD còn xác minh SDK thật gọi bulk revoke: isolated user có hai
 session, UI xác nhận action, session count giảm 2→1, current session vẫn ở Settings
@@ -155,6 +156,8 @@ không trong untrusted fork CI.
 - `scripts/agent/linux_e2ee_operator.sh` tách operator/client credential, gọi
   container/private-keyring runtime và xác minh isolated user đã bị xóa. Production
   service-role key không được lưu ở GitHub Actions secret hoặc truyền vào Flutter.
+- `scripts/supabase/test_auth_load_budget.sh` chỉ dùng public publishable key,
+  không tạo user/payload và fail khi HTTP hoặc latency vượt budget.
 - `windows_integration.ps1` và `windows_installer_smoke.ps1` chỉ nhận GitHub-hosted
   Windows runner tạm cùng explicit mutation opt-in; không chạy trên máy người dùng.
 - `windows_historical_upgrade.ps1` pin source `1.0.0+9` cùng storage plugin 3.1.2,
@@ -171,7 +174,8 @@ không trong untrusted fork CI.
    và secure-storage behavior trên thiết bị thật chưa được chứng minh.
 2. Chưa có two-device physical E2EE test.
 3. Chưa có mailbox SMTP/expired-link E2E.
-4. Chưa có long-duration soak hoặc production-scale load test.
+4. Low-concurrency Auth budget đã enforce; chưa có long-duration soak hoặc
+   production-scale workload test.
 5. Windows còn code signing và physical-device/Windows Hello; historical
    `1.0.0+9` upgrade đã pass hosted runtime. Linux còn hosted historical upgrade,
    amd64/KDE login-unlock/physical desktop, signed package E2EE runtime và public

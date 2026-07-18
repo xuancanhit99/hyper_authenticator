@@ -45,6 +45,8 @@ behavior an toàn, backend có backup/restore/health harness và release gate t�
   COW v2 trên hosted runner tạm, có cleanup.
 - [x] Remote E2EE/recovery/Studio contract pass.
 - [x] Daily backup, restore rehearsal, encrypted off-host copy và health timer pass.
+- [x] Public Auth load budget fail-closed: 100 request/concurrency 10, 100% HTTP
+  200, p95 ≤ 1 giây và max ≤ 2 giây; không tạo user hoặc payload.
 - [x] Asset/font không rõ license bị loại khỏi release.
 - [ ] Signed store artifact/device test — phụ thuộc credential và thiết bị owner.
 - [ ] SMTP mailbox/expired link — phụ thuộc mailbox nhận.
@@ -103,7 +105,7 @@ behavior an toàn, backend có backup/restore/health harness và release gate t�
 | Remote recovery contract | 8/8 pass |
 | Studio proxy contract | Pass |
 | Backup restore rehearsal | Full restore DB tạm + schema/FORCE RLS/active-session guard pass |
-| Auth smoke load | 100/100 HTTP 200, concurrency 10, p95 ~0,38 giây |
+| Auth load budget | 100/100 HTTP 200, concurrency 10, p95 578 ms, max 862 ms dưới budget 1.000/2.000 ms; negative path 1 ms fail đúng |
 | Web production rollout | Image `1.1.0-f88506d` `linux/amd64` healthy; local/container/public SHA-256 khớp; `/`, `/settings`, `/login`, `/reset-password` trả 200; TLS/HSTS/CSP/cache/Permissions-Policy pass |
 
 Full `scripts/agent/check.sh full` pass: docs, generated drift, format, analyzer,
@@ -123,6 +125,8 @@ platform config, 105 test và encrypted migration/active-session contract.
   riêng từng thiết bị, device-specific key wrap và Web trust model vẫn chưa có.
 - `mobile_scanner` upstream còn Kotlin legacy warning.
 - Off-host backup đang phụ thuộc máy Mac thay vì dedicated backup host.
+- Low-concurrency Auth budget đã có; long-duration soak và production-scale
+  workload vẫn chưa có.
 
 ## Tài liệu cập nhật
 

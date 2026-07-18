@@ -144,6 +144,15 @@ cuối xác nhận không còn matching test user hoặc encrypted row.
 - Exact upstream pin: `supabase/UPSTREAM_PIN`.
 - Overlay proxy/recovery: `supabase/docker-compose.*.yml`.
 - 11 core container phải healthy trước migration/test.
+
+Release regression cho public Auth health dùng publishable key, không tạo user:
+
+    scripts/supabase/test_auth_load_budget.sh .env
+
+Mặc định gate chạy 100 request/concurrency 10, yêu cầu toàn bộ HTTP 200,
+p95 ≤ 1.000 ms và max ≤ 2.000 ms. Có thể override `LOAD_TOTAL_REQUESTS`,
+`LOAD_CONCURRENCY`, `LOAD_MAX_P95_MS`, `LOAD_MAX_SINGLE_MS` cho protected soak;
+không nới budget mặc định chỉ để làm pipeline xanh.
 - Studio public route phải trả 401 khi thiếu Basic Auth.
 - Kong/Supavisor bind loopback; reverse proxy nối qua `proxy-network`.
 

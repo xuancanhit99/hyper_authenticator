@@ -97,9 +97,10 @@ verification phải inject `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY` và
   `PT409` khi revision lệch hoặc `session_revoked` khi phiên đã bị thu hồi.
 - Remote encrypted contract: 20/20 pass; recovery contract: 8/8 pass; Studio
   proxy/DNS/upstream/Basic Auth contract pass.
-- Smoke load có API key: 100/100 HTTP 200 ở concurrency 10; p95 khoảng 0,38 giây,
-  max khoảng 0,40 giây. Sau test 11 Supabase container vẫn healthy, RAM available
-  khoảng 3,4 GiB và swap used khoảng 610 MiB.
+- Auth load budget dùng public key: 100/100 HTTP 200 ở concurrency 10; p95 578 ms,
+  max 862 ms, dưới ngưỡng 1.000/2.000 ms. Negative path 1 ms bị từ chối đúng;
+  gate không tạo user/payload. Health trước đó xác nhận 11 container healthy,
+  RAM available khoảng 3,4 GiB và swap used khoảng 610 MiB.
 - Health timer chạy mỗi 5 phút. Backup timer chạy hằng ngày, giữ 7 bản local.
 - Backup gồm logical database, globals, quiesced Storage và sensitive config;
   có SHA-256, permission 0700/0600 và validation catalog/tar.
@@ -130,24 +131,26 @@ Capability là hành vi source hiện tại, không thay thế device test và s
 3. Monitoring mới ghi journal/exit status; chưa có alert channel ngoài host.
 4. Off-host backup hiện phụ thuộc máy Mac/LaunchAgent đang hoạt động; cần đích
    object storage hoặc backup host độc lập nếu yêu cầu SLA cao.
-5. E2EE v1 đã có DEK rotation và bulk revoke mọi auth session khác với server-side
+5. Low-concurrency Auth budget đã enforce; chưa có long-duration soak hoặc
+   production-scale workload test.
+6. E2EE v1 đã có DEK rotation và bulk revoke mọi auth session khác với server-side
    enforcement. Chưa có device registry/revoke riêng từng thiết bị, device-specific
    key wrap, tombstone/history hoặc Web trust model. Backup cũ vẫn dùng key
    generation cũ.
-6. Local-vault integration smoke đã pass Android emulator, iOS Simulator và
+7. Local-vault integration smoke đã pass Android emulator, iOS Simulator và
    GitHub-hosted Windows Server 2025; biometric/camera và secure-storage behavior
    trên thiết bị thật vẫn chưa được chứng minh. Mobile harness chủ động từ chối
    target thật/macOS vì nó reset toàn bộ local vault; Windows harness chỉ nhận
    hosted runner tạm.
-7. Windows đã có unsigned NSIS candidate, hosted-runner package transition và
+8. Windows đã có unsigned NSIS candidate, hosted-runner package transition và
    upgrade thật từ source `1.0.0+9`; còn code signing và physical-device/Windows Hello.
    Linux đã có `.deb` candidate, clean-container package transition, local arm64
    X11/Wayland distro matrix và authenticated E2EE client runtime; còn hosted
    amd64 historical upgrade, KDE login/unlock/physical desktop, release signing và
    maintainer/support metadata trước phân phối công khai. E2EE evidence hiện là
    debug arm64 container, không phải signed amd64 package runtime.
-8. Privacy policy cần được host tại URL công khai và điền kênh support trước store submission.
-9. Flutter Web đã pass TLS/reverse proxy và runtime smoke trên production domain;
+9. Privacy policy cần được host tại URL công khai và điền kênh support trước store submission.
+10. Flutter Web đã pass TLS/reverse proxy và runtime smoke trên production domain;
    permission pending/error UX đã có regression test trên VM và Chrome test
    platform, nhưng camera/QR decode vẫn cần browser-device smoke thực tế.
 

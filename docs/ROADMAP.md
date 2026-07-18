@@ -36,7 +36,8 @@ policy và backend rollback evidence.
 - [ ] Đưa encrypted off-host backup lên backup host/object storage độc lập Mac cá nhân.
 - [ ] Alerting + dashboard/SLO cho Auth latency, container health, disk, backup age.
 - [ ] Staging upgrade rehearsal định kỳ theo official Supabase pin.
-- [ ] Soak/load test có budget và acceptance threshold.
+- [x] Low-concurrency public Auth load có budget và acceptance threshold.
+- [ ] Long-duration soak và production-scale workload có budget riêng.
 - [ ] Incident response, restore drill lịch định kỳ và release rollback drill.
 
 ## Ưu tiên P1 — Product/security

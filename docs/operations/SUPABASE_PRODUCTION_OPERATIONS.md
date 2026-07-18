@@ -121,6 +121,14 @@ production mới nếu compatibility table đã được freeze/drop.
 6. Chốt maintenance/rollback window.
 7. Apply upgrade, chờ 11 service healthy.
 8. Chạy health + remote contracts + low-concurrency smoke.
+
+Low-concurrency smoke phải dùng budget có exit code, không chỉ quan sát thủ công:
+
+    scripts/supabase/test_auth_load_budget.sh .env
+
+Release baseline: 100 request, concurrency 10, 100% HTTP 200, p95 ≤ 1 giây,
+max ≤ 2 giây. Đây là regression threshold từ client tới public origin, không phải
+SLA và không thay long-duration soak/production-scale workload.
 9. Update `supabase/UPSTREAM_PIN` và `PROJECT_STATUS.md` cùng commit.
 
 Rollback phải khôi phục cả compose/image pin, database và Storage/config tương ứng;
