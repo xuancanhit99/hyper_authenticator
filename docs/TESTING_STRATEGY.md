@@ -125,7 +125,7 @@ không trong untrusted fork CI.
 | Android | Debug build mỗi CI; signed release trước store |
 | iOS | Simulator build mỗi CI; signed archive + device/TestFlight trước store |
 | macOS | Unsigned compile CI; signed runtime + notarized release trước phân phối |
-| Web | Configured release + hardened image contract + CSP browser smoke |
+| Web | Configured release + hardened image contract + CSP/runtime `lang=vi` browser smoke |
 | Windows | Hosted local-vault runtime + historical `1.0.0+9` vault-upgrade harness + configured x64 + NSIS install/launch/metadata-upgrade/uninstall retention; bundle/installer SHA-256 artifact 14 ngày; physical device/signing trước phân phối |
 | Linux | Hosted amd64 configured x64 + historical `1.0.0+9` upgrade + private-keyring runtime + `.deb` transition + Ubuntu/Debian X11/Wayland matrix; authenticated E2EE debug arm64; KDE login/physical desktop và release signing trước phân phối |
 

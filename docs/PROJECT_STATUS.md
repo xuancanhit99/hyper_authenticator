@@ -42,7 +42,7 @@ các credential gate tương ứng pass.
 | Release config validator | Pass với `.env` public hiện tại, không in key |
 | Gitleaks full history | Pass sau exact allowlist RFC 6238 test vector |
 | Android debug + Pixel AVD runtime | Pass build/install, Supabase auth, setup revision 1, recovery-key rotation revision 2, vault-key rotation revision 3, fresh-device recovery revision 3, bulk revoke session thật 2→1 và local-vault integration smoke có cleanup |
-| Web release + hardened Nginx image | `1.1.0-12fce73` `linux/amd64` đang healthy trên production; local/public `main.dart.js` SHA-256 khớp, 5 SPA route và TLS/HSTS/CSP/cache/Permissions-Policy pass; cần rollout source locale fix kế tiếp |
+| Web release + hardened Nginx image | `1.1.0-ae1ab36` `linux/amd64` đang healthy trên production; local/public `main.dart.js` SHA-256 `1a0d63a6…f66ea6` khớp, 5 SPA route và TLS/HSTS/CSP/cache/Permissions-Policy pass; browser xác minh runtime `lang=vi`, Flutter render và console sạch |
 | macOS debug compile unsigned | Pass; không phải runtime/signing evidence |
 | iOS 26.5 simulator debug | Pass build/runtime với Supabase init và local-vault integration smoke có cleanup |
 | Android release | Fail closed đúng thiết kế vì chưa có upload keystore |
@@ -158,10 +158,6 @@ Capability là hành vi source hiện tại, không thay thế device test và s
 10. Flutter Web đã pass TLS/reverse proxy và runtime smoke trên production domain;
    permission pending/error UX đã có regression test trên VM và Chrome test
    platform, nhưng camera/QR decode vẫn cần browser-device smoke thực tế.
-11. Image Web production `1.1.0-12fce73` đã nhận label tiếng Việt và HTML tĩnh
-    `lang="vi"`, nhưng browser smoke phát hiện Flutter runtime ghi đè thành
-    `en-US`. Source đã khóa locale `vi` và có regression test; cần pass CI rồi
-    rollout image kế tiếp trước khi đóng khoảng trống runtime này.
 
 ## Automation
 
@@ -175,9 +171,9 @@ Capability là hành vi source hiện tại, không thay thế device test và s
   smoke install/launch/metadata-upgrade/uninstall giữ AppData và lưu hai artifact
   theo commit 14 ngày. Các gate này không thay signed runtime hoặc
   representative-device/distro matrix.
-- GitHub Actions run `29652281356` tại `12fce73` pass 7/7; Linux hosted amd64 xác
-  minh historical vault upgrade, package transition, bốn distro X11/Wayland và
-  artifact; Windows historical/runtime/installer gate tiếp tục xanh.
+- GitHub Actions run `29652820428` tại `ae1ab36` pass 7/7; locale fix được xác
+  minh cùng Linux hosted historical/package/distro, Windows historical/runtime/
+  installer, Apple, Android, Web, quality và secret history gate.
 - `.github/dependabot.yml` kiểm tra Pub và GitHub Actions hằng tuần.
 - `scripts/agent/check.sh full` là quality gate canonical; baseline hiện có 106 test,
   analyze/format cả device integration source nhưng không tự boot virtual device.
