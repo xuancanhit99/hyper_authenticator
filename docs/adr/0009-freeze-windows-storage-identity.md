@@ -15,9 +15,10 @@
 Vault cũ vẫn còn nhưng app mới có thể hiển thị rỗng, tương đương sự cố mất khả
 năng truy cập dữ liệu.
 
-`flutter_secure_storage_windows 3.1.2` ghi mỗi logical key thành `*.secure` ở
-application-support path. Bản hiện tại có backward-compatible reader và có thể
-migrate chúng sang `flutter_secure_storage.dat`, nhưng chỉ khi physical path đúng.
+`flutter_secure_storage_windows 3.1.2` đã dùng DPAPI map
+`flutter_secure_storage.dat` ở application-support path; native MethodChannel
+`*.secure` là backward compatibility cho phiên bản cũ hơn. Bản hiện tại đọc cả
+hai dạng, nhưng chỉ khi physical path đúng.
 
 ## Quyết định
 
@@ -95,8 +96,8 @@ trước khi người dùng đã xác minh vault.
 - Unit test: no-op, allowlist atomic copy, source retention, idempotent marker,
   byte-level conflict, symlink rejection và rollback failure.
 - Full quality gate: format/analyze/platform config/Flutter test.
-- Hosted Windows: build source `1.0.0+9`, seed bằng plugin 3.1.2, current UI đọc
-  đủ SHA256/8 digits/45 giây, COW v2 xuất hiện và cleanup pass.
+- Hosted Windows: build source `1.0.0+9`, seed DPAPI map bằng plugin 3.1.2,
+  current UI đọc đủ SHA256/8 digits/45 giây, COW v2 xuất hiện và cleanup pass.
 - Installer transition tiếp tục xác minh uninstall không xóa canonical AppData.
 
 ## Rollout

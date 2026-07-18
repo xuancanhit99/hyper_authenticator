@@ -147,8 +147,8 @@ không trong untrusted fork CI.
 - `windows_integration.ps1` và `windows_installer_smoke.ps1` chỉ nhận GitHub-hosted
   Windows runner tạm cùng explicit mutation opt-in; không chạy trên máy người dùng.
 - `windows_historical_upgrade.ps1` pin source `1.0.0+9` cùng storage plugin 3.1.2,
-  seed account có non-default TOTP field rồi yêu cầu current app nhìn thấy, publish
-  COW v2 và cleanup. Engine unit test bao phủ source vắng, atomic copy, marker,
+  seed DPAPI map với account có non-default TOTP field rồi yêu cầu current app
+  nhìn thấy, publish COW v2 và cleanup. Engine unit test bao phủ source vắng, atomic copy, marker,
   symlink, conflict byte-level và rollback giữa chừng.
 - `install_nsis.ps1` pin NSIS version + archive SHA-256; package builder từ chối
   env/source-map/debug artifact và tạo checksum LF portable.

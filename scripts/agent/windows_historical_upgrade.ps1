@@ -136,11 +136,10 @@ try {
     Pop-Location
   }
 
-  $legacyFiles = @(
-    Get-ChildItem -LiteralPath $canonicalDirectory -Filter '*.secure' -File
-  )
-  if ($legacyFiles.Count -lt 2) {
-    throw 'Bản lịch sử không tạo đủ index/account .secure trong canonical AppData.'
+  $historicalStorageFile = Join-Path `
+    $canonicalDirectory 'flutter_secure_storage.dat'
+  if (-not (Test-Path -LiteralPath $historicalStorageFile -PathType Leaf)) {
+    throw 'Bản lịch sử không tạo DPAPI storage trong canonical AppData.'
   }
 
   Push-Location $root

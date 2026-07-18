@@ -134,7 +134,7 @@ directory, shortcut và uninstall metadata, không xóa local vault dưới AppD
 CI đã pass install, launch release, nâng metadata baseline lên `1.1.0+10`, launch
 lại, uninstall và data-retention sentinel. Package baseline vẫn dùng cùng tested
 bundle với version thấp hơn. Gate storage tách biệt archive source pin
-`1.0.0+9`, ghi legacy `*.secure` bằng plugin 3.1.2, rồi yêu cầu current app đọc đủ
+`1.0.0+9`, ghi DPAPI storage bằng plugin 3.1.2, rồi yêu cầu current app đọc đủ
 field và publish COW v2; chỉ cập nhật evidence thành pass sau hosted run xanh.
 
 Artifact không chứa file config nguồn hoặc private server credential; public

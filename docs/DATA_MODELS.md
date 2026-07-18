@@ -56,10 +56,12 @@ nhận `flutter_secure_storage.dat`, top-level `*.secure` và
 `.ha-storage-layout-v1-imported` sau atomic import thành công. Hai tập vault cùng
 tồn tại nhưng khác tên file hoặc byte là conflict, không có merge tự động.
 
-Sau khi physical layout đã canonical, `flutter_secure_storage_windows` đọc các
-file `*.secure` của 9.2.4/Windows plugin 3.1.2 và current local datasource publish
-logical account sang COW v2. Các field `algorithm`, `digits`, `period` phải
-round-trip; legacy source không bị app layout migrator xóa.
+Windows plugin 3.1.2 của release `1.0.0+9` đã dùng DPAPI map
+`flutter_secure_storage.dat` làm primary; MethodChannel `*.secure` là backward
+compatibility cho phiên bản cũ hơn. Sau khi physical layout đã canonical, current
+plugin đọc cả hai dạng và local datasource publish logical account sang COW v2.
+Các field `algorithm`, `digits`, `period` phải round-trip; source ở sibling không
+bị app layout migrator xóa.
 
 ## Encrypted plaintext snapshot trước khi mã hóa
 
