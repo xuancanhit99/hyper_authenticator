@@ -4,7 +4,9 @@
 
 Mỗi platform được phát hành độc lập. Một artifact chỉ đủ điều kiện khi source commit,
 runtime config, schema compatibility, test evidence, checksum và signing provenance
-được ghi lại. Không dùng debug signing cho production.
+được ghi lại. Không dùng debug signing cho production. Artifact chưa ký chỉ được
+phát hành theo contract **GitHub Preview unsigned** của ADR-0010; không được gọi là
+stable, signed hoặc store release.
 
 ## Release input
 
@@ -32,8 +34,43 @@ Sau đó:
 - xác nhận backup mới, checksum và restore rehearsal;
 - rà secret/Cyrillic/asset license;
 - xác nhận platform configuration gate có INTERNET/cleartext/backup/Keychain/ID;
-- cập nhật release note, privacy URL, support/security contact;
+- cập nhật release note và security reporting channel; privacy/support URL là gate
+  bắt buộc trước stable/store release;
 - tag đúng tested commit và tạo SHA-256 cho artifact.
+
+## GitHub Preview — kênh binary đầu tiên
+
+GitHub Preview chỉ gồm Windows x64 NSIS installer và Linux amd64 Debian package.
+Tag phải có dạng `vX.Y.Z-preview.N`, khớp app version và trỏ tới commit có workflow
+`CI` của chính tag pass toàn bộ. Android debug APK, Apple compile build và Windows
+portable CI bundle không được publish.
+
+Quy trình maintainer:
+
+    git tag -a v1.1.0-preview.1 -m "Hyper Authenticator v1.1.0-preview.1"
+    git push origin v1.1.0-preview.1
+    gh run list --workflow ci.yml --branch v1.1.0-preview.1
+
+Sau khi tag CI xanh, chạy workflow `GitHub Preview Release` trên default branch với:
+
+- `release_tag`: tag preview đã test;
+- `confirmation`: `PUBLISH_UNSIGNED_GITHUB_PREVIEW`.
+
+Maintainer workstation tin cậy có thể chạy cùng fail-closed harness:
+
+    scripts/agent/github_preview_release.sh \
+      v1.1.0-preview.1 PUBLISH_UNSIGNED_GITHUB_PREVIEW
+
+Harness xác minh repository public, tag/HEAD/version, successful tag CI, release
+chưa tồn tại, exact artifact name, checksum và denylist env/source-map/debug file.
+Nó chỉ tải artifact từ CI run của tag, tạo `SHA256SUMS.txt`, release note bắt buộc
+và publish với GitHub pre-release flag. Sau publish phải tải lại asset từ public
+URL và xác minh SHA-256. Xóa pre-release là rollback channel; không xóa source tag
+hoặc local vault của người dùng.
+
+SMTP production chưa được cấu hình ở giai đoạn này. Release note phải nói rõ email
+khôi phục mật khẩu có thể chưa tới mailbox thật; credential SMTP chỉ được đặt trên
+server, không đưa vào Flutter `.env` hay GitHub Actions.
 
 ## Android
 
@@ -140,9 +177,9 @@ build và installer transition.
 
 Artifact không chứa file config nguồn hoặc private server credential; public
 runtime values vẫn được compile vào client theo thiết kế. Installer hiện **unsigned**
-và chỉ là release candidate. Gate trước phân phối công khai còn Windows code
-signing certificate, xác minh chữ ký sau download, physical-device/Windows Hello,
-và Auth HTTPS. Scanner bị ẩn theo thiết kế.
+và chỉ đủ điều kiện cho GitHub Preview theo ADR-0010. Gate trước stable/signed
+distribution còn Windows code-signing certificate, xác minh chữ ký sau download
+và physical-device/Windows Hello. Auth dùng HTTPS; scanner bị ẩn theo thiết kế.
 
 `local_auth_windows` 2.0.1 còn phụ thuộc `/await` experimental. Project hiện opt in
 warning-suppression mà MSVC 14.51 yêu cầu để giữ native CI chạy được; đây không phải
@@ -168,8 +205,9 @@ EGL/GLES/GL loader + `gnome-keyring` provider và đã pass exact local Docker a
 matrix trên Ubuntu 22.04/24.04 cùng Debian 12/13 với private Secret Service,
 Xvfb và Weston Wayland. Clean Ubuntu package transition/data retention cũng pass.
 Hosted amd64 historical `1.0.0+9` upgrade, clean package transition và Ubuntu/Debian
-X11/Wayland matrix đã pass. Gate còn lại: KDE login/unlock/physical desktop, signed
-package E2EE runtime, maintainer/support metadata và release-channel signing.
+X11/Wayland matrix đã pass. Package unsigned chỉ đủ điều kiện cho GitHub Preview.
+Gate trước stable/signed distribution còn KDE login/unlock/physical desktop,
+signed package E2EE runtime, maintainer/support metadata và release-channel signing.
 Local authentication/scanner bị ẩn theo thiết kế.
 
 ## Supabase rollout
@@ -198,10 +236,11 @@ Runbook: `docs/operations/SUPABASE_PRODUCTION_OPERATIONS.md`.
 
 - Android upload keystore.
 - Apple development/distribution certificate, profile và notarization credential.
-- Windows code-signing certificate nếu yêu cầu.
+- Windows code-signing certificate cho stable/signed release.
 - Store account, public privacy URL, support/security contact và metadata.
 - Mailbox để xác minh SMTP delivery/expired recovery link.
 - External alert destination và backup host độc lập nếu yêu cầu SLA.
 
-Thiếu một gate không làm mất các phần đã hoàn thiện, nhưng platform đó chưa được
-gọi là production release cho tới khi gate pass.
+Thiếu một gate không làm mất các phần đã hoàn thiện. GitHub Preview phải giữ nhãn
+unsigned/pre-release; platform chỉ được gọi là stable production release sau khi
+signing, representative-device và legal/support gate tương ứng pass.

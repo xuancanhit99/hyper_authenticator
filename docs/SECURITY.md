@@ -87,6 +87,9 @@ không bao giờ được đặt trong Flutter `.env`, asset, build log hoặc b
 - Windows installer toolchain pin NSIS 3.12 archive SHA-256 và xác minh compiler
   version. Builder từ chối env/source-map/debug artifact; unsigned candidate có
   checksum LF portable và không được mô tả là signed release.
+- GitHub Preview harness chỉ nhận Windows/Linux installer từ successful CI run của
+  chính tag, kiểm tra version/checksum/allowlist và tạo manifest tổng. Publish cần
+  confirmation rõ ràng; release luôn mang pre-release flag và cảnh báo unsigned.
 
 ## Recovery semantics
 
@@ -170,10 +173,12 @@ directory mode 0700 rồi cleanup bằng trap.
    encrypted vault, nhưng chưa có device registry/list, revoke riêng từng thiết bị
    hoặc device-specific wrapped key. Backup cũ vẫn decrypt được bằng key material cũ.
 4. SMTP delivery tới mailbox thật và expired recovery link chưa được E2E test.
-5. Signing key/certificate chưa được owner cung cấp trên môi trường build.
+5. Signing key/certificate chưa được owner cung cấp trên môi trường build; GitHub
+   Preview vì vậy có SmartScreen/package-signature risk đã công bố.
 6. Browser local vault có trust model yếu hơn native dù cloud sync đã tắt.
 
 ## Báo cáo lỗ hổng
 
-Không mở public issue chứa credential hoặc `otpauth` URI. Trước public release,
-owner phải công bố một private security contact trong store metadata và privacy URL.
+Không mở public issue chứa credential hoặc `otpauth` URI. Báo cáo lỗ hổng bằng
+[GitHub private security advisory](https://github.com/xuancanhit99/hyper_authenticator/security/advisories/new).
+Kênh support và privacy URL công khai vẫn phải hoàn tất trước stable/store release.

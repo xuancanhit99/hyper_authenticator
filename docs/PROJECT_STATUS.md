@@ -11,10 +11,10 @@ publication qua Supabase RPC. Web vẫn chủ động tắt cloud sync vì brows
 không có trust boundary tương đương platform secure storage.
 
 Source, local data path, E2EE client/server contract, backup và backend health
-harness đã đạt baseline kỹ thuật. Việc phát hành store vẫn cần credential thuộc
-owner: Android upload keystore, Apple signing/notarization và Windows signing nếu
-phân phối installer đã ký. Không mô tả app là đã phát hành production trước khi
-các credential gate tương ứng pass.
+harness đã đạt baseline kỹ thuật. Kênh binary đầu tiên được chuyển sang GitHub
+Preview: Windows/Linux unsigned chỉ được public dưới dạng pre-release có checksum,
+tag CI provenance và cảnh báo rõ ràng. Store/signed stable vẫn cần credential thuộc
+owner; không mô tả preview là stable production release.
 
 ## Toolchain và dependency
 
@@ -151,8 +151,9 @@ Capability là hành vi source hiện tại, không thay thế device test và s
    upgrade thật từ source `1.0.0+9`; còn code signing và physical-device/Windows Hello.
    Linux đã có `.deb` candidate, hosted amd64 historical upgrade, clean-container
    package transition, X11/Wayland distro matrix và authenticated E2EE client runtime;
-   còn KDE login/unlock/physical desktop, release signing và maintainer/support
-   metadata trước phân phối công khai. E2EE evidence hiện là
+   hai package chỉ đủ điều kiện GitHub Preview. Trước stable còn KDE
+   login/unlock/physical desktop, release signing và maintainer/support metadata.
+   E2EE evidence hiện là
    debug arm64 container, không phải signed amd64 package runtime.
 9. Privacy policy cần được host tại URL công khai và điền kênh support trước store submission.
 10. Flutter Web đã pass TLS/reverse proxy và runtime smoke trên production domain;
@@ -175,6 +176,11 @@ Capability là hành vi source hiện tại, không thay thế device test và s
   minh cùng Linux hosted historical/package/distro, Windows historical/runtime/
   installer, Apple, Android, Web, quality và secret history gate.
 - `.github/dependabot.yml` kiểm tra Pub và GitHub Actions hằng tuần.
+- `release-preview.yml` cùng `github_preview_release.sh` fail closed theo
+  tag/version/successful tag CI và chỉ publish Windows/Linux allowlist với checksum;
+  workflow thủ công chỉ hoạt động sau khi file có trên default branch.
+- GitHub Private Vulnerability Reporting đã bật; `.github/SECURITY.md` hướng dẫn
+  gửi báo cáo riêng tư và cấm đưa credential vào public issue.
 - `scripts/agent/check.sh full` là quality gate canonical; baseline hiện có 106 test,
   analyze/format cả device integration source nhưng không tự boot virtual device.
 - `scripts/supabase/` giữ remote contract, backup, health, restore và off-host harness.

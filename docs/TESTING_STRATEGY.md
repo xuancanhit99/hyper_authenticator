@@ -126,8 +126,23 @@ không trong untrusted fork CI.
 | iOS | Simulator build mỗi CI; signed archive + device/TestFlight trước store |
 | macOS | Unsigned compile CI; signed runtime + notarized release trước phân phối |
 | Web | Configured release + hardened image contract + CSP/runtime `lang=vi` browser smoke |
-| Windows | Hosted local-vault runtime + historical `1.0.0+9` vault-upgrade harness + configured x64 + NSIS install/launch/metadata-upgrade/uninstall retention; bundle/installer SHA-256 artifact 14 ngày; physical device/signing trước phân phối |
-| Linux | Hosted amd64 configured x64 + historical `1.0.0+9` upgrade + private-keyring runtime + `.deb` transition + Ubuntu/Debian X11/Wayland matrix; authenticated E2EE debug arm64; KDE login/physical desktop và release signing trước phân phối |
+| Windows | Hosted local-vault runtime + historical `1.0.0+9` vault-upgrade harness + configured x64 + NSIS install/launch/metadata-upgrade/uninstall retention; installer/checksum được phép lên GitHub Preview unsigned; physical device/signing trước stable |
+| Linux | Hosted amd64 configured x64 + historical `1.0.0+9` upgrade + private-keyring runtime + `.deb` transition + Ubuntu/Debian X11/Wayland matrix; package/checksum được phép lên GitHub Preview unsigned; KDE/login/signed runtime trước stable |
+
+## GitHub Preview gate
+
+`scripts/agent/github_preview_release.sh` chỉ publish khi tag dạng preview khớp
+`pubspec.yaml`, trỏ đúng checkout và có workflow `CI` push thành công của chính tag.
+`check_github_preview_assets.sh` yêu cầu đúng một `.deb`/checksum và một Windows
+setup/checksum, từ chối env/source-map/debug symbol rồi tạo manifest SHA-256 tổng.
+
+Regression tối thiểu của harness:
+
+- fixture hợp lệ tạo đúng năm release asset;
+- checksum sai, sai version, asset thừa thuộc denylist hoặc output không rỗng đều fail;
+- release tồn tại, repository private, tag/HEAD mismatch hoặc tag CI chưa xanh đều
+  fail trước lệnh publish;
+- sau publish, tải asset qua public GitHub URL và xác minh `SHA256SUMS.txt`.
 
 ## Regression rule
 
@@ -179,7 +194,6 @@ không trong untrusted fork CI.
 3. Chưa có mailbox SMTP/expired-link E2E.
 4. Low-concurrency Auth budget đã enforce; chưa có long-duration soak hoặc
    production-scale workload test.
-5. Windows còn code signing và physical-device/Windows Hello; historical
-   `1.0.0+9` upgrade đã pass hosted runtime. Linux còn KDE login-unlock/physical
-   desktop, signed package E2EE runtime và public release-channel verification;
-   hosted amd64 historical upgrade + bốn distro X11/Wayland đã pass.
+5. Windows/Linux unsigned package đủ điều kiện GitHub Preview nhưng chưa phải stable.
+   Windows còn code signing và physical-device/Windows Hello. Linux còn KDE
+   login-unlock/physical desktop và signed package E2EE runtime.

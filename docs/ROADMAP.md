@@ -21,17 +21,15 @@ Roadmap ưu tiên theo rủi ro. Checkbox chỉ được đánh dấu khi có so
 - [x] Primary UI tiếng Việt và Web document language `vi`; giữ thuật ngữ technical
   khi cần độ chính xác.
 
-## Ưu tiên P0 — Phát hành platform đầu tiên
+## Ưu tiên P0 — Phát hành GitHub Preview đầu tiên
 
-- [ ] Owner cung cấp Android upload keystore; build AAB signed và internal track test.
-- [ ] Owner cung cấp Apple certificate/profile; iOS TestFlight và macOS notarization.
-- [ ] Host privacy policy + support/security contact ở URL công khai.
-- [ ] Mailbox test SMTP delivery và expired recovery link.
-- [ ] Device smoke: Keychain/Keystore, biometric, camera, recovery, two-device conflict.
-- [ ] Cấu hình external alert channel cho systemd health/backup failure.
+- [x] Chấp nhận contract GitHub Preview unsigned cho Windows x64/Linux amd64.
+- [x] Harness bắt buộc tag/version/tag-CI/checksum/asset allowlist và pre-release flag.
+- [ ] Publish preview tag đầu tiên và xác minh lại public download/checksum.
+- [x] Công bố private security reporting trên GitHub.
 
-Exit criteria: ít nhất một platform có signed artifact, store/device gate, public
-policy và backend rollback evidence.
+Exit criteria: GitHub pre-release public có Windows/Linux artifact đúng contract,
+tag CI xanh, checksum tải lại khớp và release note nêu signing/SMTP/platform risk.
 
 ## Ưu tiên P1 — Reliability và operations
 
@@ -63,6 +61,16 @@ policy và backend rollback evidence.
 - [ ] Linux KDE login-unlock/physical desktop, signed package runtime và release channel.
 - [ ] Quyết định Web encrypted sync sau browser threat model; mặc định vẫn tắt.
 - [ ] Đánh giá alternative scanner nếu upstream Built-in Kotlin migration chậm.
+
+## Ưu tiên P2 — Signed stable và app store
+
+- [ ] Owner cung cấp Android upload keystore; build AAB signed và internal track test.
+- [ ] Owner cung cấp Apple certificate/profile; iOS TestFlight và macOS notarization.
+- [ ] Windows code-signing certificate và signed installer verification.
+- [ ] Host privacy policy + support contact ở URL công khai.
+- [ ] Mailbox test SMTP delivery và expired recovery link.
+- [ ] Device smoke: Keychain/Keystore, biometric, camera, recovery, two-device conflict.
+- [ ] Cấu hình external alert channel cho systemd health/backup failure.
 
 ## Quy tắc chọn việc
 

@@ -5,11 +5,20 @@ mã dùng một lần theo RFC 6238. Local vault hoạt động offline không c
 Supabase authentication chỉ phục vụ tính năng cloud tùy chọn. Ứng dụng có app lock,
 nhập/xuất QR và giao diện sáng/tối.
 
-> Trạng thái dự án: **production baseline kỹ thuật, chưa hoàn tất store release**.
-> Native client đã có E2EE cloud sync và backend production có backup/restore/
-> health harness. Signed artifact, device test, SMTP mailbox và public legal/support
-> metadata vẫn là release gate phụ thuộc owner; Flutter Web còn cần production
-> hosting/header smoke. Xem [Trạng thái dự án](docs/PROJECT_STATUS.md).
+> Trạng thái dự án: **production baseline kỹ thuật; ưu tiên GitHub Preview trước
+> app store**. Web đang chạy production. Windows/Linux có package đã vượt hosted
+> CI nhưng chưa ký; chỉ được phát hành dưới dạng pre-release với checksum và cảnh
+> báo rõ ràng. Signed stable/store, device test, SMTP mailbox và public legal/support
+> metadata vẫn để ở giai đoạn sau. Xem [Trạng thái dự án](docs/PROJECT_STATUS.md).
+
+## Tải ứng dụng
+
+- Web: [authenticator.hyperz.xyz](https://authenticator.hyperz.xyz/).
+- Desktop Preview: [GitHub Releases](https://github.com/xuancanhit99/hyper_authenticator/releases).
+
+GitHub Preview hiện chỉ dành cho Windows x64 và Linux amd64. Luôn kiểm tra
+`SHA256SUMS.txt`; Windows SmartScreen có thể cảnh báo vì installer chưa code-sign.
+Android, iOS và macOS chưa được phân phối binary ở giai đoạn này.
 
 ## Chức năng
 
@@ -90,9 +99,9 @@ và [Chiến lược kiểm thử](docs/TESTING_STRATEGY.md).
 | Android | Đã xác minh debug | Camera QR và device authentication |
 | iOS | Đã xác minh simulator | Cần device và signing để release |
 | macOS | Đã xác minh compile unsigned | Cần signing để test Keychain/runtime và release |
-| Web | Release image + serving contract | Không có device authentication hoặc E2EE sync |
-| Windows | Runner + CI | Nhập thủ công + E2EE; không có camera QR |
-| Linux | Đã xác minh release compile | Nhập thủ công + E2EE; chưa device/keyring smoke |
+| Web | Production HTTPS | Không có device authentication hoặc E2EE sync |
+| Windows | Hosted runtime + unsigned NSIS Preview | Nhập thủ công + E2EE; không có camera QR |
+| Linux | Hosted runtime + unsigned `.deb` Preview | Nhập thủ công + E2EE; chưa KDE/physical desktop |
 
 `scripts/agent/build.sh` tự từ chối target không thể build trên host hiện tại.
 

@@ -48,6 +48,11 @@ run_platform() {
   dart run tool/agent/check_platform_config.dart
 }
 
+run_release_harness() {
+  printf '\n%s\n' "== GitHub Preview release harness gate =="
+  scripts/agent/test_github_preview_assets.sh
+}
+
 run_quick() {
   local status=0
   run_docs || status=1
@@ -64,6 +69,7 @@ run_full() {
   local status=0
   run_quick || status=1
   run_platform || status=1
+  run_release_harness || status=1
   printf '\n%s\n' "== Flutter test gate =="
   flutter test || status=1
   printf '\n%s\n' "== Supabase encrypted migration gate =="
