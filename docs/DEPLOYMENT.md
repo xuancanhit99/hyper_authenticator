@@ -167,14 +167,15 @@ khi coi 3 GiB là ngưỡng production ổn định.
 Public boundary:
 
 - reverse proxy hiện có terminate TLS;
-- Kong tham gia external network `proxy-network` để proxy resolve bằng container
-  name, tránh phụ thuộc container IP;
+- Kong và Studio tham gia external network `proxy-network` để proxy resolve bằng
+  container name, tránh phụ thuộc container IP; Studio public route giữ Basic Auth;
 - Kong HTTP/HTTPS và Supavisor session/transaction port chỉ bind `127.0.0.1`;
 - PostgreSQL/Studio/service nội bộ không publish trực tiếp ra Internet.
 
 Overlay tái lập nằm trong `supabase/docker-compose.public-proxy.yml`. Mất external
-network attachment sẽ làm public endpoint trả `502` dù container vẫn healthy, nên
-health check phải gồm cả loopback và public TLS path.
+network attachment sẽ làm API hoặc Studio public endpoint trả `502` dù container
+vẫn healthy, nên health check phải gồm DNS/upstream từ reverse proxy và public TLS
+path. Chạy `scripts/supabase/test_remote_studio_proxy.sh` sau mỗi recreate Studio.
 
 Host maintenance baseline:
 

@@ -1,4 +1,9 @@
 services:
+  studio:
+    networks:
+      - default
+      - public-proxy
+
   kong:
     ports: !override
       - "127.0.0.1:${KONG_HTTP_PORT}:8000/tcp"

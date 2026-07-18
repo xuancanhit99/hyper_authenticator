@@ -6,8 +6,9 @@ database volume và backup không được đặt trong repository.
 ## Nội dung
 
 - `UPSTREAM_PIN`: release/commit official đã dùng để dựng stack hiện tại.
-- `docker-compose.public-proxy.yml`: overlay chỉ bind Kong/Supavisor vào
-  loopback và nối Kong vào external network `proxy-network`.
+- `docker-compose.public-proxy.yml`: overlay bind Kong/Supavisor vào loopback,
+  đồng thời nối Kong và Studio vào external network `proxy-network` để reverse
+  proxy resolve upstream bằng service name.
 - `docker-compose.recovery-web.yml`: inject internal recovery-template URL vào
   Auth; URL thật nằm trong `.env` operator, không nằm trong repository.
 - `migrations/`: schema, grant và RLS policy của ứng dụng.
@@ -19,6 +20,8 @@ database volume và backup không được đặt trong repository.
   contract cho encrypted snapshot trên isolated self-hosted environment.
 - `../scripts/supabase/test_remote_recovery_contract.sh`: one-time recovery-token,
   password update/re-login/reuse contract; không gửi email thật.
+- `../scripts/supabase/test_remote_studio_proxy.sh`: health/network/DNS/upstream
+  contract cho Studio và Basic Auth public boundary.
 
 ## Áp dụng trên một stack mới
 
@@ -62,6 +65,14 @@ Khi deploy Recovery Web, thêm exact URL vào `ADDITIONAL_REDIRECT_URLS`, đặt
 Remote recovery contract không gửi email thật và dọn user bằng Admin API. GoTrue
 vẫn giữ audit entry; chỉ xóa audit trong isolated zero-data rehearsal, không xóa
 audit production.
+
+Sau khi recreate Studio hoặc Docker network, chạy trên server:
+
+    scripts/supabase/test_remote_studio_proxy.sh https://studio.example.com
+
+Public status `401` khi không có credential là expected vì dashboard dùng Basic
+Auth. Contract còn xác minh Nginx Proxy Manager resolve được `supabase-studio` và
+upstream profile trả 200; container healthy một mình không đủ chứng minh route.
 
 ## Giới hạn hiện tại
 

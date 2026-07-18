@@ -50,6 +50,8 @@ Chưa có device/integration test Flutter đầy đủ.
 - Fresh deployment dùng Docker release `self-hosted/v0.7.0`, commit pin trong `supabase/UPSTREAM_PIN` và PostgreSQL 17.6.1.136.
 - 11 core service healthy: Studio, Kong, Auth, PostgREST, Realtime, Storage, imgproxy, postgres-meta, Edge Runtime, PostgreSQL và Supavisor.
 - Public API đi qua reverse proxy HTTPS; Kong và hai Supavisor port chỉ bind loopback. Logs/Analytics chưa bật; host có 7,8 GB RAM và chưa có load-test headroom. Keycloak VNPAY dùng `mem_limit` 3 GiB, reservation 1 GiB, JVM heap khởi tạo 25%/tối đa 65% theo limit container; sau cold start, host có khoảng 3,6 GB available.
+- Studio public route giữ Basic Auth; Studio và Kong có declarative
+  `proxy-network` attachment, reverse-proxy DNS/upstream contract pass.
 - Host cleanup ngày 17 tháng 7 năm 2026 đưa disk từ 93% xuống 67%, còn khoảng 24 GB; Docker không còn cache reclaimable. Sau đó Vault MTLS POC được xóa theo yêu cầu owner, swap giảm còn khoảng 1,2/2 GB. SSH log level đã hạ từ DEBUG3 xuống INFO, chỉ cho phép public key và system journal bị giới hạn 1 GB/14 ngày.
 - Legacy data/config/Storage đã backup có checksum ngoài repository; instance mới không import dữ liệu cũ.
 - `synced_accounts` có migration, grant CRUD tối thiểu, force RLS và bốn owner policy.

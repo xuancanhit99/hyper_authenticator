@@ -99,7 +99,7 @@ expired-token time-travel test.
 
 ### Supabase remote contract
 
-Backend rollout chạy năm suite ngoài Flutter unit test:
+Backend rollout chạy sáu suite ngoài Flutter unit test:
 
 | Suite | Coverage | Baseline |
 |---|---|---:|
@@ -108,6 +108,7 @@ Backend rollout chạy năm suite ngoài Flutter unit test:
 | `scripts/supabase/test_remote_contract.sh` | Anonymous denial, mapper shape và owner/cross-user CRUD RLS | 17 pass |
 | `scripts/supabase/test_remote_encrypted_vault_contract.sh` | Encrypted shape, optimistic revision và cross-user RLS qua PostgREST/Auth | 11 pass |
 | `scripts/supabase/test_remote_recovery_contract.sh` | Generate/verify/update/re-login/reuse/malformed recovery token | 8 pass |
+| `scripts/supabase/test_remote_studio_proxy.sh` | Studio health, shared network, NPM DNS/upstream và public Basic Auth | Pass |
 
 Contract script cần server `.env` có service role chỉ để tạo/dọn isolated user.
 Không copy credential đó vào client hoặc CI log. Script dùng placeholder được đánh
