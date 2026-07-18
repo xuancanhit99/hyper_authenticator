@@ -101,6 +101,11 @@ void main() {
     'VALUE "ProductName", "Hyper Authenticator"',
     'Windows product metadata',
   );
+  requireText(
+    'windows/CMakeLists.txt',
+    '_SILENCE_EXPERIMENTAL_COROUTINE_DEPRECATION_WARNINGS',
+    'MSVC 14.51 compatibility cho local_auth_windows 2.0.1',
+  );
 
   final platformFiles = <String>[
     'android/app/build.gradle.kts',

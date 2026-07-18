@@ -116,6 +116,11 @@ Gate: Windows CI artifact pass, xác minh checksum sau download, secure storage/
 app-lock behavior, installer upgrade/uninstall data retention, Auth HTTPS và code
 signing nếu phân phối công khai. Scanner bị ẩn theo thiết kế.
 
+`local_auth_windows` 2.0.1 còn phụ thuộc `/await` experimental. Project hiện opt in
+warning-suppression mà MSVC 14.51 yêu cầu để giữ native CI chạy được; đây không phải
+signing bypass. Khi upstream bỏ `/await`, xóa define và bắt buộc chạy lại Windows
+artifact/device gate trước release.
+
 ## Linux
 
     flutter build linux --release --dart-define-from-file=.env.production

@@ -7,7 +7,9 @@ import 'package:hyper_authenticator/features/authenticator/presentation/pages/ac
 import 'package:hyper_authenticator/features/settings/presentation/pages/settings_page.dart';
 
 class MainNavigationPage extends StatefulWidget {
-  const MainNavigationPage({super.key});
+  final int selectedIndex;
+
+  const MainNavigationPage({required this.selectedIndex, super.key});
 
   @override
   State<MainNavigationPage> createState() => _MainNavigationPageState();
@@ -15,15 +17,25 @@ class MainNavigationPage extends StatefulWidget {
 
 class _MainNavigationPageState extends State<MainNavigationPage> {
   bool _isCheckingLocalAuth = true; // Flag to prevent multiple checks initially
+  late int _selectedIndex;
 
   @override
   void initState() {
     super.initState();
+    _selectedIndex = widget.selectedIndex;
     // Check local auth status when this page is first built
     // Use addPostFrameCallback to ensure BlocProvider is ready
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _checkAndTriggerLocalAuth();
     });
+  }
+
+  @override
+  void didUpdateWidget(covariant MainNavigationPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.selectedIndex != widget.selectedIndex) {
+      _selectedIndex = widget.selectedIndex;
+    }
   }
 
   void _checkAndTriggerLocalAuth() {
@@ -40,8 +52,6 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
     // If state is Success or Unavailable, do nothing (already unlocked)
   }
 
-  int _selectedIndex = 0; // Index for the current tab
-
   // List of pages to navigate between
   static const List<Widget> _widgetOptions = <Widget>[
     AccountsPage(),
@@ -49,9 +59,13 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
   ];
 
   void _onItemTapped(int index) {
+    if (_selectedIndex == index) {
+      return;
+    }
     setState(() {
       _selectedIndex = index;
     });
+    context.go(AppRoutes.mainLocationForTabIndex(index));
   }
 
   @override

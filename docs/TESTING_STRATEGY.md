@@ -21,9 +21,10 @@ entitlement contract, Flutter test và encrypted PostgreSQL migration contract.
 
 ## Coverage hiện tại
 
-67 Flutter tests bao phủ:
+71 Flutter tests bao phủ:
 
 - router/auth/logout/offline-local-vault boundary;
+- main-navigation URL/tab mapping và deep-link return qua app-lock bootstrap;
 - TOTP URI/validator, countdown nhiều period và lifecycle resume;
 - local vault migration, concurrent mutation, corruption rollback, atomic replace
   và generation compaction;

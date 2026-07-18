@@ -59,6 +59,11 @@ embed lúc Flutter compile theo public-config contract. HTML dùng `no-store`, a
 revalidate, SPA fallback về `index.html`; access log tắt để query material không
 vào container log. Reverse proxy bên ngoài sở hữu TLS và domain routing.
 
+GoRouter giữ URL làm source of truth cho main navigation: `/` mở Accounts và
+`/settings` mở Settings. Không ép `initialLocation`, vì làm vậy sẽ bỏ qua browser
+deep link và platform route ban đầu. Bottom navigation cập nhật URL bằng `go`, còn
+router truyền selected index trở lại shell để refresh/back giữ đúng tab.
+
 ## Local vault
 
 `AuthenticatorLocalDataSource` serialize mutation bằng critical section:

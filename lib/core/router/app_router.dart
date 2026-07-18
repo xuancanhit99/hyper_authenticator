@@ -21,6 +21,7 @@ class AppRoutes {
   static const startup = '/startup';
   static const login = '/login';
   static const main = '/'; // Main screen (wrapper with bottom nav)
+  static const settings = '/settings';
   static const addAccount = '/add-account';
   static const lockScreen = '/lock-screen';
   static const register = '/register'; // Added
@@ -28,6 +29,22 @@ class AppRoutes {
   static const updatePassword =
       '/update-password'; // Added for deep link handling
   static const editAccount = '/edit-account'; // Added for EditAccountPage
+
+  static int mainTabIndexForLocation(String location) {
+    return switch (location) {
+      main => 0,
+      settings => 1,
+      _ => throw ArgumentError.value(location, 'location'),
+    };
+  }
+
+  static String mainLocationForTabIndex(int index) {
+    return switch (index) {
+      0 => main,
+      1 => settings,
+      _ => throw RangeError.index(index, const [main, settings], 'index'),
+    };
+  }
 }
 
 /// Pure redirect policy so offline-vault and app-lock behavior can be tested
@@ -37,6 +54,7 @@ class AppRedirectPolicy {
     required AuthState authState,
     required LocalAuthState localAuthState,
     required String location,
+    String? returnTo,
   }) {
     final isLogin = location == AppRoutes.login;
     final isRegister = location == AppRoutes.register;
@@ -55,21 +73,45 @@ class AppRedirectPolicy {
     }
 
     if (localAuthState is LocalAuthInitial) {
-      return isStartup ? null : AppRoutes.startup;
+      return isStartup ? null : _routeWithReturnTo(AppRoutes.startup, location);
     }
 
     if (localAuthState is LocalAuthRequired ||
         localAuthState is LocalAuthError) {
-      return isLockScreen ? null : AppRoutes.lockScreen;
+      return isLockScreen
+          ? null
+          : _routeWithReturnTo(
+              AppRoutes.lockScreen,
+              _safeMainReturnTo(returnTo) ?? location,
+            );
     }
 
     if ((localAuthState is LocalAuthSuccess ||
             localAuthState is LocalAuthUnavailable) &&
         (isStartup || isLockScreen)) {
-      return AppRoutes.main;
+      return _safeMainReturnTo(returnTo) ?? AppRoutes.main;
     }
 
     return null;
+  }
+
+  static String _routeWithReturnTo(String route, String candidate) {
+    final safeReturnTo = _safeMainReturnTo(candidate);
+    if (safeReturnTo == null || safeReturnTo == AppRoutes.main) {
+      return route;
+    }
+    return Uri(
+      path: route,
+      queryParameters: {'returnTo': safeReturnTo},
+    ).toString();
+  }
+
+  static String? _safeMainReturnTo(String? candidate) {
+    return switch (candidate) {
+      AppRoutes.main => AppRoutes.main,
+      AppRoutes.settings => AppRoutes.settings,
+      _ => null,
+    };
   }
 }
 
@@ -111,7 +153,6 @@ class AppRouter {
 
   GoRouter _buildRouter() {
     return GoRouter(
-      initialLocation: AppRoutes.main, // Bắt đầu ở trang chính
       // Chỉ lắng nghe AuthBloc để refresh redirect
       // Listen to both Blocs for refresh
       refreshListenable: CombinedAuthRefreshStream([
@@ -152,7 +193,20 @@ class AppRouter {
         GoRoute(
           path: AppRoutes.main, // '/'
           name: AppRoutes.main,
-          builder: (context, state) => const MainNavigationPage(),
+          builder: (context, state) => MainNavigationPage(
+            selectedIndex: AppRoutes.mainTabIndexForLocation(
+              state.matchedLocation,
+            ),
+          ),
+        ),
+        GoRoute(
+          path: AppRoutes.settings,
+          name: AppRoutes.settings,
+          builder: (context, state) => MainNavigationPage(
+            selectedIndex: AppRoutes.mainTabIndexForLocation(
+              state.matchedLocation,
+            ),
+          ),
         ),
         // Add Account Route (protected by redirect)
         GoRoute(
@@ -209,6 +263,7 @@ class AppRouter {
           authState: authBloc.state,
           localAuthState: localAuthBloc.state,
           location: state.matchedLocation,
+          returnTo: state.uri.queryParameters['returnTo'],
         );
       },
       errorBuilder: (context, state) =>

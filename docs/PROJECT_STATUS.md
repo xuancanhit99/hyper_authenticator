@@ -25,6 +25,9 @@ các credential gate tương ứng pass.
   `flutter_test` của Flutter 3.44.6 pin `meta 1.18.0`.
 - `mobile_scanner` 7.3.0 vẫn phát cảnh báo upstream về Kotlin Gradle Plugin
   legacy; build hiện pass nhưng phải theo dõi trước Flutter breaking release kế.
+- `local_auth_windows` 2.0.1 vẫn dùng coroutine experimental; MSVC 14.51 cần
+  `_SILENCE_EXPERIMENTAL_COROUTINE_DEPRECATION_WARNINGS`. Platform gate giữ shim
+  tạm thời cho tới khi upstream chuyển sang coroutine chuẩn.
 - Apple runner dùng Swift Package Manager.
 
 ## Bằng chứng client
@@ -33,12 +36,12 @@ các credential gate tương ứng pass.
 |---|---|
 | `flutter doctor -v` | Pass, không có lỗi toolchain |
 | `flutter analyze` | Pass, 0 diagnostic |
-| `flutter test` | 67 test pass |
+| `flutter test` | 71 test pass |
 | Platform configuration gate | Pass network/backup/signing/Keychain/ID |
 | Release config validator | Pass với `.env` public hiện tại, không in key |
 | Gitleaks full history | Pass sau exact allowlist RFC 6238 test vector |
-| Android debug APK | Pass |
-| Web release + hardened Nginx image | Pass serving contract và CSP browser runtime, console sạch |
+| Android debug + Pixel AVD runtime | Pass build/install, Supabase init, secure-storage bootstrap và render Accounts/Settings |
+| Web release + hardened Nginx image | Pass public TLS/proxy, serving contract, `/` + `/settings` browser runtime và console sạch |
 | macOS debug compile unsigned | Pass; không phải runtime/signing evidence |
 | iOS 26.5 simulator debug | Pass build và runtime launch với Supabase init |
 | Android release | Fail closed đúng thiết kế vì chưa có upload keystore |
@@ -119,8 +122,8 @@ Capability là hành vi source hiện tại, không thay thế device test và s
 7. Windows build còn dựa trên CI. Windows installer/signing/device và Linux
    package/keyring/device smoke test chưa xong.
 8. Privacy policy cần được host tại URL công khai và điền kênh support trước store submission.
-9. Flutter Web có hardened image/serving contract và local CSP browser smoke;
-   production domain vẫn phải chứng minh TLS/reverse proxy và camera smoke thực tế.
+9. Flutter Web đã pass TLS/reverse proxy và runtime smoke trên production domain;
+   camera permission/QR scan vẫn cần browser-device smoke thực tế.
 
 ## Automation
 

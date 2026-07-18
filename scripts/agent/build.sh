@@ -13,22 +13,30 @@ if [[ $# -gt 2 ]]; then
   exit 64
 fi
 
-define_args=()
+define_arg=
 if [[ -n "$ENV_FILE" ]]; then
   dart run tool/agent/check_release_config.dart "$ENV_FILE"
-  define_args+=("--dart-define-from-file=$ENV_FILE")
+  define_arg="--dart-define-from-file=$ENV_FILE"
 fi
+
+flutter_build() {
+  if [[ -n "$define_arg" ]]; then
+    flutter build "$@" "$define_arg"
+  else
+    flutter build "$@"
+  fi
+}
 
 build_macos() {
   if security find-identity -v -p codesigning 2>/dev/null |
       grep -Eq '[1-9][0-9]* valid identities found'; then
-    flutter build macos --debug "${define_args[@]}"
+    flutter_build macos --debug
     return
   fi
 
   printf '%s\n' \
     'Không có Apple signing identity; chỉ compile macOS unsigned, không runtime.'
-  flutter build macos --debug --config-only "${define_args[@]}"
+  flutter_build macos --debug --config-only
 
   # Xcode exports its environment in verbose build output. Use an allowlisted
   # environment and quiet mode so CI/operator credentials cannot enter logs.
@@ -55,22 +63,22 @@ build_macos() {
 build_target() {
   case "$1" in
     android)
-      flutter build apk --debug "${define_args[@]}"
+      flutter_build apk --debug
       ;;
     ios)
-      flutter build ios --simulator --debug "${define_args[@]}"
+      flutter_build ios --simulator --debug
       ;;
     web)
-      flutter build web --release --no-web-resources-cdn "${define_args[@]}"
+      flutter_build web --release --no-web-resources-cdn
       ;;
     macos)
       build_macos
       ;;
     linux)
-      flutter build linux --release "${define_args[@]}"
+      flutter_build linux --release
       ;;
     windows)
-      flutter build windows --release "${define_args[@]}"
+      flutter_build windows --release
       ;;
     *)
       printf 'Target không hợp lệ: %s\n' "$1" >&2
