@@ -17,7 +17,7 @@ class DeleteAccount implements UseCase<Unit, DeleteAccountParams> {
       // Use the ValidationFailure defined in add_account.dart or move it to core/error/failures.dart
       // For now, assuming it's accessible or redefined here if needed.
       // class ValidationFailure extends Failure { const ValidationFailure(String message) : super(message); }
-      return Left(ValidationFailure('Account ID cannot be empty.'));
+      return Left(ValidationFailure('ID tài khoản không được để trống.'));
     }
     return await repository.deleteAccount(params.accountId);
   }

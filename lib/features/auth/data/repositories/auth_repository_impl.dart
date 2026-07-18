@@ -36,7 +36,7 @@ class AuthRepositoryImpl implements AuthRepository {
     } catch (_) {
       return Left(
         ServerFailure(
-          'Failed to get current user info. Please try again later.',
+          'Không thể lấy thông tin người dùng hiện tại. Vui lòng thử lại sau.',
         ),
       );
     }
@@ -60,7 +60,7 @@ class AuthRepositoryImpl implements AuthRepository {
     } catch (_) {
       return Left(
         AuthCredentialsFailure(
-          'An unexpected error occurred during sign in. Please check your connection or try again later.',
+          'Đăng nhập gặp lỗi không mong đợi. Hãy kiểm tra kết nối hoặc thử lại sau.',
         ),
       );
     }
@@ -96,7 +96,7 @@ class AuthRepositoryImpl implements AuthRepository {
     } catch (_) {
       return Left(
         AuthServerFailure(
-          'An unexpected error occurred during sign up. Please try again later.',
+          'Đăng ký gặp lỗi không mong đợi. Vui lòng thử lại sau.',
         ),
       );
     }
@@ -114,7 +114,7 @@ class AuthRepositoryImpl implements AuthRepository {
     } catch (_) {
       return Left(
         ServerFailure(
-          'An unexpected error occurred while recovering password. Please try again later.',
+          'Khôi phục mật khẩu gặp lỗi không mong đợi. Vui lòng thử lại sau.',
         ),
       );
     }
@@ -128,7 +128,7 @@ class AuthRepositoryImpl implements AuthRepository {
     } catch (_) {
       return Left(
         ServerFailure(
-          'Failed to sign out. Please check your connection or try again later.',
+          'Không thể đăng xuất. Hãy kiểm tra kết nối hoặc thử lại sau.',
         ),
       );
     }
@@ -146,7 +146,7 @@ class AuthRepositoryImpl implements AuthRepository {
     } catch (_) {
       return Left(
         ServerFailure(
-          'Failed to revoke other sessions. Please check your connection or try again later.',
+          'Không thể thu hồi các session khác. Hãy kiểm tra kết nối hoặc thử lại sau.',
         ),
       );
     }
@@ -166,7 +166,7 @@ class AuthRepositoryImpl implements AuthRepository {
     } catch (_) {
       return Left(
         ServerFailure(
-          'An unexpected error occurred while updating password. Please try again later.',
+          'Cập nhật mật khẩu gặp lỗi không mong đợi. Vui lòng thử lại sau.',
         ),
       );
     }

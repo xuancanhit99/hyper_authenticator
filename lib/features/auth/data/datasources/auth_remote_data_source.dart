@@ -56,14 +56,14 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       );
       if (response.user == null) {
         throw const AuthServerException(
-          'Sign in failed: Invalid credentials or user not found.',
+          'Đăng nhập thất bại: thông tin đăng nhập không hợp lệ hoặc không tìm thấy người dùng.',
         );
       }
       return response.user!;
     } on AuthException catch (e) {
       throw AuthServerException(e.message);
     } catch (_) {
-      throw ServerException('An unexpected error occurred during sign in.');
+      throw ServerException('Đã xảy ra lỗi không mong đợi khi đăng nhập.');
     }
   }
 
@@ -84,16 +84,16 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       );
 
       if (response.user == null && response.session == null) {
-        throw const AuthServerException('Sign up process failed unexpectedly.');
+        throw const AuthServerException('Quá trình đăng ký thất bại.');
       }
       if (response.user == null) {
         if (response.session != null) {
           throw const AuthServerException(
-            'Sign up completed but user data is missing in response.',
+            'Đăng ký hoàn tất nhưng response thiếu dữ liệu người dùng.',
           );
         } else {
           throw const AuthServerException(
-            'Sign up process failed: No user or session returned.',
+            'Đăng ký thất bại: server không trả về người dùng hoặc session.',
           );
         }
       }
@@ -101,7 +101,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
     } on AuthException catch (e) {
       throw AuthServerException(e.message);
     } catch (_) {
-      throw ServerException('An unexpected error occurred during sign up.');
+      throw ServerException('Đã xảy ra lỗi không mong đợi khi đăng ký.');
     }
   }
 
@@ -122,7 +122,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       throw AuthServerException(e.message);
     } catch (_) {
       throw ServerException(
-        'An unexpected error occurred during password recovery.',
+        'Đã xảy ra lỗi không mong đợi khi khôi phục mật khẩu.',
       );
     }
   }
@@ -132,7 +132,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
     try {
       await _supabaseClient.auth.signOut(scope: SignOutScope.local);
     } catch (_) {
-      throw ServerException('An error occurred during sign out.');
+      throw ServerException('Đã xảy ra lỗi khi đăng xuất.');
     }
   }
 
@@ -143,7 +143,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
     } on AuthException catch (e) {
       throw AuthServerException(e.message);
     } catch (_) {
-      throw ServerException('An error occurred while revoking other sessions.');
+      throw ServerException('Đã xảy ra lỗi khi thu hồi các session khác.');
     }
   }
 
@@ -158,7 +158,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       throw AuthServerException(e.message);
     } catch (_) {
       throw ServerException(
-        'An unexpected error occurred while updating password.',
+        'Đã xảy ra lỗi không mong đợi khi cập nhật mật khẩu.',
       );
     }
   }

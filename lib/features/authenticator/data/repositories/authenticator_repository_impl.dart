@@ -22,7 +22,7 @@ class AuthenticatorRepositoryImpl implements AuthenticatorRepository {
     } on StorageReadException {
       return const Left(
         StorageFailure(
-          'Failed to read accounts from storage.',
+          'Không thể đọc tài khoản từ storage.',
         ), // Use positional argument
       );
     } catch (e) {
@@ -61,7 +61,7 @@ class AuthenticatorRepositoryImpl implements AuthenticatorRepository {
     } on StorageWriteException {
       return const Left(
         StorageFailure(
-          'Failed to save account to storage.',
+          'Không thể lưu tài khoản vào storage.',
         ), // Use positional argument
       );
     } catch (e) {
@@ -82,10 +82,10 @@ class AuthenticatorRepositoryImpl implements AuthenticatorRepository {
       final savedAccount = await localDataSource.saveAccount(account);
       return Right(savedAccount);
     } on StorageWriteException {
-      return const Left(StorageFailure('Failed to save account to storage.'));
+      return const Left(StorageFailure('Không thể lưu tài khoản vào storage.'));
     } catch (_) {
       return const Left(
-        StorageFailure('An unexpected error occurred while saving an account.'),
+        StorageFailure('Đã xảy ra lỗi không mong đợi khi lưu tài khoản.'),
       );
     }
   }
@@ -97,12 +97,12 @@ class AuthenticatorRepositoryImpl implements AuthenticatorRepository {
       return const Right(unit); // Use 'unit' from fpdart for void success
     } on AccountNotFoundException {
       return const Left(
-        AccountNotFoundFailure('Account not found in storage.'),
+        AccountNotFoundFailure('Không tìm thấy tài khoản trong storage.'),
       ); // Use positional argument
     } on StorageDeleteException {
       return const Left(
         StorageFailure(
-          'Failed to delete account from storage.',
+          'Không thể xóa tài khoản khỏi storage.',
         ), // Use positional argument
       );
     } catch (e) {
@@ -124,10 +124,14 @@ class AuthenticatorRepositoryImpl implements AuthenticatorRepository {
       return const Right(unit);
     } on AccountNotFoundException {
       return const Left(
-        AccountNotFoundFailure('Account not found in storage for update.'),
+        AccountNotFoundFailure(
+          'Không tìm thấy tài khoản cần cập nhật trong storage.',
+        ),
       );
     } on StorageWriteException {
-      return const Left(StorageFailure('Failed to update account in storage.'));
+      return const Left(
+        StorageFailure('Không thể cập nhật tài khoản trong storage.'),
+      );
     } catch (e) {
       return Left(
         StorageFailure(

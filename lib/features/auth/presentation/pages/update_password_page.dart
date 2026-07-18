@@ -46,20 +46,20 @@ class _UpdatePasswordPageState extends State<UpdatePasswordPage> {
 
   String? _validatePassword(String? value) {
     if (value == null || value.isEmpty) {
-      return 'Please enter a new password';
+      return 'Vui lòng nhập mật khẩu mới.';
     }
     if (value.length < 6) {
-      return 'Password must be at least 6 characters';
+      return 'Mật khẩu phải có ít nhất 6 ký tự.';
     }
     return null;
   }
 
   String? _validateConfirmPassword(String? value) {
     if (value == null || value.isEmpty) {
-      return 'Please confirm your new password';
+      return 'Vui lòng xác nhận mật khẩu mới.';
     }
     if (value != _passwordController.text) {
-      return 'Passwords do not match';
+      return 'Mật khẩu xác nhận không khớp.';
     }
     return null;
   }
@@ -79,7 +79,7 @@ class _UpdatePasswordPageState extends State<UpdatePasswordPage> {
             ..hideCurrentSnackBar()
             ..showSnackBar(
               const SnackBar(
-                content: Text('Password updated successfully! Please log in.'),
+                content: Text('Đã cập nhật mật khẩu. Vui lòng đăng nhập lại.'),
               ),
             );
           context.go(AppRoutes.login);
@@ -87,7 +87,7 @@ class _UpdatePasswordPageState extends State<UpdatePasswordPage> {
       },
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('Set New Password'),
+          title: const Text('Đặt mật khẩu mới'),
           elevation: 0,
           backgroundColor: Colors.transparent,
           // Automatically adds back button if navigable
@@ -103,13 +103,13 @@ class _UpdatePasswordPageState extends State<UpdatePasswordPage> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     const AuthHeader(
-                      title: 'Set New Password',
-                      subtitle: 'Enter and confirm your new password',
+                      title: 'Đặt mật khẩu mới',
+                      subtitle: 'Nhập và xác nhận mật khẩu mới',
                     ),
                     TextFormField(
                       controller: _passwordController,
                       decoration: InputDecoration(
-                        labelText: 'New Password*',
+                        labelText: 'Mật khẩu mới*',
                         prefixIcon: const Icon(Icons.lock_outline),
                         border: const OutlineInputBorder(),
                         suffixIcon: IconButton(
@@ -133,7 +133,7 @@ class _UpdatePasswordPageState extends State<UpdatePasswordPage> {
                     TextFormField(
                       controller: _confirmPasswordController,
                       decoration: InputDecoration(
-                        labelText: 'Confirm New Password*',
+                        labelText: 'Xác nhận mật khẩu mới*',
                         prefixIcon: const Icon(Icons.lock_outline),
                         border: const OutlineInputBorder(),
                         suffixIcon: IconButton(
@@ -178,7 +178,7 @@ class _UpdatePasswordPageState extends State<UpdatePasswordPage> {
                                     color: Colors.white,
                                   ),
                                 )
-                              : const Text('Update Password'),
+                              : const Text('Cập nhật mật khẩu'),
                         );
                       },
                     ),

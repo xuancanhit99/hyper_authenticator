@@ -47,18 +47,18 @@ class _RegisterPageState extends State<RegisterPage> {
 
   String? _validateName(String? value) {
     if (value == null || value.trim().isEmpty) {
-      return 'Please enter your name';
+      return 'Vui lòng nhập tên.';
     }
     return null;
   }
 
   String? _validateEmail(String? value) {
     if (value == null || value.trim().isEmpty) {
-      return 'Please enter your email';
+      return 'Vui lòng nhập email.';
     }
     final emailRegex = RegExp(r'^[^@]+@[^@]+\.[^@]+');
     if (!emailRegex.hasMatch(value.trim())) {
-      return 'Please enter a valid email address';
+      return 'Vui lòng nhập địa chỉ email hợp lệ.';
     }
     return null;
   }
@@ -67,11 +67,11 @@ class _RegisterPageState extends State<RegisterPage> {
 
   String? _validatePassword(String? value) {
     if (value == null || value.isEmpty) {
-      return 'Please enter a password';
+      return 'Vui lòng nhập mật khẩu.';
     }
     if (value.length < 6) {
       // Example: Enforce minimum length
-      return 'Password must be at least 6 characters';
+      return 'Mật khẩu phải có ít nhất 6 ký tự.';
     }
     // You might add more complex password rules here
     return null;
@@ -79,10 +79,10 @@ class _RegisterPageState extends State<RegisterPage> {
 
   String? _validateConfirmPassword(String? value) {
     if (value == null || value.isEmpty) {
-      return 'Please confirm your password';
+      return 'Vui lòng xác nhận mật khẩu.';
     }
     if (value != _passwordController.text) {
-      return 'Passwords do not match';
+      return 'Mật khẩu xác nhận không khớp.';
     }
     return null;
   }
@@ -122,14 +122,14 @@ class _RegisterPageState extends State<RegisterPage> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     const AuthHeader(
-                      title: 'Create Account',
-                      subtitle: 'Sign up to get started',
+                      title: 'Tạo tài khoản',
+                      subtitle: 'Đăng ký để bắt đầu',
                     ),
                     TextFormField(
                       controller: _nameController,
                       keyboardType: TextInputType.name,
                       decoration: const InputDecoration(
-                        labelText: 'Name',
+                        labelText: 'Tên',
                         prefixIcon: Icon(Icons.person_outline),
                       ),
                       validator: _validateName,
@@ -151,7 +151,7 @@ class _RegisterPageState extends State<RegisterPage> {
                     TextFormField(
                       controller: _passwordController,
                       decoration: InputDecoration(
-                        labelText: 'Password',
+                        labelText: 'Mật khẩu',
                         prefixIcon: const Icon(Icons.lock_outline),
                         suffixIcon: IconButton(
                           icon: Icon(
@@ -174,7 +174,7 @@ class _RegisterPageState extends State<RegisterPage> {
                     TextFormField(
                       controller: _confirmPasswordController,
                       decoration: InputDecoration(
-                        labelText: 'Confirm Password',
+                        labelText: 'Xác nhận mật khẩu',
                         prefixIcon: const Icon(Icons.lock_outline),
                         suffixIcon: IconButton(
                           icon: Icon(
@@ -219,7 +219,7 @@ class _RegisterPageState extends State<RegisterPage> {
                                     color: Colors.white,
                                   ),
                                 )
-                              : const Text('Sign Up'),
+                              : const Text('Đăng ký'),
                         );
                       },
                     ),
@@ -227,7 +227,7 @@ class _RegisterPageState extends State<RegisterPage> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Text("Already have an account?"),
+                        const Text('Đã có tài khoản?'),
                         TextButton(
                           onPressed: () {
                             // Navigate back to Login page
@@ -240,7 +240,7 @@ class _RegisterPageState extends State<RegisterPage> {
                             }
                             // print('Navigate to Login');
                           },
-                          child: const Text('Login'),
+                          child: const Text('Đăng nhập'),
                         ),
                       ],
                     ),

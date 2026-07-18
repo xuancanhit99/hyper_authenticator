@@ -52,7 +52,7 @@ class LocalAuthBloc extends Bloc<LocalAuthEvent, LocalAuthState> {
     } catch (e) {
       emit(
         LocalAuthError(
-          'Error checking local authentication availability: ${e.toString()}',
+          'Không thể kiểm tra khả năng xác thực trên thiết bị: ${e.toString()}',
         ),
       );
     }
@@ -113,7 +113,7 @@ class LocalAuthBloc extends Bloc<LocalAuthEvent, LocalAuthState> {
         emit(LocalAuthSuccess());
       }
     } catch (e) {
-      emit(LocalAuthError('Error during relock request: ${e.toString()}'));
+      emit(LocalAuthError('Không thể khóa lại ứng dụng: ${e.toString()}'));
     }
   }
 

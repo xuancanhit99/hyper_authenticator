@@ -219,7 +219,7 @@ class _EncryptedSyncSectionState extends State<_EncryptedSyncSection> {
             ..showSnackBar(
               SnackBar(
                 content: Text(
-                  'Encrypted sync hoàn tất ở revision ${state.revision}.',
+                  'Đồng bộ mã hóa hoàn tất ở revision ${state.revision}.',
                 ),
               ),
             );
@@ -236,7 +236,7 @@ class _EncryptedSyncSectionState extends State<_EncryptedSyncSection> {
           children: [
             ListTile(
               leading: const Icon(Icons.enhanced_encryption),
-              title: const Text('Encrypted cloud sync'),
+              title: const Text('Đồng bộ cloud mã hóa đầu cuối'),
               subtitle: _statusText(context, state),
               trailing: state is SyncReady
                   ? Switch(

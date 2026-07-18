@@ -105,7 +105,7 @@ class _EditAccountPageState extends State<EditAccountPage> {
       appBar: AppBar(
         backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         elevation: 0,
-        title: const Text('Edit Account'),
+        title: const Text('Chỉnh sửa tài khoản'),
       ),
       body: BlocListener<AccountsBloc, AccountsState>(
         listener: (context, state) {
@@ -124,12 +124,12 @@ class _EditAccountPageState extends State<EditAccountPage> {
               // This logic might need refinement. For simplicity, pop if loaded.
               Navigator.pop(context);
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Account updated successfully!')),
+                const SnackBar(content: Text('Đã cập nhật tài khoản.')),
               );
             }
           } else if (state is AccountsError) {
             if (mounted) {
-              _showError('Failed to update account: ${state.message}');
+              _showError('Không thể cập nhật tài khoản: ${state.message}');
             }
           }
         },
@@ -155,55 +155,55 @@ class _EditAccountPageState extends State<EditAccountPage> {
                     hintText: 'Nhập tên nhà cung cấp',
                   ),
                   validator: (value) => (value == null || value.isEmpty)
-                      ? 'Please enter an issuer'
+                      ? 'Vui lòng nhập nhà cung cấp.'
                       : null,
                 ),
                 const SizedBox(height: 16),
                 TextFormField(
                   controller: _accountNameController,
                   decoration: const InputDecoration(
-                    labelText: 'Account Name (e.g., user@example.com)',
+                    labelText: 'Tên tài khoản (ví dụ: user@example.com)',
                   ),
                   validator: (value) => (value == null || value.isEmpty)
-                      ? 'Please enter an account name'
+                      ? 'Vui lòng nhập tên tài khoản.'
                       : null,
                 ),
                 const SizedBox(height: 16),
                 TextFormField(
                   controller: _secretController,
                   decoration: const InputDecoration(
-                    labelText: 'Secret Key (Base32 encoded)',
+                    labelText: 'Secret key (mã hóa Base32)',
                     // Consider making this read-only or adding strong warnings
                     // helperText: 'Warning: Changing the secret key will invalidate existing 2FA setups.',
                   ),
                   validator: (value) {
                     if (value == null || value.isEmpty) {
-                      return 'Please enter the secret key';
+                      return 'Vui lòng nhập secret key.';
                     }
                     return null;
                   },
                 ),
                 const SizedBox(height: 24),
                 const Text(
-                  "Advanced Options (Edit with caution):",
+                  'Tùy chọn nâng cao (chỉ sửa khi hiểu rõ):',
                   style: TextStyle(fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 8),
                 TextFormField(
                   controller: _algorithmController,
                   decoration: const InputDecoration(
-                    labelText: 'Algorithm (SHA1, SHA256, SHA512)',
+                    labelText: 'Thuật toán (SHA1, SHA256, SHA512)',
                   ),
                   validator: (value) {
                     if (value == null || value.isEmpty) {
-                      return 'Please enter an algorithm';
+                      return 'Vui lòng nhập thuật toán.';
                     }
                     if (![
                       'SHA1',
                       'SHA256',
                       'SHA512',
                     ].contains(value.toUpperCase())) {
-                      return 'Invalid algorithm. Use SHA1, SHA256, or SHA512.';
+                      return 'Thuật toán không hợp lệ. Dùng SHA1, SHA256 hoặc SHA512.';
                     }
                     return null;
                   },
@@ -212,16 +212,16 @@ class _EditAccountPageState extends State<EditAccountPage> {
                 TextFormField(
                   controller: _digitsController,
                   decoration: const InputDecoration(
-                    labelText: 'Digits (e.g., 6 or 8)',
+                    labelText: 'Số chữ số (ví dụ: 6 hoặc 8)',
                   ),
                   keyboardType: TextInputType.number,
                   validator: (value) {
                     if (value == null || value.isEmpty) {
-                      return 'Please enter number of digits';
+                      return 'Vui lòng nhập số chữ số.';
                     }
                     final n = int.tryParse(value);
-                    if (n == null) return 'Invalid number';
-                    if (n < 6 || n > 8) return 'Digits must be 6, 7, or 8';
+                    if (n == null) return 'Số không hợp lệ.';
+                    if (n < 6 || n > 8) return 'Số chữ số phải là 6, 7 hoặc 8.';
                     return null;
                   },
                 ),
@@ -229,16 +229,16 @@ class _EditAccountPageState extends State<EditAccountPage> {
                 TextFormField(
                   controller: _periodController,
                   decoration: const InputDecoration(
-                    labelText: 'Period (seconds, e.g., 30)',
+                    labelText: 'Chu kỳ (giây, ví dụ: 30)',
                   ),
                   keyboardType: TextInputType.number,
                   validator: (value) {
                     if (value == null || value.isEmpty) {
-                      return 'Please enter period';
+                      return 'Vui lòng nhập chu kỳ.';
                     }
                     final n = int.tryParse(value);
                     if (n == null || n <= 0) {
-                      return 'Period must be a positive number';
+                      return 'Chu kỳ phải là số dương.';
                     }
                     return null;
                   },
@@ -246,7 +246,7 @@ class _EditAccountPageState extends State<EditAccountPage> {
                 const SizedBox(height: 32),
                 ElevatedButton(
                   onPressed: _submitUpdate,
-                  child: const Text('Save Changes'),
+                  child: const Text('Lưu thay đổi'),
                 ),
               ],
             ),

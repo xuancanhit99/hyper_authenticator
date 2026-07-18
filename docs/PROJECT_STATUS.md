@@ -37,6 +37,7 @@ các credential gate tương ứng pass.
 | `flutter doctor -v` | Pass, không có lỗi toolchain |
 | `flutter analyze` | Pass, 0 diagnostic |
 | `flutter test` | 105 test pass |
+| Vietnamese UI contract | Primary auth/accounts/settings/add-edit surface và Web document language đã chuyển sang tiếng Việt; widget test khóa các label chính, vẫn giữ thuật ngữ technical cần thiết |
 | Platform configuration gate | Pass network/backup/signing/Keychain/ID |
 | Release config validator | Pass với `.env` public hiện tại, không in key |
 | Gitleaks full history | Pass sau exact allowlist RFC 6238 test vector |
@@ -81,6 +82,10 @@ verification phải inject `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY` và
   và DEK được giữ. Backend đối chiếu JWT `session_id` với `auth.sessions` trong cả
   RLS/RPC nên session đã revoke mất quyền encrypted vault ngay.
 - Web Settings không mời đăng nhập để dùng cloud sync khi capability bị tắt.
+- Primary UI đã dùng tiếng Việt nhất quán cho auth, navigation, accounts,
+  add/edit, settings và user-facing failure; Web document khai báo `lang="vi"`.
+  Tên sản phẩm cùng thuật ngữ technical như TOTP, secret key, Base32, cloud,
+  revision và session được giữ khi cần độ chính xác.
 - Scanner hiển thị trạng thái đang chờ quyền camera và lỗi permission/unsupported
   bằng tiếng Việt, có retry hoặc quay lại nhập thủ công thay vì nền đen không rõ trạng thái.
 - Logo dịch vụ và font Averta không rõ license đã bị loại khỏi release; UI dùng
@@ -153,6 +158,9 @@ Capability là hành vi source hiện tại, không thay thế device test và s
 10. Flutter Web đã pass TLS/reverse proxy và runtime smoke trên production domain;
    permission pending/error UX đã có regression test trên VM và Chrome test
    platform, nhưng camera/QR decode vẫn cần browser-device smoke thực tế.
+11. Image Web production `1.1.0-f88506d` có trước thay đổi Việt hóa UI hiện tại;
+    cần build/deploy lại từ branch đã pass CI trước khi coi public runtime đã nhận
+    các label mới và `lang="vi"`.
 
 ## Automation
 

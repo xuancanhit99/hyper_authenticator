@@ -206,7 +206,7 @@ class SyncBloc extends Bloc<SyncEvent, SyncState> {
     if (PlatformCapabilities.supportsEncryptedCloudSync) return true;
     emit(
       const SyncUnavailable(
-        'Encrypted cloud sync chưa hỗ trợ Web vì browser key storage có trust boundary khác native.',
+        'Đồng bộ cloud mã hóa đầu cuối chưa hỗ trợ Web vì browser key storage có trust boundary khác native.',
       ),
     );
     return false;

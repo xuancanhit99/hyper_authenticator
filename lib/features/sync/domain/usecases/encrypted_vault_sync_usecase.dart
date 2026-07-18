@@ -449,7 +449,7 @@ class EncryptedVaultSyncUseCase {
     final userId = _requireUserId();
     if (!_metadataRepository.readEnabled(userId)) {
       throw const _FailureSignal(
-        SyncOperationFailure('Encrypted cloud sync đang tắt.'),
+        SyncOperationFailure('Đồng bộ cloud mã hóa đầu cuối đang tắt.'),
       );
     }
     final remote = _value(await _remoteRepository.download(userId: userId));

@@ -18,6 +18,8 @@ Roadmap ưu tiên theo rủi ro. Checkbox chỉ được đánh dấu khi có so
 - [x] Atomic optimistic revision RPC và explicit conflict UX.
 - [x] Client plaintext runtime bridge bị loại khỏi DI/release.
 - [x] Daily verified backup, restore rehearsal, encrypted off-host copy và health timer.
+- [x] Primary UI tiếng Việt và Web document language `vi`; giữ thuật ngữ technical
+  khi cần độ chính xác.
 
 ## Ưu tiên P0 — Phát hành platform đầu tiên
 
@@ -45,7 +47,7 @@ policy và backend rollback evidence.
 - [ ] Device registry/revocation và key rotation protocol.
 - [ ] Trusted-device hoặc QR recovery transfer.
 - [ ] Export/delete account/data UX và retention policy.
-- [ ] Localization đầy đủ, accessibility audit và screenshot/privacy review.
+- [ ] Localization đa ngôn ngữ, accessibility audit và screenshot/privacy review.
 - [ ] Independent cryptographic/application security review.
 
 ## Ưu tiên P2 — Platform expansion

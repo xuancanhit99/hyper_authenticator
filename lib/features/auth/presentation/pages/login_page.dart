@@ -50,19 +50,19 @@ class _LoginPageState extends State<LoginPage> {
 
   String? _validateEmail(String? value) {
     if (value == null || value.isEmpty) {
-      return 'Please enter your email';
+      return 'Vui lòng nhập email.';
     }
     // Basic email validation regex
     final emailRegex = RegExp(r'^[^@]+@[^@]+\.[^@]+');
     if (!emailRegex.hasMatch(value)) {
-      return 'Please enter a valid email address';
+      return 'Vui lòng nhập địa chỉ email hợp lệ.';
     }
     return null;
   }
 
   String? _validatePassword(String? value) {
     if (value == null || value.isEmpty) {
-      return 'Please enter your password';
+      return 'Vui lòng nhập mật khẩu.';
     }
     return null;
   }
@@ -115,8 +115,8 @@ class _LoginPageState extends State<LoginPage> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     const AuthHeader(
-                      title: 'Welcome Back!',
-                      subtitle: 'Sign in to continue',
+                      title: 'Chào mừng bạn trở lại!',
+                      subtitle: 'Đăng nhập để tiếp tục',
                     ),
                     TextFormField(
                       controller: _emailController,
@@ -132,7 +132,7 @@ class _LoginPageState extends State<LoginPage> {
                     TextFormField(
                       controller: _passwordController,
                       decoration: InputDecoration(
-                        labelText: 'Password',
+                        labelText: 'Mật khẩu',
                         prefixIcon: const Icon(Icons.lock_outline),
                         // Add suffix icon for password visibility toggle
                         suffixIcon: IconButton(
@@ -188,7 +188,7 @@ class _LoginPageState extends State<LoginPage> {
                                   _rememberMe = !_rememberMe;
                                 });
                               },
-                              child: const Text("Remember Me"),
+                              child: const Text('Ghi nhớ đăng nhập'),
                             ),
                           ],
                         ),
@@ -204,7 +204,7 @@ class _LoginPageState extends State<LoginPage> {
                             tapTargetSize: MaterialTapTargetSize
                                 .shrinkWrap, // Reduce tap area
                           ),
-                          child: const Text('Forgot Password?'),
+                          child: const Text('Quên mật khẩu?'),
                         ),
                       ],
                     ),
@@ -237,7 +237,7 @@ class _LoginPageState extends State<LoginPage> {
                                               .white, // White indicator in light mode
                                   ),
                                 )
-                              : const Text('Login'),
+                              : const Text('Đăng nhập'),
                         );
                       },
                     ),
@@ -245,7 +245,7 @@ class _LoginPageState extends State<LoginPage> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Text("Don't have an account?"),
+                        const Text('Chưa có tài khoản?'),
                         TextButton(
                           onPressed: () {
                             // Navigate to Register page
@@ -259,7 +259,7 @@ class _LoginPageState extends State<LoginPage> {
                             tapTargetSize: MaterialTapTargetSize
                                 .shrinkWrap, // Reduce tap area
                           ),
-                          child: const Text('Sign Up'),
+                          child: const Text('Đăng ký'),
                         ),
                       ],
                     ),

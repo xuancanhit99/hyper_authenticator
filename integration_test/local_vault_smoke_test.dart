@@ -33,21 +33,18 @@ void main() {
       await preferences.setBool('biometric_enabled', false);
 
       await app.main();
-      await _pumpUntil(tester, find.byTooltip('Add Account'));
+      await _pumpUntil(tester, find.byTooltip('Thêm tài khoản'));
       _phase('bootstrap-ready');
 
       final repository = di.sl<AuthenticatorRepository>();
       final accountsBloc = di.sl<AccountsBloc>();
       await _replaceVault(repository, const []);
       accountsBloc.add(LoadAccounts());
-      await _pumpUntil(
-        tester,
-        find.text('No accounts found matching your search.'),
-      );
+      await _pumpUntil(tester, find.text('Không tìm thấy tài khoản phù hợp.'));
       _phase('empty-vault-ready');
 
       try {
-        await tester.tap(find.byTooltip('Add Account'));
+        await tester.tap(find.byTooltip('Thêm tài khoản'));
         await _pumpUntil(tester, find.byKey(AddAccountPage.issuerFieldKey));
 
         await tester.enterText(
@@ -101,7 +98,7 @@ void main() {
         accountsBloc.add(LoadAccounts());
         await _pumpUntil(
           tester,
-          find.text('No accounts found matching your search.'),
+          find.text('Không tìm thấy tài khoản phù hợp.'),
         );
         expect(await _readVault(repository), isEmpty);
         _phase('cleanup-verified');

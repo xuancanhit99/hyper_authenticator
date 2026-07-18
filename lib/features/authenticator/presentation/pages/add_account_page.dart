@@ -222,7 +222,7 @@ class _AddAccountPageState extends State<AddAccountPage> {
               // For now, assume AccountsLoaded after AddAccountRequested implies success.
               Navigator.pop(context);
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Account added successfully!')),
+                const SnackBar(content: Text('Đã thêm tài khoản.')),
               );
             }
           } else if (state is AccountsError) {
@@ -230,7 +230,7 @@ class _AddAccountPageState extends State<AddAccountPage> {
               // Check if the error is relevant to the add operation.
               // The current BLoC emits a generic AccountsError.
               // We might need a more specific error state later if needed.
-              _showError('Failed to add account: ${state.message}');
+              _showError('Không thể thêm tài khoản: ${state.message}');
               // Optionally restart scanner or allow retry for QR scan
               if (_isScanning && mounted) {
                 // Add a small delay before restarting scanner to avoid immediate re-scan issues
@@ -282,7 +282,7 @@ class _AddAccountPageState extends State<AddAccountPage> {
                 hintText: 'Nhập tên nhà cung cấp',
               ),
               validator: (value) => (value == null || value.isEmpty)
-                  ? 'Please enter an issuer'
+                  ? 'Vui lòng nhập nhà cung cấp.'
                   : null,
               // Listener is in initState to update preview dynamically
             ),
@@ -291,10 +291,10 @@ class _AddAccountPageState extends State<AddAccountPage> {
               key: AddAccountPage.accountNameFieldKey,
               controller: _accountNameController,
               decoration: const InputDecoration(
-                labelText: 'Account Name (e.g., user@example.com)',
+                labelText: 'Tên tài khoản (ví dụ: user@example.com)',
               ),
               validator: (value) => (value == null || value.isEmpty)
-                  ? 'Please enter an account name'
+                  ? 'Vui lòng nhập tên tài khoản.'
                   : null,
             ),
             const SizedBox(height: 16),
@@ -302,11 +302,11 @@ class _AddAccountPageState extends State<AddAccountPage> {
               key: AddAccountPage.secretFieldKey,
               controller: _secretController,
               decoration: const InputDecoration(
-                labelText: 'Secret Key (Base32 encoded)',
+                labelText: 'Secret key (mã hóa Base32)',
               ),
               validator: (value) {
                 if (value == null || value.isEmpty) {
-                  return 'Please enter the secret key';
+                  return 'Vui lòng nhập secret key.';
                 }
                 // Optional: Add a more robust Base32 validation if needed
                 return null;
@@ -316,7 +316,7 @@ class _AddAccountPageState extends State<AddAccountPage> {
             ElevatedButton(
               key: AddAccountPage.submitButtonKey,
               onPressed: _submitManualEntry,
-              child: const Text('Add Account'),
+              child: const Text('Thêm tài khoản'),
             ),
           ],
         ),

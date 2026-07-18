@@ -158,7 +158,7 @@ class _AccountsPageState extends State<AccountsPage>
       ),
     );
     return result.fold(
-      (failure) => "Error", // Handle error display
+      (failure) => 'Lỗi', // Handle error display
       (code) => code,
     );
   }
@@ -172,7 +172,7 @@ class _AccountsPageState extends State<AccountsPage>
           context,
         ).scaffoldBackgroundColor, // Set background color
         elevation: 0, // Remove shadow for a flatter look if desired
-        title: const Text('Authenticator'),
+        title: const Text('Mã xác thực'),
         actions: [
           // Theme switcher icon
           Consumer<ThemeProvider>(
@@ -194,7 +194,7 @@ class _AccountsPageState extends State<AccountsPage>
                   iconData,
                   color: isDarkMode ? Colors.white : Colors.black87,
                 ),
-                tooltip: 'Change Theme',
+                tooltip: 'Đổi giao diện',
                 onSelected: (ThemeMode result) {
                   // Use ThemeProvider to set the theme
                   Provider.of<ThemeProvider>(
@@ -208,21 +208,21 @@ class _AccountsPageState extends State<AccountsPage>
                         value: ThemeMode.system,
                         child: ListTile(
                           leading: Icon(Icons.brightness_auto_outlined),
-                          title: Text('System'),
+                          title: Text('Theo hệ thống'),
                         ),
                       ),
                       const PopupMenuItem<ThemeMode>(
                         value: ThemeMode.light,
                         child: ListTile(
                           leading: Icon(Icons.light_mode_outlined),
-                          title: Text('Light'),
+                          title: Text('Sáng'),
                         ),
                       ),
                       const PopupMenuItem<ThemeMode>(
                         value: ThemeMode.dark,
                         child: ListTile(
                           leading: Icon(Icons.dark_mode_outlined),
-                          title: Text('Dark'),
+                          title: Text('Tối'),
                         ),
                       ),
                     ],
@@ -239,7 +239,7 @@ class _AccountsPageState extends State<AccountsPage>
                   ? Colors
                         .white // Light icon on dark background
                   : Colors.black87, // Darker icon on light background
-              tooltip: 'Add Account',
+              tooltip: 'Thêm tài khoản',
               style: IconButton.styleFrom(
                 backgroundColor: isDarkMode
                     ? AppColors
@@ -272,7 +272,7 @@ class _AccountsPageState extends State<AccountsPage>
               child: TextField(
                 controller: _searchController,
                 decoration: InputDecoration(
-                  hintText: 'Search service or app...',
+                  hintText: 'Tìm dịch vụ hoặc ứng dụng...',
                   prefixIcon: const Icon(Icons.search),
                   // Define consistent border radius
                   border: OutlineInputBorder(
@@ -325,7 +325,7 @@ class _AccountsPageState extends State<AccountsPage>
                   }
                   if (state is AccountsError) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Error: ${state.message}')),
+                      SnackBar(content: Text('Lỗi: ${state.message}')),
                     );
                   }
                   // Optional: Show success messages for add/delete if specific states were used
@@ -358,19 +358,20 @@ class _AccountsPageState extends State<AccountsPage>
                         },
                         child: LayoutBuilder(
                           // Use LayoutBuilder to allow scrolling for refresh
-                          builder: (context, constraints) => SingleChildScrollView(
-                            physics: const AlwaysScrollableScrollPhysics(),
-                            child: ConstrainedBox(
-                              constraints: BoxConstraints(
-                                minHeight: constraints.maxHeight,
-                              ),
-                              child: const Center(
-                                child: Text(
-                                  'No accounts found matching your search.', // Updated empty state message
+                          builder: (context, constraints) =>
+                              SingleChildScrollView(
+                                physics: const AlwaysScrollableScrollPhysics(),
+                                child: ConstrainedBox(
+                                  constraints: BoxConstraints(
+                                    minHeight: constraints.maxHeight,
+                                  ),
+                                  child: const Center(
+                                    child: Text(
+                                      'Không tìm thấy tài khoản phù hợp.',
+                                    ),
+                                  ),
                                 ),
                               ),
-                            ),
-                          ),
                         ),
                       );
                     }
@@ -585,7 +586,7 @@ class _AccountsPageState extends State<AccountsPage>
                   } // End of `if (state is AccountsLoaded)`
                   // Should not happen if states are handled, but provide fallback
                   return const Center(
-                    child: Text('An unexpected state occurred.'),
+                    child: Text('Ứng dụng gặp trạng thái không mong đợi.'),
                   );
                 }, // End BlocConsumer builder
               ), // End BlocConsumer
@@ -620,14 +621,14 @@ class _AccountsPageState extends State<AccountsPage>
       context: context,
       builder: (BuildContext dialogContext) {
         return AlertDialog(
-          title: const Text('Account QR Code'),
+          title: const Text('Mã QR của tài khoản'),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
-                Text('Issuer: ${account.issuer}'),
-                Text('Account: ${account.accountName}'),
+                Text('Nhà cung cấp: ${account.issuer}'),
+                Text('Tài khoản: ${account.accountName}'),
                 const SizedBox(height: 16),
                 Center(
                   child: Container(
@@ -657,7 +658,7 @@ class _AccountsPageState extends State<AccountsPage>
           ),
           actions: <Widget>[
             TextButton(
-              child: const Text('Close'),
+              child: const Text('Đóng'),
               onPressed: () {
                 Navigator.of(dialogContext).pop();
               },
@@ -677,34 +678,34 @@ class _AccountsPageState extends State<AccountsPage>
       context: context,
       builder: (BuildContext dialogContext) {
         return AlertDialog(
-          title: const Text('Confirm Deletion'),
+          title: const Text('Xác nhận xóa'),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: <Widget>[
               AccountAvatar(issuer: account.issuer, size: 60),
               const SizedBox(height: 16),
               Text(
-                'Are you sure you want to delete this account?',
+                'Bạn có chắc muốn xóa tài khoản này?',
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 8),
               Text(
-                'Issuer: ${account.issuer}',
+                'Nhà cung cấp: ${account.issuer}',
                 style: const TextStyle(fontWeight: FontWeight.bold),
               ),
-              Text('Account: ${account.accountName}'),
+              Text('Tài khoản: ${account.accountName}'),
             ],
           ),
           actions: <Widget>[
             TextButton(
-              child: const Text('Cancel'),
+              child: const Text('Hủy'),
               onPressed: () {
                 Navigator.of(dialogContext).pop();
               },
             ),
             TextButton(
               style: TextButton.styleFrom(foregroundColor: Colors.red),
-              child: const Text('Delete'),
+              child: const Text('Xóa'),
               onPressed: () {
                 context.read<AccountsBloc>().add(
                   DeleteAccountRequested(accountId: account.id),
@@ -713,7 +714,7 @@ class _AccountsPageState extends State<AccountsPage>
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
                     content: Text(
-                      'Deleted ${account.issuer} (${account.accountName})',
+                      'Đã xóa ${account.issuer} (${account.accountName})',
                     ),
                     duration: const Duration(seconds: 2),
                   ),

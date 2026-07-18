@@ -45,7 +45,7 @@ class SettingsBloc extends Bloc<SettingsEvent, SettingsState> {
         ),
       );
     } catch (e) {
-      emit(SettingsError('Failed to load settings: ${e.toString()}'));
+      emit(SettingsError('Không thể tải cài đặt: ${e.toString()}'));
     }
   }
 
@@ -71,7 +71,7 @@ class SettingsBloc extends Bloc<SettingsEvent, SettingsState> {
 
     if (!canCheck) {
       // Should ideally not happen if UI disables the switch, but double-check
-      emit(const SettingsError('Biometrics not supported on this device.'));
+      emit(const SettingsError('Thiết bị này không hỗ trợ sinh trắc học.'));
       // Reload settings to reflect correct state
       add(LoadSettings());
       return;
@@ -90,7 +90,9 @@ class SettingsBloc extends Bloc<SettingsEvent, SettingsState> {
       await sharedPreferences.setBool(_biometricPrefKey, event.isEnabled);
       // No need to emit again if save is successful
     } catch (e) {
-      emit(SettingsError('Failed to save biometric setting: ${e.toString()}'));
+      emit(
+        SettingsError('Không thể lưu cài đặt sinh trắc học: ${e.toString()}'),
+      );
       // Revert to previous state on error
       emit(
         SettingsLoaded(

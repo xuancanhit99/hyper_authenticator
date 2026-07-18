@@ -114,7 +114,7 @@ class AccountsBloc extends Bloc<AccountsEvent, AccountsState> {
         failure is ValidationFailure) {
       return failure.message;
     }
-    return 'An unexpected error occurred.';
+    return 'Đã xảy ra lỗi không mong đợi.';
   }
 
   Future<void> _onUpdateAccountRequested(

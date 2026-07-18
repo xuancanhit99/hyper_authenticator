@@ -9,7 +9,7 @@ class EncryptedSyncUnavailableTile extends StatelessWidget {
       padding: EdgeInsets.symmetric(vertical: 8),
       child: ListTile(
         leading: Icon(Icons.cloud_off),
-        title: Text('Encrypted cloud sync'),
+        title: Text('Đồng bộ cloud mã hóa đầu cuối'),
         subtitle: Text(
           'Không hỗ trợ trên Web vì browser storage không có trust boundary tương đương secure storage native.',
         ),

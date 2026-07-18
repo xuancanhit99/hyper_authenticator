@@ -69,11 +69,17 @@ void main() {
   testWidgets('đăng nhập trực tiếp rời Login về Accounts', (tester) async {
     await pumpApp(tester, initialLocation: '/login');
 
+    expect(find.text('Chào mừng bạn trở lại!'), findsOneWidget);
+    expect(find.text('Đăng nhập để tiếp tục'), findsOneWidget);
+    expect(find.text('Ghi nhớ đăng nhập'), findsOneWidget);
+    expect(find.text('Quên mật khẩu?'), findsOneWidget);
+    expect(find.text('Welcome Back!'), findsNothing);
+
     signIn();
     await tester.pumpAndSettle();
 
     expect(find.text('Accounts home'), findsOneWidget);
-    expect(find.text('Welcome Back!'), findsNothing);
+    expect(find.text('Chào mừng bạn trở lại!'), findsNothing);
   });
 
   testWidgets('đăng nhập được push từ Settings quay lại Settings', (
@@ -87,7 +93,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Settings host'), findsOneWidget);
-    expect(find.text('Welcome Back!'), findsNothing);
+    expect(find.text('Chào mừng bạn trở lại!'), findsNothing);
   });
 
   test('auth event/state string redact password và user identity', () {

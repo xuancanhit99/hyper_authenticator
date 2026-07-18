@@ -249,9 +249,9 @@ class AppRouter {
               // For now, returning a simple error page or redirecting to main
               // This should ideally not happen if navigation is done correctly
               return Scaffold(
-                appBar: AppBar(title: const Text('Error')),
+                appBar: AppBar(title: const Text('Lỗi')),
                 body: const Center(
-                  child: Text('Account data not found for editing.'),
+                  child: Text('Không tìm thấy dữ liệu tài khoản để chỉnh sửa.'),
                 ),
               );
             }
@@ -269,8 +269,9 @@ class AppRouter {
           returnTo: state.uri.queryParameters['returnTo'],
         );
       },
-      errorBuilder: (context, state) =>
-          Scaffold(body: Center(child: Text('Page not found: ${state.error}'))),
+      errorBuilder: (context, state) => Scaffold(
+        body: Center(child: Text('Không tìm thấy trang: ${state.error}')),
+      ),
     );
   }
 }
