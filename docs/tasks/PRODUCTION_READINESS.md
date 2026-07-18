@@ -91,6 +91,7 @@ behavior an toàn, backend có backup/restore/health harness và release gate t�
 | GitHub Actions run `29646554828` | Pass 7/7 Web, Android debug, Apple compile, Linux runtime/package, Windows runtime/installer, secret và quality gates tại commit `e077032` |
 | Windows runtime + NSIS candidate | Windows Server 2025 local-vault UI/secure-storage/lifecycle pass; configured x64 bundle; NSIS 3.12 install/launch/metadata-upgrade/uninstall giữ AppData pass; unsigned installer SHA-256 `fc267661…331388b3` audit portable trên macOS; bundle + installer artifact giữ 14 ngày |
 | GitHub Actions run `29648450700` | Pass 7/7 tại `3ba300d`: historical `1.0.0+9` seed DPAPI, current app visibility, SHA256/8 digits/45 giây round-trip, COW v2, cleanup; local-vault/release/NSIS transition tiếp tục pass |
+| GitHub Actions run `29648841164` | Pass 7/7 tại branch head `09c7024`; xác nhận toàn bộ Windows historical/runtime/installer gate cùng Linux, Apple, Android, Web, quality và secret history tiếp tục xanh sau khi cập nhật tài liệu bằng chứng |
 | Windows artifact tại `3ba300d` | Current unsigned installer SHA-256 `c981974d…bd37f85`; release bundle và installer artifact upload thành công, hết hạn 01-08-2026 |
 | Android configured release | Fail closed vì thiếu upload keystore |
 | Android Pixel AVD E2E | Pass login return, setup revision 1, recovery-key rotation revision 2, vault-key rotation revision 3, fresh-device recovery revision 3 và SDK bulk revoke 2→1 session; cleanup user/row/app data |
@@ -111,7 +112,7 @@ platform config, 105 test và encrypted migration/active-session contract.
 
 - Signing/store/physical-device/SMTP/alert destination là external gate, không phải source defect.
 - Windows còn code signing và physical-device/Windows Hello; historical upgrade
-  từ `1.0.0+9` đã pass hosted runtime.
+  từ `1.0.0+9` đã pass hosted runtime và branch-head CI.
 - Flutter Web còn camera permission/QR scan smoke trên browser-device thật.
 - Linux còn representative desktop/distro matrix, upgrade từ release lịch sử thật
   và release-channel signing/support metadata. Authenticated E2EE đã pass trên

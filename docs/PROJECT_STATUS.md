@@ -162,7 +162,7 @@ Capability là hành vi source hiện tại, không thay thế device test và s
   smoke install/launch/metadata-upgrade/uninstall giữ AppData và lưu hai artifact
   theo commit 14 ngày. Các gate này không thay signed runtime hoặc
   representative-device/distro matrix.
-- GitHub Actions run `29648450700` tại `3ba300d` pass 7/7; Windows phase xác minh
+- GitHub Actions run `29648841164` tại `09c7024` pass 7/7; Windows phase xác minh
   legacy seed, current visibility, COW v2 và cleanup trước release/installer gate.
 - `.github/dependabot.yml` kiểm tra Pub và GitHub Actions hằng tuần.
 - `scripts/agent/check.sh full` là quality gate canonical; baseline hiện có 105 test,
