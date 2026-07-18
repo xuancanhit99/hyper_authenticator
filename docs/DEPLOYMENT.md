@@ -135,7 +135,8 @@ CI đã pass install, launch release, nâng metadata baseline lên `1.1.0+10`, l
 lại, uninstall và data-retention sentinel. Package baseline vẫn dùng cùng tested
 bundle với version thấp hơn. Gate storage tách biệt archive source pin
 `1.0.0+9`, ghi DPAPI storage bằng plugin 3.1.2, rồi yêu cầu current app đọc đủ
-field và publish COW v2; chỉ cập nhật evidence thành pass sau hosted run xanh.
+field và publish COW v2. Gate này đã pass trong run `29648450700` trước release
+build và installer transition.
 
 Artifact không chứa file config nguồn hoặc private server credential; public
 runtime values vẫn được compile vào client theo thiết kế. Installer hiện **unsigned**

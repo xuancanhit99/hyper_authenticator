@@ -100,6 +100,10 @@ trước khi người dùng đã xác minh vault.
   current UI đọc đủ SHA256/8 digits/45 giây, COW v2 xuất hiện và cleanup pass.
 - Installer transition tiếp tục xác minh uninstall không xóa canonical AppData.
 
+GitHub Actions run `29648450700` tại commit `3ba300d` đã pass toàn bộ phase trên
+cùng configured Windows release/NSIS transition; không có vault/credential thật
+được dùng hoặc đưa vào artifact.
+
 ## Rollout
 
 1. Ship ProductName canonical và startup migrator trong cùng release.

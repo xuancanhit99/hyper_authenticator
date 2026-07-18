@@ -48,7 +48,7 @@ các credential gate tương ứng pass.
 | macOS release | Bị chặn vì chưa có development/distribution certificate |
 | Linux release + Debian artifact | Pass configured `linux/x64`, private-keyring UI smoke và `.deb` `1.1.0+10` amd64; dependency scan, checksum, archive root 0755, clean-container install/launch/upgrade/remove và package-level user-data retention pass |
 | Linux authenticated E2EE runtime | Pass trên Ubuntu 24.04 arm64 container tạm: client thật đăng nhập production Supabase, setup revision 1, sync revision 2, fresh-device recovery, recovery-key rotation revision 3, reject key cũ, vault-key rotation revision 4 và recovery cuối; operator xóa user/row và admin probe xác nhận 404 |
-| Windows release + installer | Pass configured x64 bundle, local-vault runtime trên GitHub-hosted Windows Server 2025 và NSIS 3.12 unsigned candidate; install/launch/metadata-upgrade/uninstall giữ AppData pass, bundle + installer/checksum giữ 14 ngày |
+| Windows release + installer | Pass upgrade vault thật từ source `1.0.0+9`/plugin 3.1.2 sang current COW v2, configured x64 bundle, local-vault runtime và NSIS 3.12 unsigned candidate; install/launch/metadata-upgrade/uninstall giữ AppData pass, bundle + installer/checksum giữ 14 ngày |
 
 Build không có `--dart-define-from-file` chỉ chứng minh compile. Runtime/release
 verification phải inject `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY` và
@@ -139,9 +139,8 @@ Capability là hành vi source hiện tại, không thay thế device test và s
    trên thiết bị thật vẫn chưa được chứng minh. Mobile harness chủ động từ chối
    target thật/macOS vì nó reset toàn bộ local vault; Windows harness chỉ nhận
    hosted runner tạm.
-7. Windows đã có unsigned NSIS candidate và hosted-runner package transition;
-   historical source/plugin upgrade harness đã được triển khai nhưng chưa có run
-   xanh trên commit hiện tại. Còn code signing và physical-device/Windows Hello.
+7. Windows đã có unsigned NSIS candidate, hosted-runner package transition và
+   upgrade thật từ source `1.0.0+9`; còn code signing và physical-device/Windows Hello.
    Linux đã có `.deb` candidate, clean-container package transition
    và authenticated E2EE client runtime; còn representative desktop/distro matrix,
    upgrade từ release lịch sử thật, release-channel signing và maintainer/support
@@ -163,6 +162,8 @@ Capability là hành vi source hiện tại, không thay thế device test và s
   smoke install/launch/metadata-upgrade/uninstall giữ AppData và lưu hai artifact
   theo commit 14 ngày. Các gate này không thay signed runtime hoặc
   representative-device/distro matrix.
+- GitHub Actions run `29648450700` tại `3ba300d` pass 7/7; Windows phase xác minh
+  legacy seed, current visibility, COW v2 và cleanup trước release/installer gate.
 - `.github/dependabot.yml` kiểm tra Pub và GitHub Actions hằng tuần.
 - `scripts/agent/check.sh full` là quality gate canonical; baseline hiện có 105 test,
   analyze/format cả device integration source nhưng không tự boot virtual device.

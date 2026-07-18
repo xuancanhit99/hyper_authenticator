@@ -161,6 +161,6 @@ không trong untrusted fork CI.
 2. Chưa có two-device physical E2EE test.
 3. Chưa có mailbox SMTP/expired-link E2E.
 4. Chưa có long-duration soak hoặc production-scale load test.
-5. Windows còn code signing và physical-device/Windows Hello; historical harness
-   đã có trong CI nhưng chỉ được ghi nhận pass sau hosted runtime. Linux còn upgrade từ release lịch sử thật, representative distro/
+5. Windows còn code signing và physical-device/Windows Hello; historical
+   `1.0.0+9` upgrade đã pass hosted runtime. Linux còn upgrade từ release lịch sử thật, representative distro/
    desktop matrix, signed package E2EE runtime và public release-channel verification.

@@ -41,8 +41,8 @@ behavior an toàn, backend có backup/restore/health harness và release gate t�
   remote cleanup được xác minh, không đưa service-role key vào client hoặc CI.
 - [x] Windows hosted local-vault runtime và NSIS unsigned candidate pass
   install/launch/metadata-upgrade/uninstall, giữ AppData và checksum portable.
-- [ ] Windows upgrade từ source `1.0.0+9` + plugin 3.1.2 đọc đủ field và publish
-  COW v2 — harness đã có, chờ hosted run xanh trên commit hiện tại.
+- [x] Windows upgrade từ source `1.0.0+9` + plugin 3.1.2 đọc đủ field và publish
+  COW v2 trên hosted runner tạm, có cleanup.
 - [x] Remote E2EE/recovery/Studio contract pass.
 - [x] Daily backup, restore rehearsal, encrypted off-host copy và health timer pass.
 - [x] Asset/font không rõ license bị loại khỏi release.
@@ -90,6 +90,8 @@ behavior an toàn, backend có backup/restore/health harness và release gate t�
 | Linux authenticated E2EE operator gate | Pass hai lượt trên Ubuntu 24.04 arm64/private Secret Service: setup revision 1, sync revision 2, fresh recovery, recovery-key rotation revision 3 + reject key cũ, vault-key rotation revision 4 + recovery; mỗi lượt xóa isolated user và DB probe cuối trả `test_users=0`, `test_vault_rows=0` |
 | GitHub Actions run `29646554828` | Pass 7/7 Web, Android debug, Apple compile, Linux runtime/package, Windows runtime/installer, secret và quality gates tại commit `e077032` |
 | Windows runtime + NSIS candidate | Windows Server 2025 local-vault UI/secure-storage/lifecycle pass; configured x64 bundle; NSIS 3.12 install/launch/metadata-upgrade/uninstall giữ AppData pass; unsigned installer SHA-256 `fc267661…331388b3` audit portable trên macOS; bundle + installer artifact giữ 14 ngày |
+| GitHub Actions run `29648450700` | Pass 7/7 tại `3ba300d`: historical `1.0.0+9` seed DPAPI, current app visibility, SHA256/8 digits/45 giây round-trip, COW v2, cleanup; local-vault/release/NSIS transition tiếp tục pass |
+| Windows artifact tại `3ba300d` | Current unsigned installer SHA-256 `c981974d…bd37f85`; release bundle và installer artifact upload thành công, hết hạn 01-08-2026 |
 | Android configured release | Fail closed vì thiếu upload keystore |
 | Android Pixel AVD E2E | Pass login return, setup revision 1, recovery-key rotation revision 2, vault-key rotation revision 3, fresh-device recovery revision 3 và SDK bulk revoke 2→1 session; cleanup user/row/app data |
 | Android Pixel AVD local-vault smoke | Pass UI add, storage round-trip, lifecycle, BLoC reload, navigation và cleanup |
@@ -108,8 +110,8 @@ platform config, 105 test và encrypted migration/active-session contract.
 ## Rủi ro còn lại
 
 - Signing/store/physical-device/SMTP/alert destination là external gate, không phải source defect.
-- Windows còn code signing, physical-device/Windows Hello; historical upgrade
-  harness đã triển khai nhưng cần hosted run xanh trước khi đóng gate.
+- Windows còn code signing và physical-device/Windows Hello; historical upgrade
+  từ `1.0.0+9` đã pass hosted runtime.
 - Flutter Web còn camera permission/QR scan smoke trên browser-device thật.
 - Linux còn representative desktop/distro matrix, upgrade từ release lịch sử thật
   và release-channel signing/support metadata. Authenticated E2EE đã pass trên
