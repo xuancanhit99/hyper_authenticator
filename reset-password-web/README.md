@@ -27,6 +27,17 @@ Trang chỉ bind `127.0.0.1:8888` theo mặc định. Đổi port bằng
 `RESET_PASSWORD_PORT`. Production cần reverse proxy HTTPS và Supabase redirect
 allow-list trỏ đúng public URL.
 
+Production self-hosted baseline dùng hai external network đã tồn tại:
+
+```sh
+docker compose -p hyper-authenticator-recovery \
+  -f compose.yml -f compose.production.yml up -d --build
+```
+
+`proxy-network` cho reverse proxy truy cập service; `supabase_default` cho Auth
+fetch template. Nếu stack dùng tên network khác, tạo overlay riêng thay vì sửa
+network runtime bằng tay.
+
 Flutter client phải truyền cùng public URL qua
 `PASSWORD_RECOVERY_URL=https://auth.example.com/reset-password/`. File
 `email-templates/recovery.html` được đóng gói trong image để Supabase Auth
@@ -64,8 +75,11 @@ Không đặt `token_hash`, code hoặc session trong query string. Nếu hạ t
 
 ```sh
 ./test.sh
+./test-remote.sh https://recovery.example.com
 ```
 
 Script chạy syntax/static gates và, khi Docker daemon khả dụng, build image, kiểm tra invalid config bị từ chối, healthcheck, CSP/no-store và việc image không chứa `.env`.
+Remote smoke test xác minh canonical path, TLS endpoint, security header, public
+runtime config và template mà không tạo user hoặc gửi email.
 
 Trước production vẫn phải test end-to-end bằng dữ liệu tổng hợp cho link thành công, hết hạn, malformed, reused và cross-environment; đồng thời xác minh SMTP/rate-limit/redirect allow-list tại Supabase.

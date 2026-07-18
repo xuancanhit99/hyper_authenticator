@@ -108,9 +108,16 @@ Sau backend change, chạy cả test official của release pin, contract test d
 Kiểm tra recovery web và container hardening:
 
     reset-password-web/test.sh
+    reset-password-web/test-remote.sh https://recovery.example.com
+
+Remote Auth token contract chạy trên isolated self-hosted environment:
+
+    scripts/supabase/test_remote_recovery_contract.sh \
+      /path/to/supabase/.env "" https://recovery.example.com/reset-password/
 
 Script chạy JavaScript harness, build image, kiểm tra invalid/public config,
-security header, loopback/no-log và xác nhận `.env` không lọt vào image.
+security header, loopback/no-log và xác nhận `.env` không lọt vào image. Auth
+contract dùng service-role chỉ để tạo/dọn user tổng hợp và không gửi email thật.
 
 Kiểm tra additive E2EE schema/RPC bằng PostgreSQL cô lập:
 

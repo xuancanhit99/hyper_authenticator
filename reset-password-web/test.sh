@@ -18,6 +18,9 @@ grep -Fq 'integrity="sha384-BmlQlKlDvXvKoxkn5OQuUo/aJQCTXeB+Kls6EccBmG4Kf8AXvp89
 grep -Fq 'Cache-Control "no-store' nginx-site.conf.template
 grep -Fq 'Content-Security-Policy' nginx-site.conf.template
 grep -Fq 'access_log off;' nginx.conf
+grep -Fq 'location = /reset-password/' nginx-site.conf.template
+grep -Fq 'href="/style.css"' index.html
+grep -Fq 'src="/env-config.js"' index.html
 grep -Fq '{{ .RedirectTo }}#token_hash={{ .TokenHash }}&amp;type=recovery' \
   email-templates/recovery.html
 
@@ -88,6 +91,9 @@ headers=$(docker exec "$name" wget -S -q -O /dev/null http://127.0.0.1:8080/ 2>&
 printf '%s' "$headers" | grep -Fiq 'Cache-Control: no-store'
 printf '%s' "$headers" | grep -Fiq 'Content-Security-Policy:'
 docker exec "$name" wget -q -O - http://127.0.0.1:8080/healthz | grep -qx healthy
+docker exec "$name" wget -q -O - http://127.0.0.1:8080/reset-password/ \
+  | grep -Fq 'id="reset-password-form"'
+docker exec "$name" wget -q -O /dev/null http://127.0.0.1:8080/style.css
 docker exec "$name" wget -q -O - \
   http://127.0.0.1:8080/email-templates/recovery.html \
   | grep -Fq '{{ .TokenHash }}'

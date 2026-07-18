@@ -98,7 +98,8 @@ Có artifact build không đồng nghĩa platform đã đủ điều kiện phá
 - Android release build fail nếu thiếu signing thay vì fallback debug.
 - Local vault hoạt động offline không cần Supabase session; logout giữ app lock.
 - Web recovery được chọn làm canonical surface, có client redirect config và
-  self-hosted email template version control.
+  self-hosted email template version control; HTTPS container, redirect allow-list
+  và GoTrue template đã deploy.
 - AES-256-GCM snapshot/AAD, DEK wrapping, recovery key và secure key-store primitive
   đã có regression test; migration v2 có atomic revision/RLS harness, đã deploy
   và pass 11 remote contract check.
@@ -121,8 +122,9 @@ Có artifact build không đồng nghĩa platform đã đủ điều kiện phá
 
 1. Local vault offline-first đã hoạt động; multi-profile local không thuộc scope,
    nên các Supabase session trên cùng OS profile dùng chung vault sau unlock.
-2. Web recovery đã được chọn/template hóa nhưng redirect allow-list, Auth template
-   deployment và email-link E2E chưa chạy.
+2. Web recovery, TLS, exact redirect allow-list và Auth template đã deploy; remote
+   token/update/reuse contract pass nhưng SMTP email delivery và expired-token E2E
+   chưa chạy.
 3. Local-storage v2 chưa có compaction/retention và chưa được test trên secure storage thiết bị thật.
 4. Recovery Web chủ động từ chối PKCE code từ client khác; production phụ thuộc
    token-hash template được Auth fetch thành công.

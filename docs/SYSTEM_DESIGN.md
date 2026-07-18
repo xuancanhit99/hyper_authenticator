@@ -182,8 +182,9 @@ Xem [Bảo mật](SECURITY.md), [Tích hợp Supabase](SUPABASE_INTEGRATION.md) 
 `reset-password-web` là canonical recovery surface, container Nginx read-only/non-root. Entrypoint validate và
 runtime-inject URL/publishable key, response dùng CSP/no-store và frontend không
 log session. Flutter gửi `PASSWORD_RECOVERY_URL`; self-hosted template đóng gói
-dùng fragment `token_hash`, còn trang gọi `verifyOtp`. Template/allow-list và
-email-link E2E chưa deploy nên flow production vẫn chưa hoàn tất.
+dùng fragment `token_hash`, còn trang gọi `verifyOtp`. HTTPS service, exact
+allow-list và template đã deploy; SMTP delivery và expired-token E2E vẫn là
+khoảng trống nên flow production chưa hoàn tất toàn bộ release gate.
 
 ## Platform build
 

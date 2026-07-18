@@ -1,6 +1,6 @@
 # Task: Triển khai bốn quyết định kiến trúc đã duyệt
 
-- Trạng thái: Server E2EE contract đã deploy; Recovery Web chờ DNS/TLS
+- Trạng thái: Server E2EE và Recovery Web đã deploy; client E2EE còn staged
 - Bắt đầu: 2026-07-18
 - Owner: canhvx
 - ADR: 0003, 0004, 0005, 0006
@@ -14,7 +14,7 @@ E2EE sync v2 theo rollout an toàn và thêm Apache-2.0.
 
 - Không bật E2EE sync production trước onboarding/export/import recovery key UI.
 - Không drop hoặc migrate destructive table plaintext trong batch này.
-- Không deploy Auth recovery template tới URL chưa có DNS/TLS hoạt động.
+- Không coi SMTP delivery là đã xác minh chỉ từ token contract không gửi email.
 
 ## Acceptance criteria
 
@@ -42,9 +42,10 @@ E2EE sync v2 theo rollout an toàn và thêm Apache-2.0.
 |---|---|
 | Focused router/Auth test | 7 pass |
 | Focused crypto/key-store test | 6 pass; encrypted remote mapper thêm 2 pass |
-| `reset-password-web/test.sh` | Pass sau khi thêm template |
+| Recovery local/remote Web harness | Container pass; public HTTPS pass |
 | `scripts/supabase/test_encrypted_vault_migration.sh` | Pass revision/conflict/RLS |
 | Remote encrypted PostgREST/Auth contract | 11 pass; cleanup 0 test row/user |
+| Remote recovery HTTPS/Auth contract | HTTPS pass; 8 Auth check; cleanup 0 row |
 | `scripts/agent/check.sh full` | Pass docs/generated/format/analyze và 42 test |
 | `scripts/agent/build.sh host` | Pass Android debug, Web release và macOS debug |
 
@@ -57,6 +58,6 @@ E2EE sync v2 theo rollout an toàn và thêm Apache-2.0.
   nối nên release sync vẫn khóa.
 - Không sửa/drop remote plaintext table. Full pre-change backup đã verify và lưu
   ngoài repository.
-- Recovery template chưa deploy vì chưa có public recovery domain/DNS/TLS. Bước
-  tiếp theo là chốt domain, deploy Web + template + allow-list cùng một lần, rồi
-  làm recovery-key onboarding/export/import và conflict UX.
+- Recovery HTTPS, template và exact allow-list đã deploy cùng nhau. SMTP mailbox
+  delivery/expired token còn cần E2E; bước phát triển tiếp theo là recovery-key
+  onboarding/export/import và conflict UX.

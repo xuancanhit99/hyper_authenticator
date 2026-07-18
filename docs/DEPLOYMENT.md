@@ -117,16 +117,19 @@ Trước khi deploy `reset-password-web`:
 - [x] inject public configuration lúc container start và từ chối secret/service key;
 - [x] pin Supabase JavaScript dependency bằng version cùng SRI;
 - [x] thêm CSP, HSTS và security headers;
-- whitelist exact production `PASSWORD_RECOVERY_URL`;
+- [x] whitelist exact production `PASSWORD_RECOVERY_URL`;
 - [x] no-store, xóa recovery material khỏi URL và không log access/session;
-- test expired, malformed, reused và successful session;
-- cấu hình `GOTRUE_MAILER_TEMPLATES_RECOVERY` trỏ file template đóng gói;
-- smoke test email body chứa fragment `token_hash`, không phải PKCE code;
+- [ ] remote contract đã pass successful/malformed/reused; còn expired token và
+  email-provider delivery E2E;
+- [x] cấu hình `GOTRUE_MAILER_TEMPLATES_RECOVERY` trỏ file template đóng gói;
+- [x] remote token contract xác minh fragment `token_hash`/`verifyOtp`, update,
+  re-login và chống reuse; email body/provider thật vẫn cần smoke test;
 - thêm privacy/support link phù hợp deployment production.
 
-`reset-password-web/test.sh` là gate local cho image/config/header. Trang chủ động
-từ chối `?code` PKCE từ Flutter vì không có verifier; không deploy canonical flow
-trước khi token template và end-to-end test được chốt.
+`reset-password-web/test.sh` là gate local cho image/config/header;
+`test-remote.sh` kiểm tra public HTTPS deployment. Trang chủ động từ chối `?code`
+PKCE từ Flutter vì không có verifier. Không coi recovery release gate hoàn tất
+trước khi SMTP mailbox và expired-token E2E pass.
 
 ## E2EE sync v2 staged rollout
 

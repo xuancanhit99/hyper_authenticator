@@ -8,6 +8,8 @@ database volume và backup không được đặt trong repository.
 - `UPSTREAM_PIN`: release/commit official đã dùng để dựng stack hiện tại.
 - `docker-compose.public-proxy.yml`: overlay chỉ bind Kong/Supavisor vào
   loopback và nối Kong vào external network `proxy-network`.
+- `docker-compose.recovery-web.yml`: inject internal recovery-template URL vào
+  Auth; URL thật nằm trong `.env` operator, không nằm trong repository.
 - `migrations/`: schema, grant và RLS policy của ứng dụng.
 - `../scripts/supabase/test_remote_contract.sh`: isolated end-to-end test cho
   Auth, mapper contract và cross-user RLS.
@@ -15,6 +17,8 @@ database volume và backup không được đặt trong repository.
   test cho encrypted snapshot revision/conflict/RLS, không cần remote secret.
 - `../scripts/supabase/test_remote_encrypted_vault_contract.sh`: PostgREST/Auth
   contract cho encrypted snapshot trên isolated self-hosted environment.
+- `../scripts/supabase/test_remote_recovery_contract.sh`: one-time recovery-token,
+  password update/re-login/reuse contract; không gửi email thật.
 
 ## Áp dụng trên một stack mới
 
@@ -49,6 +53,15 @@ tại đã deploy migration này và pass 11 remote contract check; xem
 
 Script cần `SERVICE_ROLE_KEY` để tạo và dọn isolated user. Không copy key này
 vào `.env` của Flutter; không chạy script trong log có shell tracing.
+
+Khi deploy Recovery Web, thêm exact URL vào `ADDITIONAL_REDIRECT_URLS`, đặt
+`GOTRUE_MAILER_TEMPLATES_RECOVERY` trong server `.env`, rồi recreate riêng Auth:
+
+    docker compose -f compose.yaml -f compose.recovery-web.yml up -d --no-deps auth
+
+Remote recovery contract không gửi email thật và dọn user bằng Admin API. GoTrue
+vẫn giữ audit entry; chỉ xóa audit trong isolated zero-data rehearsal, không xóa
+audit production.
 
 ## Giới hạn hiện tại
 

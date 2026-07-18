@@ -62,8 +62,9 @@ Image đóng gói `email-templates/recovery.html`; self-hosted Auth fetch templa
 qua `GOTRUE_MAILER_TEMPLATES_RECOVERY`. Template đặt one-time `token_hash` trong
 fragment và Web gọi `verifyOtp`. Nó không thể
 exchange `?code` PKCE được phát cho Flutter client vì code verifier nằm trong app.
-Template/redirect allow-list chưa deploy và vẫn cần test link thành công, hết hạn,
-reuse, malformed cùng cross-environment. SMTP config không chứng minh E2E hoạt động.
+Template, exact redirect allow-list và HTTPS Recovery Web đã deploy. Remote contract
+không gửi email đã pass success/update/re-login/reuse/malformed với isolated user.
+SMTP mailbox delivery, expired token và cross-environment vẫn chưa xác minh E2E.
 
 ## Self-hosted baseline
 

@@ -64,8 +64,7 @@ Không rollback bằng cách bật lại plaintext sync cho release build.
 
 ## Việc còn lại
 
-- Chọn domain public và tạo DNS/TLS cho Recovery Web.
-- Deploy Recovery Web, Auth recovery template và redirect allow-list cùng một lần.
-- Thêm `PASSWORD_RECOVERY_URL` vào local operator/client build config.
+- Recovery Web, TLS, Auth template, redirect allow-list và local
+  `PASSWORD_RECOVERY_URL` đã deploy; còn SMTP mailbox/expired-token E2E.
 - Hoàn thiện recovery-key onboarding/export/import và E2EE orchestration.
 - Thêm monitoring, backup off-host được mã hóa và restore rehearsal định kỳ.
