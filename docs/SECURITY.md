@@ -51,6 +51,17 @@ không bao giờ được đặt trong Flutter `.env`, asset, build log hoặc b
 - Health timer 5 phút; daily verified backup; encrypted off-host copy; full restore rehearsal.
 - SSH chỉ public key, log level INFO; journal có retention/size limit.
 
+### Build và supply chain
+
+- Bootstrap chỉ nhận HTTPS Supabase origin và public `sb_publishable_*`/legacy
+  `anon`; server key bị từ chối mà không xuất hiện trong error.
+- Release bắt buộc HTTPS recovery URL và `ALLOW_INSECURE_PLAINTEXT_SYNC=false`.
+- Android release manifest có INTERNET, cấm cleartext và tắt OS backup.
+- Cả Debug/Release entitlement iOS/macOS đều khai báo Keychain Sharing; platform
+  gate chống regression khi runner được regenerate.
+- CI pin Gitleaks binary/checksum và scan toàn bộ Git history. Allowlist chỉ có
+  fingerprint của public RFC 6238 vector, không dùng regex bỏ qua diện rộng.
+
 ## Recovery semantics
 
 Supabase password reset không decrypt E2EE vault. Người dùng cần recovery key hoặc
@@ -84,7 +95,7 @@ Không dùng command liệt kê toàn bộ process environment trong báo cáo.
 
 ## Dependency và asset supply chain
 
-- Lockfile được commit; CI pin Flutter.
+- Lockfile được commit; CI pin Flutter và secret scanner checksum.
 - Direct package được review bằng `flutter pub outdated`; advisory flag phải bằng false.
 - Averta thương mại và 1.047 logo dịch vụ không rõ provenance đã bị loại.
 - Release chỉ bundle branding do owner kiểm soát và icon Material/Cupertino từ Flutter.

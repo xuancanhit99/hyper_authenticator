@@ -12,6 +12,12 @@ Flutter chỉ nhận compile-time define:
 `SUPABASE_ANON_KEY` chỉ là fallback compatibility. Không đặt `SERVICE_ROLE_KEY`
 trong client `.env` hoặc build system dành cho Flutter.
 
+Client fail closed nếu URL không phải HTTPS origin, key là `sb_secret_*`, legacy
+JWT không có role `anon`, recovery URL release bị thiếu hoặc plaintext flag được
+bật. Error validation không chứa key. Preflight:
+
+    dart run tool/agent/check_release_config.dart .env
+
     flutter run --dart-define-from-file=.env
 
 `.env` bị ignore và không được khai báo trong `pubspec.yaml`.

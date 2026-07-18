@@ -43,6 +43,11 @@ run_generated() {
   return "$status"
 }
 
+run_platform() {
+  printf '\n%s\n' "== Platform configuration gate =="
+  dart run tool/agent/check_platform_config.dart
+}
+
 run_quick() {
   local status=0
   run_docs || status=1
@@ -57,6 +62,7 @@ run_quick() {
 run_full() {
   local status=0
   run_quick || status=1
+  run_platform || status=1
   printf '\n%s\n' "== Flutter test gate =="
   flutter test || status=1
   printf '\n%s\n' "== Supabase encrypted migration gate =="

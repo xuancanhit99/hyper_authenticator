@@ -13,8 +13,34 @@ concurrency:
 
 env:
   FLUTTER_VERSION: 3.44.6
+  GITLEAKS_VERSION: 8.30.1
 
 jobs:
+  secrets:
+    name: Secret history gate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - name: Cài Gitleaks đã pin và xác minh checksum
+        shell: bash
+        run: |
+          set -euo pipefail
+          archive="/tmp/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          curl --proto '=https' --tlsv1.2 --fail --location --silent --show-error \
+            "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" \
+            --output "$archive"
+          printf '%s  %s\n' \
+            '551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb' \
+            "$archive" | sha256sum --check
+          install_dir="$RUNNER_TEMP/gitleaks-bin"
+          mkdir -p "$install_dir"
+          tar -xzf "$archive" -C "$install_dir" gitleaks
+          printf '%s\n' "$install_dir" >> "$GITHUB_PATH"
+          "$install_dir/gitleaks" version
+      - run: bash scripts/agent/check_secrets.sh
+
   quality:
     name: Quality gates
     runs-on: ubuntu-latest
@@ -91,7 +117,7 @@ jobs:
       - run: flutter build windows --release
 
   apple:
-    name: Apple debug builds
+    name: Apple compile builds
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v6
@@ -101,5 +127,5 @@ jobs:
           channel: stable
           cache: true
       - run: flutter pub get
-      - run: flutter build macos --debug
+      - run: bash scripts/agent/build.sh macos
       - run: flutter build ios --simulator --debug

@@ -32,14 +32,16 @@ hiểu browser profile compromise nằm ngoài native trust boundary.
 1. Khởi tạo Flutter binding.
 2. Injectable/GetIt đăng ký dependency và pre-resolve SharedPreferences.
 3. `AppConfig` đọc compile-time define; `.env` không được bundle làm asset.
+   Validator chỉ nhận HTTPS Supabase origin cùng `sb_publishable_*` hoặc legacy
+   JWT có role `anon`; release bắt buộc recovery URL và plaintext flag tắt.
 4. Khởi tạo Supabase client.
 5. Cấp shared `AuthBloc`, `AccountsBloc`, `LocalAuthBloc`, `SettingsBloc`; tạo
    `SyncBloc` dùng chính `AccountsBloc` đó.
 6. Router kết hợp Auth và local-lock state để chọn public route, startup, lock
    hoặc main navigation.
 
-Thiếu URL/publishable key gây bootstrap error rõ ràng, không fallback tới server
-khác. Service-role key không tồn tại trong client config.
+Thiếu/sai URL hoặc key gây bootstrap error rõ ràng, không fallback tới server
+khác. `sb_secret_*` và legacy `service_role` bị từ chối mà không đưa key vào error.
 
 ## Kiến trúc feature
 

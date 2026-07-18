@@ -5,6 +5,9 @@
 Ưu tiên chống lộ TOTP credential, mất vault, bypass app lock, cross-tenant access
 và cloud overwrite khi conflict. Build pass không thay thế runtime/data contract test.
 
+`scripts/agent/build.sh <target> <env-file>` chạy release-config validator trước
+build. Bỏ `<env-file>` chỉ chứng minh compile, không chứng minh bootstrap config.
+
 ## Gate canonical
 
 | Scope | Command |
@@ -13,12 +16,12 @@ và cloud overwrite khi conflict. Build pass không thay thế runtime/data cont
 | Dart/UI | `scripts/agent/check.sh quick` |
 | Auth/storage/sync/DI/platform | `scripts/agent/check.sh full` |
 
-`full` phải pass generated-code drift, format, analyze, Flutter test và encrypted
-PostgreSQL migration contract.
+`full` phải pass generated-code drift, format, analyze, platform manifest/
+entitlement contract, Flutter test và encrypted PostgreSQL migration contract.
 
 ## Coverage hiện tại
 
-58 Flutter tests bao phủ:
+67 Flutter tests bao phủ:
 
 - router/auth/logout/offline-local-vault boundary;
 - TOTP URI/validator, countdown nhiều period và lifecycle resume;
@@ -30,6 +33,8 @@ PostgreSQL migration contract.
 - encrypted setup/cancel/recovery/wrong key/sync/conflict/use-cloud/keep-local;
 - remote encrypted mapper, revision response và conflict mapping;
 - plaintext bridge release guard.
+- public runtime config: HTTPS-only, key role, recovery URL và release plaintext flag.
+- Web unavailable tile không hứa đăng nhập/cloud sync khi capability bị tắt.
 
 ## Remote contract
 
@@ -51,8 +56,8 @@ không trong untrusted fork CI.
 |---|---|
 | Android | Debug build mỗi CI; signed release trước store |
 | iOS | Simulator build mỗi CI; signed archive + device/TestFlight trước store |
-| macOS | Debug CI; signed/notarized release trước phân phối |
-| Web | Release build + runtime config + browser smoke |
+| macOS | Unsigned compile CI; signed runtime + notarized release trước phân phối |
+| Web | Configured release + browser render/console/capability smoke |
 | Windows | Native release CI; installer/device/signing trước phân phối |
 | Linux | Native release CI; package/device smoke trước phân phối |
 
@@ -71,6 +76,8 @@ không trong untrusted fork CI.
 - Temp file permission 0700/0600 và cleanup bằng trap.
 - Email test dùng domain `.invalid`; user được xóa sau test.
 - Không bật shell tracing cho operator harness.
+- `scripts/agent/check_secrets.sh` scan toàn bộ Git history và staged diff bằng
+  Gitleaks; CI tải binary đã pin sau khi xác minh SHA-256.
 
 ## Khoảng trống đã biết
 

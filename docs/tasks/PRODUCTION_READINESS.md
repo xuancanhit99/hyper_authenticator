@@ -24,7 +24,7 @@ behavior an toàn, backend có backup/restore/health harness và release gate t�
 - [x] Device mới import key; decrypt failure không overwrite local.
 - [x] Conflict/network/retry không delete snapshot hợp lệ.
 - [x] Không có secret thật trong log/fixture/remote plaintext request.
-- [x] 58 test + analyzer + host debug/Web release build pass.
+- [x] 67 test + analyzer + platform/release-config gate pass.
 - [x] Remote E2EE/recovery/Studio contract pass.
 - [x] Daily backup, restore rehearsal, encrypted off-host copy và health timer pass.
 - [x] Asset/font không rõ license bị loại khỏi release.
@@ -56,10 +56,13 @@ behavior an toàn, backend có backup/restore/health harness và release gate t�
 | Command/gate | Kết quả |
 |---|---|
 | `flutter analyze` | Pass, 0 diagnostic |
-| `flutter test` | 58 pass |
-| `scripts/agent/build.sh host` | Android debug, Web release, macOS debug pass |
+| `flutter test` | 67 pass |
+| Platform/release config | Pass; Android network + Apple Keychain regression gate |
+| Gitleaks full history | Pass; chỉ allowlist exact public RFC test vector |
+| `scripts/agent/build.sh host .env` | Android/Web pass; macOS unsigned compile pass |
 | iOS 26.5 configured simulator | Pass build + launch; Supabase init thành công |
 | Web configured release | Pass + Wasm dry-run |
+| Web browser smoke | Pass render/Settings capability; console sạch |
 | Android configured release | Fail closed vì thiếu upload keystore |
 | macOS configured release | Bị chặn vì thiếu certificate |
 | Remote encrypted contract | 11/11 pass |
@@ -69,7 +72,7 @@ behavior an toàn, backend có backup/restore/health harness và release gate t�
 | Auth smoke load | 100/100 HTTP 200, concurrency 10, p95 ~0,38 giây |
 
 Full `scripts/agent/check.sh full` pass: docs, generated drift, format, analyzer,
-58 test và encrypted migration contract.
+platform config, 67 test và encrypted migration contract.
 
 ## Rủi ro còn lại
 

@@ -1,6 +1,7 @@
 // lib/core/config/app_config.dart
 import 'package:flutter/foundation.dart';
 import 'package:injectable/injectable.dart';
+import 'package:hyper_authenticator/core/config/public_runtime_config.dart';
 
 @lazySingleton
 class AppConfig {
@@ -35,33 +36,19 @@ class AppConfig {
       'PASSWORD_RECOVERY_URL',
     );
 
-    if (url.isEmpty) {
-      throw StateError('Thiếu cấu hình SUPABASE_URL');
-    }
-    if (publishableKey.isEmpty) {
-      throw StateError('Thiếu cấu hình SUPABASE_PUBLISHABLE_KEY');
-    }
-
-    final passwordRecoveryUrl = passwordRecoveryUrlValue.isEmpty
-        ? null
-        : Uri.tryParse(passwordRecoveryUrlValue);
-    if (passwordRecoveryUrlValue.isNotEmpty &&
-        (passwordRecoveryUrl == null ||
-            passwordRecoveryUrl.scheme != 'https' ||
-            passwordRecoveryUrl.host.isEmpty ||
-            passwordRecoveryUrl.hasQuery ||
-            passwordRecoveryUrl.hasFragment ||
-            passwordRecoveryUrl.userInfo.isNotEmpty)) {
-      throw StateError(
-        'PASSWORD_RECOVERY_URL phải là URL HTTPS không chứa query, fragment hoặc user info',
-      );
-    }
-
-    return AppConfig(
+    final validated = PublicRuntimeConfig.validate(
       supabaseUrl: url,
       supabasePublishableKey: publishableKey,
-      passwordRecoveryUrl: passwordRecoveryUrl?.toString(),
+      passwordRecoveryUrl: passwordRecoveryUrlValue,
       allowInsecurePlaintextSync: allowInsecurePlaintextSync,
+      releaseMode: kReleaseMode,
+    );
+
+    return AppConfig(
+      supabaseUrl: validated.supabaseUrl.toString(),
+      supabasePublishableKey: validated.supabasePublishableKey,
+      passwordRecoveryUrl: validated.passwordRecoveryUrl?.toString(),
+      allowInsecurePlaintextSync: validated.allowInsecurePlaintextSync,
     );
   }
 }

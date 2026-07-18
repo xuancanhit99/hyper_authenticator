@@ -27,6 +27,12 @@ for command_name in git flutter dart rg; do
   fi
 done
 
+if command -v gitleaks >/dev/null 2>&1; then
+  ok "gitleaks is available"
+else
+  warn "gitleaks is required only for scripts/agent/check_secrets.sh"
+fi
+
 for required_file in \
   AGENTS.md \
   LICENSE \
@@ -44,17 +50,11 @@ done
 
 if [[ -f .env ]]; then
   ok ".env exists for --dart-define-from-file"
-  for key_name in SUPABASE_URL SUPABASE_PUBLISHABLE_KEY; do
-    if rg -q "^$key_name=.+$" .env; then
-      ok "$key_name is set"
-    else
-      fail "$key_name is missing or empty"
-    fi
-  done
-  if rg -q '^PASSWORD_RECOVERY_URL=https://.+$' .env; then
-    ok "PASSWORD_RECOVERY_URL is set"
+  if command -v dart >/dev/null 2>&1 &&
+      dart run tool/agent/check_release_config.dart .env; then
+    ok ".env satisfies the public release-config contract"
   else
-    warn "PASSWORD_RECOVERY_URL is absent; Web password recovery will fail closed"
+    fail ".env violates the public release-config contract"
   fi
 else
   warn ".env is absent; analyze/test still work, but running the app requires Supabase defines"

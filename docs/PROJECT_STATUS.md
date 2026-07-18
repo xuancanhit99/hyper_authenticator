@@ -33,10 +33,13 @@ các credential gate tương ứng pass.
 |---|---|
 | `flutter doctor -v` | Pass, không có lỗi toolchain |
 | `flutter analyze` | Pass, 0 diagnostic |
-| `flutter test` | 58 test pass |
+| `flutter test` | 67 test pass |
+| Platform configuration gate | Pass network/backup/signing/Keychain/ID |
+| Release config validator | Pass với `.env` public hiện tại, không in key |
+| Gitleaks full history | Pass sau exact allowlist RFC 6238 test vector |
 | Android debug APK | Pass |
-| Web release + Wasm dry-run | Pass |
-| macOS debug app | Pass |
+| Web release + Wasm dry-run + browser runtime | Pass, console sạch |
+| macOS debug compile unsigned | Pass; không phải runtime/signing evidence |
 | iOS 26.5 simulator debug | Pass build và runtime launch với Supabase init |
 | Android release | Fail closed đúng thiết kế vì chưa có upload keystore |
 | macOS release | Bị chặn vì chưa có development/distribution certificate |
@@ -62,6 +65,7 @@ verification phải inject `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY` và
 - Conflict buộc người dùng chọn cloud hoặc local. Giữ local tạo revision mới;
   dùng cloud chỉ replace khi revision vẫn đúng revision đã review.
 - Remote request bind với Supabase user ID hiện tại để chặn race đổi session.
+- Web Settings không mời đăng nhập để dùng cloud sync khi capability bị tắt.
 - Logo dịch vụ và font Averta không rõ license đã bị loại khỏi release; UI dùng
   avatar ký tự render bằng code. Data contract không thay đổi vì logo không persist.
 
@@ -116,8 +120,9 @@ Capability là hành vi source hiện tại, không thay thế device test và s
 
 ## Automation
 
-- `.github/workflows/ci.yml` chạy docs/generated-code/format/analyze/test và build
-  Android, iOS simulator, macOS, Web, Windows, Linux.
+- `.github/workflows/ci.yml` chạy secret history, docs/generated-code/format/
+  analyze/test và compile Android, iOS simulator, macOS unsigned, Web, Windows,
+  Linux. macOS unsigned không thay thế signed runtime gate.
 - `.github/dependabot.yml` kiểm tra Pub và GitHub Actions hằng tuần.
 - `scripts/agent/check.sh full` là quality gate canonical.
 - `scripts/supabase/` giữ remote contract, backup, health, restore và off-host harness.

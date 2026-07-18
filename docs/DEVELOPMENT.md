@@ -21,7 +21,7 @@ Chạy đầu tiên:
 Điền public client config; không thêm service-role/server/SSH credential:
 
     SUPABASE_URL=https://api.example.com
-    SUPABASE_PUBLISHABLE_KEY=public-key
+    SUPABASE_PUBLISHABLE_KEY=sb_publishable_...
     PASSWORD_RECOVERY_URL=https://auth.example.com/reset-password/
     ALLOW_INSECURE_PLAINTEXT_SYNC=false
 
@@ -31,6 +31,14 @@ Chạy app:
 
 `.env` chỉ được Flutter đọc ở build time qua command flag, không load runtime và
 không bundle như asset.
+
+Validate theo đúng release contract mà không in key:
+
+    dart run tool/agent/check_release_config.dart .env
+
+Validator chỉ cho phép bốn nhóm public client config (có alias legacy
+`SUPABASE_ANON_KEY`), HTTPS URL và publishable/legacy `anon` key. Server/operator
+variable phải nằm ở file khác ngoài repository.
 
 ## Workflow AI Agent
 
@@ -58,8 +66,12 @@ Auth/storage/sync/DI/plugin/platform:
 
     scripts/agent/check.sh full
 
-`full` chạy docs gate, generated-code drift, format, analyze, 58 Flutter tests và
-Supabase encrypted migration test local.
+`full` chạy docs gate, generated-code drift, format, analyze, platform config,
+Flutter tests và Supabase encrypted migration test local.
+
+Secret history gate cần Gitleaks 8.30.1 hoặc tương thích:
+
+    scripts/agent/check_secrets.sh
 
 ## Generated code
 
@@ -75,6 +87,15 @@ Không sửa generated file thủ công.
 Compile smoke theo host:
 
     scripts/agent/build.sh host
+
+Build có runtime config đã validate:
+
+    scripts/agent/build.sh host .env
+    scripts/agent/build.sh ios .env
+
+Trên macOS không có signing identity, script dùng `xcodebuild` với environment
+allowlist và code signing tắt để lấy compile evidence. Artifact đó không chạy được
+Keychain và không được dùng như runtime/release evidence.
 
 Runtime-configured build:
 

@@ -19,6 +19,8 @@ runtime config, schema compatibility, test evidence, checksum và signing proven
 
     git status --short --branch
     scripts/agent/check.sh full
+    scripts/agent/check_secrets.sh
+    dart run tool/agent/check_release_config.dart .env.production
     flutter pub outdated
     git diff --check
 
@@ -28,6 +30,7 @@ Sau đó:
 - chạy encrypted/recovery/Studio contracts;
 - xác nhận backup mới, checksum và restore rehearsal;
 - rà secret/Cyrillic/asset license;
+- xác nhận platform configuration gate có INTERNET/cleartext/backup/Keychain/ID;
 - cập nhật release note, privacy URL, support/security contact;
 - tag đúng tested commit và tạo SHA-256 cho artifact.
 
@@ -60,6 +63,8 @@ trên device, associated recovery link behavior, archive validation và TestFlig
 
 Entitlement secure storage yêu cầu signing certificate; không tắt signing để né gate.
 Phân phối ngoài store cần Developer ID, hardened runtime, notarization và staple.
+`scripts/agent/build.sh macos` có thể compile unsigned trong môi trường CI đã lọc;
+artifact đó chỉ chứng minh compile và không được chạy/phân phối như app hợp lệ.
 
 ## Web
 

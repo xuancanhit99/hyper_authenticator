@@ -3,10 +3,12 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:hyper_authenticator/core/platform/platform_capabilities.dart';
 import 'package:hyper_authenticator/core/router/app_router.dart';
 import 'package:hyper_authenticator/features/auth/domain/entities/user_entity.dart';
 import 'package:hyper_authenticator/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:hyper_authenticator/features/settings/presentation/bloc/settings_bloc.dart';
+import 'package:hyper_authenticator/features/settings/presentation/widgets/encrypted_sync_unavailable_tile.dart';
 import 'package:hyper_authenticator/features/sync/presentation/bloc/sync_bloc.dart';
 import 'package:hyper_authenticator/injection_container.dart';
 import 'package:intl/intl.dart';
@@ -33,6 +35,8 @@ class _SettingsView extends StatelessWidget {
   Widget build(BuildContext context) {
     final authState = context.watch<AuthBloc>().state;
     final currentUser = authState is AuthAuthenticated ? authState.user : null;
+    final encryptedSyncSupported =
+        PlatformCapabilities.supportsEncryptedCloudSync;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Cài đặt')),
@@ -67,9 +71,14 @@ class _SettingsView extends StatelessWidget {
                           : null,
                     ),
                     const Divider(height: 1),
-                    _EncryptedSyncSection(currentUser: currentUser),
-                    const Divider(height: 1),
-                    _AuthenticationTile(currentUser: currentUser),
+                    _EncryptedSyncSection(
+                      currentUser: currentUser,
+                      isSupported: encryptedSyncSupported,
+                    ),
+                    if (currentUser != null || encryptedSyncSupported) ...[
+                      const Divider(height: 1),
+                      _AuthenticationTile(currentUser: currentUser),
+                    ],
                   ],
                 ),
               ),
@@ -159,8 +168,12 @@ class _AuthenticationTile extends StatelessWidget {
 
 class _EncryptedSyncSection extends StatefulWidget {
   final UserEntity? currentUser;
+  final bool isSupported;
 
-  const _EncryptedSyncSection({required this.currentUser});
+  const _EncryptedSyncSection({
+    required this.currentUser,
+    required this.isSupported,
+  });
 
   @override
   State<_EncryptedSyncSection> createState() => _EncryptedSyncSectionState();
@@ -173,12 +186,12 @@ class _EncryptedSyncSectionState extends State<_EncryptedSyncSection> {
   void initState() {
     super.initState();
     _authSubscription = context.read<AuthBloc>().stream.listen((state) {
-      if (mounted && state is AuthAuthenticated) {
+      if (mounted && widget.isSupported && state is AuthAuthenticated) {
         context.read<SyncBloc>().add(const CheckSyncStatus());
       }
     });
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted && widget.currentUser != null) {
+      if (mounted && widget.isSupported && widget.currentUser != null) {
         context.read<SyncBloc>().add(const CheckSyncStatus());
       }
     });
@@ -187,7 +200,8 @@ class _EncryptedSyncSectionState extends State<_EncryptedSyncSection> {
   @override
   void didUpdateWidget(covariant _EncryptedSyncSection oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.currentUser?.id != widget.currentUser?.id &&
+    if (widget.isSupported &&
+        oldWidget.currentUser?.id != widget.currentUser?.id &&
         widget.currentUser != null) {
       context.read<SyncBloc>().add(const CheckSyncStatus());
     }
@@ -201,6 +215,10 @@ class _EncryptedSyncSectionState extends State<_EncryptedSyncSection> {
 
   @override
   Widget build(BuildContext context) {
+    if (!widget.isSupported) {
+      return const EncryptedSyncUnavailableTile();
+    }
+
     return BlocConsumer<SyncBloc, SyncState>(
       listener: (context, state) async {
         if (state is SyncRecoveryKeyReady) {
