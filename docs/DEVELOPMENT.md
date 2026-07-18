@@ -174,6 +174,35 @@ entry, shared library, release launch, metadata upgrade, remove và XDG data ret
 Baseline dùng cùng tested bundle với version thấp hơn, nên không được dùng làm bằng
 chứng migration từ một release lịch sử thật.
 
+## Linux authenticated E2EE runtime
+
+Gate này mutate production Supabase bằng isolated user và chỉ dành cho protected
+operator context. Tạo file operator ngoài repository, mode 0600:
+
+    SUPABASE_PUBLIC_URL=https://api.example.com
+    SERVICE_ROLE_KEY=<operator-only>
+
+Sau đó chạy:
+
+    chmod 0600 /secure/path/supabase-operator.env
+    scripts/agent/linux_e2ee_operator.sh \
+      .env /secure/path/supabase-operator.env \
+      --allow-isolated-remote-user
+
+Wrapper tạo user `.invalid`, chạy Ubuntu 24.04 pin digest với Flutter 3.44.6,
+private D-Bus Secret Service/Xvfb và source allowlist, rồi xóa user và yêu cầu
+admin GET trả 404. Client đi qua setup, sync, fresh-device recovery, recovery-key
+rotation, vault-key rotation và final recovery. Tất cả local data/key nằm trong
+container/XDG sandbox tạm.
+
+Service-role key chỉ được dùng ở parent operator shell qua header file 0600; không
+đi vào Docker environment, Flutter define, GitHub Actions secret, log hoặc binary.
+Container chỉ nhận credential của user test tạm, gỡ chúng khỏi process environment
+trước khi boot Flutter và xóa cùng container. Không chạy script với `set -x`.
+
+Đây là authenticated debug runtime evidence theo kiến trúc host của Docker. Nó
+không thay signed `.deb`, historical-upgrade hoặc distro/desktop matrix.
+
 ## Dependency
 
     flutter pub outdated

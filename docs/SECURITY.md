@@ -113,6 +113,11 @@ representation; equality vẫn hoạt động nhưng transition log không lộ 
 - Debian package không có maintainer script xóa user data. Package smoke mutate
   Ubuntu container tạm, kiểm tra `/` giữ mode 0755 và XDG sentinel còn nguyên sau
   metadata upgrade/remove; historical-release vault migration vẫn là gate riêng.
+- Authenticated Linux E2EE gate chỉ nhận service-role key trong parent operator
+  shell từ file 0600 ngoài repository. Key dùng qua temp header 0600, không export
+  sang Docker/Flutter và không lưu ở GitHub Actions. Container chỉ nhận credential
+  của isolated `.invalid` user, chạy trong XDG/private-keyring sandbox; operator
+  luôn xóa user, dựa vào FK CASCADE để xóa vault row và probe admin 404.
 
 ## Logging và fixture
 

@@ -47,6 +47,7 @@ các credential gate tương ứng pass.
 | Android release | Fail closed đúng thiết kế vì chưa có upload keystore |
 | macOS release | Bị chặn vì chưa có development/distribution certificate |
 | Linux release + Debian artifact | Pass configured `linux/x64`, private-keyring UI smoke và `.deb` `1.1.0+10` amd64; dependency scan, checksum, archive root 0755, clean-container install/launch/upgrade/remove và package-level user-data retention pass |
+| Linux authenticated E2EE runtime | Pass trên Ubuntu 24.04 arm64 container tạm: client thật đăng nhập production Supabase, setup revision 1, sync revision 2, fresh-device recovery, recovery-key rotation revision 3, reject key cũ, vault-key rotation revision 4 và recovery cuối; operator xóa user/row và admin probe xác nhận 404 |
 | Windows release | Remote CI pass configured x64 bundle; artifact 14 ngày và 22/22 checksum pass; còn device/installer/signing gate trên Windows |
 
 Build không có `--dart-define-from-file` chỉ chứng minh compile. Runtime/release
@@ -135,9 +136,11 @@ Capability là hành vi source hiện tại, không thay thế device test và s
    storage/biometric/camera vẫn cần test trên thiết bị thật. Harness hiện chủ động
    từ chối target thật/macOS vì nó reset toàn bộ local vault.
 7. Windows build còn dựa trên CI và chưa có installer/signing/device. Linux đã có
-   `.deb` candidate cùng clean-container package transition smoke; còn representative
-   desktop/distro matrix, upgrade từ release lịch sử thật, authenticated E2EE runtime,
-   release-channel signing và maintainer/support metadata trước phân phối công khai.
+   `.deb` candidate, clean-container package transition và authenticated E2EE
+   client runtime; còn representative desktop/distro matrix, upgrade từ release
+   lịch sử thật, release-channel signing và maintainer/support metadata trước phân
+   phối công khai. E2EE evidence hiện là debug arm64 container, không phải signed
+   amd64 package runtime.
 8. Privacy policy cần được host tại URL công khai và điền kênh support trước store submission.
 9. Flutter Web đã pass TLS/reverse proxy và runtime smoke trên production domain;
    permission pending/error UX đã có regression test trên VM và Chrome test
@@ -155,5 +158,9 @@ Capability là hành vi source hiện tại, không thay thế device test và s
 - `scripts/agent/check.sh full` là quality gate canonical; baseline hiện có 98 test,
   analyze/format cả device integration source nhưng không tự boot virtual device.
 - `scripts/supabase/` giữ remote contract, backup, health, restore và off-host harness.
+- `scripts/agent/linux_e2ee_operator.sh` giữ service-role key ngoài repository và
+  ngoài client process, tạo isolated user, chạy Flutter E2EE trong Ubuntu/private
+  keyring rồi xóa user và xác minh cleanup. Đây là protected operator gate, không
+  đưa production service-role key vào GitHub Actions.
 
 Chỉ đổi trạng thái ở file này khi có test hoặc runtime evidence tái hiện được.

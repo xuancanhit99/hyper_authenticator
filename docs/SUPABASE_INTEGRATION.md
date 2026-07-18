@@ -126,6 +126,19 @@ Recovery và Studio:
 Baseline production ngày 18-07-2026: encrypted **20/20**, recovery 8/8 và Studio
 proxy contract pass. Sau contract, test user và encrypted row đều được cleanup.
 
+Client runtime E2EE Linux dùng protected operator gate:
+
+    scripts/agent/linux_e2ee_operator.sh \
+      .env /secure/path/supabase-operator.env \
+      --allow-isolated-remote-user
+
+Operator env mode 0600 nằm ngoài repository. Wrapper tạo isolated user, nhưng chỉ
+truyền user-level email/password vào Ubuntu/private-keyring client container;
+service-role key không đi vào Flutter hoặc GitHub Actions. Runtime production pass
+setup revision 1, sync revision 2, recovery, recovery-key rotation revision 3 và
+vault-key rotation revision 4. Sau mỗi lượt, admin DELETE + GET 404 pass; DB probe
+cuối xác nhận không còn matching test user hoặc encrypted row.
+
 ## Self-hosted stack
 
 - Exact upstream pin: `supabase/UPSTREAM_PIN`.

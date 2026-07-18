@@ -80,6 +80,21 @@ phase add, libsecret round-trip, lifecycle, reload, navigation và cleanup trên
 Riêng gate behavioral này là headless runtime evidence; package transition được
 kiểm tra bằng gate tách biệt dưới đây và cả hai vẫn chưa thay desktop/distro matrix.
 
+Authenticated E2EE Linux gate dùng ba lớp fail-closed:
+
+- operator wrapper nhận file secret mode 0600 nằm ngoài repository, tạo user
+  `@example.invalid` qua admin API rồi luôn xóa và probe 404;
+- container wrapper chỉ archive tracked/untracked non-ignored source, public config
+  và credential của isolated user vào Ubuntu 24.04 pin digest;
+- inner harness từ chối service-role key, gỡ test credential khỏi environment
+  trước Flutter process, dùng private Secret Service/XDG sandbox và chỉ log phase cố định.
+
+Hai lượt ngày 18-07-2026 đi qua production Supabase: setup revision 1, local sync
+revision 2, fresh-device recovery, recovery-key rotation revision 3 với key cũ bị
+reject, vault-key rotation revision 4 với key trước rotation bị reject và recovery
+cuối. Operator cleanup pass; DB probe sau cùng có 0 matching user và 0 vault row.
+Runtime này là Linux arm64 debug trong container, không thay signed/package runtime.
+
 Debian packaging gate sinh dependency trực tiếp từ mọi ELF bằng `dpkg-shlibdeps`,
 từ chối env/source-map/debug artifact và tạo SHA-256. Ubuntu 24.04 container sạch
 cài package baseline metadata, launch installed release, nâng lên `1.1.0+10`, giữ
@@ -99,7 +114,7 @@ không trong untrusted fork CI.
 | macOS | Unsigned compile CI; signed runtime + notarized release trước phân phối |
 | Web | Configured release + hardened image contract + CSP browser smoke |
 | Windows | Configured native release CI + SHA-256 artifact 14 ngày; installer/device/signing trước phân phối |
-| Linux | Configured x64 + private-keyring runtime + `.deb` checksum/clean-container transition; historical-release upgrade, distro/desktop matrix, E2EE và release-channel signing trước phân phối |
+| Linux | Configured x64 + private-keyring runtime + `.deb` transition; authenticated E2EE debug arm64 container; historical-release upgrade, distro/desktop matrix và release-channel signing trước phân phối |
 
 ## Regression rule
 
@@ -126,6 +141,9 @@ không trong untrusted fork CI.
   private Secret Service và explicit vault-reset opt-in trước local-vault smoke.
 - `scripts/agent/package_linux_deb.sh` scan ELF dependency, khóa archive mode và
   tạo `.deb` + SHA-256; `linux_package_smoke.sh` chỉ mutate Ubuntu container tạm.
+- `scripts/agent/linux_e2ee_operator.sh` tách operator/client credential, gọi
+  container/private-keyring runtime và xác minh isolated user đã bị xóa. Production
+  service-role key không được lưu ở GitHub Actions secret hoặc truyền vào Flutter.
 
 ## Khoảng trống đã biết
 
@@ -136,4 +154,5 @@ không trong untrusted fork CI.
 3. Chưa có mailbox SMTP/expired-link E2E.
 4. Chưa có long-duration soak hoặc production-scale load test.
 5. Windows installer chưa smoke test. Linux còn upgrade từ release lịch sử thật,
-   representative distro/desktop matrix và public release-channel verification.
+   representative distro/desktop matrix, signed package E2EE runtime và public
+   release-channel verification.
