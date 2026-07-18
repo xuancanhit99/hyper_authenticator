@@ -1,6 +1,6 @@
 # Task: Tự động xác minh public release channel
 
-- Trạng thái: Đang thực hiện
+- Trạng thái: Hoàn tất
 - Bắt đầu: 2026-07-19
 - Owner: Hyperz
 - Issue hoặc ADR liên quan: ADR-0010
@@ -50,7 +50,7 @@ CI, GitHub digest, individual checksum, manifest tổng cùng file signature.
 - [x] Thêm canonical offline contract test cho syntax, invalid input,
   no-Authorization và draft rollback.
 - [x] Chạy verifier với release thật và cập nhật canonical docs.
-- [ ] Chạy full gate, commit/push và xác minh CI.
+- [x] Chạy full gate, commit/push và xác minh CI.
 
 ## Nhật ký xác minh
 
@@ -62,6 +62,7 @@ CI, GitHub digest, individual checksum, manifest tổng cùng file signature.
 | Asset validator với historical package version override | Pass; verifier không phụ thuộc current `pubspec.yaml` | 2026-07-19 |
 | `scripts/agent/check.sh full` | Pass docs/generated/format/analyze/platform/offline release contract, 106 Flutter test và encrypted migration | 2026-07-19 |
 | CI `29657661620` Quality lần đầu | Fail sau app test/migration: Ubuntu runner không có `rg`; thêm deterministic `grep` fallback | 2026-07-19 |
+| CI `29657820675` tại `7791487ee72529ade3301a7bee03736e3393ae27` | Pass 7/7: Quality, Secret, Android, Apple, Web, Linux và Windows | 2026-07-19 |
 
 ## Tác động tài liệu
 
@@ -73,6 +74,8 @@ CI, GitHub digest, individual checksum, manifest tổng cùng file signature.
 
 ## Bàn giao
 
-Đang chờ commit/push và GitHub CI cho implementation. Không đổi app hoặc data
-contract. Signing, SMTP, device thật, alert destination và backup host độc lập
-vẫn là follow-up.
+Public release verifier đã được live-test với `v1.1.0-preview.1`; implementation
+và fallback không phụ thuộc `rg` đã pass CI 7/7. Không đổi app hoặc data contract.
+Workflow post-publish chỉ bắt đầu tự chạy sau khi được merge vào default branch.
+Signing, SMTP, device thật, alert destination và backup host độc lập vẫn là
+follow-up.
