@@ -83,7 +83,7 @@ mkdir -p \
   "$XDG_CONFIG_HOME" "$XDG_DATA_HOME" "$XDG_CACHE_HOME" "$XDG_RUNTIME_DIR"
 chmod 0700 "$runtime"/*
 cleanup() {
-  find "$runtime" -depth -delete
+  rm -rf -- "$runtime"
 }
 trap cleanup EXIT
 
