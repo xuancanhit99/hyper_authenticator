@@ -122,6 +122,31 @@ void main() {
     'Linux integration CI-only guard',
   );
   requireText(
+    'scripts/agent/linux_e2ee_integration.sh',
+    'service-role key không được đi vào client integration harness',
+    'Linux E2EE service-role boundary',
+  );
+  requireText(
+    'scripts/agent/linux_e2ee_integration.sh',
+    'integration_test/encrypted_sync_smoke_test.dart',
+    'Linux authenticated E2EE runtime gate',
+  );
+  requireText(
+    'scripts/agent/linux_e2ee_container.sh',
+    'git ls-files --cached --others --exclude-standard -z',
+    'Linux E2EE container source allowlist',
+  );
+  requireText(
+    'scripts/agent/linux_e2ee_operator.sh',
+    'remote-cleanup-verified',
+    'isolated E2EE user cleanup verification',
+  );
+  requireText(
+    'integration_test/encrypted_sync_smoke_test.dart',
+    'ALLOW_E2EE_REMOTE_TEST_MUTATION',
+    'explicit remote mutation opt-in',
+  );
+  requireText(
     'windows/runner/Runner.rc',
     'VALUE "ProductName", "Hyper Authenticator"',
     'Windows product metadata',
