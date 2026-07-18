@@ -10,6 +10,8 @@ import 'package:hyper_authenticator/features/settings/presentation/bloc/session_
 import 'package:hyper_authenticator/features/settings/presentation/widgets/encrypted_sync_unavailable_tile.dart';
 import 'package:hyper_authenticator/features/settings/presentation/widgets/authentication_session_tile.dart';
 import 'package:hyper_authenticator/features/settings/presentation/widgets/recovery_import_dialog.dart';
+import 'package:hyper_authenticator/features/settings/presentation/widgets/recovery_key_confirmation_dialog.dart';
+import 'package:hyper_authenticator/features/settings/presentation/widgets/sync_conflict_resolution_dialog.dart';
 import 'package:hyper_authenticator/features/sync/presentation/bloc/sync_bloc.dart';
 import 'package:hyper_authenticator/injection_container.dart';
 import 'package:intl/intl.dart';
@@ -69,23 +71,26 @@ class _SettingsView extends StatelessWidget {
                 Card(
                   child: Column(
                     children: [
-                      ListTile(
-                        leading: const Icon(Icons.fingerprint),
-                        title: const Text('Khóa bằng sinh trắc học'),
-                        subtitle: Text(
-                          loaded?.canCheckBiometrics == true
-                              ? 'Dùng Face ID, vân tay hoặc mã khóa thiết bị.'
-                              : 'Thiết bị hoặc platform không hỗ trợ.',
+                      if (loaded?.canCheckBiometrics == true)
+                        SwitchListTile(
+                          secondary: const Icon(Icons.fingerprint),
+                          title: const Text('Khóa bằng sinh trắc học'),
+                          subtitle: const Text(
+                            'Dùng Face ID, vân tay hoặc mã khóa thiết bị.',
+                          ),
+                          value: loaded!.isBiometricEnabled,
+                          onChanged: (enabled) => context
+                              .read<SettingsBloc>()
+                              .add(ToggleBiometric(isEnabled: enabled)),
+                        )
+                      else
+                        const ListTile(
+                          leading: Icon(Icons.fingerprint),
+                          title: Text('Khóa bằng sinh trắc học'),
+                          subtitle: Text(
+                            'Thiết bị hoặc platform không hỗ trợ.',
+                          ),
                         ),
-                        trailing: loaded?.canCheckBiometrics == true
-                            ? Switch(
-                                value: loaded!.isBiometricEnabled,
-                                onChanged: (enabled) => context
-                                    .read<SettingsBloc>()
-                                    .add(ToggleBiometric(isEnabled: enabled)),
-                              )
-                            : null,
-                      ),
                       const Divider(height: 1),
                       _EncryptedSyncSection(
                         currentUser: currentUser,
@@ -199,19 +204,19 @@ class _EncryptedSyncSectionState extends State<_EncryptedSyncSection> {
           await _showRecoveryKeyDialog(
             context,
             state.recoveryCode,
-            operation: _RecoveryKeyOperation.setup,
+            operation: RecoveryKeyOperation.setup,
           );
         } else if (state is SyncRecoveryKeyRotationReady) {
           await _showRecoveryKeyDialog(
             context,
             state.recoveryCode,
-            operation: _RecoveryKeyOperation.recoveryKeyRotation,
+            operation: RecoveryKeyOperation.recoveryKeyRotation,
           );
         } else if (state is SyncVaultKeyRotationReady) {
           await _showRecoveryKeyDialog(
             context,
             state.recoveryCode,
-            operation: _RecoveryKeyOperation.vaultKeyRotation,
+            operation: RecoveryKeyOperation.vaultKeyRotation,
           );
         } else if (state is SyncSuccess) {
           ScaffoldMessenger.of(context)
@@ -234,19 +239,7 @@ class _EncryptedSyncSectionState extends State<_EncryptedSyncSection> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            ListTile(
-              leading: const Icon(Icons.enhanced_encryption),
-              title: const Text('Đồng bộ cloud mã hóa đầu cuối'),
-              subtitle: _statusText(context, state),
-              trailing: state is SyncReady
-                  ? Switch(
-                      value: state.isEnabled,
-                      onChanged: (enabled) => context.read<SyncBloc>().add(
-                        SetEncryptedSyncEnabled(enabled),
-                      ),
-                    )
-                  : null,
-            ),
+            _syncTile(context, state),
             if (widget.currentUser != null)
               Padding(
                 padding: const EdgeInsets.fromLTRB(72, 0, 16, 8),
@@ -255,6 +248,33 @@ class _EncryptedSyncSectionState extends State<_EncryptedSyncSection> {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _syncTile(BuildContext context, SyncState state) {
+    final subtitle = Semantics(
+      container: true,
+      liveRegion:
+          state is SyncInProgress ||
+          state is SyncConflict ||
+          state is SyncSuccess ||
+          state is SyncFailure,
+      child: _statusText(context, state),
+    );
+    if (state case SyncReady(:final isEnabled)) {
+      return SwitchListTile(
+        secondary: const Icon(Icons.enhanced_encryption),
+        title: const Text('Đồng bộ cloud mã hóa đầu cuối'),
+        subtitle: subtitle,
+        value: isEnabled,
+        onChanged: (enabled) =>
+            context.read<SyncBloc>().add(SetEncryptedSyncEnabled(enabled)),
+      );
+    }
+    return ListTile(
+      leading: const Icon(Icons.enhanced_encryption),
+      title: const Text('Đồng bộ cloud mã hóa đầu cuối'),
+      subtitle: subtitle,
     );
   }
 
@@ -387,88 +407,20 @@ class _EncryptedSyncSectionState extends State<_EncryptedSyncSection> {
   Future<void> _showRecoveryKeyDialog(
     BuildContext context,
     String recoveryCode, {
-    required _RecoveryKeyOperation operation,
+    required RecoveryKeyOperation operation,
   }) async {
-    var confirmedSaved = false;
-    final accepted = await showDialog<bool>(
-      context: context,
-      barrierDismissible: false,
-      builder: (dialogContext) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          title: Text(
-            operation == _RecoveryKeyOperation.setup
-                ? 'Lưu recovery key'
-                : 'Lưu recovery key mới',
-          ),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(switch (operation) {
-                  _RecoveryKeyOperation.setup =>
-                    'Key này không được gửi lên server. Mất mọi thiết bị và key sẽ không thể khôi phục cloud vault.',
-                  _RecoveryKeyOperation.recoveryKeyRotation =>
-                    'Recovery key cũ không thể mở snapshot hiện tại sau khi hoàn tất. Thiết bị đã giữ vault key vẫn tiếp tục hoạt động.',
-                  _RecoveryKeyOperation.vaultKeyRotation =>
-                    'Cả vault key và recovery key sẽ đổi. Thiết bị khác chỉ giữ vault key cũ sẽ không đọc được snapshot mới và phải nhập recovery key mới. Thao tác không đăng xuất session Supabase khác và không xóa backup lịch sử.',
-                }),
-                const SizedBox(height: 16),
-                DecoratedBox(
-                  decoration: BoxDecoration(
-                    color: Theme.of(
-                      context,
-                    ).colorScheme.surfaceContainerHighest,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: SelectableText(
-                      recoveryCode,
-                      style: const TextStyle(fontFamily: 'monospace'),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                CheckboxListTile(
-                  contentPadding: EdgeInsets.zero,
-                  value: confirmedSaved,
-                  onChanged: (value) =>
-                      setDialogState(() => confirmedSaved = value ?? false),
-                  title: const Text(
-                    'Tôi đã lưu key vào password manager hoặc nơi an toàn.',
-                  ),
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext, false),
-              child: const Text('Hủy'),
-            ),
-            FilledButton(
-              onPressed: confirmedSaved
-                  ? () => Navigator.pop(dialogContext, true)
-                  : null,
-              child: Text(switch (operation) {
-                _RecoveryKeyOperation.setup => 'Bật encrypted sync',
-                _RecoveryKeyOperation.recoveryKeyRotation =>
-                  'Xoay recovery key',
-                _RecoveryKeyOperation.vaultKeyRotation => 'Xoay vault key',
-              }),
-            ),
-          ],
-        ),
-      ),
+    final accepted = await showRecoveryKeyConfirmationDialog(
+      context,
+      recoveryCode: recoveryCode,
+      operation: operation,
     );
     if (!context.mounted) return;
     if (accepted == true) {
       context.read<SyncBloc>().add(switch (operation) {
-        _RecoveryKeyOperation.setup => const ConfirmRecoveryKeySaved(),
-        _RecoveryKeyOperation.recoveryKeyRotation =>
+        RecoveryKeyOperation.setup => const ConfirmRecoveryKeySaved(),
+        RecoveryKeyOperation.recoveryKeyRotation =>
           const ConfirmRecoveryKeyRotation(),
-        _RecoveryKeyOperation.vaultKeyRotation =>
+        RecoveryKeyOperation.vaultKeyRotation =>
           const ConfirmVaultKeyRotation(),
       });
     } else {
@@ -514,28 +466,13 @@ class _EncryptedSyncSectionState extends State<_EncryptedSyncSection> {
     required String title,
     required String message,
     required String action,
-  }) async =>
-      await showDialog<bool>(
-        context: context,
-        builder: (dialogContext) => AlertDialog(
-          title: Text(title),
-          content: Text(message),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext, false),
-              child: const Text('Hủy'),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.pop(dialogContext, true),
-              child: Text(action),
-            ),
-          ],
-        ),
-      ) ??
-      false;
+  }) => showSyncConflictResolutionDialog(
+    context,
+    title: title,
+    message: message,
+    action: action,
+  );
 
   String _format(DateTime value) =>
       DateFormat.yMd().add_Hm().format(value.toLocal());
 }
-
-enum _RecoveryKeyOperation { setup, recoveryKeyRotation, vaultKeyRotation }

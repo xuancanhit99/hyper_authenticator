@@ -62,12 +62,14 @@ class AuthenticationSessionTile extends StatelessWidget {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
+        scrollable: true,
         title: const Text('Đăng xuất các phiên khác?'),
         content: const Text(
           'Thiết bị này vẫn đăng nhập. Các phiên khác bị hủy refresh token và server chặn ngay quyền đọc/ghi encrypted vault. Local vault và vault key trên thiết bị này không thay đổi.\n\nNếu nghi một thiết bị đã bị lộ, hãy xoay vault key trước khi thực hiện bước này để thu hồi cả khả năng giải mã snapshot mới.',
         ),
         actions: [
           TextButton(
+            autofocus: true,
             onPressed: () => Navigator.pop(dialogContext, false),
             child: const Text('Hủy'),
           ),
@@ -89,12 +91,14 @@ class AuthenticationSessionTile extends StatelessWidget {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
+        scrollable: true,
         title: const Text('Xác nhận đăng xuất'),
         content: const Text(
           'Dữ liệu TOTP local không bị xóa. Vault key vẫn được giữ trong secure storage của thiết bị này.',
         ),
         actions: [
           TextButton(
+            autofocus: true,
             onPressed: () => Navigator.pop(dialogContext, false),
             child: const Text('Hủy'),
           ),
