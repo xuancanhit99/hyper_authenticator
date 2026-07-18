@@ -16,8 +16,9 @@ build. Bỏ `<env-file>` chỉ chứng minh compile, không chứng minh bootstr
 | Dart/UI | `scripts/agent/check.sh quick` |
 | Auth/storage/sync/DI/platform | `scripts/agent/check.sh full` |
 
-`full` phải pass generated-code drift, format, analyze, platform manifest/
-entitlement contract, Flutter test và encrypted PostgreSQL migration contract.
+`full` phải pass generated-code drift, format (gồm source `integration_test`),
+analyze, platform manifest/entitlement contract, Flutter test và encrypted
+PostgreSQL migration contract. Nó không tự boot emulator/simulator.
 
 ## Coverage hiện tại
 
@@ -63,6 +64,13 @@ Android Pixel AVD còn xác minh SDK thật gọi bulk revoke: isolated user có
 session, UI xác nhận action, session count giảm 2→1, current session vẫn ở Settings
 và test user/row/app data được cleanup.
 
+Device integration smoke dùng fixture isolated và explicit destructive opt-in đã
+pass trên Android Pixel AVD và iOS 26.5 Simulator. Suite kiểm tra bootstrap với
+public config, thêm account qua UI, secure-storage round-trip, lifecycle
+foreground/hidden, BLoC reload, chuyển Settings/Accounts và local-vault cleanup.
+Runner chỉ chấp nhận Android emulator hoặc iOS Simulator; thiết bị thật và macOS
+bị từ chối để không chạm vault người dùng.
+
 Remote script cần service-role key nên chỉ chạy trong protected operator context,
 không trong untrusted fork CI.
 
@@ -101,7 +109,9 @@ không trong untrusted fork CI.
 
 ## Khoảng trống đã biết
 
-1. Chưa có device integration suite cho Keychain/Keystore/biometric/camera.
+1. Device integration mới bao phủ local vault/navigation/lifecycle trên Android
+   emulator và iOS Simulator; biometric/camera và secure-storage behavior trên
+   thiết bị thật chưa được chứng minh.
 2. Chưa có two-device physical E2EE test.
 3. Chưa có mailbox SMTP/expired-link E2E.
 4. Chưa có long-duration soak hoặc production-scale load test.

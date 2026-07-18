@@ -10,6 +10,11 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 class AddAccountPage extends StatefulWidget {
   const AddAccountPage({super.key});
 
+  static const issuerFieldKey = ValueKey<String>('add-account-issuer');
+  static const accountNameFieldKey = ValueKey<String>('add-account-name');
+  static const secretFieldKey = ValueKey<String>('add-account-secret');
+  static const submitButtonKey = ValueKey<String>('add-account-submit');
+
   @override
   State<AddAccountPage> createState() => _AddAccountPageState();
 }
@@ -236,6 +241,7 @@ class _AddAccountPageState extends State<AddAccountPage> {
               ),
             ),
             TextFormField(
+              key: AddAccountPage.issuerFieldKey,
               controller: _issuerController,
               decoration: const InputDecoration(
                 labelText: 'Nhà cung cấp (ví dụ: Google, GitHub)',
@@ -248,6 +254,7 @@ class _AddAccountPageState extends State<AddAccountPage> {
             ),
             const SizedBox(height: 16),
             TextFormField(
+              key: AddAccountPage.accountNameFieldKey,
               controller: _accountNameController,
               decoration: const InputDecoration(
                 labelText: 'Account Name (e.g., user@example.com)',
@@ -258,6 +265,7 @@ class _AddAccountPageState extends State<AddAccountPage> {
             ),
             const SizedBox(height: 16),
             TextFormField(
+              key: AddAccountPage.secretFieldKey,
               controller: _secretController,
               decoration: const InputDecoration(
                 labelText: 'Secret Key (Base32 encoded)',
@@ -272,6 +280,7 @@ class _AddAccountPageState extends State<AddAccountPage> {
             ),
             const SizedBox(height: 32),
             ElevatedButton(
+              key: AddAccountPage.submitButtonKey,
               onPressed: _submitManualEntry,
               child: const Text('Add Account'),
             ),

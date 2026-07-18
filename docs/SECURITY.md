@@ -104,6 +104,9 @@ representation; equality vẫn hoạt động nhưng transition log không lộ 
 - Dọn Supabase data/volume yêu cầu full backup + checksum + restore note.
 - Drop plaintext compatibility table là migration riêng, không nằm trong client rollout.
 - Logout và disable sync không được xóa local vault hoặc remote snapshot.
+- Device integration local-vault suite chỉ chạy trên Android emulator/iOS Simulator,
+  cần opt-in rõ ràng và luôn cleanup fixture; runner từ chối máy thật/macOS để tránh
+  thay vault người dùng.
 
 ## Logging và fixture
 

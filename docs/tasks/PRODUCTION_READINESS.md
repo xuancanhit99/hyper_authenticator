@@ -30,6 +30,8 @@ behavior an toàn, backend có backup/restore/health harness và release gate t�
 - [x] 96 test + analyzer + platform/release-config gate pass.
 - [x] Bulk revoke mọi session khác; RLS/RPC chặn JWT của session đã revoke ngay
   trong khi session hiện tại và local vault được giữ.
+- [x] Local-vault integration smoke pass trên Android emulator và iOS Simulator,
+  có explicit reset opt-in và cleanup fixture.
 - [x] Remote E2EE/recovery/Studio contract pass.
 - [x] Daily backup, restore rehearsal, encrypted off-host copy và health timer pass.
 - [x] Asset/font không rõ license bị loại khỏi release.
@@ -74,6 +76,8 @@ behavior an toàn, backend có backup/restore/health harness và release gate t�
 | Windows configured artifact | Pass PE x64; 22/22 SHA-256 checksum; không chứa `.env` hoặc signing key |
 | Android configured release | Fail closed vì thiếu upload keystore |
 | Android Pixel AVD E2E | Pass login return, setup revision 1, recovery-key rotation revision 2, vault-key rotation revision 3, fresh-device recovery revision 3 và SDK bulk revoke 2→1 session; cleanup user/row/app data |
+| Android Pixel AVD local-vault smoke | Pass UI add, storage round-trip, lifecycle, BLoC reload, navigation và cleanup |
+| iOS 26.5 local-vault smoke | Pass cùng contract trên Simulator; cleanup trong `finally` |
 | macOS configured release | Bị chặn vì thiếu certificate |
 | Remote encrypted contract | 20/20 pass, gồm atomic rotation và active-session revoke enforcement |
 | Remote recovery contract | 8/8 pass |
@@ -86,7 +90,7 @@ platform config, 96 test và encrypted migration/active-session contract.
 
 ## Rủi ro còn lại
 
-- Signing/store/device/SMTP/alert destination là external gate, không phải source defect.
+- Signing/store/physical-device/SMTP/alert destination là external gate, không phải source defect.
 - Flutter Web còn camera permission/QR scan smoke trên browser-device thật.
 - E2EE v1 đã có DEK rotation và bulk revoke session khác; device registry/revoke
   riêng từng thiết bị, device-specific key wrap và Web trust model vẫn chưa có.

@@ -40,10 +40,10 @@ các credential gate tương ứng pass.
 | Platform configuration gate | Pass network/backup/signing/Keychain/ID |
 | Release config validator | Pass với `.env` public hiện tại, không in key |
 | Gitleaks full history | Pass sau exact allowlist RFC 6238 test vector |
-| Android debug + Pixel AVD runtime | Pass build/install, Supabase auth, setup revision 1, recovery-key rotation revision 2, vault-key rotation revision 3, fresh-device recovery revision 3 và bulk revoke session thật 2→1 trong khi current session vẫn authenticated |
+| Android debug + Pixel AVD runtime | Pass build/install, Supabase auth, setup revision 1, recovery-key rotation revision 2, vault-key rotation revision 3, fresh-device recovery revision 3, bulk revoke session thật 2→1 và local-vault integration smoke có cleanup |
 | Web release + hardened Nginx image | Pass public TLS/proxy, serving contract, `/` + `/settings` browser runtime và console sạch |
 | macOS debug compile unsigned | Pass; không phải runtime/signing evidence |
-| iOS 26.5 simulator debug | Pass build và runtime launch với Supabase init |
+| iOS 26.5 simulator debug | Pass build/runtime với Supabase init và local-vault integration smoke có cleanup |
 | Android release | Fail closed đúng thiết kế vì chưa có upload keystore |
 | macOS release | Bị chặn vì chưa có development/distribution certificate |
 | Linux release compile | Pass `linux/arm64` với Flutter 3.44.6 trên Ubuntu 24.04 isolated |
@@ -129,8 +129,9 @@ Capability là hành vi source hiện tại, không thay thế device test và s
    enforcement. Chưa có device registry/revoke riêng từng thiết bị, device-specific
    key wrap, tombstone/history hoặc Web trust model. Backup cũ vẫn dùng key
    generation cũ.
-6. Chưa có Flutter device/integration suite đầy đủ; secure storage/biometric/camera
-   vẫn cần test trên thiết bị thật.
+6. Local-vault integration smoke đã pass Android emulator và iOS Simulator; secure
+   storage/biometric/camera vẫn cần test trên thiết bị thật. Harness hiện chủ động
+   từ chối target thật/macOS vì nó reset toàn bộ local vault.
 7. Windows build còn dựa trên CI. Windows installer/signing/device và Linux
    package/keyring/device smoke test chưa xong.
 8. Privacy policy cần được host tại URL công khai và điền kênh support trước store submission.
@@ -145,7 +146,8 @@ Capability là hành vi source hiện tại, không thay thế device test và s
   bundle, manifest SHA-256 và artifact 14 ngày; macOS unsigned không thay thế
   signed runtime gate.
 - `.github/dependabot.yml` kiểm tra Pub và GitHub Actions hằng tuần.
-- `scripts/agent/check.sh full` là quality gate canonical; baseline hiện có 96 test.
+- `scripts/agent/check.sh full` là quality gate canonical; baseline hiện có 96 test,
+  analyze/format cả device integration source nhưng không tự boot virtual device.
 - `scripts/supabase/` giữ remote contract, backup, health, restore và off-host harness.
 
 Chỉ đổi trạng thái ở file này khi có test hoặc runtime evidence tái hiện được.

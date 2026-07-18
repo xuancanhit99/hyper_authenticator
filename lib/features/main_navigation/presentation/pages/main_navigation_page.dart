@@ -7,6 +7,9 @@ import 'package:hyper_authenticator/features/authenticator/presentation/pages/ac
 import 'package:hyper_authenticator/features/settings/presentation/pages/settings_page.dart';
 
 class MainNavigationPage extends StatefulWidget {
+  static const accountsTabKey = Key('main_navigation_accounts_tab');
+  static const settingsTabKey = Key('main_navigation_settings_tab');
+
   final int selectedIndex;
 
   const MainNavigationPage({required this.selectedIndex, super.key});
@@ -86,11 +89,13 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
         onDestinationSelected: _onItemTapped,
         destinations: const <Widget>[
           NavigationDestination(
+            key: MainNavigationPage.accountsTabKey,
             icon: Icon(Icons.shield_outlined),
             selectedIcon: Icon(Icons.shield),
             label: 'Accounts',
           ),
           NavigationDestination(
+            key: MainNavigationPage.settingsTabKey,
             icon: Icon(Icons.settings_outlined),
             selectedIcon: Icon(Icons.settings),
             label: 'Settings',

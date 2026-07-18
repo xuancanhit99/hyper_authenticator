@@ -53,7 +53,8 @@ run_quick() {
   run_docs || status=1
   run_generated || status=1
   printf '\n%s\n' "== Formatting gate =="
-  dart format --output=none --set-exit-if-changed lib test tool || status=1
+  dart format --output=none --set-exit-if-changed \
+    lib test integration_test tool || status=1
   printf '\n%s\n' "== Static analysis gate =="
   dart analyze || status=1
   return "$status"
