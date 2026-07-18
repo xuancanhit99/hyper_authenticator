@@ -6,7 +6,7 @@ cd "$ROOT"
 
 REF=${1:-HEAD}
 FLUTTER_VERSION=3.44.6
-UBUNTU_IMAGE='ubuntu:24.04@sha256:4fbb8e6a8395de5a7550b33509421a2bafbc0aab6c06ba2cef9ebffbc7092d90'
+UBUNTU_IMAGE='ubuntu:22.04@sha256:0e0a0fc6d18feda9db1590da249ac93e8d5abfea8f4c3c0c849ce512b5ef8982'
 
 if ! command -v docker >/dev/null 2>&1 || ! docker info >/dev/null 2>&1; then
   printf '%s\n' 'Docker daemon là bắt buộc cho Linux isolated compile.' >&2
@@ -44,4 +44,4 @@ flutter pub get
 flutter build linux --release
 test -x build/linux/arm64/release/bundle/hyper_authenticator || \\
   test -x build/linux/x64/release/bundle/hyper_authenticator
-printf '%s\\n' 'Linux release compile pass: Flutter $FLUTTER_VERSION, Ubuntu 24.04.'"
+printf '%s\\n' 'Linux release compile pass: Flutter $FLUTTER_VERSION, Ubuntu 22.04.'"

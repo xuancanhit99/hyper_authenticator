@@ -74,6 +74,10 @@ trap cleanup_container EXIT
 apt-get install -y -qq /packages/baseline.deb >/dev/null
 [[ $(stat -c '%a' /) == 755 ]]
 [[ $(dpkg-query -W -f='${Version}' hyper-authenticator) == "$baseline_version" ]]
+for runtime_package in libegl1 libgles2 libgl1; do
+  [[ $(dpkg-query -W -f='${Status}' "$runtime_package") == \
+    'install ok installed' ]]
+done
 test -x /usr/bin/hyper-authenticator
 test -f /usr/share/applications/app.hyperz.authenticator.desktop
 test -f /usr/share/pixmaps/app.hyperz.authenticator.png

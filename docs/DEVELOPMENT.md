@@ -191,8 +191,9 @@ Sau configured release build trên Linux, tạo Debian candidate:
       build/linux/x64/release/bundle build/linux/deb
 
 Builder nhận version từ `pubspec.yaml`, phát hiện amd64/arm64 từ ELF, sinh Depends
-bằng `dpkg-shlibdeps`, từ chối env/source-map/debug artifact, khóa archive root
-0755 và tạo file `.deb.sha256`. CI còn chạy:
+bằng `dpkg-shlibdeps`, bổ sung `libegl1`, `libgles2`, `libgl1` vì Flutter nạp
+ba loader đồ họa bằng `dlopen`, từ chối env/source-map/debug artifact, khóa
+archive root 0755 và tạo file `.deb.sha256`. CI còn chạy:
 
     CI=true scripts/agent/linux_package_smoke.sh \
       baseline.deb current.deb --allow-container-package-install
@@ -201,6 +202,17 @@ Smoke chỉ install trong Ubuntu 24.04 container pin digest; nó xác minh deskt
 entry, shared library, release launch, metadata upgrade, remove và XDG data retention.
 Baseline dùng cùng tested bundle với version thấp hơn, nên không được dùng làm bằng
 chứng migration từ một release lịch sử thật.
+
+Current package tiếp tục chạy qua distro matrix pin digest:
+
+    CI=true GITHUB_ACTIONS=true RUNNER_ENVIRONMENT=github-hosted RUNNER_OS=Linux \
+      scripts/agent/linux_distro_matrix.sh \
+      current.deb --allow-container-package-install
+
+Matrix cài package trên Ubuntu 22.04/24.04 và Debian 12/13, kiểm tra dependency
+được package tự kéo, desktop entry, private `gnome-keyring` Secret Service và
+launch trong Xvfb. Script từ chối workstation/self-hosted runner. Gate này không
+thay KDE/KWallet, Wayland hoặc physical desktop smoke.
 
 ## Linux authenticated E2EE runtime
 

@@ -122,6 +122,16 @@ if [[ -z "$DEPENDENCIES" ]] ||
   exit 1
 fi
 
+# Flutter engine nạp EGL/GLES/OpenGL bằng dlopen nên dpkg-shlibdeps không nhìn thấy
+# ba loader này trong ELF DT_NEEDED. Giữ explicit runtime contract để package
+# không chỉ vô tình chạy trên distro mới nhờ dependency gián tiếp.
+for runtime_dependency in libegl1 libgles2 libgl1; do
+  if ! grep -Eq \
+    "(^|, )${runtime_dependency}([ (>,]|$)" <<<"$DEPENDENCIES"; then
+    DEPENDENCIES="$DEPENDENCIES, $runtime_dependency"
+  fi
+done
+
 INSTALLED_SIZE=$(du -sk "$PACKAGE_ROOT" | awk '{print $1}')
 MAINTAINER=${LINUX_PACKAGE_MAINTAINER:-Hyperz}
 printf '%s\n' \

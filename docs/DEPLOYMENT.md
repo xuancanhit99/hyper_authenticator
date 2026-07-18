@@ -163,10 +163,12 @@ Debian candidate và checksum:
     scripts/agent/package_linux_deb.sh \
       build/linux/x64/release/bundle build/linux/deb
 
-`.deb` hiện đã pass generated dependency, archive permission, clean Ubuntu
-install/launch/metadata-upgrade/remove và package-level data retention. Gate còn
-lại: historical-release upgrade, representative distro/desktop matrix,
-authenticated E2EE smoke, maintainer/support metadata và release-channel signing.
+`.deb` build baseline từ Ubuntu 22.04 để giữ glibc floor 2.34, khai báo explicit
+EGL/GLES/GL loader và đã pass local Docker arm64 trên Ubuntu 22.04/24.04 cùng
+Debian 12/13 với private Secret Service/Xvfb. Clean Ubuntu package transition và
+data retention cũng pass. Gate còn lại: hosted amd64 + historical-release upgrade,
+KDE/Wayland/physical desktop, signed package E2EE runtime, maintainer/support
+metadata và release-channel signing.
 Local authentication/scanner bị ẩn theo thiết kế.
 
 ## Supabase rollout

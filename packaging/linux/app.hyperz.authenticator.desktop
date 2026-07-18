@@ -5,6 +5,6 @@ Comment=Ứng dụng xác thực TOTP local-first
 Exec=/usr/bin/hyper-authenticator
 Icon=app.hyperz.authenticator
 Terminal=false
-Categories=Utility;Security;
+Categories=System;Security;
 StartupNotify=true
 StartupWMClass=app.hyperz.authenticator
