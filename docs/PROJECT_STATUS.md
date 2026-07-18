@@ -11,10 +11,12 @@ publication qua Supabase RPC. Web vẫn chủ động tắt cloud sync vì brows
 không có trust boundary tương đương platform secure storage.
 
 Source, local data path, E2EE client/server contract, backup và backend health
-harness đã đạt baseline kỹ thuật. Kênh binary đầu tiên được chuyển sang GitHub
-Preview: Windows/Linux unsigned chỉ được public dưới dạng pre-release có checksum,
-tag CI provenance và cảnh báo rõ ràng. Store/signed stable vẫn cần credential thuộc
-owner; không mô tả preview là stable production release.
+harness đã đạt baseline kỹ thuật. GitHub Releases là kênh phân phối binary ưu tiên:
+Windows/Linux unsigned chỉ được public dưới dạng pre-release có checksum, tag CI
+provenance và cảnh báo rõ ràng. Android signed APK và macOS notarized package có
+thể bổ sung theo gate riêng mà không cần chờ app store; iOS vẫn phụ thuộc kênh
+Apple. Store/SMTP được hoãn; signed stable vẫn cần credential thuộc owner và không
+mô tả preview là stable production release.
 
 ## Toolchain và dependency
 
@@ -135,9 +137,10 @@ Capability là hành vi source hiện tại, không thay thế device test và s
 
 ## Khoảng trống đã biết
 
-1. Signing/notarization/store credential chưa có trong môi trường; không tự tạo
-   credential thay owner.
-2. SMTP endpoint chấp nhận recovery flow và token contract pass, nhưng delivery
+1. Signing/notarization credential chưa có trong môi trường; không tự tạo
+   credential thay owner. Vì vậy GitHub hiện chỉ public Windows/Linux unsigned
+   preview; app store được hoãn.
+2. SMTP được hoãn. Endpoint chấp nhận recovery flow và token contract pass, nhưng delivery
    tới mailbox thật cùng expired-token E2E chưa được chứng minh.
 3. Monitoring mới ghi journal/exit status; chưa có alert channel ngoài host.
 4. Off-host backup hiện phụ thuộc máy Mac/LaunchAgent đang hoạt động; cần đích

@@ -132,9 +132,9 @@ database `ha_restore_rehearsal_*`. Health và timer systemd đều pass.
 
 | Target | Gate |
 |---|---|
-| Android | Debug build mỗi CI; signed release trước store |
-| iOS | Simulator build mỗi CI; signed archive + device/TestFlight trước store |
-| macOS | Unsigned compile CI; signed runtime + notarized release trước phân phối |
+| Android | Debug build mỗi CI; signed APK + runtime/upgrade gate trước GitHub Release; AAB/internal track khi mở Play Store |
+| iOS | Simulator build mỗi CI; không public binary qua GitHub; signed archive + device/TestFlight trước phân phối |
+| macOS | Unsigned compile CI; Developer ID + signed runtime + notarized package trước GitHub Release hoặc phân phối khác |
 | Web | Configured release + hardened image contract + CSP/runtime `lang=vi` browser smoke |
 | Windows | Hosted local-vault runtime + historical `1.0.0+9` vault-upgrade harness + configured x64 + NSIS install/launch/metadata-upgrade/uninstall retention; installer/checksum được phép lên GitHub Preview unsigned; physical device/signing trước stable |
 | Linux | Hosted amd64 configured x64 + historical `1.0.0+9` upgrade + private-keyring runtime + `.deb` transition + Ubuntu/Debian X11/Wayland matrix; package/checksum được phép lên GitHub Preview unsigned; KDE/login/signed runtime trước stable |

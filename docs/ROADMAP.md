@@ -21,12 +21,18 @@ Roadmap ưu tiên theo rủi ro. Checkbox chỉ được đánh dấu khi có so
 - [x] Primary UI tiếng Việt và Web document language `vi`; giữ thuật ngữ technical
   khi cần độ chính xác.
 
-## Ưu tiên P0 — Phát hành GitHub Preview đầu tiên
+## Ưu tiên P0 — Duy trì GitHub Releases làm kênh phân phối chính
 
 - [x] Chấp nhận contract GitHub Preview unsigned cho Windows x64/Linux amd64.
 - [x] Harness bắt buộc tag/version/tag-CI/checksum/asset allowlist và pre-release flag.
 - [x] Publish `v1.1.0-preview.1` và xác minh lại public download/checksum.
 - [x] Công bố private security reporting trên GitHub.
+- [x] Chốt app store và SMTP là milestone hoãn, không chặn GitHub Preview.
+- [ ] Phát hành preview tiếp theo từ tested tag khi có thay đổi đủ giá trị cho người dùng.
+- [ ] Thêm signed Android APK vào GitHub Releases sau khi có upload keystore và
+  runtime/upgrade gate; không cần chờ Play Store.
+- [ ] Thêm macOS package sau Developer ID/notarization/runtime gate; không phát
+  hành unsigned compile artifact.
 
 Exit criteria: GitHub pre-release public có Windows/Linux artifact đúng contract,
 tag CI xanh, checksum tải lại khớp và release note nêu signing/SMTP/platform risk.
@@ -66,10 +72,12 @@ tag CI xanh, checksum tải lại khớp và release note nêu signing/SMTP/plat
 - [ ] Quyết định Web encrypted sync sau browser threat model; mặc định vẫn tắt.
 - [ ] Đánh giá alternative scanner nếu upstream Built-in Kotlin migration chậm.
 
-## Ưu tiên P2 — Signed stable và app store
+## Ưu tiên P2 — Signed GitHub Release và app store (đang hoãn)
 
-- [ ] Owner cung cấp Android upload keystore; build AAB signed và internal track test.
-- [ ] Owner cung cấp Apple certificate/profile; iOS TestFlight và macOS notarization.
+- [ ] Owner cung cấp Android upload keystore; build signed APK cho GitHub trước,
+  AAB/internal track chỉ làm khi mở Play Store.
+- [ ] Owner cung cấp Apple certificate/profile; macOS GitHub package cần
+  notarization, còn iOS TestFlight/App Store là milestone riêng.
 - [ ] Windows code-signing certificate và signed installer verification.
 - [ ] Host privacy policy + support contact ở URL công khai.
 - [ ] Mailbox test SMTP delivery và expired recovery link.
