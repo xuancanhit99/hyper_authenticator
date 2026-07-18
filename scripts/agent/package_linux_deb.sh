@@ -60,6 +60,7 @@ esac
 
 PACKAGE_ROOT=$(mktemp -d "${RUNNER_TEMP:-${TMPDIR:-/tmp}}/hyper-auth-deb.XXXXXX")
 METADATA_ROOT=$(mktemp -d "${RUNNER_TEMP:-${TMPDIR:-/tmp}}/hyper-auth-metadata.XXXXXX")
+chmod 0755 "$PACKAGE_ROOT"
 cleanup() {
   find "$PACKAGE_ROOT" "$METADATA_ROOT" -depth -delete
 }
@@ -144,8 +145,15 @@ safe_version=${safe_version//\//_}
 DEB_PATH="$OUTPUT_DIR/hyper-authenticator_${safe_version}_${ARCHITECTURE}.deb"
 dpkg-deb --root-owner-group --build "$PACKAGE_ROOT" "$DEB_PATH" >/dev/null
 dpkg-deb --info "$DEB_PATH" >/dev/null
-dpkg-deb --contents "$DEB_PATH" |
-  grep -F './opt/hyper-authenticator/hyper_authenticator' >/dev/null
+package_contents=$(dpkg-deb --contents "$DEB_PATH")
+grep -F './opt/hyper-authenticator/hyper_authenticator' \
+  <<<"$package_contents" >/dev/null
+root_entry=$(sed -n '1p' <<<"$package_contents")
+if [[ "$root_entry" != drwxr-xr-x*' ./' ]]; then
+  printf 'Debian archive root entry không phải mode 0755: %s\n' \
+    "$root_entry" >&2
+  exit 1
+fi
 
 CHECKSUM_PATH="$DEB_PATH.sha256"
 (

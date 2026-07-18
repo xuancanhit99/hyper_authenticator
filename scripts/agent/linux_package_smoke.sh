@@ -45,6 +45,7 @@ export DEBIAN_FRONTEND=noninteractive
 
 baseline_version=$(dpkg-deb --field /packages/baseline.deb Version)
 current_version=$(dpkg-deb --field /packages/current.deb Version)
+[[ $(stat -c '%a' /) == 755 ]]
 if ! dpkg --compare-versions "$baseline_version" lt "$current_version"; then
   printf '%s\n' 'Baseline package version phải nhỏ hơn current version.' >&2
   exit 1
@@ -71,6 +72,7 @@ cleanup_container() {
 trap cleanup_container EXIT
 
 apt-get install -y -qq /packages/baseline.deb >/dev/null
+[[ $(stat -c '%a' /) == 755 ]]
 [[ $(dpkg-query -W -f='${Version}' hyper-authenticator) == "$baseline_version" ]]
 test -x /usr/bin/hyper-authenticator
 test -f /usr/share/applications/app.hyperz.authenticator.desktop
@@ -108,12 +110,14 @@ printf '%s\n' 'preserve-on-upgrade-and-remove' \
   > "$XDG_DATA_HOME/app.hyperz.authenticator/package-retention-sentinel"
 
 apt-get install -y -qq /packages/current.deb >/dev/null
+[[ $(stat -c '%a' /) == 755 ]]
 current_version=$(dpkg-deb --field /packages/current.deb Version)
 [[ $(dpkg-query -W -f='${Version}' hyper-authenticator) == "$current_version" ]]
 test -f "$XDG_DATA_HOME/app.hyperz.authenticator/package-retention-sentinel"
 run_installed_app "$XDG_RUNTIME_DIR/current.log"
 
 apt-get remove -y -qq hyper-authenticator >/dev/null
+[[ $(stat -c '%a' /) == 755 ]]
 if dpkg-query -W -f='${Status}' hyper-authenticator 2>/dev/null |
   grep -Fq 'install ok installed'; then
   printf '%s\n' 'Package vẫn ở trạng thái installed sau remove.' >&2
