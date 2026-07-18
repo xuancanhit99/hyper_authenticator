@@ -1,6 +1,6 @@
 # Task: Tự động hóa restore drill định kỳ
 
-- Trạng thái: Đang thực hiện
+- Trạng thái: Hoàn tất
 - Bắt đầu: 2026-07-19
 - Owner: Hyperz
 - Issue hoặc ADR liên quan: Không cần ADR; không đổi trust boundary/data schema
@@ -55,7 +55,7 @@ sau khi toàn bộ drill pass.
 - [x] Chốt interval, freshness, locking và atomic evidence contract.
 - [x] Implement wrapper, health validation, systemd unit và regression test.
 - [x] Cập nhật operations/deployment/testing/project status.
-- [ ] Chạy full gate, production drill, commit/push và xác minh CI.
+- [x] Chạy full gate, production drill, commit/push và xác minh CI.
 
 ## Nhật ký xác minh
 
@@ -67,6 +67,7 @@ sau khi toàn bộ drill pass.
 | Production scheduled runner | Pass backup `supabase-20260718T100222Z`, full restore/security probe và atomic evidence | 2026-07-19 |
 | Production post-probe | Health/timer success, evidence 0600 + manifest checksum match, 0 rehearsal database | 2026-07-19 |
 | Production `systemd-analyze verify` | Pass; service result success, CPU/IO weight 25 | 2026-07-19 |
+| CI `29658891453` tại `25967dbc7f2a4f1944776387cdff42573b06711a` | Pass 7/7: Quality, Secret, Android, Apple, Web, Linux và Windows | 2026-07-19 |
 
 ## Tác động tài liệu
 
@@ -79,6 +80,7 @@ sau khi toàn bộ drill pass.
 
 ## Bàn giao
 
-Đang chờ full gate, commit/push và CI. Không đổi client, encrypted snapshot,
-local vault hoặc production data contract. Rollback copy của hai script cũ nằm
-trên production host, ngoài repository; chưa xóa cho tới khi CI pass.
+Scheduled restore drill đã chạy production, health/timer active và implementation
+pass CI 7/7. Không đổi client, encrypted snapshot, local vault hoặc production data
+contract. Rollback copy của hai script cũ được giữ trên production host, ngoài
+repository, để rollback vận hành có kiểm soát.
