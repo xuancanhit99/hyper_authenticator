@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:hyper_authenticator/core/platform/platform_capabilities.dart';
@@ -8,12 +10,19 @@ import 'package:image_picker/image_picker.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 
 class AddAccountPage extends StatefulWidget {
-  const AddAccountPage({super.key});
+  const AddAccountPage({super.key, this.scannerController});
 
   static const issuerFieldKey = ValueKey<String>('add-account-issuer');
   static const accountNameFieldKey = ValueKey<String>('add-account-name');
   static const secretFieldKey = ValueKey<String>('add-account-secret');
   static const submitButtonKey = ValueKey<String>('add-account-submit');
+  static const scannerLoadingKey = ValueKey<String>('scanner-loading');
+  static const scannerErrorKey = ValueKey<String>('scanner-error');
+  static const scannerRetryKey = ValueKey<String>('scanner-retry');
+  static const scannerManualEntryKey = ValueKey<String>('scanner-manual-entry');
+
+  @visibleForTesting
+  final MobileScannerController? scannerController;
 
   @override
   State<AddAccountPage> createState() => _AddAccountPageState();
@@ -26,13 +35,13 @@ class _AddAccountPageState extends State<AddAccountPage> {
   final _secretController = TextEditingController();
 
   bool _isScanning = false;
-  final MobileScannerController scannerController = MobileScannerController(
-    autoStart: false,
-  );
+  late final MobileScannerController _scannerController;
 
   @override
   void initState() {
     super.initState();
+    _scannerController =
+        widget.scannerController ?? MobileScannerController(autoStart: false);
     _issuerController.addListener(() {
       if (mounted) {
         setState(() {});
@@ -45,12 +54,45 @@ class _AddAccountPageState extends State<AddAccountPage> {
     _issuerController.dispose();
     _accountNameController.dispose();
     _secretController.dispose();
-    scannerController.dispose(); // Dispose scanner controller
+    unawaited(_scannerController.dispose());
     super.dispose();
   }
 
+  void _toggleScanner() {
+    if (_isScanning) {
+      _showManualEntry();
+      return;
+    }
+
+    setState(() {
+      _isScanning = true;
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && _isScanning) {
+        unawaited(_scannerController.start());
+      }
+    });
+  }
+
+  void _showManualEntry() {
+    unawaited(_scannerController.stop());
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _isScanning = false;
+    });
+  }
+
+  Future<void> _retryScanner() async {
+    await _scannerController.stop();
+    if (mounted && _isScanning) {
+      await _scannerController.start();
+    }
+  }
+
   void _handleBarcode(BarcodeCapture capture) {
-    scannerController.stop();
+    unawaited(_scannerController.stop());
     if (!mounted) {
       return;
     }
@@ -125,7 +167,7 @@ class _AddAccountPageState extends State<AddAccountPage> {
     }
 
     try {
-      final BarcodeCapture? barcodeCapture = await scannerController
+      final BarcodeCapture? barcodeCapture = await _scannerController
           .analyzeImage(image.path);
 
       if (barcodeCapture != null && barcodeCapture.barcodes.isNotEmpty) {
@@ -158,21 +200,7 @@ class _AddAccountPageState extends State<AddAccountPage> {
             IconButton(
               icon: Icon(_isScanning ? Icons.edit : Icons.qr_code_scanner),
               tooltip: _isScanning ? 'Nhập thủ công' : 'Quét mã QR',
-              onPressed: () {
-                final shouldScan = !_isScanning;
-                setState(() {
-                  _isScanning = shouldScan;
-                });
-                if (shouldScan) {
-                  WidgetsBinding.instance.addPostFrameCallback((_) {
-                    if (mounted) {
-                      scannerController.start();
-                    }
-                  });
-                } else {
-                  scannerController.stop();
-                }
-              },
+              onPressed: _toggleScanner,
             ),
         ],
       ),
@@ -207,7 +235,7 @@ class _AddAccountPageState extends State<AddAccountPage> {
               if (_isScanning && mounted) {
                 // Add a small delay before restarting scanner to avoid immediate re-scan issues
                 Future.delayed(const Duration(milliseconds: 500), () {
-                  if (mounted) scannerController.start();
+                  if (mounted) unawaited(_scannerController.start());
                 });
               }
             }
@@ -221,8 +249,14 @@ class _AddAccountPageState extends State<AddAccountPage> {
 
   Widget _buildScannerView() {
     return MobileScanner(
-      controller: scannerController, // Use the controller
+      controller: _scannerController,
       onDetect: _handleBarcode,
+      placeholderBuilder: (_) => const _ScannerLoadingView(),
+      errorBuilder: (_, error) => _ScannerErrorView(
+        message: _scannerErrorMessage(error.errorCode),
+        onRetry: _retryScanner,
+        onManualEntry: _showManualEntry,
+      ),
     );
   }
 
@@ -285,6 +319,109 @@ class _AddAccountPageState extends State<AddAccountPage> {
               child: const Text('Add Account'),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+String _scannerErrorMessage(MobileScannerErrorCode errorCode) {
+  return switch (errorCode) {
+    MobileScannerErrorCode.permissionDenied =>
+      'Ứng dụng chưa có quyền dùng camera. Hãy cho phép camera trong cài đặt '
+          'của trình duyệt hoặc hệ điều hành rồi thử lại.',
+    MobileScannerErrorCode.unsupported =>
+      'Thiết bị hoặc trình duyệt này không hỗ trợ quét mã QR bằng camera.',
+    _ =>
+      'Không thể khởi động camera. Hãy kiểm tra camera đang không bị ứng dụng '
+          'khác sử dụng rồi thử lại.',
+  };
+}
+
+class _ScannerLoadingView extends StatelessWidget {
+  const _ScannerLoadingView();
+
+  @override
+  Widget build(BuildContext context) {
+    return const ColoredBox(
+      key: AddAccountPage.scannerLoadingKey,
+      color: Colors.black,
+      child: Center(
+        child: Padding(
+          padding: EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(height: 20),
+              Text(
+                'Đang khởi động camera…',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.white),
+              ),
+              SizedBox(height: 8),
+              Text(
+                'Nếu trình duyệt hoặc hệ điều hành hỏi quyền camera, hãy chọn Cho phép.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.white70),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ScannerErrorView extends StatelessWidget {
+  const _ScannerErrorView({
+    required this.message,
+    required this.onRetry,
+    required this.onManualEntry,
+  });
+
+  final String message;
+  final Future<void> Function() onRetry;
+  final VoidCallback onManualEntry;
+
+  @override
+  Widget build(BuildContext context) {
+    return ColoredBox(
+      key: AddAccountPage.scannerErrorKey,
+      color: Colors.black,
+      child: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.videocam_off_outlined, color: Colors.white),
+              const SizedBox(height: 16),
+              Text(
+                message,
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: Colors.white),
+              ),
+              const SizedBox(height: 20),
+              Wrap(
+                alignment: WrapAlignment.center,
+                spacing: 12,
+                runSpacing: 8,
+                children: [
+                  OutlinedButton(
+                    key: AddAccountPage.scannerManualEntryKey,
+                    onPressed: onManualEntry,
+                    child: const Text('Nhập thủ công'),
+                  ),
+                  FilledButton(
+                    key: AddAccountPage.scannerRetryKey,
+                    onPressed: () => unawaited(onRetry()),
+                    child: const Text('Thử lại'),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );

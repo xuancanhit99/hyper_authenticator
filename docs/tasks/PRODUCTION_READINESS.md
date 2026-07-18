@@ -27,7 +27,7 @@ behavior an toàn, backend có backup/restore/health harness và release gate t�
 - [x] DEK + recovery-key rotation atomic; thiết bị giữ DEK cũ cần recovery và
   post-commit ambiguity không nâng metadata mù.
 - [x] Không có secret thật trong log/fixture/remote plaintext request.
-- [x] 96 test + analyzer + platform/release-config gate pass.
+- [x] 98 test + analyzer + platform/release-config gate pass.
 - [x] Bulk revoke mọi session khác; RLS/RPC chặn JWT của session đã revoke ngay
   trong khi session hiện tại và local vault được giữ.
 - [x] Local-vault integration smoke pass trên Android emulator và iOS Simulator,
@@ -63,7 +63,8 @@ behavior an toàn, backend có backup/restore/health harness và release gate t�
 | Command/gate | Kết quả |
 |---|---|
 | `flutter analyze` | Pass, 0 diagnostic |
-| `flutter test` | 96 pass |
+| `flutter test` | 98 pass |
+| Scanner feedback widget test | 2 pass trên VM và Chrome platform; không gọi camera thật |
 | Platform/release config | Pass; Android network + Apple Keychain regression gate |
 | Gitleaks full history | Pass; chỉ allowlist exact public RFC test vector |
 | `scripts/agent/build.sh host .env` | Android/Web pass; macOS unsigned compile pass |
@@ -86,7 +87,7 @@ behavior an toàn, backend có backup/restore/health harness và release gate t�
 | Auth smoke load | 100/100 HTTP 200, concurrency 10, p95 ~0,38 giây |
 
 Full `scripts/agent/check.sh full` pass: docs, generated drift, format, analyzer,
-platform config, 96 test và encrypted migration/active-session contract.
+platform config, 98 test và encrypted migration/active-session contract.
 
 ## Rủi ro còn lại
 

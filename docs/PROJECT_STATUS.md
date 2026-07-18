@@ -36,7 +36,7 @@ các credential gate tương ứng pass.
 |---|---|
 | `flutter doctor -v` | Pass, không có lỗi toolchain |
 | `flutter analyze` | Pass, 0 diagnostic |
-| `flutter test` | 96 test pass |
+| `flutter test` | 98 test pass |
 | Platform configuration gate | Pass network/backup/signing/Keychain/ID |
 | Release config validator | Pass với `.env` public hiện tại, không in key |
 | Gitleaks full history | Pass sau exact allowlist RFC 6238 test vector |
@@ -78,6 +78,8 @@ verification phải inject `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY` và
   và DEK được giữ. Backend đối chiếu JWT `session_id` với `auth.sessions` trong cả
   RLS/RPC nên session đã revoke mất quyền encrypted vault ngay.
 - Web Settings không mời đăng nhập để dùng cloud sync khi capability bị tắt.
+- Scanner hiển thị trạng thái đang chờ quyền camera và lỗi permission/unsupported
+  bằng tiếng Việt, có retry hoặc quay lại nhập thủ công thay vì nền đen không rõ trạng thái.
 - Logo dịch vụ và font Averta không rõ license đã bị loại khỏi release; UI dùng
   avatar ký tự render bằng code. Data contract không thay đổi vì logo không persist.
 
@@ -136,7 +138,8 @@ Capability là hành vi source hiện tại, không thay thế device test và s
    package/keyring/device smoke test chưa xong.
 8. Privacy policy cần được host tại URL công khai và điền kênh support trước store submission.
 9. Flutter Web đã pass TLS/reverse proxy và runtime smoke trên production domain;
-   camera permission/QR scan vẫn cần browser-device smoke thực tế.
+   permission pending/error UX đã có regression test trên VM và Chrome test
+   platform, nhưng camera/QR decode vẫn cần browser-device smoke thực tế.
 
 ## Automation
 
@@ -146,7 +149,7 @@ Capability là hành vi source hiện tại, không thay thế device test và s
   bundle, manifest SHA-256 và artifact 14 ngày; macOS unsigned không thay thế
   signed runtime gate.
 - `.github/dependabot.yml` kiểm tra Pub và GitHub Actions hằng tuần.
-- `scripts/agent/check.sh full` là quality gate canonical; baseline hiện có 96 test,
+- `scripts/agent/check.sh full` là quality gate canonical; baseline hiện có 98 test,
   analyze/format cả device integration source nhưng không tự boot virtual device.
 - `scripts/supabase/` giữ remote contract, backup, health, restore và off-host harness.
 

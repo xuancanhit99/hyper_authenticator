@@ -22,7 +22,7 @@ PostgreSQL migration contract. Nó không tự boot emulator/simulator.
 
 ## Coverage hiện tại
 
-96 Flutter tests bao phủ:
+98 Flutter tests bao phủ:
 
 - router/auth/logout/offline-local-vault boundary;
 - post-login navigation trực tiếp hoặc return an toàn về Settings, stale null auth
@@ -46,6 +46,8 @@ PostgreSQL migration contract. Nó không tự boot emulator/simulator.
 - plaintext bridge release guard.
 - public runtime config: HTTPS-only, key role, recovery URL và release plaintext flag.
 - Web unavailable tile không hứa đăng nhập/cloud sync khi capability bị tắt.
+- Scanner pending permission không còn là màn hình đen; permission denied có
+  thông báo, retry và đường quay lại nhập thủ công bằng controller giả không gọi camera.
 
 ## Remote contract
 

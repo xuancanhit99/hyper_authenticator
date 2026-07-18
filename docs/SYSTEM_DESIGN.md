@@ -84,6 +84,9 @@ dùng cùng transaction copy-on-write và là primitive duy nhất cho cloud rec
 
 - Manual entry dùng default SHA1/6 digits/30 giây.
 - QR parser giữ algorithm, digits và period không mặc định.
+- Camera scanner render loading state có hướng dẫn permission; lỗi permission hoặc
+  unsupported được localize, cho retry hoặc quay lại manual entry. Không hiển thị
+  raw plugin error cho người dùng.
 - Account có UUID stable; update/restore không tự đổi ID.
 - Code dùng Unix epoch và period của từng account; UI cache theo time step và
   refresh khi app resume.
