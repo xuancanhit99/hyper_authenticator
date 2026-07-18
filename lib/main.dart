@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:hyper_authenticator/app.dart';
 import 'package:hyper_authenticator/core/config/app_config.dart';
+import 'package:hyper_authenticator/core/router/app_url_strategy.dart';
 import 'package:hyper_authenticator/core/theme/theme_provider.dart';
 import 'package:hyper_authenticator/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:hyper_authenticator/features/authenticator/presentation/bloc/accounts_bloc.dart';
@@ -15,6 +16,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  configureAppUrlStrategy();
 
   try {
     await di.configureDependencies();

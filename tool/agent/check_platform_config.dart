@@ -106,6 +106,16 @@ void main() {
     '_SILENCE_EXPERIMENTAL_COROUTINE_DEPRECATION_WARNINGS',
     'MSVC 14.51 compatibility cho local_auth_windows 2.0.1',
   );
+  requireText(
+    'lib/core/router/app_url_strategy_web.dart',
+    'usePathUrlStrategy();',
+    'Web path URL strategy cho reverse-proxy deep link',
+  );
+  requireText(
+    'lib/main.dart',
+    'configureAppUrlStrategy();',
+    'bootstrap Web path URL strategy',
+  );
 
   final platformFiles = <String>[
     'android/app/build.gradle.kts',
