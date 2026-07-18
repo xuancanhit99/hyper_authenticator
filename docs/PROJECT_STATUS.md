@@ -36,8 +36,9 @@ owner; không mô tả preview là stable production release.
 |---|---|
 | `flutter doctor -v` | Pass, không có lỗi toolchain |
 | `flutter analyze` | Pass, 0 diagnostic |
-| `flutter test` | 106 test pass |
+| `flutter test` | 109 test pass |
 | Vietnamese UI contract | Primary auth/accounts/settings/add-edit surface đã dùng tiếng Việt; app khóa `Locale('vi')` cùng Material/Widgets/Cupertino localization delegate và widget test xác minh locale runtime, vẫn giữ thuật ngữ technical cần thiết |
+| Core accessibility automation | Auth/accounts/add-account pass labeled tap target + Android 48×48 guideline ở viewport 320×640/text scale 200%; TOTP copy/countdown và password/search action có semantics tiếng Việt, không đưa secret key vào semantics |
 | Platform configuration gate | Pass network/backup/signing/Keychain/ID |
 | Release config validator | Pass với `.env` public hiện tại, không in key |
 | Gitleaks full history | Pass sau exact allowlist RFC 6238 test vector |
@@ -164,6 +165,9 @@ Capability là hành vi source hiện tại, không thay thế device test và s
 10. Flutter Web đã pass TLS/reverse proxy và runtime smoke trên production domain;
    permission pending/error UX đã có regression test trên VM và Chrome test
    platform, nhưng camera/QR decode vẫn cần browser-device smoke thực tế.
+11. Accessibility automation mới bao phủ Auth, account list và form thêm account;
+    chưa có TalkBack/VoiceOver, keyboard/focus, contrast, screenshot/privacy hoặc
+    full Settings/recovery/conflict-dialog audit trên runtime đại diện.
 
 ## Automation
 
@@ -180,21 +184,25 @@ Capability là hành vi source hiện tại, không thay thế device test và s
 - GitHub Actions run `29652820428` tại `ae1ab36` pass 7/7; locale fix được xác
   minh cùng Linux hosted historical/package/distro, Windows historical/runtime/
   installer, Apple, Android, Web, quality và secret history gate.
+- GitHub Actions run `29661712630` tại `e36018b` pass 7/7; core accessibility
+  regression được xác minh cùng Windows/Linux artifact runtime, Android, Apple,
+  Web, quality và secret history gate.
 - Tag CI run `29656402708` tại `v1.1.0-preview.1`/`6c3bd4b` pass 7/7. Release
   public có pre-release flag, không phải draft, đúng năm asset; Windows SHA-256
   `5bccb8f8…07a47`, Linux SHA-256 `2628ca05…46d33` đã được tải lại không auth và
   xác minh bằng manifest công khai.
 - `.github/dependabot.yml` kiểm tra Pub và GitHub Actions hằng tuần.
 - `release-preview.yml` cùng `github_preview_release.sh` fail closed theo
-  tag/version/successful tag CI và chỉ publish Windows/Linux allowlist với checksum;
-  workflow thủ công chỉ hoạt động sau khi file có trên default branch.
+  tag/version/successful tag CI và chỉ publish Windows/Linux allowlist với checksum.
+  Workflow đã có trên default branch từ merge commit `893b5be`.
 - `verify-release.yml` và `verify_github_preview_release.sh` đóng gate sau upload
   bằng public API/download không Authorization. Lượt hiện tại xác minh lại
   `v1.1.0-preview.1`, exact commit/run/năm asset, API digest, checksum/manifest và
-  Debian/PE32 signature; sai expected commit/tag fail closed.
+  Debian/PE32 signature; sai expected commit/tag fail closed. Manual run
+  `29660968360` từ default branch đã pass sau merge.
 - GitHub Private Vulnerability Reporting đã bật; `.github/SECURITY.md` hướng dẫn
   gửi báo cáo riêng tư và cấm đưa credential vào public issue.
-- `scripts/agent/check.sh full` là quality gate canonical; baseline hiện có 106 test,
+- `scripts/agent/check.sh full` là quality gate canonical; baseline hiện có 109 test,
   analyze/format cả device integration source nhưng không tự boot virtual device.
 - `scripts/supabase/` giữ remote contract, backup, health, restore và off-host harness.
 - Scheduled restore contract nằm trong full gate; production systemd timer/health

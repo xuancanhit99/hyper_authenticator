@@ -188,7 +188,7 @@ class _AddAccountPageState extends State<AddAccountPage> {
           context,
         ).scaffoldBackgroundColor, // Set background color
         elevation: 0, // Remove shadow
-        title: Text(_isScanning ? 'Scan QR Code' : 'Add Account'),
+        title: Text(_isScanning ? 'Quét mã QR' : 'Thêm tài khoản'),
         actions: [
           if (!_isScanning && PlatformCapabilities.supportsBarcodeImageAnalysis)
             IconButton(

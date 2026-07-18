@@ -154,6 +154,9 @@ class _RegisterPageState extends State<RegisterPage> {
                         labelText: 'Mật khẩu',
                         prefixIcon: const Icon(Icons.lock_outline),
                         suffixIcon: IconButton(
+                          tooltip: _obscurePassword
+                              ? 'Hiện mật khẩu'
+                              : 'Ẩn mật khẩu',
                           icon: Icon(
                             _obscurePassword
                                 ? Icons.visibility_off_outlined
@@ -177,6 +180,9 @@ class _RegisterPageState extends State<RegisterPage> {
                         labelText: 'Xác nhận mật khẩu',
                         prefixIcon: const Icon(Icons.lock_outline),
                         suffixIcon: IconButton(
+                          tooltip: _obscureConfirmPassword
+                              ? 'Hiện mật khẩu'
+                              : 'Ẩn mật khẩu',
                           icon: Icon(
                             _obscureConfirmPassword
                                 ? Icons.visibility_off_outlined
@@ -224,8 +230,11 @@ class _RegisterPageState extends State<RegisterPage> {
                       },
                     ),
                     const SizedBox(height: 16),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
+                    Wrap(
+                      alignment: WrapAlignment.center,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      spacing: 8,
+                      runSpacing: 4,
                       children: [
                         const Text('Đã có tài khoản?'),
                         TextButton(

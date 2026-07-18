@@ -61,6 +61,8 @@ GitHub pre-release public, có checksum và provenance về tag/commit/CI.
 | Branch CI `29656082645` tại `6c3bd4b` | Pass 7/7 | 2026-07-19 |
 | Tag CI `29656402708` tại `v1.1.0-preview.1` | Pass 7/7 | 2026-07-19 |
 | GitHub Release API/public download | Pre-release public, 5 asset; Windows/Linux SHA-256 khớp manifest | 2026-07-19 |
+| PR `#1` → default branch | Merge commit `893b5be`; release/verification workflow đã có trên `master` | 2026-07-19 |
+| Public verifier `29660968360` từ `master` | Pass exact tag commit/tag CI/5 asset/digest/checksum/manifest và Debian/PE32 signature | 2026-07-19 |
 
 ## Tác động tài liệu
 

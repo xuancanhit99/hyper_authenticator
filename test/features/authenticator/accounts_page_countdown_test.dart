@@ -120,6 +120,98 @@ void main() {
       await tester.pumpWidget(const SizedBox.shrink());
     },
   );
+
+  testWidgets(
+    'account row có semantics, tap target và không overflow ở text scale 200%',
+    (tester) async {
+      final semantics = tester.ensureSemantics();
+      tester.view.devicePixelRatio = 1;
+      tester.view.physicalSize = const Size(320, 640);
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      SharedPreferences.setMockInitialValues({});
+      final preferences = await SharedPreferences.getInstance();
+      final repository = _MemoryAuthenticatorRepository([
+        const AuthenticatorAccount(
+          id: 'accessible-account',
+          issuer: 'TEST_ONLY Issuer',
+          accountName: 'user@example.invalid',
+          secretKey: 'JBSWY3DPEHPK3PXP',
+          period: 60,
+        ),
+      ]);
+      final accountsBloc = AccountsBloc(
+        getAccounts: GetAccounts(repository),
+        addAccount: AddAccount(repository),
+        deleteAccount: DeleteAccount(repository),
+        updateAccount: UpdateAccount(repository),
+      );
+      addTearDown(accountsBloc.close);
+      final loaded = accountsBloc.stream.firstWhere(
+        (state) => state is AccountsLoaded,
+      );
+      accountsBloc.add(LoadAccounts());
+      await loaded;
+
+      await tester.pumpWidget(
+        MultiProvider(
+          providers: [
+            ChangeNotifierProvider(create: (_) => ThemeProvider(preferences)),
+            BlocProvider.value(value: accountsBloc),
+          ],
+          child: MaterialApp(
+            builder: (context, child) => MediaQuery(
+              data: MediaQuery.of(
+                context,
+              ).copyWith(textScaler: const TextScaler.linear(2)),
+              child: child!,
+            ),
+            home: AccountsPage(
+              now: () =>
+                  DateTime.fromMillisecondsSinceEpoch(121000, isUtc: true),
+              generateTotpCode: _CountingGenerateTotpCode(),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump();
+
+      final copyAction = find.bySemanticsLabel(
+        'Sao chép mã TOTP của TEST_ONLY Issuer, user@example.invalid',
+      );
+      expect(copyAction, findsOneWidget);
+      final copySemantics = tester.getSemantics(copyAction).getSemanticsData();
+      final spokenCopyContent = '${copySemantics.label} ${copySemantics.value}';
+      expect(spokenCopyContent, isNot(contains('JBSWY3DPEHPK3PXP')));
+      expect(spokenCopyContent, isNot(contains('otpauth')));
+      expect(tester.takeException(), isNull);
+      await expectLater(tester, meetsGuideline(labeledTapTargetGuideline));
+      await expectLater(tester, meetsGuideline(androidTapTargetGuideline));
+
+      await tester.tap(copyAction);
+      await tester.pump();
+      expect(find.text('Đã sao chép mã TOTP.'), findsOneWidget);
+
+      await tester.drag(
+        find.byKey(const Key('accessible-account')),
+        const Offset(-220, 0),
+      );
+      await tester.pump(const Duration(milliseconds: 500));
+      expect(find.bySemanticsLabel('QR'), findsOneWidget);
+      expect(find.bySemanticsLabel('Sửa'), findsOneWidget);
+      expect(find.bySemanticsLabel('Xóa'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+
+      await tester.enterText(find.byType(TextField), 'issuer');
+      await tester.pump();
+      expect(find.byTooltip('Xóa nội dung tìm kiếm'), findsOneWidget);
+
+      await tester.pumpWidget(const SizedBox.shrink());
+      semantics.dispose();
+    },
+  );
 }
 
 class _CountingGenerateTotpCode extends GenerateTotpCode {

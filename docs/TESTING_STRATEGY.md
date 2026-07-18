@@ -22,7 +22,7 @@ PostgreSQL migration contract. Nó không tự boot emulator/simulator.
 
 ## Coverage hiện tại
 
-106 Flutter tests bao phủ:
+109 Flutter tests bao phủ:
 
 - router/auth/logout/offline-local-vault boundary;
 - post-login navigation trực tiếp hoặc return an toàn về Settings, stale null auth
@@ -51,6 +51,9 @@ PostgreSQL migration contract. Nó không tự boot emulator/simulator.
   Web source cũng khai báo document language `vi`.
 - Scanner pending permission không còn là màn hình đen; permission denied có
   thông báo, retry và đường quay lại nhập thủ công bằng controller giả không gọi camera.
+- Auth, account list và form thêm account pass labeled tap target cùng Android
+  48×48 guideline ở viewport 320×640/text scale 200%; regression test khóa
+  password/search/copy semantics tiếng Việt, TOTP countdown và layout không overflow.
 
 ## Remote contract
 
@@ -229,3 +232,5 @@ post-probe current image/health/hash và 5/5 public SPA route pass.
 5. Windows/Linux unsigned package đủ điều kiện GitHub Preview nhưng chưa phải stable.
    Windows còn code signing và physical-device/Windows Hello. Linux còn KDE
    login-unlock/physical desktop và signed package E2EE runtime.
+6. Accessibility automation mới bao phủ Auth, account list và form thêm account;
+   chưa thay TalkBack/VoiceOver, keyboard/focus, contrast hoặc audit toàn bộ Settings/dialog.

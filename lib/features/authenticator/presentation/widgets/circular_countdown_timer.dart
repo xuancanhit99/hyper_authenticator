@@ -58,8 +58,7 @@ class CircularCountdownTimer extends StatelessWidget {
         : backgroundColor;
 
     return Semantics(
-      label:
-          '$secondsRemaining seconds remaining of a $periodSeconds-second period',
+      label: 'Còn $secondsRemaining giây trong chu kỳ $periodSeconds giây',
       child: SizedBox(
         width: size,
         height: size,
