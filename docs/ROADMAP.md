@@ -55,7 +55,12 @@ tag CI xanh, checksum tải lại khớp và release note nêu signing/SMTP/plat
 - [ ] Device registry/revocation và key rotation protocol.
 - [ ] Trusted-device hoặc QR recovery transfer.
 - [ ] Export/delete account/data UX và retention policy.
-- [ ] Localization đa ngôn ngữ, accessibility audit và screenshot/privacy review.
+- [ ] Localization đa ngôn ngữ.
+- [x] Automated accessibility baseline cho Auth/accounts/add-account và Settings
+  recovery/conflict/session dialog; TOTP secret key/raw recovery key không vào
+  semantics tree.
+- [ ] TalkBack/VoiceOver runtime, full keyboard traversal, contrast và
+  screenshot/privacy review trên platform đại diện.
 - [ ] Independent cryptographic/application security review.
 
 ## Ưu tiên P2 — Platform expansion

@@ -16,6 +16,8 @@ class RecoveryImportDialog extends StatefulWidget {
 class _RecoveryImportDialogState extends State<RecoveryImportDialog> {
   final _controller = TextEditingController();
 
+  bool get _canSubmit => _controller.text.trim().isNotEmpty;
+
   @override
   void dispose() {
     _controller.dispose();
@@ -28,11 +30,19 @@ class _RecoveryImportDialogState extends State<RecoveryImportDialog> {
       title: const Text('Nhập recovery key'),
       content: TextField(
         controller: _controller,
+        autofocus: true,
         obscureText: true,
         autocorrect: false,
         enableSuggestions: false,
+        keyboardType: TextInputType.visiblePassword,
+        textInputAction: TextInputAction.done,
+        onChanged: (_) => setState(() {}),
+        onSubmitted: (_) {
+          if (_canSubmit) Navigator.pop(context, _controller.text);
+        },
         decoration: const InputDecoration(
-          labelText: 'HA1-…',
+          labelText: 'Recovery key',
+          hintText: 'HA1-…',
           helperText: 'Key chỉ được xử lý trong thiết bị này.',
         ),
       ),
@@ -42,7 +52,9 @@ class _RecoveryImportDialogState extends State<RecoveryImportDialog> {
           child: const Text('Hủy'),
         ),
         FilledButton(
-          onPressed: () => Navigator.pop(context, _controller.text),
+          onPressed: _canSubmit
+              ? () => Navigator.pop(context, _controller.text)
+              : null,
           child: const Text('Khôi phục'),
         ),
       ],

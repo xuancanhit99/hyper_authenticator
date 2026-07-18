@@ -107,7 +107,14 @@ vault về mặt mật mã; support/admin không thể khôi phục plaintext.
 
 Recovery key không được tự động copy, log, gửi analytics hoặc lưu SharedPreferences.
 UI cho phép copy theo hành động rõ ràng; người dùng phải đưa key vào password manager
-hoặc offline backup riêng.
+hoặc offline backup riêng. Raw key nhìn thấy trên màn hình nhưng bị loại khỏi
+semantics tree tự động để assistive technology không tự đọc credential; nút copy
+có accessible name nhưng không chứa key. Recovery import dùng field obscured, tắt
+autocorrect/suggestion và vẫn hỗ trợ keyboard submit.
+
+Copy là hành động chủ động đưa key vào clipboard do OS quản lý. App không log hoặc
+persist clipboard content; người dùng phải xóa clipboard theo threat model của
+thiết bị nếu clipboard history/sync đang bật.
 
 Event/state BLoC có recovery key vẫn giữ equality semantics nhưng override string
 representation thành `[REDACTED]`, phòng transition/crash logger vô tình ghi key.
