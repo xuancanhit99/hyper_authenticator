@@ -134,3 +134,13 @@ class VaultKeyBundle {
     required this.wrappedDataKey,
   });
 }
+
+class VaultRecoveryKeyBundle {
+  final String recoveryCode;
+  final WrappedVaultKey wrappedDataKey;
+
+  const VaultRecoveryKeyBundle({
+    required this.recoveryCode,
+    required this.wrappedDataKey,
+  });
+}

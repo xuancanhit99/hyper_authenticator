@@ -73,9 +73,19 @@ class _LoginPageState extends State<LoginPage> {
     return BlocListener<AuthBloc, AuthState>(
       // Listen for AuthInitial state to pre-fill email
       listenWhen: (previous, current) =>
-          current is AuthInitial || current is AuthFailure,
+          current is AuthInitial ||
+          current is AuthFailure ||
+          current is AuthAuthenticated,
       listener: (context, state) {
-        if (state is AuthInitial) {
+        if (state is AuthAuthenticated) {
+          context.go(
+            AppRedirectPolicy.authenticatedDestination(
+              returnTo: GoRouterState.of(
+                context,
+              ).uri.queryParameters['returnTo'],
+            ),
+          );
+        } else if (state is AuthInitial) {
           // Pre-fill email if available
           if (state.rememberedEmail != null) {
             _emailController.text = state.rememberedEmail!;

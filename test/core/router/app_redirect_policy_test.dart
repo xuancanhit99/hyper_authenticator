@@ -97,7 +97,21 @@ void main() {
       localAuthState: LocalAuthSuccess(),
       location: AppRoutes.login,
     );
+    final settingsRedirect = AppRedirectPolicy.redirect(
+      authState: const AuthAuthenticated(user),
+      localAuthState: LocalAuthSuccess(),
+      location: AppRoutes.login,
+      returnTo: AppRoutes.settings,
+    );
+    final externalRedirect = AppRedirectPolicy.redirect(
+      authState: const AuthAuthenticated(user),
+      localAuthState: LocalAuthSuccess(),
+      location: AppRoutes.login,
+      returnTo: 'https://example.invalid/phishing',
+    );
 
     expect(redirect, AppRoutes.main);
+    expect(settingsRedirect, AppRoutes.settings);
+    expect(externalRedirect, AppRoutes.main);
   });
 }

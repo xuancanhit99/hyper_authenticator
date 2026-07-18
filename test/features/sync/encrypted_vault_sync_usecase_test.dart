@@ -102,6 +102,149 @@ void main() {
     expect(keys.values, isEmpty);
   });
 
+  test('xoay recovery key publish revision mới và vô hiệu key cũ', () async {
+    final oldRecoveryCode = await seedRemote([first, second]);
+    final dataKey = List<int>.from(keys.values[userId]!);
+    final oldWrappedKey = remote.snapshot!.wrappedDataKey;
+
+    final prepared = _right(await useCase.prepareRecoveryKeyRotation());
+    expect(prepared, isA<EncryptedSyncRecoveryKeyRotationReady>());
+    final newRecoveryCode =
+        (prepared as EncryptedSyncRecoveryKeyRotationReady).recoveryCode;
+    expect(newRecoveryCode, isNot(oldRecoveryCode));
+    expect(remote.snapshot!.envelope.revision, 1);
+    expect(remote.snapshot!.wrappedDataKey, oldWrappedKey);
+
+    final completed = _right(await useCase.confirmRecoveryKeyRotation());
+    expect(completed, isA<EncryptedSyncCompleted>());
+    expect(remote.snapshot!.envelope.revision, 2);
+    expect(remote.snapshot!.wrappedDataKey, isNot(oldWrappedKey));
+    expect(metadata.revisions[userId], 2);
+    expect(keys.values[userId], dataKey);
+
+    await expectLater(
+      cipher.unwrapDataKey(
+        wrappedKey: remote.snapshot!.wrappedDataKey,
+        recoveryCode: oldRecoveryCode,
+        userId: userId,
+      ),
+      throwsA(isA<VaultCryptoException>()),
+    );
+    final recoveredDataKey = await cipher.unwrapDataKey(
+      wrappedKey: remote.snapshot!.wrappedDataKey,
+      recoveryCode: newRecoveryCode,
+      userId: userId,
+    );
+    expect(recoveredDataKey, dataKey);
+    expect(
+      await cipher.decryptAccounts(
+        envelope: remote.snapshot!.envelope,
+        dataKeyBytes: recoveredDataKey,
+        userId: userId,
+      ),
+      [first, second],
+    );
+  });
+
+  test('hủy xoay recovery key giữ nguyên remote và key cũ', () async {
+    final oldRecoveryCode = await seedRemote([first]);
+    final oldSnapshot = remote.snapshot!;
+
+    _right(await useCase.prepareRecoveryKeyRotation());
+    useCase.cancelSensitiveOperation();
+
+    final result = await useCase.confirmRecoveryKeyRotation();
+    expect(result.isLeft(), isTrue);
+    expect(remote.snapshot, same(oldSnapshot));
+    final recoveredDataKey = await cipher.unwrapDataKey(
+      wrappedKey: remote.snapshot!.wrappedDataKey,
+      recoveryCode: oldRecoveryCode,
+      userId: userId,
+    );
+    expect(recoveredDataKey, keys.values[userId]);
+  });
+
+  test(
+    'conflict khi xoay key không ghi đè revision mới từ thiết bị khác',
+    () async {
+      final oldRecoveryCode = await seedRemote([first]);
+      final dataKey = keys.values[userId]!;
+      final oldWrappedKey = remote.snapshot!.wrappedDataKey;
+      final prepared = _right(await useCase.prepareRecoveryKeyRotation());
+      final unusedNewRecoveryCode =
+          (prepared as EncryptedSyncRecoveryKeyRotationReady).recoveryCode;
+      final concurrentEnvelope = await cipher.encryptAccounts(
+        accounts: const [second],
+        dataKeyBytes: dataKey,
+        userId: userId,
+        revision: 2,
+      );
+      await remote.publish(
+        userId: userId,
+        expectedRevision: 1,
+        envelope: concurrentEnvelope,
+        wrappedDataKey: oldWrappedKey,
+      );
+
+      final result = await useCase.confirmRecoveryKeyRotation();
+
+      expect(
+        result.fold((failure) => failure, (_) => null),
+        isA<SyncRevisionConflictFailure>(),
+      );
+      expect(remote.snapshot!.envelope.revision, 2);
+      expect(remote.snapshot!.wrappedDataKey, oldWrappedKey);
+      expect(
+        await cipher.unwrapDataKey(
+          wrappedKey: remote.snapshot!.wrappedDataKey,
+          recoveryCode: oldRecoveryCode,
+          userId: userId,
+        ),
+        dataKey,
+      );
+      await expectLater(
+        cipher.unwrapDataKey(
+          wrappedKey: remote.snapshot!.wrappedDataKey,
+          recoveryCode: unusedNewRecoveryCode,
+          userId: userId,
+        ),
+        throwsA(isA<VaultCryptoException>()),
+      );
+    },
+  );
+
+  test('verify lỗi sau publish cảnh báo key mới có thể đã hiệu lực', () async {
+    final oldRecoveryCode = await seedRemote([first]);
+    final prepared = _right(await useCase.prepareRecoveryKeyRotation());
+    final newRecoveryCode =
+        (prepared as EncryptedSyncRecoveryKeyRotationReady).recoveryCode;
+    remote.tamperNextDownloadAfterPublish = true;
+
+    final result = await useCase.confirmRecoveryKeyRotation();
+
+    final failure = result.fold((value) => value, (_) => null);
+    expect(failure, isA<SyncOperationFailure>());
+    expect(failure?.message, contains('có thể đã có hiệu lực'));
+    expect(remote.snapshot!.envelope.revision, 2);
+    expect(metadata.revisions[userId], 1);
+    await expectLater(
+      cipher.unwrapDataKey(
+        wrappedKey: remote.snapshot!.wrappedDataKey,
+        recoveryCode: oldRecoveryCode,
+        userId: userId,
+      ),
+      throwsA(isA<VaultCryptoException>()),
+    );
+    expect(
+      await cipher.unwrapDataKey(
+        wrappedKey: remote.snapshot!.wrappedDataKey,
+        recoveryCode: newRecoveryCode,
+        userId: userId,
+      ),
+      keys.values[userId],
+    );
+  });
+
   test(
     'recovery trên thiết bị mới decrypt rồi atomically replace local',
     () async {

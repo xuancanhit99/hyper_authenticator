@@ -22,6 +22,7 @@ class EncryptedVaultSyncUseCase {
   final VaultCipher _cipher;
 
   _PendingSetup? _pendingSetup;
+  _PendingRecoveryKeyRotation? _pendingRecoveryKeyRotation;
   _PendingConflict? _pendingConflict;
 
   EncryptedVaultSyncUseCase(
@@ -95,6 +96,7 @@ class EncryptedVaultSyncUseCase {
     }
     final bundle = await _cipher.createKeyBundle(userId: userId);
     _pendingSetup = _PendingSetup(userId: userId, bundle: bundle);
+    _pendingRecoveryKeyRotation = null;
     _pendingConflict = null;
     return EncryptedSyncRecoveryKeyReady(bundle.recoveryCode);
   });
@@ -194,6 +196,113 @@ class EncryptedVaultSyncUseCase {
           completedAt: remote.updatedAt,
         );
       });
+
+  Future<Either<Failure, EncryptedSyncResult>> prepareRecoveryKeyRotation() =>
+      _run(() async {
+        final userId = _requireUserId();
+        final remote = _value(await _remoteRepository.download(userId: userId));
+        if (remote == null) {
+          throw const _FailureSignal(
+            SyncOperationFailure('Chưa có cloud vault để xoay recovery key.'),
+          );
+        }
+        final dataKey = _value(await _keyRepository.read(userId));
+        if (dataKey == null) {
+          throw const _FailureSignal(
+            SyncOperationFailure(
+              'Thiết bị này cần recovery key hiện tại trước khi tạo key mới.',
+            ),
+          );
+        }
+
+        await _cipher.decryptAccounts(
+          envelope: remote.envelope,
+          dataKeyBytes: dataKey,
+          userId: userId,
+        );
+        final bundle = await _cipher.createRecoveryKeyBundle(
+          dataKeyBytes: dataKey,
+          userId: userId,
+        );
+        _pendingRecoveryKeyRotation = _PendingRecoveryKeyRotation(
+          userId: userId,
+          remoteRevision: remote.envelope.revision,
+          wrappedDataKey: bundle.wrappedDataKey,
+        );
+        _pendingSetup = null;
+        _pendingConflict = null;
+        return EncryptedSyncRecoveryKeyRotationReady(bundle.recoveryCode);
+      });
+
+  Future<Either<Failure, EncryptedSyncResult>>
+  confirmRecoveryKeyRotation() => _run(() async {
+    final userId = _requireUserId();
+    final pending = _pendingRecoveryKeyRotation;
+    if (pending == null || pending.userId != userId) {
+      throw const _FailureSignal(
+        SyncOperationFailure('Phiên xoay recovery key đã hết hạn.'),
+      );
+    }
+    final remote = _value(await _remoteRepository.download(userId: userId));
+    if (remote == null || remote.envelope.revision != pending.remoteRevision) {
+      _pendingRecoveryKeyRotation = null;
+      throw const _FailureSignal(
+        SyncRevisionConflictFailure(
+          'Cloud vault đã thay đổi; recovery key cũ vẫn được giữ nguyên.',
+        ),
+      );
+    }
+    final dataKey = _value(await _keyRepository.read(userId));
+    if (dataKey == null) {
+      throw const _FailureSignal(
+        SyncOperationFailure(
+          'Vault key trên thiết bị không còn khả dụng; chưa thay recovery key.',
+        ),
+      );
+    }
+    final remoteAccounts = await _cipher.decryptAccounts(
+      envelope: remote.envelope,
+      dataKeyBytes: dataKey,
+      userId: userId,
+    );
+    final nextRevision = remote.envelope.revision + 1;
+    final envelope = await _cipher.encryptAccounts(
+      accounts: remoteAccounts,
+      dataKeyBytes: dataKey,
+      userId: userId,
+      revision: nextRevision,
+    );
+    final revision = _value(
+      await _remoteRepository.publish(
+        userId: userId,
+        expectedRevision: remote.envelope.revision,
+        envelope: envelope,
+        wrappedDataKey: pending.wrappedDataKey,
+      ),
+    );
+    EncryptedVaultSnapshot verified;
+    try {
+      verified = await _verifyPublished(
+        userId: userId,
+        revision: revision,
+        expectedEnvelope: envelope,
+        expectedWrappedDataKey: pending.wrappedDataKey,
+      );
+    } on _FailureSignal {
+      _pendingRecoveryKeyRotation = null;
+      throw const _FailureSignal(
+        SyncOperationFailure(
+          'Không xác nhận được trạng thái sau khi publish. Recovery key mới có thể đã có hiệu lực; hãy giữ key mới và kiểm tra lại cloud vault.',
+        ),
+      );
+    }
+    await _metadataRepository.writeLastRevision(userId, revision);
+    _pendingRecoveryKeyRotation = null;
+    return EncryptedSyncCompleted(
+      revision: revision,
+      completedAt: verified.updatedAt,
+    );
+  });
 
   Future<Either<Failure, EncryptedSyncResult>> setEnabled(bool enabled) =>
       _run(() async {
@@ -317,6 +426,7 @@ class EncryptedVaultSyncUseCase {
 
   void cancelSensitiveOperation() {
     _pendingSetup = null;
+    _pendingRecoveryKeyRotation = null;
     _pendingConflict = null;
   }
 
@@ -441,6 +551,18 @@ class _PendingSetup {
   final VaultKeyBundle bundle;
 
   const _PendingSetup({required this.userId, required this.bundle});
+}
+
+class _PendingRecoveryKeyRotation {
+  final String userId;
+  final int remoteRevision;
+  final WrappedVaultKey wrappedDataKey;
+
+  const _PendingRecoveryKeyRotation({
+    required this.userId,
+    required this.remoteRevision,
+    required this.wrappedDataKey,
+  });
 }
 
 class _PendingConflict {

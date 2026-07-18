@@ -56,6 +56,21 @@ Cancel, conflict hoặc network failure trước bước 8 không persist setup 
 
 Sai key/tamper/future version không mutate local vault.
 
+## Xoay recovery key đã triển khai
+
+Thiết bị đang giữ DEK có thể tạo recovery key 256-bit mới. Client xác thực DEK
+với snapshot hiện tại, re-wrap cùng DEK, re-encrypt snapshot bằng nonce mới rồi
+atomic publish ở revision kế tiếp. Người dùng phải xác nhận đã lưu key mới trước
+khi publish.
+
+- Hủy hoặc revision conflict không đổi remote snapshot; key cũ còn hiệu lực.
+- Publish thành công làm key cũ không unwrap được DEK của **snapshot hiện tại**.
+- Nếu read-after-write không xác nhận được, UI cảnh báo key mới có thể đã hiệu lực
+  và yêu cầu giữ key mới; metadata local không được nâng revision mù.
+- Đây không phải DEK rotation/device revocation: thiết bị đã giữ DEK vẫn truy cập.
+- Backup lịch sử giữ wrapped DEK cũ nên key cũ có thể mở snapshot backup cũ;
+  rotation không xóa hoặc viết lại backup.
+
 ## Optimistic revision
 
 Một row/user, monotonic revision. Client encrypt revision `N+1` và RPC chỉ publish
@@ -92,12 +107,15 @@ cho rollback/audit; runtime client không inject bridge. Nếu môi trường kh
 
 - Crypto/key-store/model tests: tamper, wrong user/key, future format, round-trip.
 - Use-case tests: setup/cancel/recovery/conflict/publish conflict/read-after-write.
-- Remote contract: 11 checks cho anonymous/RLS/two-user/revision/RPC.
+- Remote contract: 12 checks cho anonymous/RLS/two-user/revision/RPC và atomic
+  thay wrapped recovery key.
+- Android Pixel AVD E2E: Supabase login, setup vault rỗng revision 1, xoay key qua
+  UI và authenticated RLS read xác nhận remote revision 2; test user/row được xóa.
 - Release plaintext guard và DI generation test path.
 
 ## Khoảng trống đã biết
 
-- Device revocation và DEK/recovery-key rotation.
+- Device revocation và DEK rotation.
 - Trusted-device/QR transfer.
 - Tombstone hoặc history ngoài một current snapshot.
 - Browser E2EE threat model.

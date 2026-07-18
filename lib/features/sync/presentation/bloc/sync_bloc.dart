@@ -20,6 +20,8 @@ class SyncBloc extends Bloc<SyncEvent, SyncState> {
     on<CheckSyncStatus>(_onCheckStatus);
     on<BeginEncryptedSyncSetup>(_onBeginSetup);
     on<ConfirmRecoveryKeySaved>(_onConfirmSetup);
+    on<BeginRecoveryKeyRotation>(_onBeginRecoveryKeyRotation);
+    on<ConfirmRecoveryKeyRotation>(_onConfirmRecoveryKeyRotation);
     on<RecoverEncryptedSync>(_onRecover);
     on<SetEncryptedSyncEnabled>(_onSetEnabled);
     on<SyncNowRequested>(_onSyncNow);
@@ -62,6 +64,24 @@ class SyncBloc extends Bloc<SyncEvent, SyncState> {
     if (!_supported(emit)) return;
     emit(const SyncInProgress('Đang xác thực recovery key...'));
     await _emitResult(await _sync.recover(event.recoveryCode), emit);
+  }
+
+  Future<void> _onBeginRecoveryKeyRotation(
+    BeginRecoveryKeyRotation event,
+    Emitter<SyncState> emit,
+  ) async {
+    if (!_supported(emit)) return;
+    emit(const SyncInProgress('Đang tạo recovery key mới...'));
+    await _emitResult(await _sync.prepareRecoveryKeyRotation(), emit);
+  }
+
+  Future<void> _onConfirmRecoveryKeyRotation(
+    ConfirmRecoveryKeyRotation event,
+    Emitter<SyncState> emit,
+  ) async {
+    if (!_supported(emit)) return;
+    emit(const SyncInProgress('Đang xoay recovery key an toàn...'));
+    await _emitResult(await _sync.confirmRecoveryKeyRotation(), emit);
   }
 
   Future<void> _onSetEnabled(
@@ -128,6 +148,8 @@ class SyncBloc extends Bloc<SyncEvent, SyncState> {
             emit(SyncRecoveryRequired(updatedAt));
           case EncryptedSyncRecoveryKeyReady(:final recoveryCode):
             emit(SyncRecoveryKeyReady(recoveryCode));
+          case EncryptedSyncRecoveryKeyRotationReady(:final recoveryCode):
+            emit(SyncRecoveryKeyRotationReady(recoveryCode));
           case EncryptedSyncReady(
             :final isEnabled,
             :final revision,

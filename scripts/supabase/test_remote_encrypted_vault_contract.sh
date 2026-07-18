@@ -85,7 +85,10 @@ publish() {
   local token=$1
   local expected_revision=$2
   local output=$3
-  jq -cn --argjson expected "$expected_revision" '{
+  local wrapped_key_ciphertext=${4:-TEST_ONLY_WRAPPED_KEY_CIPHERTEXT_1234567890}
+  jq -cn \
+    --argjson expected "$expected_revision" \
+    --arg wrapped_key_ciphertext "$wrapped_key_ciphertext" '{
     p_expected_revision: $expected,
     p_format_version: 1,
     p_cipher: "AES-256-GCM",
@@ -94,7 +97,7 @@ publish() {
     p_auth_tag: "AAAAAAAAAAAAAAAAAAAAAA==",
     p_key_format_version: 1,
     p_wrapped_key_nonce: "BBBBBBBBBBBBBBBB",
-    p_wrapped_key_ciphertext: "TEST_ONLY_WRAPPED_KEY_CIPHERTEXT_1234567890",
+    p_wrapped_key_ciphertext: $wrapped_key_ciphertext,
     p_wrapped_key_auth_tag: "BBBBBBBBBBBBBBBBBBBBBB=="
   }' | curl --max-time 15 -sS -o "$output" -w '%{http_code}' \
       "$BASE_URL/rest/v1/rpc/publish_encrypted_vault_snapshot" -X POST \
@@ -157,10 +160,22 @@ check 'Stale revision trả HTTP 409' test "$stale_status" -eq 409
 check 'Conflict không trả encrypted payload' jq -e \
   '(.message // "") | contains("revision_conflict")' "$tmp_dir/stale.json"
 
-second_status=$(publish "$token_a" 1 "$tmp_dir/publish-2.json")
+rotated_wrapped_key='TEST_ONLY_ROTATED_WRAPPED_KEY_CIPHERTEXT_123456'
+second_status=$(publish \
+  "$token_a" 1 "$tmp_dir/publish-2.json" "$rotated_wrapped_key")
 check 'Expected revision đúng publish được' test "$second_status" -eq 200
 check 'Server tăng revision lên 2' jq -e '.[0].revision == 2' \
   "$tmp_dir/publish-2.json"
+
+curl --max-time 15 -fsS \
+  "$BASE_URL/rest/v1/encrypted_vault_snapshots?select=revision,wrapped_key_ciphertext" \
+  -H "apikey: $PUBLISHABLE_KEY" -H "Authorization: Bearer $token_a" \
+  >"$tmp_dir/select-rotated-key.json"
+check 'Revision mới atomically thay wrapped recovery key' jq -e \
+  --arg wrapped_key "$rotated_wrapped_key" \
+  'length == 1 and .[0].revision == 2 and
+   .[0].wrapped_key_ciphertext == $wrapped_key' \
+  "$tmp_dir/select-rotated-key.json"
 
 spoof_status=$(publish "$token_b" 2 "$tmp_dir/spoof.json")
 check 'User B không update row User A qua RPC' test "$spoof_status" -ge 400

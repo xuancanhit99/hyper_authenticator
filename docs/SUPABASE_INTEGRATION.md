@@ -53,6 +53,11 @@ RPC behavior:
 - mismatch/no row trả SQLSTATE `PT409` với `revision_conflict`;
 - trả revision và server `updated_at` để client verify.
 
+Recovery-key rotation dùng cùng RPC: client gửi ciphertext revision mới và
+`wrapped_key_*` mới trong một transaction. Không có trạng thái mà revision mới đã
+commit nhưng wrapped key vẫn là bản cũ. Remote contract kiểm tra trực tiếp field
+wrapped key đổi ở revision 2.
+
 Encrypted columns có constraint format/cipher/length. RLS là authorization control;
 AES-GCM mới là confidentiality control đối với TOTP secret.
 
@@ -102,7 +107,7 @@ Recovery và Studio:
 
     scripts/supabase/test_remote_studio_proxy.sh https://studio.example.com
 
-Baseline production ngày 18-07-2026: encrypted 11/11, recovery 8/8 và Studio
+Baseline production ngày 18-07-2026: encrypted 12/12, recovery 8/8 và Studio
 proxy contract pass.
 
 ## Self-hosted stack

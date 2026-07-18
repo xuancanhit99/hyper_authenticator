@@ -67,7 +67,7 @@ class AppRedirectPolicy {
 
     if (isPublicAuthRoute) {
       if (authState is AuthAuthenticated && (isLogin || isRegister)) {
-        return AppRoutes.main;
+        return authenticatedDestination(returnTo: returnTo);
       }
       return null;
     }
@@ -105,6 +105,9 @@ class AppRedirectPolicy {
       queryParameters: {'returnTo': safeReturnTo},
     ).toString();
   }
+
+  static String authenticatedDestination({String? returnTo}) =>
+      _safeMainReturnTo(returnTo) ?? AppRoutes.main;
 
   static String? _safeMainReturnTo(String? candidate) {
     return switch (candidate) {

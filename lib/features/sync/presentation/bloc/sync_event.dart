@@ -19,6 +19,14 @@ class ConfirmRecoveryKeySaved extends SyncEvent {
   const ConfirmRecoveryKeySaved();
 }
 
+class BeginRecoveryKeyRotation extends SyncEvent {
+  const BeginRecoveryKeyRotation();
+}
+
+class ConfirmRecoveryKeyRotation extends SyncEvent {
+  const ConfirmRecoveryKeyRotation();
+}
+
 class RecoverEncryptedSync extends SyncEvent {
   final String recoveryCode;
 
@@ -26,6 +34,9 @@ class RecoverEncryptedSync extends SyncEvent {
 
   @override
   List<Object?> get props => [recoveryCode];
+
+  @override
+  String toString() => 'RecoverEncryptedSync(recoveryCode: [REDACTED])';
 }
 
 class SetEncryptedSyncEnabled extends SyncEvent {

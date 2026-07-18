@@ -42,6 +42,11 @@ không bao giờ được đặt trong Flutter `.env`, asset, build log hoặc b
 - Optimistic revision + atomic RPC; conflict không delete cloud snapshot cũ.
 - User ID được kiểm tra lại tại datasource để chặn cross-session race.
 - Unknown format, tamper, sai user hoặc sai recovery key đều fail closed.
+- Recovery key có thể được xoay bằng re-wrap cùng DEK và atomic revision mới. Key
+  cũ không mở snapshot hiện tại sau commit; conflict không thay key đang dùng.
+- Verification lỗi sau publish được xem là trạng thái mơ hồ: user phải giữ key mới,
+  client không tự nâng revision metadata. Rotation không revoke thiết bị đã có DEK
+  và không vô hiệu key cũ đối với encrypted backup lịch sử.
 
 ### Backend và operations
 
@@ -74,6 +79,11 @@ vault về mặt mật mã; support/admin không thể khôi phục plaintext.
 Recovery key không được tự động copy, log, gửi analytics hoặc lưu SharedPreferences.
 UI cho phép copy theo hành động rõ ràng; người dùng phải đưa key vào password manager
 hoặc offline backup riêng.
+
+Event/state BLoC có recovery key vẫn giữ equality semantics nhưng override string
+representation thành `[REDACTED]`, phòng transition/crash logger vô tình ghi key.
+Các auth event/state chứa email, password hoặc user identity cũng redact string
+representation; equality vẫn hoạt động nhưng transition log không lộ credential/PII.
 
 ## Destructive operations
 
@@ -109,7 +119,8 @@ Không dùng command liệt kê toàn bộ process environment trong báo cáo.
 
 1. Chưa có external alert channel/SIEM; systemd failure hiện chỉ vào journal.
 2. Chưa có independent cryptographic/security review.
-3. Device revocation và key rotation chưa có trong envelope v1.
+3. Device revocation và DEK rotation chưa có trong envelope v1; recovery-key
+   re-wrap rotation đã có nhưng không revoke thiết bị hoặc viết lại backup cũ.
 4. SMTP delivery tới mailbox thật và expired recovery link chưa được E2E test.
 5. Signing key/certificate chưa được owner cung cấp trên môi trường build.
 6. Browser local vault có trust model yếu hơn native dù cloud sync đã tắt.

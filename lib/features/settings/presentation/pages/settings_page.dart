@@ -129,7 +129,12 @@ class _AuthenticationTile extends StatelessWidget {
         leading: const Icon(Icons.login),
         title: const Text('Đăng nhập để dùng encrypted cloud sync'),
         subtitle: const Text('Local vault vẫn hoạt động khi offline.'),
-        onTap: () => context.push(AppRoutes.login),
+        onTap: () => context.push(
+          Uri(
+            path: AppRoutes.login,
+            queryParameters: {'returnTo': AppRoutes.settings},
+          ).toString(),
+        ),
       );
     }
     return ListTile(
@@ -222,7 +227,17 @@ class _EncryptedSyncSectionState extends State<_EncryptedSyncSection> {
     return BlocConsumer<SyncBloc, SyncState>(
       listener: (context, state) async {
         if (state is SyncRecoveryKeyReady) {
-          await _showRecoveryKeyDialog(context, state.recoveryCode);
+          await _showRecoveryKeyDialog(
+            context,
+            state.recoveryCode,
+            isRotation: false,
+          );
+        } else if (state is SyncRecoveryKeyRotationReady) {
+          await _showRecoveryKeyDialog(
+            context,
+            state.recoveryCode,
+            isRotation: true,
+          );
         } else if (state is SyncSuccess) {
           ScaffoldMessenger.of(context)
             ..hideCurrentSnackBar()
@@ -290,6 +305,9 @@ class _EncryptedSyncSectionState extends State<_EncryptedSyncSection> {
         'Thiết bị này cần recovery key. Snapshot: ${_format(remoteUpdatedAt)}.',
       ),
       SyncRecoveryKeyReady() => const Text('Đang chờ xác nhận recovery key.'),
+      SyncRecoveryKeyRotationReady() => const Text(
+        'Đang chờ xác nhận recovery key mới.',
+      ),
       SyncReady(:final isEnabled, :final revision, :final updatedAt) => Text(
         '${isEnabled ? 'Đang bật' : 'Đang tắt'} · revision $revision · ${_format(updatedAt)}',
       ),
@@ -308,7 +326,9 @@ class _EncryptedSyncSectionState extends State<_EncryptedSyncSection> {
   }
 
   Widget _actions(BuildContext context, SyncState state) {
-    if (state is SyncInProgress || state is SyncRecoveryKeyReady) {
+    if (state is SyncInProgress ||
+        state is SyncRecoveryKeyReady ||
+        state is SyncRecoveryKeyRotationReady) {
       return const SizedBox.shrink();
     }
     if (state is SyncSetupRequired) {
@@ -347,32 +367,51 @@ class _EncryptedSyncSectionState extends State<_EncryptedSyncSection> {
       SyncSuccess() => true,
       _ => false,
     };
-    if (!canSync) return const SizedBox.shrink();
-    return FilledButton.icon(
-      onPressed: () => context.read<SyncBloc>().add(const SyncNowRequested()),
-      icon: const Icon(Icons.sync),
-      label: const Text('Đồng bộ ngay'),
+    final canRotate = state is SyncReady || state is SyncSuccess;
+    if (!canSync && !canRotate) return const SizedBox.shrink();
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: [
+        if (canSync)
+          FilledButton.icon(
+            onPressed: () =>
+                context.read<SyncBloc>().add(const SyncNowRequested()),
+            icon: const Icon(Icons.sync),
+            label: const Text('Đồng bộ ngay'),
+          ),
+        if (canRotate)
+          OutlinedButton.icon(
+            onPressed: () =>
+                context.read<SyncBloc>().add(const BeginRecoveryKeyRotation()),
+            icon: const Icon(Icons.key),
+            label: const Text('Đổi recovery key'),
+          ),
+      ],
     );
   }
 
   Future<void> _showRecoveryKeyDialog(
     BuildContext context,
-    String recoveryCode,
-  ) async {
+    String recoveryCode, {
+    required bool isRotation,
+  }) async {
     var confirmedSaved = false;
     final accepted = await showDialog<bool>(
       context: context,
       barrierDismissible: false,
       builder: (dialogContext) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          title: const Text('Lưu recovery key'),
+          title: Text(isRotation ? 'Lưu recovery key mới' : 'Lưu recovery key'),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Key này không được gửi lên server. Mất mọi thiết bị và key sẽ không thể khôi phục cloud vault.',
+                Text(
+                  isRotation
+                      ? 'Sau khi hoàn tất, recovery key cũ không thể mở cloud vault nữa. Thiết bị đã giữ vault key vẫn tiếp tục hoạt động.'
+                      : 'Key này không được gửi lên server. Mất mọi thiết bị và key sẽ không thể khôi phục cloud vault.',
                 ),
                 const SizedBox(height: 16),
                 DecoratedBox(
@@ -412,7 +451,9 @@ class _EncryptedSyncSectionState extends State<_EncryptedSyncSection> {
               onPressed: confirmedSaved
                   ? () => Navigator.pop(dialogContext, true)
                   : null,
-              child: const Text('Bật encrypted sync'),
+              child: Text(
+                isRotation ? 'Xoay recovery key' : 'Bật encrypted sync',
+              ),
             ),
           ],
         ),
@@ -420,7 +461,11 @@ class _EncryptedSyncSectionState extends State<_EncryptedSyncSection> {
     );
     if (!context.mounted) return;
     if (accepted == true) {
-      context.read<SyncBloc>().add(const ConfirmRecoveryKeySaved());
+      context.read<SyncBloc>().add(
+        isRotation
+            ? const ConfirmRecoveryKeyRotation()
+            : const ConfirmRecoveryKeySaved(),
+      );
     } else {
       context.read<SyncBloc>().add(const CancelSensitiveSyncOperation());
     }

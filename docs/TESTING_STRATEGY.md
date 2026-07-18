@@ -21,9 +21,10 @@ entitlement contract, Flutter test và encrypted PostgreSQL migration contract.
 
 ## Coverage hiện tại
 
-71 Flutter tests bao phủ:
+79 Flutter tests bao phủ:
 
 - router/auth/logout/offline-local-vault boundary;
+- post-login navigation trực tiếp hoặc return an toàn về Settings và auth log redaction;
 - main-navigation URL/tab mapping và deep-link return qua app-lock bootstrap;
 - TOTP URI/validator, countdown nhiều period và lifecycle resume;
 - local vault migration, concurrent mutation, corruption rollback, atomic replace
@@ -32,6 +33,8 @@ entitlement contract, Flutter test và encrypted PostgreSQL migration contract.
 - AES-GCM round-trip, tamper, wrong user, future format và recovery unwrap;
 - secure key-store initialize/write/delete verification;
 - encrypted setup/cancel/recovery/wrong key/sync/conflict/use-cloud/keep-local;
+- recovery-key rotation success/cancel/concurrent conflict và ambiguous verify;
+- recovery key bị redact khỏi BLoC event/state transition string;
 - remote encrypted mapper, revision response và conflict mapping;
 - plaintext bridge release guard.
 - public runtime config: HTTPS-only, key role, recovery URL và release plaintext flag.
@@ -41,7 +44,7 @@ entitlement contract, Flutter test và encrypted PostgreSQL migration contract.
 
 Production/staging test dùng isolated user và tự cleanup:
 
-- encrypted RLS/RPC contract: 11 checks;
+- encrypted RLS/RPC contract: 12 checks, gồm atomic wrapped-key rotation;
 - password recovery token contract: 8 checks;
 - Studio network/upstream/Basic Auth contract;
 - backup checksum/catalog/tar validation;

@@ -96,6 +96,11 @@ ID và revision. Thay user/revision/envelope field làm authentication thất b�
 Recovery key 256-bit có prefix/version `HA1-`; backend chỉ giữ wrapped DEK. DEK
 plaintext được giữ theo Supabase user ID trong platform secure storage.
 
+Xoay recovery key không đổi schema/key format và không đổi DEK. Client tạo KEK
+mới, re-wrap DEK, re-encrypt snapshot bằng nonce mới và atomic publish revision
+kế tiếp. Vì table chỉ giữ current snapshot, wrapped key mới thay wrapped key cũ;
+backup lịch sử vẫn có thể chứa wrapped key cũ.
+
 ## PostgreSQL encrypted contract
 
 Table `public.encrypted_vault_snapshots`:

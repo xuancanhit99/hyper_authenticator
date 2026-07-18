@@ -130,6 +130,14 @@ cloud, UI yêu cầu chọn:
 
 Nếu cloud đổi tiếp trong lúc chọn, thao tác dừng và yêu cầu review lại.
 
+### Xoay recovery key
+
+Thiết bị đang giữ DEK có thể tạo KEK mới, re-wrap cùng DEK, re-encrypt current
+remote snapshot và compare-and-swap revision kế tiếp. Hủy hoặc conflict giữ key
+cũ. User phải lưu key mới trước commit vì nếu publish thành công nhưng
+read-after-write lỗi thì key mới có thể đã hiệu lực. Flow này không revoke thiết
+bị vì DEK không đổi.
+
 ## Backend
 
 - Một row `encrypted_vault_snapshots` cho mỗi `auth.users.id`.
@@ -143,6 +151,11 @@ Nếu cloud đổi tiếp trong lúc chọn, thao tác dừng và yêu cầu rev
 Web recovery là canonical surface. GoTrue template dùng one-time `token_hash` và
 exact HTTPS redirect allow-list. Password recovery chỉ khôi phục Supabase account;
 nó không thay thế E2EE recovery key.
+
+Login được mở từ Settings với `returnTo=/settings`. Redirect policy chỉ nhận `/`
+hoặc `/settings`; URL ngoài allowlist fallback `/`. Login listener chủ động `go()`
+tới destination này sau `AuthAuthenticated`, không phụ thuộc timing của router
+refresh hoặc navigator stack.
 
 ## Platform capability
 
@@ -160,6 +173,7 @@ Web chỉ có local TOTP + camera QR.
 
 ## Khoảng trống đã biết
 
-- E2EE v1 chưa có key rotation, revoke device, tombstone hoặc Web support.
+- E2EE v1 đã có recovery-key re-wrap rotation nhưng chưa có DEK rotation, revoke
+  device, tombstone hoặc Web support.
 - Device-level camera/biometric/secure-storage integration coverage chưa đầy đủ.
 - Alerting backend chưa có external notification channel.

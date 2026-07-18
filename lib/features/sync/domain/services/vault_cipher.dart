@@ -43,6 +43,26 @@ class VaultCipher {
     );
   }
 
+  Future<VaultRecoveryKeyBundle> createRecoveryKeyBundle({
+    required List<int> dataKeyBytes,
+    required String userId,
+  }) async {
+    _requireUserId(userId);
+    _requireKeyBytes(dataKeyBytes);
+    final recoveryKeyBytes = await (await _algorithm.newSecretKey())
+        .extractBytes();
+    final recoveryCode = _encodeRecoveryCode(recoveryKeyBytes);
+    final wrappedDataKey = await wrapDataKey(
+      dataKeyBytes: dataKeyBytes,
+      recoveryCode: recoveryCode,
+      userId: userId,
+    );
+    return VaultRecoveryKeyBundle(
+      recoveryCode: recoveryCode,
+      wrappedDataKey: wrappedDataKey,
+    );
+  }
+
   Future<WrappedVaultKey> wrapDataKey({
     required List<int> dataKeyBytes,
     required String recoveryCode,

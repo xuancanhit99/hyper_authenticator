@@ -36,11 +36,11 @@ các credential gate tương ứng pass.
 |---|---|
 | `flutter doctor -v` | Pass, không có lỗi toolchain |
 | `flutter analyze` | Pass, 0 diagnostic |
-| `flutter test` | 71 test pass |
+| `flutter test` | 79 test pass |
 | Platform configuration gate | Pass network/backup/signing/Keychain/ID |
 | Release config validator | Pass với `.env` public hiện tại, không in key |
 | Gitleaks full history | Pass sau exact allowlist RFC 6238 test vector |
-| Android debug + Pixel AVD runtime | Pass build/install, Supabase init, secure-storage bootstrap và render Accounts/Settings |
+| Android debug + Pixel AVD runtime | Pass build/install, Supabase auth, setup + recovery-key rotation tới remote revision 2, post-login return và render Accounts/Settings |
 | Web release + hardened Nginx image | Pass public TLS/proxy, serving contract, `/` + `/settings` browser runtime và console sạch |
 | macOS debug compile unsigned | Pass; không phải runtime/signing evidence |
 | iOS 26.5 simulator debug | Pass build và runtime launch với Supabase init |
@@ -68,6 +68,8 @@ verification phải inject `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY` và
   payload lỗi không ghi đè vault local.
 - Conflict buộc người dùng chọn cloud hoặc local. Giữ local tạo revision mới;
   dùng cloud chỉ replace khi revision vẫn đúng revision đã review.
+- Recovery key có thể xoay bằng re-wrap cùng DEK và atomic publish revision mới;
+  cancel/conflict giữ key cũ, ambiguous verification cảnh báo giữ key mới.
 - Remote request bind với Supabase user ID hiện tại để chặn race đổi session.
 - Web Settings không mời đăng nhập để dùng cloud sync khi capability bị tắt.
 - Logo dịch vụ và font Averta không rõ license đã bị loại khỏi release; UI dùng
@@ -81,7 +83,7 @@ verification phải inject `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY` và
   trực tiếp ra Internet.
 - `encrypted_vault_snapshots` chỉ cấp SELECT cho authenticated owner, bật và
   force RLS. Atomic RPC chỉ dùng `auth.uid()` và trả `PT409` khi revision lệch.
-- Remote encrypted contract: 11/11 pass; recovery contract: 8/8 pass; Studio
+- Remote encrypted contract: 12/12 pass; recovery contract: 8/8 pass; Studio
   proxy/DNS/upstream/Basic Auth contract pass.
 - Smoke load có API key: 100/100 HTTP 200 ở concurrency 10; p95 khoảng 0,38 giây,
   max khoảng 0,40 giây. Sau test 11 Supabase container vẫn healthy, RAM available
@@ -116,7 +118,8 @@ Capability là hành vi source hiện tại, không thay thế device test và s
 3. Monitoring mới ghi journal/exit status; chưa có alert channel ngoài host.
 4. Off-host backup hiện phụ thuộc máy Mac/LaunchAgent đang hoạt động; cần đích
    object storage hoặc backup host độc lập nếu yêu cầu SLA cao.
-5. E2EE v1 chưa có device revocation, key rotation, tombstone hoặc Web trust model.
+5. E2EE v1 chưa có device revocation, DEK rotation, tombstone hoặc Web trust
+   model. Recovery-key re-wrap rotation đã có nhưng không revoke thiết bị/backup cũ.
 6. Chưa có Flutter device/integration suite đầy đủ; secure storage/biometric/camera
    vẫn cần test trên thiết bị thật.
 7. Windows build còn dựa trên CI. Windows installer/signing/device và Linux

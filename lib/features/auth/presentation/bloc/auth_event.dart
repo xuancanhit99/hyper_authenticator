@@ -23,6 +23,10 @@ class AuthSignInRequested extends AuthEvent {
 
   @override
   List<Object> get props => [email, password, rememberMe]; // Added rememberMe flag
+
+  @override
+  String toString() =>
+      'AuthSignInRequested(email: [REDACTED], password: [REDACTED], rememberMe: $rememberMe)';
 }
 
 class AuthSignUpRequested extends AuthEvent {
@@ -40,6 +44,10 @@ class AuthSignUpRequested extends AuthEvent {
 
   @override
   List<Object?> get props => [name, email, password]; // REMOVED phone from props
+
+  @override
+  String toString() =>
+      'AuthSignUpRequested(name: [REDACTED], email: [REDACTED], password: [REDACTED])';
 }
 
 class AuthRecoverPasswordRequested extends AuthEvent {
@@ -48,6 +56,9 @@ class AuthRecoverPasswordRequested extends AuthEvent {
 
   @override
   List<Object> get props => [email];
+
+  @override
+  String toString() => 'AuthRecoverPasswordRequested(email: [REDACTED])';
 }
 
 /// Event to load the remembered email from SharedPreferences.
@@ -63,6 +74,9 @@ class AuthPasswordUpdateRequested extends AuthEvent {
 
   @override
   List<Object> get props => [newPassword];
+
+  @override
+  String toString() => 'AuthPasswordUpdateRequested(newPassword: [REDACTED])';
 }
 
 // Internal event now carries UserEntity?
@@ -72,4 +86,7 @@ class _AuthUserChanged extends AuthEvent {
 
   @override
   List<Object?> get props => [user];
+
+  @override
+  String toString() => '_AuthUserChanged(user: [REDACTED])';
 }
