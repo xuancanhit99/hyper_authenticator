@@ -2,6 +2,7 @@
 // Keep Timer import for potential future use if needed
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart'; // Keep for other Blocs if needed elsewhere
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart'; // Import Provider
 import 'package:hyper_authenticator/core/router/app_router.dart';
 // Supabase Auth
@@ -17,7 +18,11 @@ import 'package:hyper_authenticator/injection_container.dart'; // Import GetIt i
 // const String _biometricPrefKey = 'biometric_enabled'; // No longer needed here
 
 class MyApp extends StatefulWidget {
-  const MyApp({super.key});
+  const MyApp({super.key, this.routerConfig, this.lightTheme, this.darkTheme});
+
+  final RouterConfig<Object>? routerConfig;
+  final ThemeData? lightTheme;
+  final ThemeData? darkTheme;
 
   @override
   State<MyApp> createState() => _MyAppState();
@@ -69,15 +74,21 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     // Blocs are provided in main.dart
     // Get ThemeProvider using context.watch to rebuild when theme changes
     final themeProvider = context.watch<ThemeProvider>();
-    final appRouter = sl<AppRouter>();
 
     return MaterialApp.router(
       // No ValueKey needed here as Consumer in main.dart handles rebuild
       title: 'Hyper Authenticator',
-      theme: sl<ThemeData>(instanceName: 'lightTheme'),
-      darkTheme: sl<ThemeData>(instanceName: 'darkTheme'),
+      locale: const Locale('vi'),
+      supportedLocales: const [Locale('vi')],
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      theme: widget.lightTheme ?? sl<ThemeData>(instanceName: 'lightTheme'),
+      darkTheme: widget.darkTheme ?? sl<ThemeData>(instanceName: 'darkTheme'),
       themeMode: themeProvider.themeMode, // Use themeMode from ThemeProvider
-      routerConfig: appRouter.config(),
+      routerConfig: widget.routerConfig ?? sl<AppRouter>().config(),
       debugShowCheckedModeBanner: false,
     );
   }

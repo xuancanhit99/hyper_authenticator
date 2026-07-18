@@ -36,18 +36,18 @@ các credential gate tương ứng pass.
 |---|---|
 | `flutter doctor -v` | Pass, không có lỗi toolchain |
 | `flutter analyze` | Pass, 0 diagnostic |
-| `flutter test` | 105 test pass |
-| Vietnamese UI contract | Primary auth/accounts/settings/add-edit surface và Web document language đã chuyển sang tiếng Việt; widget test khóa các label chính, vẫn giữ thuật ngữ technical cần thiết |
+| `flutter test` | 106 test pass |
+| Vietnamese UI contract | Primary auth/accounts/settings/add-edit surface đã dùng tiếng Việt; app khóa `Locale('vi')` cùng Material/Widgets/Cupertino localization delegate và widget test xác minh locale runtime, vẫn giữ thuật ngữ technical cần thiết |
 | Platform configuration gate | Pass network/backup/signing/Keychain/ID |
 | Release config validator | Pass với `.env` public hiện tại, không in key |
 | Gitleaks full history | Pass sau exact allowlist RFC 6238 test vector |
 | Android debug + Pixel AVD runtime | Pass build/install, Supabase auth, setup revision 1, recovery-key rotation revision 2, vault-key rotation revision 3, fresh-device recovery revision 3, bulk revoke session thật 2→1 và local-vault integration smoke có cleanup |
-| Web release + hardened Nginx image | `1.1.0-f88506d` `linux/amd64` đang healthy trên production; local/container/public SHA-256 khớp, 4 SPA route và TLS/HSTS/CSP/cache/Permissions-Policy pass |
+| Web release + hardened Nginx image | `1.1.0-12fce73` `linux/amd64` đang healthy trên production; local/public `main.dart.js` SHA-256 khớp, 5 SPA route và TLS/HSTS/CSP/cache/Permissions-Policy pass; cần rollout source locale fix kế tiếp |
 | macOS debug compile unsigned | Pass; không phải runtime/signing evidence |
 | iOS 26.5 simulator debug | Pass build/runtime với Supabase init và local-vault integration smoke có cleanup |
 | Android release | Fail closed đúng thiết kế vì chưa có upload keystore |
 | macOS release | Bị chặn vì chưa có development/distribution certificate |
-| Linux release + Debian artifact | Pass configured `linux/x64`, private-keyring UI smoke và `.deb` `1.1.0+10` amd64; local arm64 package tự kéo EGL/GLES/GL + `gnome-keyring`, pass X11/Wayland trên Ubuntu 22.04/24.04 + Debian 12/13; clean-container transition/retention pass |
+| Linux release + Debian artifact | Pass configured `linux/x64`, historical `1.0.0+9` vault upgrade, private-keyring UI smoke và `.deb` `1.1.0+10` amd64; hosted amd64 pass clean transition/retention + X11/Wayland trên Ubuntu 22.04/24.04 và Debian 12/13 |
 | Linux authenticated E2EE runtime | Pass trên Ubuntu 24.04 arm64 container tạm: client thật đăng nhập production Supabase, setup revision 1, sync revision 2, fresh-device recovery, recovery-key rotation revision 3, reject key cũ, vault-key rotation revision 4 và recovery cuối; operator xóa user/row và admin probe xác nhận 404 |
 | Windows release + installer | Pass upgrade vault thật từ source `1.0.0+9`/plugin 3.1.2 sang current COW v2, configured x64 bundle, local-vault runtime và NSIS 3.12 unsigned candidate; install/launch/metadata-upgrade/uninstall giữ AppData pass, bundle + installer/checksum giữ 14 ngày |
 
@@ -149,18 +149,19 @@ Capability là hành vi source hiện tại, không thay thế device test và s
    hosted runner tạm.
 8. Windows đã có unsigned NSIS candidate, hosted-runner package transition và
    upgrade thật từ source `1.0.0+9`; còn code signing và physical-device/Windows Hello.
-   Linux đã có `.deb` candidate, clean-container package transition, local arm64
-   X11/Wayland distro matrix và authenticated E2EE client runtime; còn hosted
-   amd64 historical upgrade, KDE login/unlock/physical desktop, release signing và
-   maintainer/support metadata trước phân phối công khai. E2EE evidence hiện là
+   Linux đã có `.deb` candidate, hosted amd64 historical upgrade, clean-container
+   package transition, X11/Wayland distro matrix và authenticated E2EE client runtime;
+   còn KDE login/unlock/physical desktop, release signing và maintainer/support
+   metadata trước phân phối công khai. E2EE evidence hiện là
    debug arm64 container, không phải signed amd64 package runtime.
 9. Privacy policy cần được host tại URL công khai và điền kênh support trước store submission.
 10. Flutter Web đã pass TLS/reverse proxy và runtime smoke trên production domain;
    permission pending/error UX đã có regression test trên VM và Chrome test
    platform, nhưng camera/QR decode vẫn cần browser-device smoke thực tế.
-11. Image Web production `1.1.0-f88506d` có trước thay đổi Việt hóa UI hiện tại;
-    cần build/deploy lại từ branch đã pass CI trước khi coi public runtime đã nhận
-    các label mới và `lang="vi"`.
+11. Image Web production `1.1.0-12fce73` đã nhận label tiếng Việt và HTML tĩnh
+    `lang="vi"`, nhưng browser smoke phát hiện Flutter runtime ghi đè thành
+    `en-US`. Source đã khóa locale `vi` và có regression test; cần pass CI rồi
+    rollout image kế tiếp trước khi đóng khoảng trống runtime này.
 
 ## Automation
 
@@ -174,10 +175,11 @@ Capability là hành vi source hiện tại, không thay thế device test và s
   smoke install/launch/metadata-upgrade/uninstall giữ AppData và lưu hai artifact
   theo commit 14 ngày. Các gate này không thay signed runtime hoặc
   representative-device/distro matrix.
-- GitHub Actions run `29648841164` tại `09c7024` pass 7/7; Windows phase xác minh
-  legacy seed, current visibility, COW v2 và cleanup trước release/installer gate.
+- GitHub Actions run `29652281356` tại `12fce73` pass 7/7; Linux hosted amd64 xác
+  minh historical vault upgrade, package transition, bốn distro X11/Wayland và
+  artifact; Windows historical/runtime/installer gate tiếp tục xanh.
 - `.github/dependabot.yml` kiểm tra Pub và GitHub Actions hằng tuần.
-- `scripts/agent/check.sh full` là quality gate canonical; baseline hiện có 105 test,
+- `scripts/agent/check.sh full` là quality gate canonical; baseline hiện có 106 test,
   analyze/format cả device integration source nhưng không tự boot virtual device.
 - `scripts/supabase/` giữ remote contract, backup, health, restore và off-host harness.
 - `scripts/agent/linux_e2ee_operator.sh` giữ service-role key ngoài repository và

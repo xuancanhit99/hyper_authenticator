@@ -59,8 +59,8 @@ policy và backend rollback evidence.
 - [x] Linux configured release + private libsecret/keyring headless smoke.
 - [x] Linux `.deb` dependency/checksum + clean-container package transition smoke.
 - [x] Linux authenticated E2EE debug runtime với isolated production test user.
-- [ ] Linux hosted historical upgrade, amd64/KDE login-unlock/physical desktop,
-  signed package runtime và release channel; local arm64 X11/Wayland matrix đã pass.
+- [x] Linux hosted amd64 historical upgrade + Ubuntu/Debian X11/Wayland matrix.
+- [ ] Linux KDE login-unlock/physical desktop, signed package runtime và release channel.
 - [ ] Quyết định Web encrypted sync sau browser threat model; mặc định vẫn tắt.
 - [ ] Đánh giá alternative scanner nếu upstream Built-in Kotlin migration chậm.
 

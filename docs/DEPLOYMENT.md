@@ -167,9 +167,9 @@ Debian candidate và checksum:
 EGL/GLES/GL loader + `gnome-keyring` provider và đã pass exact local Docker arm64
 matrix trên Ubuntu 22.04/24.04 cùng Debian 12/13 với private Secret Service,
 Xvfb và Weston Wayland. Clean Ubuntu package transition/data retention cũng pass.
-Gate còn lại: hosted amd64 + historical-release upgrade, KDE login/unlock/physical
-desktop, signed package E2EE runtime, maintainer/support metadata và release-channel
-signing.
+Hosted amd64 historical `1.0.0+9` upgrade, clean package transition và Ubuntu/Debian
+X11/Wayland matrix đã pass. Gate còn lại: KDE login/unlock/physical desktop, signed
+package E2EE runtime, maintainer/support metadata và release-channel signing.
 Local authentication/scanner bị ẩn theo thiết kế.
 
 ## Supabase rollout

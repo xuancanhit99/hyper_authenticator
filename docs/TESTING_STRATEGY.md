@@ -47,7 +47,8 @@ PostgreSQL migration contract. Nó không tự boot emulator/simulator.
 - public runtime config: HTTPS-only, key role, recovery URL và release plaintext flag.
 - Web unavailable tile không hứa đăng nhập/cloud sync khi capability bị tắt.
 - Primary auth/accounts UI dùng label tiếng Việt và không quay lại các label tiếng Anh
-  cũ; Web source khai báo document language `vi`.
+  cũ; app locale runtime bị khóa ở `vi` với Material/Widgets/Cupertino delegate,
+  Web source cũng khai báo document language `vi`.
 - Scanner pending permission không còn là màn hình đen; permission denied có
   thông báo, retry và đường quay lại nhập thủ công bằng controller giả không gọi camera.
 
@@ -126,7 +127,7 @@ không trong untrusted fork CI.
 | macOS | Unsigned compile CI; signed runtime + notarized release trước phân phối |
 | Web | Configured release + hardened image contract + CSP browser smoke |
 | Windows | Hosted local-vault runtime + historical `1.0.0+9` vault-upgrade harness + configured x64 + NSIS install/launch/metadata-upgrade/uninstall retention; bundle/installer SHA-256 artifact 14 ngày; physical device/signing trước phân phối |
-| Linux | Configured x64 + private-keyring runtime + `.deb` transition; authenticated E2EE debug arm64; local arm64 package pass X11/Wayland trên Ubuntu 22.04/24.04 + Debian 12/13; historical upgrade, hosted amd64/KDE login và release signing trước phân phối |
+| Linux | Hosted amd64 configured x64 + historical `1.0.0+9` upgrade + private-keyring runtime + `.deb` transition + Ubuntu/Debian X11/Wayland matrix; authenticated E2EE debug arm64; KDE login/physical desktop và release signing trước phân phối |
 
 ## Regression rule
 
@@ -179,6 +180,6 @@ không trong untrusted fork CI.
 4. Low-concurrency Auth budget đã enforce; chưa có long-duration soak hoặc
    production-scale workload test.
 5. Windows còn code signing và physical-device/Windows Hello; historical
-   `1.0.0+9` upgrade đã pass hosted runtime. Linux còn hosted historical upgrade,
-   amd64/KDE login-unlock/physical desktop, signed package E2EE runtime và public
-   release-channel verification.
+   `1.0.0+9` upgrade đã pass hosted runtime. Linux còn KDE login-unlock/physical
+   desktop, signed package E2EE runtime và public release-channel verification;
+   hosted amd64 historical upgrade + bốn distro X11/Wayland đã pass.

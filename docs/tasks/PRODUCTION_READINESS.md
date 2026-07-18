@@ -95,6 +95,7 @@ behavior an toàn, backend có backup/restore/health harness và release gate t�
 | Windows runtime + NSIS candidate | Windows Server 2025 local-vault UI/secure-storage/lifecycle pass; configured x64 bundle; NSIS 3.12 install/launch/metadata-upgrade/uninstall giữ AppData pass; unsigned installer SHA-256 `fc267661…331388b3` audit portable trên macOS; bundle + installer artifact giữ 14 ngày |
 | GitHub Actions run `29648450700` | Pass 7/7 tại `3ba300d`: historical `1.0.0+9` seed DPAPI, current app visibility, SHA256/8 digits/45 giây round-trip, COW v2, cleanup; local-vault/release/NSIS transition tiếp tục pass |
 | GitHub Actions run `29648841164` | Pass 7/7 tại branch head `09c7024`; xác nhận toàn bộ Windows historical/runtime/installer gate cùng Linux, Apple, Android, Web, quality và secret history tiếp tục xanh sau khi cập nhật tài liệu bằng chứng |
+| GitHub Actions run `29652281356` | Pass 7/7 tại `12fce73`; Linux hosted amd64 historical `1.0.0+9` upgrade, private keyring, `.deb` transition, Ubuntu 22.04/24.04 + Debian 12/13 X11/Wayland và artifact đều pass; Windows/Apple/Android/Web/quality/secret tiếp tục xanh |
 | Windows artifact tại `3ba300d` | Current unsigned installer SHA-256 `c981974d…bd37f85`; release bundle và installer artifact upload thành công, hết hạn 01-08-2026 |
 | Android configured release | Fail closed vì thiếu upload keystore |
 | Android Pixel AVD E2E | Pass login return, setup revision 1, recovery-key rotation revision 2, vault-key rotation revision 3, fresh-device recovery revision 3 và SDK bulk revoke 2→1 session; cleanup user/row/app data |
@@ -106,10 +107,10 @@ behavior an toàn, backend có backup/restore/health harness và release gate t�
 | Studio proxy contract | Pass |
 | Backup restore rehearsal | Full restore DB tạm + schema/FORCE RLS/active-session guard pass |
 | Auth load budget | 100/100 HTTP 200, concurrency 10, p95 578 ms, max 862 ms dưới budget 1.000/2.000 ms; negative path 1 ms fail đúng |
-| Web production rollout | Image `1.1.0-f88506d` `linux/amd64` healthy; local/container/public SHA-256 khớp; `/`, `/settings`, `/login`, `/reset-password` trả 200; TLS/HSTS/CSP/cache/Permissions-Policy pass |
+| Web production rollout | Image `1.1.0-12fce73` `linux/amd64` healthy; local/public `main.dart.js` SHA-256 `02391b65…e1191e0` khớp; `/`, `/settings`, `/privacy`, `/login`, `/reset-password` trả 200; TLS/HSTS/CSP/cache/Permissions-Policy pass. Browser smoke phát hiện runtime `lang=en-US`; source locale fix đang chờ CI/rollout kế tiếp |
 
 Full `scripts/agent/check.sh full` pass: docs, generated drift, format, analyzer,
-platform config, 105 test và encrypted migration/active-session contract.
+platform config, 106 test và encrypted migration/active-session contract.
 
 ## Rủi ro còn lại
 
@@ -117,8 +118,8 @@ platform config, 105 test và encrypted migration/active-session contract.
 - Windows còn code signing và physical-device/Windows Hello; historical upgrade
   từ `1.0.0+9` đã pass hosted runtime và branch-head CI.
 - Flutter Web còn camera permission/QR scan smoke trên browser-device thật.
-- Linux còn hosted amd64 historical upgrade, KDE login/unlock/physical desktop và
-  release-channel signing/support metadata. Local arm64 X11/Wayland matrix đã pass;
+- Linux còn KDE login/unlock/physical desktop và release-channel signing/support
+  metadata. Hosted amd64 historical upgrade + X11/Wayland distro matrix đã pass;
   authenticated E2EE vẫn là debug container, chưa phải signed amd64 package/public
   distribution smoke.
 - E2EE v1 đã có DEK rotation và bulk revoke session khác; device registry/revoke
