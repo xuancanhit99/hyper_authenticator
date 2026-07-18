@@ -87,8 +87,12 @@ jobs:
       - run: bash web-deployment/test.sh
 
   linux:
-    name: Linux release
+    name: Linux release and isolated vault smoke
     runs-on: ubuntu-latest
+    env:
+      SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+      SUPABASE_PUBLISHABLE_KEY: ${{ vars.SUPABASE_PUBLISHABLE_KEY }}
+      PASSWORD_RECOVERY_URL: ${{ vars.PASSWORD_RECOVERY_URL }}
     steps:
       - uses: actions/checkout@v6
       - name: Cài native build dependencies
@@ -96,13 +100,40 @@ jobs:
           sudo apt-get update && sudo apt-get install -y
           clang cmake ninja-build pkg-config libgtk-3-dev
           libsecret-1-0 libsecret-1-dev libjsoncpp-dev
+          dbus-x11 gnome-keyring libsecret-tools xvfb xauth jq
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
           channel: stable
           cache: true
       - run: flutter pub get
-      - run: flutter build linux --release
+      - name: Tạo và xác minh public runtime config
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          config_path="$RUNNER_TEMP/linux-release-config.json"
+          jq -n \
+            --arg supabase_url "$SUPABASE_URL" \
+            --arg publishable_key "$SUPABASE_PUBLISHABLE_KEY" \
+            --arg recovery_url "$PASSWORD_RECOVERY_URL" \
+            '{
+              SUPABASE_URL: $supabase_url,
+              SUPABASE_PUBLISHABLE_KEY: $publishable_key,
+              PASSWORD_RECOVERY_URL: $recovery_url,
+              ALLOW_INSECURE_PLAINTEXT_SYNC: false
+            }' > "$config_path"
+          dart run tool/agent/check_release_config.dart "$config_path"
+          printf 'RELEASE_CONFIG_PATH=%s\n' "$config_path" >> "$GITHUB_ENV"
+      - name: Build Linux release đã cấu hình
+        run: >-
+          flutter build linux --release
+          --dart-define-from-file="$RELEASE_CONFIG_PATH"
+      - name: Chạy local-vault smoke trong private keyring
+        run: >-
+          scripts/agent/linux_integration.sh
+          "$RELEASE_CONFIG_PATH"
+          --allow-test-vault-reset
 
   windows:
     name: Windows configured release artifact

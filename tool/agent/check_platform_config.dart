@@ -97,6 +97,21 @@ void main() {
     'production application ID',
   );
   requireText(
+    '.github/workflows/ci.yml',
+    'scripts/agent/linux_integration.sh',
+    'Linux isolated local-vault runtime gate',
+  );
+  requireText(
+    'scripts/agent/linux_integration.sh',
+    r'XDG_DATA_HOME="$SANDBOX/data"',
+    'Linux integration storage sandbox',
+  );
+  requireText(
+    'scripts/agent/linux_integration.sh',
+    r'${CI:-} != true',
+    'Linux integration CI-only guard',
+  );
+  requireText(
     'windows/runner/Runner.rc',
     'VALUE "ProductName", "Hyper Authenticator"',
     'Windows product metadata',
