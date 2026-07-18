@@ -157,6 +157,51 @@ void main() {
     'MSVC 14.51 compatibility cho local_auth_windows 2.0.1',
   );
   requireText(
+    '.github/workflows/ci.yml',
+    'runs-on: windows-2025',
+    'Windows runner image đã pin',
+  );
+  requireText(
+    '.github/workflows/ci.yml',
+    'scripts/agent/windows_integration.ps1',
+    'Windows local-vault runtime gate',
+  );
+  requireText(
+    '.github/workflows/ci.yml',
+    'scripts/agent/windows_installer_smoke.ps1',
+    'Windows installer transition gate',
+  );
+  requireText(
+    '.github/workflows/ci.yml',
+    r'hyper-authenticator-windows-installer-${{ github.sha }}',
+    'Windows immutable installer artifact',
+  );
+  requireText(
+    'scripts/agent/windows_integration.ps1',
+    "RUNNER_ENVIRONMENT -ne 'github-hosted'",
+    'Windows integration hosted-runner guard',
+  );
+  requireText(
+    'scripts/agent/windows_installer_smoke.ps1',
+    "RUNNER_ENVIRONMENT -ne 'github-hosted'",
+    'Windows installer hosted-runner guard',
+  );
+  requireText(
+    'scripts/agent/install_nsis.ps1',
+    '56581f90db321581c5381193d796fffcf2d24b2f8fed2160a6c6a3baa67f2c4f',
+    'NSIS 3.12 archive checksum pin',
+  );
+  requireText(
+    'packaging/windows/installer.nsi',
+    'RequestExecutionLevel user',
+    'per-user Windows installer',
+  );
+  requireText(
+    'packaging/windows/installer.nsi',
+    'Local vault nằm dưới AppData và phải được giữ.',
+    'Windows uninstall data-retention contract',
+  );
+  requireText(
     'lib/core/router/app_url_strategy_web.dart',
     'usePathUrlStrategy();',
     'Web path URL strategy cho reverse-proxy deep link',

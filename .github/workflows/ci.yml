@@ -168,8 +168,8 @@ jobs:
           compression-level: 0
 
   windows:
-    name: Windows configured release artifact
-    runs-on: windows-latest
+    name: Windows runtime and installer artifacts
+    runs-on: windows-2025
     env:
       SUPABASE_URL: ${{ vars.SUPABASE_URL }}
       SUPABASE_PUBLISHABLE_KEY: ${{ vars.SUPABASE_PUBLISHABLE_KEY }}
@@ -196,6 +196,12 @@ jobs:
           [IO.File]::WriteAllText($configPath, $config)
           dart run tool/agent/check_release_config.dart $configPath
           "RELEASE_CONFIG_PATH=$configPath" >> $env:GITHUB_ENV
+      - name: Chạy local-vault smoke trên Windows runner tạm
+        shell: pwsh
+        run: >-
+          ./scripts/agent/windows_integration.ps1
+          -EnvFile $env:RELEASE_CONFIG_PATH
+          -Confirmation '--allow-test-vault-reset'
       - name: Build Windows release đã cấu hình
         shell: pwsh
         run: >-
@@ -228,6 +234,47 @@ jobs:
           })
           $manifestPath = Join-Path $artifactPath 'SHA256SUMS.txt'
           [IO.File]::WriteAllLines($manifestPath, $checksums, [Text.Encoding]::ASCII)
+      - name: Cài NSIS đã pin và xác minh checksum
+        shell: pwsh
+        run: >-
+          ./scripts/agent/install_nsis.ps1
+          -DestinationDirectory (Join-Path $env:RUNNER_TEMP 'nsis')
+          -GitHubEnvPath $env:GITHUB_ENV
+      - name: Tạo Windows installer baseline và current
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $bundle = Join-Path $PWD 'build/windows/x64/runner/Release'
+          $baselineDirectory = Join-Path $env:RUNNER_TEMP 'windows-installer-baseline'
+          $currentDirectory = Join-Path $env:RUNNER_TEMP 'windows-installer-current'
+
+          ./scripts/agent/package_windows_installer.ps1 `
+            -BundlePath $bundle `
+            -OutputDirectory $baselineDirectory `
+            -MakensisPath $env:NSIS_MAKENSIS_PATH `
+            -PackageVersionOverride '1.1.0+9~ci'
+          ./scripts/agent/package_windows_installer.ps1 `
+            -BundlePath $bundle `
+            -OutputDirectory $currentDirectory `
+            -MakensisPath $env:NSIS_MAKENSIS_PATH
+
+          $baselineInstaller = @(Get-ChildItem -LiteralPath $baselineDirectory `
+            -Filter '*-setup.exe' -File)
+          $currentInstaller = @(Get-ChildItem -LiteralPath $currentDirectory `
+            -Filter '*-setup.exe' -File)
+          if ($baselineInstaller.Count -ne 1 -or $currentInstaller.Count -ne 1) {
+            throw 'Mỗi package directory phải có đúng một installer.'
+          }
+          "WINDOWS_BASELINE_INSTALLER=$($baselineInstaller[0].FullName)" >> $env:GITHUB_ENV
+          "WINDOWS_CURRENT_INSTALLER=$($currentInstaller[0].FullName)" >> $env:GITHUB_ENV
+          "WINDOWS_INSTALLER_ARTIFACT_DIR=$currentDirectory" >> $env:GITHUB_ENV
+      - name: Smoke install, launch, upgrade, uninstall và data retention
+        shell: pwsh
+        run: >-
+          ./scripts/agent/windows_installer_smoke.ps1
+          -BaselineInstaller $env:WINDOWS_BASELINE_INSTALLER
+          -CurrentInstaller $env:WINDOWS_CURRENT_INSTALLER
+          -Confirmation '--allow-ephemeral-install'
       - name: Lưu Windows release artifact trong 14 ngày
         uses: actions/upload-artifact@v7
         with:
@@ -236,6 +283,14 @@ jobs:
           if-no-files-found: error
           retention-days: 14
           compression-level: 9
+      - name: Lưu Windows installer artifact trong 14 ngày
+        uses: actions/upload-artifact@v7
+        with:
+          name: hyper-authenticator-windows-installer-${{ github.sha }}
+          path: ${{ env.WINDOWS_INSTALLER_ARTIFACT_DIR }}
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
 
   apple:
     name: Apple compile builds
