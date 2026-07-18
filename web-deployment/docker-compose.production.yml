@@ -1,0 +1,29 @@
+name: hyper-authenticator-web
+
+services:
+  web:
+    image: ${WEB_IMAGE:?Cần cấu hình WEB_IMAGE đã pin theo commit}
+    container_name: hyper-authenticator-web
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp:size=1m,mode=1777
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    environment:
+      SUPABASE_URL: ${SUPABASE_URL:?Cần cấu hình HTTPS SUPABASE_URL}
+    networks:
+      proxy-network:
+        aliases:
+          - hyper-authenticator-web
+    logging:
+      driver: local
+      options:
+        max-size: 10m
+        max-file: "3"
+
+networks:
+  proxy-network:
+    external: true

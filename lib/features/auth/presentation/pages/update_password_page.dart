@@ -46,20 +46,20 @@ class _UpdatePasswordPageState extends State<UpdatePasswordPage> {
 
   String? _validatePassword(String? value) {
     if (value == null || value.isEmpty) {
-      return 'Please enter a new password';
+      return 'Vui lòng nhập mật khẩu mới.';
     }
     if (value.length < 6) {
-      return 'Password must be at least 6 characters';
+      return 'Mật khẩu phải có ít nhất 6 ký tự.';
     }
     return null;
   }
 
   String? _validateConfirmPassword(String? value) {
     if (value == null || value.isEmpty) {
-      return 'Please confirm your new password';
+      return 'Vui lòng xác nhận mật khẩu mới.';
     }
     if (value != _passwordController.text) {
-      return 'Passwords do not match';
+      return 'Mật khẩu xác nhận không khớp.';
     }
     return null;
   }
@@ -74,24 +74,20 @@ class _UpdatePasswordPageState extends State<UpdatePasswordPage> {
             ..hideCurrentSnackBar()
             ..showSnackBar(SnackBar(content: Text(state.message)));
         }
-        // Assuming successful update might trigger AuthAuthenticated or a specific success state
-        // For now, let's show a message and navigate on success (can be refined)
-        // We might need a dedicated AuthPasswordUpdateSuccess state for clarity
-        if (state is AuthAuthenticated) {
-          // Or a specific success state
+        if (state is AuthPasswordUpdateSuccess) {
           ScaffoldMessenger.of(context)
             ..hideCurrentSnackBar()
             ..showSnackBar(
               const SnackBar(
-                content: Text('Password updated successfully! Please log in.'),
+                content: Text('Đã cập nhật mật khẩu. Vui lòng đăng nhập lại.'),
               ),
             );
-          context.go(AppRoutes.login); // Navigate to login after success
+          context.go(AppRoutes.login);
         }
       },
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('Set New Password'),
+          title: const Text('Đặt mật khẩu mới'),
           elevation: 0,
           backgroundColor: Colors.transparent,
           // Automatically adds back button if navigable
@@ -107,13 +103,13 @@ class _UpdatePasswordPageState extends State<UpdatePasswordPage> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     const AuthHeader(
-                      title: 'Set New Password',
-                      subtitle: 'Enter and confirm your new password',
+                      title: 'Đặt mật khẩu mới',
+                      subtitle: 'Nhập và xác nhận mật khẩu mới',
                     ),
                     TextFormField(
                       controller: _passwordController,
                       decoration: InputDecoration(
-                        labelText: 'New Password*',
+                        labelText: 'Mật khẩu mới*',
                         prefixIcon: const Icon(Icons.lock_outline),
                         border: const OutlineInputBorder(),
                         suffixIcon: IconButton(
@@ -137,7 +133,7 @@ class _UpdatePasswordPageState extends State<UpdatePasswordPage> {
                     TextFormField(
                       controller: _confirmPasswordController,
                       decoration: InputDecoration(
-                        labelText: 'Confirm New Password*',
+                        labelText: 'Xác nhận mật khẩu mới*',
                         prefixIcon: const Icon(Icons.lock_outline),
                         border: const OutlineInputBorder(),
                         suffixIcon: IconButton(
@@ -157,8 +153,8 @@ class _UpdatePasswordPageState extends State<UpdatePasswordPage> {
                       obscureText: _obscureConfirmPassword,
                       validator: _validateConfirmPassword,
                       textInputAction: TextInputAction.done,
-                      onFieldSubmitted:
-                          (_) => _updatePassword(context), // Pass context
+                      onFieldSubmitted: (_) =>
+                          _updatePassword(context), // Pass context
                     ),
                     const SizedBox(height: 24),
                     // Use BlocBuilder for loading state
@@ -166,26 +162,23 @@ class _UpdatePasswordPageState extends State<UpdatePasswordPage> {
                       builder: (context, state) {
                         final isLoading = state is AuthLoading;
                         return ElevatedButton(
-                          onPressed:
-                              isLoading
-                                  ? null
-                                  : () =>
-                                      _updatePassword(context), // Pass context
+                          onPressed: isLoading
+                              ? null
+                              : () => _updatePassword(context), // Pass context
                           style: ElevatedButton.styleFrom(
                             padding: const EdgeInsets.symmetric(vertical: 16),
                             textStyle: Theme.of(context).textTheme.titleMedium,
                           ),
-                          child:
-                              isLoading
-                                  ? const SizedBox(
-                                    width: 24,
-                                    height: 24,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      color: Colors.white,
-                                    ),
-                                  )
-                                  : const Text('Update Password'),
+                          child: isLoading
+                              ? const SizedBox(
+                                  width: 24,
+                                  height: 24,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              : const Text('Cập nhật mật khẩu'),
                         );
                       },
                     ),

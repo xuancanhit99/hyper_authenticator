@@ -1,0 +1,328 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  FLUTTER_VERSION: 3.44.6
+  GITLEAKS_VERSION: 8.30.1
+
+jobs:
+  secrets:
+    name: Secret history gate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - name: Cài Gitleaks đã pin và xác minh checksum
+        shell: bash
+        run: |
+          set -euo pipefail
+          archive="/tmp/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          curl --proto '=https' --tlsv1.2 --fail --location --silent --show-error \
+            "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" \
+            --output "$archive"
+          printf '%s  %s\n' \
+            '551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb' \
+            "$archive" | sha256sum --check
+          install_dir="$RUNNER_TEMP/gitleaks-bin"
+          mkdir -p "$install_dir"
+          tar -xzf "$archive" -C "$install_dir" gitleaks
+          printf '%s\n' "$install_dir" >> "$GITHUB_PATH"
+          "$install_dir/gitleaks" version
+      - run: bash scripts/agent/check_secrets.sh
+
+  quality:
+    name: Quality gates
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - run: bash scripts/agent/check.sh full
+
+  android:
+    name: Android debug APK
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - run: flutter build apk --debug
+
+  web:
+    name: Web release and serving contract
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - run: bash scripts/agent/build.sh web
+      - run: bash web-deployment/test.sh
+
+  linux:
+    name: Linux release and isolated vault smoke
+    runs-on: ubuntu-22.04
+    env:
+      SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+      SUPABASE_PUBLISHABLE_KEY: ${{ vars.SUPABASE_PUBLISHABLE_KEY }}
+      PASSWORD_RECOVERY_URL: ${{ vars.PASSWORD_RECOVERY_URL }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - name: Cài native build dependencies
+        run: >-
+          sudo apt-get update && sudo apt-get install -y
+          clang cmake ninja-build pkg-config libgtk-3-dev
+          libsecret-1-0 libsecret-1-dev libjsoncpp-dev
+          dbus-x11 dpkg-dev file gnome-keyring libsecret-tools xvfb xauth jq
+          libegl1 libgles2 libgl1 libgl1-mesa-dri
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - name: Tạo và xác minh public runtime config
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          config_path="$RUNNER_TEMP/linux-release-config.json"
+          jq -n \
+            --arg supabase_url "$SUPABASE_URL" \
+            --arg publishable_key "$SUPABASE_PUBLISHABLE_KEY" \
+            --arg recovery_url "$PASSWORD_RECOVERY_URL" \
+            '{
+              SUPABASE_URL: $supabase_url,
+              SUPABASE_PUBLISHABLE_KEY: $publishable_key,
+              PASSWORD_RECOVERY_URL: $recovery_url,
+              ALLOW_INSECURE_PLAINTEXT_SYNC: false
+            }' > "$config_path"
+          dart run tool/agent/check_release_config.dart "$config_path"
+          printf 'RELEASE_CONFIG_PATH=%s\n' "$config_path" >> "$GITHUB_ENV"
+      - name: Build Linux release đã cấu hình
+        run: >-
+          flutter build linux --release
+          --dart-define-from-file="$RELEASE_CONFIG_PATH"
+      - name: Nâng cấp vault thật từ Linux 1.0.0+9
+        run: >-
+          scripts/agent/linux_historical_upgrade.sh
+          "$RELEASE_CONFIG_PATH"
+          --allow-historical-vault-migration
+      - name: Chạy local-vault smoke trong private keyring
+        run: >-
+          scripts/agent/linux_integration.sh
+          "$RELEASE_CONFIG_PATH"
+          --allow-test-vault-reset
+      - name: Tạo Debian package và checksum
+        shell: bash
+        run: |
+          set -euo pipefail
+          baseline_dir="$RUNNER_TEMP/linux-deb-baseline"
+          current_dir="$RUNNER_TEMP/linux-deb-current"
+          PACKAGE_VERSION_OVERRIDE='1.1.0+9~ci' \
+            scripts/agent/package_linux_deb.sh \
+            build/linux/x64/release/bundle "$baseline_dir"
+          scripts/agent/package_linux_deb.sh \
+            build/linux/x64/release/bundle "$current_dir"
+          baseline_deb=$(find "$baseline_dir" -maxdepth 1 -name '*.deb' -print -quit)
+          current_deb=$(find "$current_dir" -maxdepth 1 -name '*.deb' -print -quit)
+          test -n "$baseline_deb"
+          test -n "$current_deb"
+          printf 'LINUX_BASELINE_DEB=%s\n' "$baseline_deb" >> "$GITHUB_ENV"
+          printf 'LINUX_CURRENT_DEB=%s\n' "$current_deb" >> "$GITHUB_ENV"
+          printf 'LINUX_DEB_ARTIFACT_DIR=%s\n' "$current_dir" >> "$GITHUB_ENV"
+      - name: Smoke Debian install, upgrade và remove trong container sạch
+        run: >-
+          scripts/agent/linux_package_smoke.sh
+          "$LINUX_BASELINE_DEB"
+          "$LINUX_CURRENT_DEB"
+          --allow-container-package-install
+      - name: Chạy Debian package trên distro matrix
+        run: >-
+          scripts/agent/linux_distro_matrix.sh
+          "$LINUX_CURRENT_DEB"
+          --allow-container-package-install
+      - name: Lưu Linux Debian artifact trong 14 ngày
+        uses: actions/upload-artifact@v7
+        with:
+          name: hyper-authenticator-linux-deb-${{ github.sha }}
+          path: ${{ env.LINUX_DEB_ARTIFACT_DIR }}
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
+
+  windows:
+    name: Windows runtime and installer artifacts
+    runs-on: windows-2025
+    env:
+      SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+      SUPABASE_PUBLISHABLE_KEY: ${{ vars.SUPABASE_PUBLISHABLE_KEY }}
+      PASSWORD_RECOVERY_URL: ${{ vars.PASSWORD_RECOVERY_URL }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - name: Tạo và xác minh public runtime config
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $configPath = Join-Path $env:RUNNER_TEMP 'release-config.json'
+          $config = [ordered]@{
+            SUPABASE_URL = $env:SUPABASE_URL
+            SUPABASE_PUBLISHABLE_KEY = $env:SUPABASE_PUBLISHABLE_KEY
+            PASSWORD_RECOVERY_URL = $env:PASSWORD_RECOVERY_URL
+            ALLOW_INSECURE_PLAINTEXT_SYNC = $false
+          } | ConvertTo-Json
+          [IO.File]::WriteAllText($configPath, $config)
+          dart run tool/agent/check_release_config.dart $configPath
+          "RELEASE_CONFIG_PATH=$configPath" >> $env:GITHUB_ENV
+      - name: Xác minh nâng cấp vault thật từ 1.0.0+9
+        shell: pwsh
+        run: >-
+          ./scripts/agent/windows_historical_upgrade.ps1
+          -EnvFile $env:RELEASE_CONFIG_PATH
+          -Confirmation '--allow-historical-vault-migration'
+      - name: Chạy local-vault smoke trên Windows runner tạm
+        shell: pwsh
+        run: >-
+          ./scripts/agent/windows_integration.ps1
+          -EnvFile $env:RELEASE_CONFIG_PATH
+          -Confirmation '--allow-test-vault-reset'
+      - name: Build Windows release đã cấu hình
+        shell: pwsh
+        run: >-
+          flutter build windows --release
+          "--dart-define-from-file=$env:RELEASE_CONFIG_PATH"
+      - name: Chuẩn bị bundle và manifest SHA-256
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $releasePath = Join-Path $PWD 'build/windows/x64/runner/Release'
+          if (-not (Test-Path -LiteralPath $releasePath -PathType Container)) {
+            throw "Không tìm thấy Windows release bundle: $releasePath"
+          }
+
+          $artifactPath = Join-Path $env:RUNNER_TEMP 'hyper-authenticator-windows-x64'
+          New-Item -ItemType Directory -Path $artifactPath -Force | Out-Null
+          Copy-Item -Path (Join-Path $releasePath '*') `
+            -Destination $artifactPath -Recurse -Force
+
+          $root = [IO.Path]::GetFullPath($artifactPath)
+          $files = @(Get-ChildItem -LiteralPath $artifactPath -Recurse -File |
+            Sort-Object FullName)
+          if ($files.Count -eq 0) {
+            throw 'Windows release bundle rỗng.'
+          }
+          $checksums = @($files | ForEach-Object {
+            $relativePath = [IO.Path]::GetRelativePath($root, $_.FullName).Replace('\', '/')
+            $hash = (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+            "$hash  $relativePath"
+          })
+          $manifestPath = Join-Path $artifactPath 'SHA256SUMS.txt'
+          [IO.File]::WriteAllLines($manifestPath, $checksums, [Text.Encoding]::ASCII)
+      - name: Cài NSIS đã pin và xác minh checksum
+        shell: pwsh
+        run: >-
+          ./scripts/agent/install_nsis.ps1
+          -DestinationDirectory (Join-Path $env:RUNNER_TEMP 'nsis')
+          -GitHubEnvPath $env:GITHUB_ENV
+      - name: Tạo Windows installer baseline và current
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $bundle = Join-Path $PWD 'build/windows/x64/runner/Release'
+          $baselineDirectory = Join-Path $env:RUNNER_TEMP 'windows-installer-baseline'
+          $currentDirectory = Join-Path $env:RUNNER_TEMP 'windows-installer-current'
+
+          ./scripts/agent/package_windows_installer.ps1 `
+            -BundlePath $bundle `
+            -OutputDirectory $baselineDirectory `
+            -MakensisPath $env:NSIS_MAKENSIS_PATH `
+            -PackageVersionOverride '1.1.0+9~ci'
+          ./scripts/agent/package_windows_installer.ps1 `
+            -BundlePath $bundle `
+            -OutputDirectory $currentDirectory `
+            -MakensisPath $env:NSIS_MAKENSIS_PATH
+
+          $baselineInstaller = @(Get-ChildItem -LiteralPath $baselineDirectory `
+            -Filter '*-setup.exe' -File)
+          $currentInstaller = @(Get-ChildItem -LiteralPath $currentDirectory `
+            -Filter '*-setup.exe' -File)
+          if ($baselineInstaller.Count -ne 1 -or $currentInstaller.Count -ne 1) {
+            throw 'Mỗi package directory phải có đúng một installer.'
+          }
+          "WINDOWS_BASELINE_INSTALLER=$($baselineInstaller[0].FullName)" >> $env:GITHUB_ENV
+          "WINDOWS_CURRENT_INSTALLER=$($currentInstaller[0].FullName)" >> $env:GITHUB_ENV
+          "WINDOWS_INSTALLER_ARTIFACT_DIR=$currentDirectory" >> $env:GITHUB_ENV
+      - name: Smoke install, launch, upgrade, uninstall và data retention
+        shell: pwsh
+        run: >-
+          ./scripts/agent/windows_installer_smoke.ps1
+          -BaselineInstaller $env:WINDOWS_BASELINE_INSTALLER
+          -CurrentInstaller $env:WINDOWS_CURRENT_INSTALLER
+          -Confirmation '--allow-ephemeral-install'
+      - name: Lưu Windows release artifact trong 14 ngày
+        uses: actions/upload-artifact@v7
+        with:
+          name: hyper-authenticator-windows-x64-${{ github.sha }}
+          path: ${{ runner.temp }}/hyper-authenticator-windows-x64
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 9
+      - name: Lưu Windows installer artifact trong 14 ngày
+        uses: actions/upload-artifact@v7
+        with:
+          name: hyper-authenticator-windows-installer-${{ github.sha }}
+          path: ${{ env.WINDOWS_INSTALLER_ARTIFACT_DIR }}
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
+
+  apple:
+    name: Apple compile builds
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - run: bash scripts/agent/build.sh macos
+      - run: flutter build ios --simulator --debug

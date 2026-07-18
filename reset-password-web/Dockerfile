@@ -1,14 +1,26 @@
-# Use the official Nginx image from Docker Hub
-FROM nginx:alpine
+FROM nginx:1.28.0-alpine@sha256:30f1c0d78e0ad60901648be663a710bdadf19e4c10ac6782c235200619158284
 
-# Remove default Nginx welcome page
-RUN rm /usr/share/nginx/html/*
+COPY nginx.conf /etc/nginx/nginx.conf
+COPY nginx-site.conf.template /opt/reset-password/nginx-site.conf.template
+COPY docker-entrypoint.sh /usr/local/bin/reset-password-entrypoint
+COPY index.html style.css script.js logo.png /usr/share/nginx/html/
+COPY email-templates/recovery.html /usr/share/nginx/html/email-templates/recovery.html
 
-# Copy the static website content (HTML, CSS, JS with hardcoded keys, logo)
-COPY . /usr/share/nginx/html
+RUN chmod 0555 /usr/local/bin/reset-password-entrypoint \
+    && chmod 0444 /etc/nginx/nginx.conf \
+        /opt/reset-password/nginx-site.conf.template \
+        /usr/share/nginx/html/index.html \
+        /usr/share/nginx/html/style.css \
+        /usr/share/nginx/html/script.js \
+        /usr/share/nginx/html/logo.png \
+        /usr/share/nginx/html/email-templates/recovery.html
 
-# Expose port 80
-EXPOSE 80
+USER nginx
 
-# Command to run Nginx
+EXPOSE 8080
+
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+    CMD wget -q -O - http://127.0.0.1:8080/healthz | grep -qx healthy
+
+ENTRYPOINT ["/usr/local/bin/reset-password-entrypoint"]
 CMD ["nginx", "-g", "daemon off;"]

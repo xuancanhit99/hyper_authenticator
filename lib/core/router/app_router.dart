@@ -18,8 +18,10 @@ import 'package:hyper_authenticator/features/authenticator/domain/entities/authe
 
 // --- Define Route Paths ---
 class AppRoutes {
+  static const startup = '/startup';
   static const login = '/login';
   static const main = '/'; // Main screen (wrapper with bottom nav)
+  static const settings = '/settings';
   static const addAccount = '/add-account';
   static const lockScreen = '/lock-screen';
   static const register = '/register'; // Added
@@ -27,6 +29,93 @@ class AppRoutes {
   static const updatePassword =
       '/update-password'; // Added for deep link handling
   static const editAccount = '/edit-account'; // Added for EditAccountPage
+
+  static int mainTabIndexForLocation(String location) {
+    return switch (location) {
+      main => 0,
+      settings => 1,
+      _ => throw ArgumentError.value(location, 'location'),
+    };
+  }
+
+  static String mainLocationForTabIndex(int index) {
+    return switch (index) {
+      0 => main,
+      1 => settings,
+      _ => throw RangeError.index(index, const [main, settings], 'index'),
+    };
+  }
+}
+
+/// Pure redirect policy so offline-vault and app-lock behavior can be tested
+/// without constructing the widget tree.
+class AppRedirectPolicy {
+  static String? redirect({
+    required AuthState authState,
+    required LocalAuthState localAuthState,
+    required String location,
+    String? returnTo,
+  }) {
+    final isLogin = location == AppRoutes.login;
+    final isRegister = location == AppRoutes.register;
+    final isForgotPassword = location == AppRoutes.forgotPassword;
+    final isUpdatePassword = location == AppRoutes.updatePassword;
+    final isStartup = location == AppRoutes.startup;
+    final isLockScreen = location == AppRoutes.lockScreen;
+    final isPublicAuthRoute =
+        isLogin || isRegister || isForgotPassword || isUpdatePassword;
+
+    if (isPublicAuthRoute) {
+      if (authState is AuthAuthenticated && (isLogin || isRegister)) {
+        return authenticatedDestination(returnTo: returnTo);
+      }
+      return null;
+    }
+
+    if (localAuthState is LocalAuthInitial) {
+      return isStartup ? null : _routeWithReturnTo(AppRoutes.startup, location);
+    }
+
+    if (localAuthState is LocalAuthRequired ||
+        localAuthState is LocalAuthError) {
+      return isLockScreen
+          ? null
+          : _routeWithReturnTo(
+              AppRoutes.lockScreen,
+              _safeMainReturnTo(returnTo) ?? location,
+            );
+    }
+
+    if ((localAuthState is LocalAuthSuccess ||
+            localAuthState is LocalAuthUnavailable) &&
+        (isStartup || isLockScreen)) {
+      return _safeMainReturnTo(returnTo) ?? AppRoutes.main;
+    }
+
+    return null;
+  }
+
+  static String _routeWithReturnTo(String route, String candidate) {
+    final safeReturnTo = _safeMainReturnTo(candidate);
+    if (safeReturnTo == null || safeReturnTo == AppRoutes.main) {
+      return route;
+    }
+    return Uri(
+      path: route,
+      queryParameters: {'returnTo': safeReturnTo},
+    ).toString();
+  }
+
+  static String authenticatedDestination({String? returnTo}) =>
+      _safeMainReturnTo(returnTo) ?? AppRoutes.main;
+
+  static String? _safeMainReturnTo(String? candidate) {
+    return switch (candidate) {
+      AppRoutes.main => AppRoutes.main,
+      AppRoutes.settings => AppRoutes.settings,
+      _ => null,
+    };
+  }
 }
 
 // Helper class to trigger GoRouter refresh on multiple Bloc stream changes
@@ -35,14 +124,13 @@ class CombinedAuthRefreshStream extends ChangeNotifier {
 
   CombinedAuthRefreshStream(List<Stream<dynamic>> streams) {
     notifyListeners(); // Notify initially
-    _subscriptions =
-        streams
-            .map(
-              (stream) => stream
-                  .asBroadcastStream() // Ensure streams are broadcast streams
-                  .listen((_) => notifyListeners()),
-            )
-            .toList();
+    _subscriptions = streams
+        .map(
+          (stream) => stream
+              .asBroadcastStream() // Ensure streams are broadcast streams
+              .listen((_) => notifyListeners()),
+        )
+        .toList();
   }
 
   @override
@@ -60,11 +148,14 @@ class AppRouter {
 
   AppRouter(this.authBloc, this.localAuthBloc); // Update constructor
 
+  late final GoRouter _router = _buildRouter();
+
   static String get loginPath => AppRoutes.login;
 
-  GoRouter config() {
+  GoRouter config() => _router;
+
+  GoRouter _buildRouter() {
     return GoRouter(
-      initialLocation: AppRoutes.main, // Bắt đầu ở trang chính
       // Chỉ lắng nghe AuthBloc để refresh redirect
       // Listen to both Blocs for refresh
       refreshListenable: CombinedAuthRefreshStream([
@@ -72,6 +163,12 @@ class AppRouter {
         localAuthBloc.stream,
       ]),
       routes: [
+        GoRoute(
+          path: AppRoutes.startup,
+          name: AppRoutes.startup,
+          builder: (context, state) =>
+              const Scaffold(body: Center(child: CircularProgressIndicator())),
+        ),
         // Public route
         GoRoute(
           path: AppRoutes.login,
@@ -99,7 +196,20 @@ class AppRouter {
         GoRoute(
           path: AppRoutes.main, // '/'
           name: AppRoutes.main,
-          builder: (context, state) => const MainNavigationPage(),
+          builder: (context, state) => MainNavigationPage(
+            selectedIndex: AppRoutes.mainTabIndexForLocation(
+              state.matchedLocation,
+            ),
+          ),
+        ),
+        GoRoute(
+          path: AppRoutes.settings,
+          name: AppRoutes.settings,
+          builder: (context, state) => MainNavigationPage(
+            selectedIndex: AppRoutes.mainTabIndexForLocation(
+              state.matchedLocation,
+            ),
+          ),
         ),
         // Add Account Route (protected by redirect)
         GoRoute(
@@ -129,10 +239,7 @@ class AppRouter {
                 account = AuthenticatorAccount.fromJson(
                   state.extra as Map<String, dynamic>,
                 );
-              } catch (e) {
-                debugPrint(
-                  'Error deserializing AuthenticatorAccount from Map: $e',
-                );
+              } catch (_) {
                 // Handle error, perhaps redirect or show an error page
               }
             }
@@ -142,9 +249,9 @@ class AppRouter {
               // For now, returning a simple error page or redirecting to main
               // This should ideally not happen if navigation is done correctly
               return Scaffold(
-                appBar: AppBar(title: const Text('Error')),
+                appBar: AppBar(title: const Text('Lỗi')),
                 body: const Center(
-                  child: Text('Account data not found for editing.'),
+                  child: Text('Không tìm thấy dữ liệu tài khoản để chỉnh sửa.'),
                 ),
               );
             }
@@ -155,103 +262,16 @@ class AppRouter {
 
       // --- REDIRECT LOGIC (Simplified, based on original working version) ---
       redirect: (BuildContext context, GoRouterState state) {
-        final supabaseAuthState = authBloc.state;
-        final localAuthState = localAuthBloc.state;
-        final location = state.matchedLocation;
-
-        final isGoingToLogin = location == AppRoutes.login;
-        final isGoingToLockScreen = location == AppRoutes.lockScreen;
-        // Add checks for other public routes
-        final isGoingToRegister = location == AppRoutes.register;
-        final isGoingToForgotPassword = location == AppRoutes.forgotPassword;
-        // UpdatePassword might need special handling (only via deep link)
-        // final isGoingToUpdatePassword = location == AppRoutes.updatePassword;
-
-        // Added timestamp for better tracing
-        final timestamp = DateTime.now().toIso8601String();
-        debugPrint(
-          "[$timestamp Redirect] Supabase State: ${supabaseAuthState.runtimeType}, LocalAuth State: ${localAuthState.runtimeType}, Location: $location",
+        return AppRedirectPolicy.redirect(
+          authState: authBloc.state,
+          localAuthState: localAuthBloc.state,
+          location: state.matchedLocation,
+          returnTo: state.uri.queryParameters['returnTo'],
         );
-
-        // 1. Chờ Supabase Auth load xong
-        if (supabaseAuthState is AuthInitial ||
-            supabaseAuthState is AuthLoading) {
-          debugPrint("[$timestamp Redirect] Waiting for Supabase Auth...");
-          return null; // Wait for Supabase auth to settle
-        }
-
-        final isSupabaseAuthenticated = supabaseAuthState is AuthAuthenticated;
-
-        // 2. Nếu CHƯA đăng nhập Supabase và KHÔNG ở trang Login -> Về Login
-        // 2. If NOT Supabase authenticated and NOT going to an allowed public route -> Go Login
-        // Allowed public routes: login, register, forgotPassword
-        if (!isSupabaseAuthenticated &&
-            !isGoingToLogin &&
-            !isGoingToRegister &&
-            !isGoingToForgotPassword) {
-          debugPrint(
-            "[$timestamp Redirect] Unauthenticated & not on allowed public route ($location) -> Go Login",
-          );
-          return AppRoutes.login;
-        }
-
-        // 3. Nếu ĐÃ đăng nhập Supabase và ĐANG ở trang Login -> Vào Main
-        // 4. Nếu ĐÃ đăng nhập Supabase VÀ ĐANG ở trang Login -> Vào Main
-        //    (Logic kiểm tra Local Auth sẽ chạy sau nếu cần khi đã ở Main hoặc Lock)
-        if (isSupabaseAuthenticated && isGoingToLogin) {
-          debugPrint(
-            "[$timestamp Redirect] Authenticated & on Login -> Go Main",
-          );
-          return AppRoutes.main; // Redirect away from login immediately
-        }
-
-        // --- Local Authentication Checks (only if Supabase authenticated) ---
-        if (isSupabaseAuthenticated) {
-          // 5. Chờ Local Auth load xong (nếu cần)
-          if (localAuthState is LocalAuthInitial) {
-            debugPrint("[$timestamp Redirect] Waiting for Local Auth check...");
-            // Dispatch check if not already done (though app.dart should do it)
-            // localAuthBloc.add(CheckLocalAuth()); // Consider if needed here
-            return null; // Wait
-          }
-
-          // 6. Nếu Local Auth YÊU CẦU và KHÔNG ở màn hình khóa -> Tới màn hình khóa
-          if (localAuthState is LocalAuthRequired && !isGoingToLockScreen) {
-            debugPrint(
-              "[$timestamp Redirect] Local Auth Required & not on Lock Screen -> Go Lock Screen",
-            );
-            return AppRoutes.lockScreen;
-          }
-
-          // 7. Nếu Local Auth THÀNH CÔNG và ĐANG ở màn hình khóa -> Vào Main
-          if (localAuthState is LocalAuthSuccess && isGoingToLockScreen) {
-            debugPrint(
-              "[$timestamp Redirect] Local Auth Success & on Lock Screen -> Go Main",
-            );
-            return AppRoutes.main;
-          }
-
-          // 8. Nếu Local Auth KHÔNG CÓ SẴN và ĐANG ở màn hình khóa -> Vào Main
-          // (Shouldn't happen if LocalAuthSuccess is emitted correctly, but as a safeguard)
-          if (localAuthState is LocalAuthUnavailable && isGoingToLockScreen) {
-            debugPrint(
-              "[$timestamp Redirect] Local Auth Unavailable & on Lock Screen -> Go Main",
-            );
-            return AppRoutes.main;
-          }
-        }
-
-        // Các trường hợp khác (đã đăng nhập và ở trang main, chưa đăng nhập và ở trang login) -> không cần redirect
-        // Các trường hợp khác không cần redirect
-        debugPrint(
-          "[$timestamp Redirect] No redirect needed for current states and location.",
-        );
-        return null;
       },
-      errorBuilder:
-          (context, state) => Scaffold(
-            body: Center(child: Text('Page not found: ${state.error}')),
-          ),
+      errorBuilder: (context, state) => Scaffold(
+        body: Center(child: Text('Không tìm thấy trang: ${state.error}')),
+      ),
     );
   }
 }

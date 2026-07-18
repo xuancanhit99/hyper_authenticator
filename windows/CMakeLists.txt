@@ -42,6 +42,11 @@ function(APPLY_STANDARD_SETTINGS TARGET)
   target_compile_options(${TARGET} PRIVATE /W4 /WX /wd"4100")
   target_compile_options(${TARGET} PRIVATE /EHsc)
   target_compile_definitions(${TARGET} PRIVATE "_HAS_EXCEPTIONS=0")
+  # local_auth_windows 2.0.1 vẫn dùng /await và <experimental/coroutine>.
+  # MSVC 14.51 chặn header này nếu chưa explicit opt in. Giữ shim tại đây cho
+  # tới khi upstream plugin chuyển sang coroutine chuẩn rồi xóa cùng CI proof.
+  target_compile_definitions(
+    ${TARGET} PRIVATE "_SILENCE_EXPERIMENTAL_COROUTINE_DEPRECATION_WARNINGS")
   target_compile_definitions(${TARGET} PRIVATE "$<$<CONFIG:Debug>:_DEBUG>")
 endfunction()
 

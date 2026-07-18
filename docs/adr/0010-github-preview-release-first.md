@@ -1,0 +1,92 @@
+# ADR-0010: Phát hành GitHub Preview trước app store
+
+- Trạng thái: Chấp nhận
+- Ngày: 2026-07-19
+- Owner: Hyperz
+- Thay thế: Không
+- Bị thay thế bởi: Không
+
+## Bối cảnh
+
+Web production đã hoạt động và CI có thể tạo Debian package cùng Windows NSIS
+installer, nhưng owner chưa cung cấp Android/Apple/Microsoft signing credential.
+Chờ toàn bộ app store gate sẽ trì hoãn việc cho người dùng thử desktop build đã
+được kiểm tra. Hai desktop artifact hiện tại chưa có chữ ký phân phối.
+
+## Quyết định
+
+GitHub Releases là kênh tải binary đầu tiên. Cho phép phát hành **pre-release** có
+nhãn rõ ràng là **unsigned preview** cho Windows x64 và Linux amd64 khi:
+
+1. tag dạng `vX.Y.Z-preview.N` khớp version trong `pubspec.yaml`;
+2. tag trỏ đúng commit có toàn bộ workflow `CI` pass;
+3. artifact được tải trực tiếp từ chính CI run của tag;
+4. checksum, allowlist filename và denylist debug/config artifact đều pass;
+5. release note nêu signing, platform, SMTP và recovery-key limitation.
+
+Android debug APK, Apple compile build và Windows portable CI bundle không được
+đưa vào GitHub Release. “Stable” vẫn yêu cầu release signing, device test, public
+legal/support metadata và các gate tương ứng platform. App store được hoãn, không
+bị loại khỏi roadmap.
+
+## Phương án đã cân nhắc
+
+### Chờ app store và mọi signing credential
+
+Trust UX tốt hơn ngay từ bản đầu nhưng không có mốc owner cung cấp credential và
+không tận dụng được desktop package đã vượt hosted runtime/package gate.
+
+### Đưa trực tiếp artifact tạm của CI cho người dùng
+
+Không chọn vì artifact hết hạn, URL không ổn định và không tạo release provenance
+hay contract cảnh báo/checksum dễ kiểm chứng.
+
+## Hệ quả
+
+### Tích cực
+
+- Người dùng có URL release ổn định và checksum công khai.
+- Published binary truy ngược được về tag, commit và successful CI run.
+- Store/signing có thể hoàn thiện sau mà không chặn vòng phản hồi desktop đầu tiên.
+
+### Tiêu cực
+
+- Windows có thể hiện SmartScreen; Linux không có package-repository signature.
+- GitHub Preview không đại diện cho device/runtime coverage của Android và Apple.
+
+### Rủi ro
+
+- Người dùng có thể hiểu nhầm preview là stable; giảm thiểu bằng pre-release flag,
+  tên tag, release note và tài liệu đều ghi `unsigned`.
+- CI artifact hết hạn sau 14 ngày; publish harness phải chạy khi artifact còn hạn.
+
+## Bảo mật và quyền riêng tư
+
+Release chỉ nhận hai installer allowlist và checksum, từ chối env, source map và
+debug symbol. Client chỉ chứa public Supabase publishable config; service-role,
+SMTP, database và signing credential không được đưa vào artifact hay Actions.
+
+## Dữ liệu và compatibility
+
+Không đổi local/cloud data contract. Windows giữ storage identity lịch sử theo
+ADR-0009; Linux/Windows package transition và data-retention smoke vẫn là CI gate.
+Rollback là xóa GitHub pre-release và giữ Web production; thao tác này không xóa
+local vault của người dùng đã cài.
+
+## Xác minh
+
+- `scripts/agent/check.sh full` pass tại release commit.
+- Workflow `CI` của chính tag pass toàn bộ job.
+- `scripts/agent/check_github_preview_assets.sh` xác minh asset và SHA-256.
+- GitHub Release public có pre-release flag, đúng năm asset và tải xuống được.
+
+## Rollout
+
+1. Đưa release harness vào tested commit; workflow thủ công có thể dùng sau khi
+   file đã được merge vào default branch.
+2. Tạo/push preview tag trên tested commit và chờ tag CI xanh.
+3. Chạy workflow thủ công với confirmation bắt buộc; trước khi workflow có trên
+   default branch, chạy đúng cùng harness từ trusted maintainer workstation.
+4. Xác minh public URL, asset list và checksum sau download.
+5. Khi đủ signing/device/legal/support gate, tạo ADR hoặc cập nhật contract để mở
+   stable release và app store channel.

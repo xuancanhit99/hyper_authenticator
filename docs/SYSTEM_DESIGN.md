@@ -1,307 +1,216 @@
-# <img src="../assets/logos/hyper-logo-green-non-bg-alt.png" alt="Hyper Authenticator Logo" width="30"/> Hyper Authenticator: System Design Document 📄
+# Thiết kế hệ thống
 
-## 1. Introduction
-This document outlines the system design and architecture for Hyper Authenticator, a cross-platform two-factor authentication (2FA) application built with Flutter. It details the architectural choices, components, data flow, and security considerations, aligning with the project's goal of providing a robust and secure TOTP-based 2FA solution across multiple platforms (Android, iOS, Web, Windows, macOS) with biometric integration.
+Tài liệu này mô tả runtime đã triển khai. Hạng mục tương lai phải có nhãn
+**Dự kiến** hoặc **Khoảng trống đã biết**.
 
-## 2. 🏗️ System Architecture: Client-Server Model
-Hyper Authenticator primarily operates as a client-side application but utilizes a Client-Server model for optional features like user authentication and cloud synchronization.
+## Bối cảnh và trust boundary
 
-*   **Client (Flutter Application):** The core application runs on the user's device (Android, iOS, Web, Windows, macOS). It handles:
-    *   Secure storage of TOTP secrets.
-    *   TOTP code generation (RFC 6238).
-    *   User interface and interaction.
-    *   Biometric/PIN authentication for app lock.
-    *   QR code scanning and image analysis.
-    *   (If sync enabled) Communication with the backend for data synchronization.
-*   **Server (Supabase):** A Backend-as-a-Service (BaaS) platform used for:
-    *   **User Authentication:** Manages user registration and login, allowing users to have an account associated with their synchronized data.
-    *   **Database/Storage:** Securely stores encrypted user account data (TOTP secrets, issuer, account name, etc.) when cloud sync is enabled. Supabase provides database and storage solutions suitable for this purpose.
+Hyper Authenticator là Flutter client local-first. TOTP secret ở local vault;
+Supabase cung cấp Auth và một encrypted snapshot cho mỗi user. Backend chỉ nhận
+ciphertext, wrapped DEK và concurrency metadata.
 
-**Diagram (Simplified for GitHub Rendering):**
+~~~mermaid
+flowchart LR
+  User["Người dùng"] --> App["Flutter app"]
+  App --> Lock["OS local authentication"]
+  App --> Vault["Platform secure storage\nversioned local vault"]
+  App --> Prefs["SharedPreferences\nkhông chứa secret"]
+  App --> Cipher["AES-256-GCM + recovery key"]
+  Cipher --> HTTPS["Reverse proxy HTTPS"]
+  HTTPS --> Auth["Supabase Auth"]
+  HTTPS --> RPC["Atomic revision RPC"]
+  RPC --> DB["encrypted_vault_snapshots\nFORCE RLS"]
+  Recovery["Recovery Web"] --> Auth
+~~~
 
-```mermaid
-graph LR
-    Client[Flutter App] -- HTTPS_Sync --> Server(Supabase);
-    Client -- Local_Storage --> Storage((SecureStorage / SharedPreferences));
-    Client -- Biometrics_PIN --> Client;
-    Server -- Auth_DB --> Server;
-```
+Web không bật encrypted sync vì browser key storage khác native secure storage.
+Web vẫn chạy TOTP local trong storage do platform plugin cung cấp; người dùng phải
+hiểu browser profile compromise nằm ngoài native trust boundary.
 
-## 3. 🧱 Flutter Application Architecture: Clean Architecture
+## Bootstrap
 
-**Layer Diagram (Simplified for GitHub Rendering):**
+1. Khởi tạo Flutter binding.
+2. Trên Windows, nhập layout AppData từng dùng ở pre-release vào layout
+   canonical trước khi bất kỳ secure storage/SharedPreferences nào khởi tạo.
+   Hai vault khác nhau làm bootstrap fail closed; nguồn không bị xóa.
+3. Injectable/GetIt đăng ký dependency và pre-resolve SharedPreferences.
+4. `AppConfig` đọc compile-time define; `.env` không được bundle làm asset.
+   Validator chỉ nhận HTTPS Supabase origin cùng `sb_publishable_*` hoặc legacy
+   JWT có role `anon`; release bắt buộc recovery URL và plaintext flag tắt.
+5. Khởi tạo Supabase client.
+6. Cấp shared `AuthBloc`, `AccountsBloc`, `LocalAuthBloc`, `SettingsBloc`; tạo
+   `SyncBloc` dùng chính `AccountsBloc` đó.
+7. Router kết hợp Auth và local-lock state để chọn public route, startup, lock
+   hoặc main navigation.
 
-```mermaid
- graph TD
-    UI --> Presentation;
-    Presentation --> Domain;
-    Domain --> Data;
-    Data --> RemoteDS(Remote DS);
-    Data --> LocalDS(Local DS);
-    RemoteDS --> Supabase;
-    LocalDS --> SecureStorage;
-    LocalDS --> SharedPreferences;
-```
+Thiếu/sai URL hoặc key gây bootstrap error rõ ràng, không fallback tới server
+khác. `sb_secret_*` và legacy `service_role` bị từ chối mà không đưa key vào error.
 
-The Flutter application adheres to the principles of Clean Architecture to ensure separation of concerns, testability, and maintainability.
+## Kiến trúc feature
 
-*   **Core Principles:**
-    *   **Presentation Layer:** Handles UI (Widgets, Pages) and State Management. Responsible for displaying data and handling user input.
-        *   **UI:** Built with Flutter widgets.
-        *   **State Management:** Primarily uses `flutter_bloc` (`AccountsBloc`, `AuthBloc`, `SyncBloc`, `LocalAuthBloc`, `SettingsBloc`) for managing feature states and `provider` for theme management (`ThemeProvider`).
-    *   **Domain Layer:** Contains the core business logic, independent of UI and data storage details.
-        *   **Entities:** Represent core business objects (e.g., `AuthenticatorAccount`, `UserEntity`).
-        *   **UseCases:** Encapsulate specific application tasks (e.g., `AddAccountUseCase`, `GetAccountsUseCase`, `GenerateTotpCodeUseCase`, `DeleteAccountUseCase`, `LoginUseCase`, `LogoutUseCase`, `UploadAccountsUseCase`, `DownloadAccountsUseCase`, `CheckAuthStatusUseCase`, `AuthenticateWithBiometricsUseCase`).
-        *   **Repository Interfaces:** Define contracts for data operations, implemented by the Data Layer.
-    *   **Data Layer:** Implements the repository interfaces defined in the Domain Layer. Responsible for retrieving data from and storing data to various sources.
-        *   **Repositories:** Concrete implementations (e.g., `AuthenticatorRepositoryImpl`, `SyncRepositoryImpl`).
-        *   **Data Sources:** Abstract interactions with specific storage mechanisms (e.g., `AuthenticatorLocalDataSource`, `SyncRemoteDataSource`, `AuthRemoteDataSource`). Concrete implementations interact with Supabase, `FlutterSecureStorage`, `SharedPreferences`.
-        *   **Data Models/DTOs:** Data transfer objects used for remote communication or local storage (e.g., `SyncedAccountDto`). Often include mapping logic to/from Domain Entities.
-*   **Cross-Platform Considerations:** Flutter's framework allows building for multiple platforms from a single codebase. Platform-specific integrations (like `local_auth` for biometrics) are handled using plugins that abstract platform differences. The architecture remains consistent across platforms.
-*   **Directory Structure:** Organized by features (`auth`, `authenticator`, `sync`, `settings`) with internal `data`, `domain`, `presentation` layers, promoting modularity.
+- Presentation phát event và render state.
+- Domain giữ entity, repository contract, crypto service contract và use case.
+- Data source sở hữu secure storage, SharedPreferences và Supabase calls.
+- Repository chuyển exception sang typed `Failure` bằng `Either`.
+- `injection_container.config.dart` được generate, không sửa thủ công.
 
-## 4. ⚙️ Key Technology Deep Dive
-*   **TOTP Algorithm (RFC 6238):**
-    *   The `otp` package is used, which implements the standard TOTP algorithm.
-    *   It takes a Base32 encoded secret key, the current time, and parameters (period, digits, algorithm - SHA1, SHA256, SHA512) to generate a time-based one-time password.
-    *   Secrets are securely stored locally using `FlutterSecureStorage`.
-*   **Biometric Technology (`local_auth`):**
-    *   The `local_auth` plugin provides access to the device's native biometric authentication capabilities (fingerprint, face recognition) or PIN/pattern/password.
-    *   Used for the App Lock feature (`LockScreenPage`, `LocalAuthBloc`).
-    *   `LocalAuthBloc` manages the authentication state (locked/unlocked) and interacts with the plugin.
-    *   The application lifecycle (`WidgetsBindingObserver` in `app.dart`) triggers authentication checks when the app resumes and resets the status when it pauses, ensuring security.
-*   **Dependency Injection (`GetIt` / `Injectable`):**
-    *   Simplifies dependency management across layers.
-    *   `Injectable` automatically generates registration code based on annotations (`@injectable`, `@lazySingleton`, `@module`, `@preResolve`).
-    *   Ensures loose coupling and improves testability.
-*   **Routing (`GoRouter`):**
-    *   Provides a declarative routing solution suitable for complex navigation scenarios.
-    *   The router configuration (`AppRouter`) depends on `AuthBloc` and `LocalAuthBloc` states to handle redirects (e.g., redirecting to login if not authenticated, redirecting to lock screen if app lock is enabled and triggered).
-    *   **Local Storage (`FlutterSecureStorage` / `SharedPreferences`):**
-        *   `FlutterSecureStorage` is chosen for sensitive data (TOTP secrets, potentially E2EE keys) because it utilizes platform-specific secure storage (Keystore/Keychain), offering hardware-backed protection where available.
-        *   `SharedPreferences` is used for non-sensitive user preferences (like theme settings, sync enabled status) as it's simpler and sufficient for non-critical data.
+## Biên triển khai Web
 
-## 5. 🛡️ Security Considerations
-*   **Local Storage:**
-    *   **Sensitive Data (TOTP Secrets):** Stored using `FlutterSecureStorage`, which leverages platform-specific secure storage mechanisms (Keystore on Android, Keychain on iOS).
-    *   **Non-Sensitive Data (Settings):** Stored using `SharedPreferences`.
-*   **App Lock:** Uses device-level biometric/PIN authentication via `local_auth`, preventing unauthorized access to the app even if the device is unlocked.
-*   **Cloud Synchronization Security (Current & Planned):**
-    *   **Authentication:** User authentication via Supabase ensures only authorized users can access their sync data.
-    *   **Transport Security:** Communication with Supabase occurs over HTTPS.
-    *   **Data-at-Rest (Supabase - Current State):** Currently, data synchronized to Supabase relies on Supabase's built-in security features and potentially server-side encryption options provided by the platform. The raw TOTP secrets might be stored directly if E2EE is not yet implemented.
-    *   **Planned End-to-End Encryption (E2EE) 🔐:**
-        *   **Goal:** To ensure that sensitive TOTP secrets are encrypted *before* leaving the client device, making them unreadable by the backend provider (Supabase) or any intermediary.
-        *   **Approach:**
-            1.  **Key Generation:** Generate a strong, unique encryption key per user on the client-side. Options include:
-                *   Deriving from a user-defined master password (using a KDF like Argon2 or PBKDF2).
-                *   Generating a random key and storing it securely in `FlutterSecureStorage`.
-            2.  **Encryption:** Before uploading via `UploadAccountsUseCase`, encrypt sensitive fields (especially `secretKey`) using the client-side key (e.g., AES-GCM via `cryptography` package).
-            3.  **Storage:** Store only the *encrypted* ciphertext in Supabase.
-            4.  **Decryption:** When downloading via `DownloadAccountsUseCase`, retrieve the ciphertext and decrypt it on the client-side using the user's key.
-        *   **Key Management Challenges:**
-            *   **Security:** The client-side key is the root of trust. If stored directly, `FlutterSecureStorage` is essential. If derived, the master password must be strong.
-            *   **Recovery:** If the key (or master password) is lost, encrypted data becomes inaccessible. Implementing a secure recovery mechanism (e.g., recovery codes stored by the user) is complex but necessary.
-            *   **Cross-Device Access:** The key must be available on all devices where the user wants to access synced data. This might involve securely transferring the key or requiring the user to re-enter the master password on each new device.
+Flutter Web artifact được phục vụ bởi `web-deployment` qua Nginx non-root. Runtime
+entrypoint chỉ nhận public Supabase HTTPS origin để tạo CSP; client key vẫn được
+embed lúc Flutter compile theo public-config contract. HTML dùng `no-store`, asset
+revalidate, SPA fallback về `index.html`; access log tắt để query material không
+vào container log. Reverse proxy bên ngoài sở hữu TLS và domain routing.
 
-## 6. 🌊 Data Flow Examples
+GoRouter giữ URL làm source of truth cho main navigation: `/` mở Accounts và
+`/settings` mở Settings. Không ép `initialLocation`, vì làm vậy sẽ bỏ qua browser
+deep link và platform route ban đầu. Bottom navigation cập nhật URL bằng `go`, còn
+router truyền selected index trở lại shell để refresh/back giữ đúng tab. Web bật
+`PathUrlStrategy` qua conditional import; native build dùng no-op stub.
 
-### 6.1. Adding Account via QR Scan/Image
+## Local vault
 
-**Description:** This flow illustrates how a user adds a new 2FA account by scanning a QR code or selecting an image containing one. The application parses the `otpauth://` URI, saves the account details securely to local storage via the BLoC and Repository layers.
+`AuthenticatorLocalDataSource` serialize mutation bằng critical section:
 
-```mermaid
-sequenceDiagram
-    participant User
-    participant AddAccountPage (UI)
-    participant AccountsBloc (Presentation)
-    participant AddAccountUseCase (Domain)
-    participant AuthRepository (Domain/Data)
-    participant LocalDataSource (Data)
+1. Đọc generation committed hiện tại.
+2. Validate toàn bộ account và tạo snapshot mới.
+3. Ghi immutable record/manifest của generation mới.
+4. Ghi commit marker sau cùng.
+5. Đọc lại để verify.
+6. Best-effort compaction, giữ hai generation hợp lệ gần nhất.
 
-    User->>AddAccountPage (UI): Scan/Select QR Image
-    AddAccountPage (UI)->>AddAccountPage (UI): Parse otpauth:// URI
-    AddAccountPage (UI)->>AccountsBloc (Presentation): Dispatch AddAccountRequested Event
-    AccountsBloc (Presentation)->>AddAccountUseCase (Domain): Call execute(params)
-    AddAccountUseCase (Domain)->>AuthRepository (Domain/Data): Call addAccount(account)
-    AuthRepository (Domain/Data)->>LocalDataSource (Data): Call saveAccount(account)
-    LocalDataSource (Data)-->>AuthRepository (Domain/Data): Return success/failure
-    AuthRepository (Domain/Data)-->>AddAccountUseCase (Domain): Return success/failure
-    AddAccountUseCase (Domain)-->>AccountsBloc (Presentation): Return Either<Failure, Success>
-    AccountsBloc (Presentation)->>AccountsBloc (Presentation): Emit State (Loading -> Loaded/Error)
-    AccountsBloc (Presentation)-->>AddAccountPage (UI): Update UI (Feedback/Navigation)
-```
+Nếu generation mới hỏng, reader fallback generation trước. Legacy index/record
+được dual-read và repair nhưng không bị xóa ngay, giúp rollback. `replaceAccounts`
+dùng cùng transaction copy-on-write và là primitive duy nhất cho cloud recovery.
 
-### 6.2. Synchronization Flow (Upload with Planned E2EE)
+Trên Windows, `CompanyName=app.hyperz.authenticator` và
+`ProductName=hyper_authenticator` là storage identity canonical từ bản lịch sử
+`1.0.0+9`. Tên cửa sổ, installer và `FileDescription` vẫn là “Hyper
+Authenticator”. Startup migrator chỉ copy atomic file secure storage/preference
+đã allowlist từ layout pre-release `Hyper Authenticator`, giữ nguyên nguồn và ghi
+marker sau khi hoàn tất. Nếu cả hai layout chứa vault không byte-identical, app
+dừng trước DI để không tự chọn hoặc ghi đè dữ liệu.
 
-**Description:** This diagram shows the process of uploading local account data to the Supabase backend for synchronization. It includes the planned End-to-End Encryption step where data is encrypted client-side before being sent, ensuring the server cannot access the raw secrets.
+## TOTP
 
-```mermaid
- sequenceDiagram
-    participant User
-    participant SettingsPage (UI)
-    participant SyncBloc (Presentation)
-    participant EncryptService (Core/Domain?)
-    participant UploadUseCase (Domain)
-    participant SyncRepository (Domain/Data)
-    participant RemoteDataSource (Data)
-    participant Supabase (Server)
+- Manual entry dùng default SHA1/6 digits/30 giây.
+- QR parser giữ algorithm, digits và period không mặc định.
+- Camera scanner render loading state có hướng dẫn permission; lỗi permission hoặc
+  unsupported được localize, cho retry hoặc quay lại manual entry. Không hiển thị
+  raw plugin error cho người dùng.
+- Account có UUID stable; update/restore không tự đổi ID.
+- Code dùng Unix epoch và period của từng account; UI cache theo time step và
+  refresh khi app resume.
+- Full `otpauth` URI, `secretKey` và generated code không được log.
 
-    User->>SettingsPage (UI): Tap "Sync Now" / "Overwrite Cloud"
-    SettingsPage (UI)->>SyncBloc (Presentation): Dispatch SyncNowRequested / OverwriteCloudRequested Event
-    SyncBloc (Presentation)->>EncryptService (Core/Domain?): Get encryption key
-    SyncBloc (Presentation)->>EncryptService (Core/Domain?): Encrypt account data (E2EE)
-    EncryptService (Core/Domain?)-->>SyncBloc (Presentation): Return encrypted data
-    SyncBloc (Presentation)->>UploadUseCase (Domain): Call execute(encryptedData)
-    UploadUseCase (Domain)->>SyncRepository (Domain/Data): Call uploadAccounts(encryptedData)
-    SyncRepository (Domain/Data)->>RemoteDataSource (Data): Call uploadToSupabase(encryptedData)
-    RemoteDataSource (Data)->>Supabase (Server): Send HTTPS request
-    Supabase (Server)-->>RemoteDataSource (Data): Respond
-    RemoteDataSource (Data)-->>SyncRepository (Domain/Data): Return success/failure
-    SyncRepository (Domain/Data)-->>UploadUseCase (Domain): Return success/failure
-    UploadUseCase (Domain)-->>SyncBloc (Presentation): Return Either<Failure, Success>
-    SyncBloc (Presentation)->>SyncBloc (Presentation): Emit State (InProgress -> Success/Failure)
-    SyncBloc (Presentation)-->>SettingsPage (UI): Update UI (Feedback)
-```
+## App lock và logout
 
-### 6.3. TOTP Code Generation
+Local-auth preference nằm trong SharedPreferences; OS challenge do `local_auth`.
+Khi lock đã bật, plugin error là locked state. App relock khi rời foreground.
+Logout chỉ kết thúc Supabase session hiện tại, giữ local vault và lock preference.
 
-**Description:** This flow details how the application generates a Time-based One-Time Password (TOTP) for a selected account. It involves retrieving the account's secret key from secure storage and using the `otp` library to compute the current code based on the time.
+Settings có `SessionSecurityBloc` riêng để revoke mọi Supabase session khác mà
+không đưa `AuthBloc` ra khỏi trạng thái authenticated. Action này giữ session,
+local vault và DEK của thiết bị hiện tại. Với thiết bị nghi bị lộ, UI hướng người
+dùng xoay vault key trước rồi revoke các session khác.
 
-```mermaid
-sequenceDiagram
-    participant User
-    participant AccountsPage (UI)
-    participant AccountsBloc (Presentation)
-    participant GetAccountsUseCase (Domain)
-    participant GenerateTotpCodeUseCase (Domain)
-    participant AuthRepository (Domain/Data)
-    participant LocalDataSource (Data)
-    participant OTP_Library
+## Encrypted sync
 
-    User->>AccountsPage (UI): Views account list
-    AccountsPage (UI)->>AccountsBloc (Presentation): Requests accounts (on init/refresh)
-    AccountsBloc (Presentation)->>GetAccountsUseCase (Domain): execute()
-    GetAccountsUseCase (Domain)->>AuthRepository (Domain/Data): getAccounts()
-    AuthRepository (Domain/Data)->>LocalDataSource (Data): fetchAccounts()
-    LocalDataSource (Data)-->>AuthRepository (Domain/Data): Return List<Account>
-    AuthRepository (Domain/Data)-->>GetAccountsUseCase (Domain): Return List<Account>
-    GetAccountsUseCase (Domain)-->>AccountsBloc (Presentation): Return Either<Failure, List<Account>>
-    AccountsBloc (Presentation)-->>AccountsPage (UI): Display accounts
+### Setup
 
-    loop Every 30 seconds / On Demand
-        AccountsPage (UI)->>AccountsBloc (Presentation): Request Code Generation for Account X
-        AccountsBloc (Presentation)->>GenerateTotpCodeUseCase (Domain): execute(accountX.secretKey, time)
-        GenerateTotpCodeUseCase (Domain)->>OTP_Library: generateTOTP(secret, time, ...)
-        OTP_Library-->>GenerateTotpCodeUseCase (Domain): Return TOTP Code
-        GenerateTotpCodeUseCase (Domain)-->>AccountsBloc (Presentation): Return Either<Failure, TOTP Code>
-        AccountsBloc (Presentation)->>AccountsBloc (Presentation): Emit new state with updated code
-        AccountsBloc (Presentation)-->>AccountsPage (UI): Update displayed code for Account X
-    end
-```
+1. Xác minh user đã đăng nhập và cloud vault chưa tồn tại.
+2. Sinh DEK 256-bit cùng recovery key `HA1-...`.
+3. Hiển thị recovery key một lần; user phải xác nhận đã lưu.
+4. Encrypt snapshot local revision 1, atomic publish với expected revision 0.
+5. Download/read-after-write verify revision và envelope.
+6. Chỉ sau đó persist DEK vào secure storage và bật sync metadata.
 
-### 6.4. User Authentication (Login)
+Cancel hoặc publish failure không persist key và không bật sync.
 
-**Description:** This diagram outlines the user login process using Supabase authentication. The user enters credentials, which are passed through the BLoC and UseCase layers to the Repository, ultimately calling the Supabase Auth service for verification.
+### Sync thường
 
-```mermaid
-sequenceDiagram
-    participant User
-    participant LoginPage (UI)
-    participant AuthBloc (Presentation)
-    participant LoginUseCase (Domain)
-    participant AuthRepository (Domain/Data)
-    participant RemoteDataSource (Data)
-    participant Supabase (Server - Auth)
+1. Download current encrypted snapshot và decrypt/validate trong memory.
+2. So sánh remote revision với last-seen revision trên thiết bị.
+3. Nếu không conflict và local khác remote, encrypt local ở revision kế tiếp.
+4. RPC compare-and-swap theo expected revision.
+5. Download lại và verify trước khi cập nhật last-seen revision.
 
-    User->>LoginPage (UI): Enters Email & Password
-    User->>LoginPage (UI): Taps Login Button
-    LoginPage (UI)->>AuthBloc (Presentation): Dispatch LoginRequested Event (email, password)
-    AuthBloc (Presentation)->>LoginUseCase (Domain): execute(email, password)
-    LoginUseCase (Domain)->>AuthRepository (Domain/Data): login(email, password)
-    AuthRepository (Domain/Data)->>RemoteDataSource (Data): signInWithPassword(email, password)
-    RemoteDataSource (Data)->>Supabase (Server - Auth): Attempt Sign In
-    Supabase (Server - Auth)-->>RemoteDataSource (Data): Return AuthResponse (Success/Error)
-    RemoteDataSource (Data)-->>AuthRepository (Domain/Data): Return UserEntity or Failure
-    AuthRepository (Domain/Data)-->>LoginUseCase (Domain): Return UserEntity or Failure
-    LoginUseCase (Domain)-->>AuthBloc (Presentation): Return Either<Failure, UserEntity>
-    AuthBloc (Presentation)->>AuthBloc (Presentation): Emit State (Authenticated / Unauthenticated with error)
-    AuthBloc (Presentation)-->>LoginPage (UI): Update UI (Navigate to Accounts / Show Error)
-```
-### 6.5. Deleting an Account
+RPC không delete snapshot cũ trước update. Conflict trả typed failure, giữ cả
+local snapshot và cloud snapshot hiện có.
 
-**Description:** This flow shows how a user deletes an existing 2FA account. The request goes through the BLoC and UseCase to the Repository, which then instructs the Local Data Source to remove the account from secure storage.
+### Recovery và conflict
 
-```mermaid
-sequenceDiagram
-    participant User
-    participant AccountsPage (UI)
-    participant AccountsBloc (Presentation)
-    participant DeleteAccountUseCase (Domain)
-    participant AuthRepository (Domain/Data)
-    participant LocalDataSource (Data)
+Thiết bị mới nhập recovery key để unwrap DEK. Remote payload phải authenticate,
+decrypt và validate hoàn toàn trước khi local write. Nếu local không rỗng và khác
+cloud, UI yêu cầu chọn:
 
-    User->>AccountsPage (UI): Long-presses/Selects Account Y
-    User->>AccountsPage (UI): Taps Delete Button/Confirms Deletion
-    AccountsPage (UI)->>AccountsBloc (Presentation): Dispatch DeleteAccountRequested Event (accountY.id)
-    AccountsBloc (Presentation)->>DeleteAccountUseCase (Domain): execute(accountY.id)
-    DeleteAccountUseCase (Domain)->>AuthRepository (Domain/Data): deleteAccount(accountId)
-    AuthRepository (Domain/Data)->>LocalDataSource (Data): removeAccount(accountId)
-    LocalDataSource (Data)-->>AuthRepository (Domain/Data): Return success/failure
-    AuthRepository (Domain/Data)-->>DeleteAccountUseCase (Domain): Return success/failure
-    DeleteAccountUseCase (Domain)-->>AccountsBloc (Presentation): Return Either<Failure, Success>
-    AccountsBloc (Presentation)->>AccountsBloc (Presentation): Emit State (Account Deleted, Refresh List)
-    AccountsBloc (Presentation)-->>AccountsPage (UI): Update UI (Remove Account from List, Show Feedback)
-```
+- **Dùng cloud:** re-download đúng revision đã review rồi atomic replace local.
+- **Giữ local:** encrypt local và compare-and-swap thành revision mới.
 
-### 6.6. App Lock Authentication (On App Resume)
+Nếu cloud đổi tiếp trong lúc chọn, thao tác dừng và yêu cầu review lại.
 
-**Description:** This diagram illustrates the process when the app resumes from the background and the App Lock feature is enabled. The `WidgetsBindingObserver` triggers the `LocalAuthBloc` to check if authentication is needed, which then interacts with the `local_auth` plugin to prompt the user for biometrics/PIN.
+### Xoay recovery key
 
-```mermaid
-sequenceDiagram
-    participant OS [Operating System]
-    participant AppLifecycleObserver (app.dart)
-    participant LocalAuthBloc (Presentation)
-    participant GoRouter (Navigation)
-    participant LocalAuthPlugin [local_auth Plugin]
-    participant User
+Thiết bị đang giữ DEK có thể tạo KEK mới, re-wrap cùng DEK, re-encrypt current
+remote snapshot và compare-and-swap revision kế tiếp. Hủy hoặc conflict giữ key
+cũ. User phải lưu key mới trước commit vì nếu publish thành công nhưng
+read-after-write lỗi thì key mới có thể đã hiệu lực. Flow này không revoke thiết
+bị vì DEK không đổi.
 
-    OS->>AppLifecycleObserver (app.dart): App Resumed (didChangeAppLifecycleState)
-    AppLifecycleObserver (app.dart)->>LocalAuthBloc (Presentation): Dispatch CheckAuthenticationStatus Event
-    LocalAuthBloc (Presentation)->>LocalAuthBloc (Presentation): Check if lock enabled & timeout exceeded
-    alt Lock Required
-        LocalAuthBloc (Presentation)->>GoRouter (Navigation): Navigate to Lock Screen
-        LocalAuthBloc (Presentation)->>LocalAuthPlugin [local_auth Plugin]: authenticate()
-        LocalAuthPlugin [local_auth Plugin]->>User: Prompt for Biometrics/PIN
-        User->>LocalAuthPlugin [local_auth Plugin]: Provides Biometrics/PIN
-        LocalAuthPlugin [local_auth Plugin]-->>LocalAuthBloc (Presentation): Return Authentication Result (Success/Failure)
-        alt Authentication Success
-            LocalAuthBloc (Presentation)->>LocalAuthBloc (Presentation): Emit Authenticated State
-            LocalAuthBloc (Presentation)->>GoRouter (Navigation): Navigate back / to intended page
-        else Authentication Failure
-            LocalAuthBloc (Presentation)->>LocalAuthBloc (Presentation): Emit Unauthenticated State (Show Error on Lock Screen)
-            User->>LocalAuthBloc (Presentation): Can Retry Authentication
-        end
-    else Lock Not Required
-        LocalAuthBloc (Presentation)->>LocalAuthBloc (Presentation): Emit Authenticated State (No UI change needed)
-    end
+### Xoay vault key
 
-```
+Client tạo DEK và recovery key mới sau khi xác thực DEK hiện tại với current remote
+snapshot. Khi user xác nhận đã lưu key, client re-download đúng revision, decrypt
+bằng DEK cũ, re-encrypt bằng DEK mới rồi atomic publish ciphertext/wrapped key ở
+revision kế tiếp. DEK secure storage chỉ được thay sau read-after-write verify.
 
-## 7. ⚠️ Error Handling
-The application uses the `Either<Failure, SuccessType>` pattern (from the `dartz` package) extensively in the Domain and Data layers to handle expected failures gracefully without throwing exceptions for common issues.
+Conflict/cancel không đổi key. Publish transport, verify hoặc key-store failure sau
+request được báo là trạng thái mơ hồ và last-seen revision không tăng; recovery key
+mới là đường khôi phục. Thiết bị tuân thủ chỉ có DEK cũ không đọc được current
+snapshot, nhưng auth session và backup cũ không tự bị revoke.
 
-*   **`Failure` Types:** Specific `Failure` subclasses represent different error categories:
-    *   `ServerFailure`: Errors from the backend (e.g., Supabase API errors, 5xx status codes).
-    *   `CacheFailure`: Errors related to local storage (e.g., `FlutterSecureStorage` read/write errors).
-    *   `NetworkFailure`: Issues with network connectivity.
-    *   `AuthenticationFailure`: Errors during login, registration, or token issues.
-    *   `EncryptionFailure`: Errors during E2EE encryption/decryption.
-    *   `PermissionFailure`: Errors related to missing permissions (e.g., camera for QR scan).
-    *   `InvalidInputFailure`: Errors due to invalid user input (though often handled via form validation in Presentation).
-*   **Presentation Layer Handling:** BLoCs receive the `Either` type from UseCases.
-    *   On `Left(Failure)`, the BLoC emits an error state (e.g., `AccountsLoadFailure`, `SyncFailure`).
-    *   The UI layer listens to these states and displays appropriate user feedback (e.g., Snackbars, error messages within widgets, specific error pages). The feedback aims to be user-friendly, explaining the issue simply (e.g., "Could not connect to server", "Invalid login details", "Failed to save account").
-    *   On `Right(SuccessType)`, the BLoC emits a success state with the required data.
-Uses `Either<Failure, SuccessType>` and specific `Failure` types.
+## Backend
+
+- Một row `encrypted_vault_snapshots` cho mỗi `auth.users.id`.
+- Client authenticated chỉ có SELECT row của chính mình qua `FORCE RLS` khi JWT
+  `session_id` vẫn tồn tại cho cùng `auth.uid()` trong `auth.sessions`.
+- Write chỉ qua `SECURITY DEFINER` RPC dùng cùng owner + active-session guard.
+- `SignOutScope.others` xóa các session khác; RLS trả 0 row và RPC trả
+  `session_revoked` cho JWT cũ ngay cả trước khi JWT hết hạn.
+- Expected revision sai trả SQLSTATE `PT409`/`revision_conflict`.
+- `synced_accounts` plaintext còn là compatibility schema, không nằm trong runtime DI.
+
+## Recovery password
+
+Web recovery là canonical surface. GoTrue template dùng one-time `token_hash` và
+exact HTTPS redirect allow-list. Password recovery chỉ khôi phục Supabase account;
+nó không thay thế E2EE recovery key.
+
+Login được mở từ Settings với `returnTo=/settings`. Redirect policy chỉ nhận `/`
+hoặc `/settings`; URL ngoài allowlist fallback `/`. Login listener chủ động `go()`
+tới destination này sau `AuthAuthenticated`, không phụ thuộc timing của router
+refresh hoặc navigator stack.
+
+## Platform capability
+
+`PlatformCapabilities` là source of truth để ẩn camera/image/local-auth/E2EE trên
+platform plugin không hỗ trợ. Windows/Linux vẫn hỗ trợ nhập TOTP thủ công và E2EE;
+Web chỉ có local TOTP + camera QR.
+
+## Failure behavior
+
+- Decrypt/validation/auth failure: không mutate local vault.
+- Local commit failure: generation cũ vẫn active.
+- Publish conflict/network failure: cloud snapshot cũ vẫn tồn tại.
+- Session đổi giữa operation: request bị từ chối trước network/write kế tiếp.
+- Session đã revoke: RLS không trả snapshot; RPC fail `session_revoked`; local
+  vault không bị xóa và session hiện tại không bị sign out.
+- Secure key write không verify được: setup/recovery trả failure.
+
+## Khoảng trống đã biết
+
+- E2EE v1 đã có recovery-key re-wrap, DEK rotation và bulk revoke mọi session
+  khác; chưa có device registry/revoke riêng từng thiết bị, device-specific key
+  wrap, tombstone/history hoặc Web support.
+- Device-level camera/biometric/secure-storage integration coverage chưa đầy đủ.
+- Alerting backend chưa có external notification channel.

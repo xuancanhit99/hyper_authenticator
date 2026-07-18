@@ -1,59 +1,73 @@
-part of 'sync_bloc.dart'; // Will create sync_bloc.dart next
+part of 'sync_bloc.dart';
 
-abstract class SyncEvent extends Equatable {
+sealed class SyncEvent extends Equatable {
   const SyncEvent();
 
   @override
-  List<Object?> get props => [];
+  List<Object?> get props => const [];
 }
 
-/// Event to check if remote data exists and the general sync status.
-class CheckSyncStatus extends SyncEvent {}
+class CheckSyncStatus extends SyncEvent {
+  const CheckSyncStatus();
+}
 
-/// Event triggered to upload the current local accounts to the remote server.
-class UploadAccountsRequested extends SyncEvent {
-  final List<AuthenticatorAccount> accountsToUpload;
+class BeginEncryptedSyncSetup extends SyncEvent {
+  const BeginEncryptedSyncSetup();
+}
 
-  const UploadAccountsRequested({required this.accountsToUpload});
+class ConfirmRecoveryKeySaved extends SyncEvent {
+  const ConfirmRecoveryKeySaved();
+}
+
+class BeginRecoveryKeyRotation extends SyncEvent {
+  const BeginRecoveryKeyRotation();
+}
+
+class ConfirmRecoveryKeyRotation extends SyncEvent {
+  const ConfirmRecoveryKeyRotation();
+}
+
+class BeginVaultKeyRotation extends SyncEvent {
+  const BeginVaultKeyRotation();
+}
+
+class ConfirmVaultKeyRotation extends SyncEvent {
+  const ConfirmVaultKeyRotation();
+}
+
+class RecoverEncryptedSync extends SyncEvent {
+  final String recoveryCode;
+
+  const RecoverEncryptedSync(this.recoveryCode);
 
   @override
-  List<Object?> get props => [accountsToUpload];
-}
-
-/// Event triggered to download accounts from the remote server and overwrite local ones.
-class DownloadAccountsRequested extends SyncEvent {}
-
-/// Event to toggle the sync feature on or off.
-class ToggleSyncEnabled extends SyncEvent {
-  final bool isEnabled;
-
-  const ToggleSyncEnabled({required this.isEnabled});
+  List<Object?> get props => [recoveryCode];
 
   @override
-  List<Object?> get props => [isEnabled];
+  String toString() => 'RecoverEncryptedSync(recoveryCode: [REDACTED])';
 }
 
-/// Event triggered by the "Sync Now" button.
-/// Performs Download (add only), Merge (implicit), Confirm, Upload (overwrite).
+class SetEncryptedSyncEnabled extends SyncEvent {
+  final bool enabled;
+
+  const SetEncryptedSyncEnabled(this.enabled);
+
+  @override
+  List<Object?> get props => [enabled];
+}
+
 class SyncNowRequested extends SyncEvent {
-  // Although download happens first, we need the current local accounts
-  // for the potential upload step after confirmation.
-  final List<AuthenticatorAccount> accountsToUpload;
-
-  const SyncNowRequested({required this.accountsToUpload});
-
-  @override
-  List<Object?> get props => [accountsToUpload];
+  const SyncNowRequested();
 }
 
-/// Event triggered to explicitly overwrite cloud data with local data.
-class SyncOverwriteCloudRequested extends SyncEvent {
-  final List<AuthenticatorAccount> accountsToUpload;
-
-  const SyncOverwriteCloudRequested({required this.accountsToUpload});
-
-  @override
-  List<Object?> get props => [accountsToUpload];
+class ResolveSyncConflictWithCloud extends SyncEvent {
+  const ResolveSyncConflictWithCloud();
 }
 
-// Add other events as needed, e.g., for setting up sync (password), deleting remote data etc.
+class ResolveSyncConflictWithLocal extends SyncEvent {
+  const ResolveSyncConflictWithLocal();
+}
+
+class CancelSensitiveSyncOperation extends SyncEvent {
+  const CancelSensitiveSyncOperation();
+}

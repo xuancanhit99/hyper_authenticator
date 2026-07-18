@@ -1,7 +1,7 @@
 // lib/features/auth/data/datasources/auth_remote_data_source.dart
-import 'package:flutter/foundation.dart';
 import 'package:injectable/injectable.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:hyper_authenticator/core/config/app_config.dart';
 import 'package:hyper_authenticator/core/error/exceptions.dart';
 
 abstract class AuthRemoteDataSource {
@@ -24,6 +24,8 @@ abstract class AuthRemoteDataSource {
 
   Future<void> signOut();
 
+  Future<void> revokeOtherSessions();
+
   // Added method for updating password
   Future<void> updatePassword(String newPassword);
 }
@@ -31,8 +33,9 @@ abstract class AuthRemoteDataSource {
 @LazySingleton(as: AuthRemoteDataSource)
 class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   final SupabaseClient _supabaseClient;
+  final AppConfig _appConfig;
 
-  AuthRemoteDataSourceImpl(this._supabaseClient);
+  AuthRemoteDataSourceImpl(this._supabaseClient, this._appConfig);
 
   @override
   User? get currentUser => _supabaseClient.auth.currentUser;
@@ -53,16 +56,14 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       );
       if (response.user == null) {
         throw const AuthServerException(
-          'Sign in failed: Invalid credentials or user not found.',
+          'Đăng nhập thất bại: thông tin đăng nhập không hợp lệ hoặc không tìm thấy người dùng.',
         );
       }
       return response.user!;
     } on AuthException catch (e) {
-      debugPrint('Supabase SignIn AuthException: ${e.message}');
       throw AuthServerException(e.message);
-    } catch (e, s) {
-      debugPrint('Unknown SignIn Error: $e\nStackTrace: $s');
-      throw ServerException('An unexpected error occurred during sign in.');
+    } catch (_) {
+      throw ServerException('Đã xảy ra lỗi không mong đợi khi đăng nhập.');
     }
   }
 
@@ -83,43 +84,45 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       );
 
       if (response.user == null && response.session == null) {
-        throw const AuthServerException('Sign up process failed unexpectedly.');
+        throw const AuthServerException('Quá trình đăng ký thất bại.');
       }
       if (response.user == null) {
         if (response.session != null) {
-          debugPrint(
-            'SignUp successful (session created), but user object is null. Email verification likely required.',
-          );
           throw const AuthServerException(
-            'Sign up completed but user data is missing in response.',
+            'Đăng ký hoàn tất nhưng response thiếu dữ liệu người dùng.',
           );
         } else {
           throw const AuthServerException(
-            'Sign up process failed: No user or session returned.',
+            'Đăng ký thất bại: server không trả về người dùng hoặc session.',
           );
         }
       }
       return response.user!;
     } on AuthException catch (e) {
-      debugPrint('Supabase SignUp AuthException: ${e.message}');
       throw AuthServerException(e.message);
-    } catch (e, s) {
-      debugPrint('Unknown SignUp Error: $e\nStackTrace: $s');
-      throw ServerException('An unexpected error occurred during sign up.');
+    } catch (_) {
+      throw ServerException('Đã xảy ra lỗi không mong đợi khi đăng ký.');
     }
   }
 
   @override
   Future<void> recoverPassword(String email) async {
+    final recoveryUrl = _appConfig.passwordRecoveryUrl;
+    if (recoveryUrl == null) {
+      throw const AuthServerException(
+        'Password recovery chưa được cấu hình cho environment này.',
+      );
+    }
     try {
-      await _supabaseClient.auth.resetPasswordForEmail(email);
+      await _supabaseClient.auth.resetPasswordForEmail(
+        email,
+        redirectTo: recoveryUrl,
+      );
     } on AuthException catch (e) {
-      debugPrint("Supabase RecoverPassword Error: ${e.message}");
       throw AuthServerException(e.message);
-    } catch (e, s) {
-      debugPrint("Unknown RecoverPassword Error: $e\nStackTrace: $s");
+    } catch (_) {
       throw ServerException(
-        'An unexpected error occurred during password recovery.',
+        'Đã xảy ra lỗi không mong đợi khi khôi phục mật khẩu.',
       );
     }
   }
@@ -127,10 +130,20 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   @override
   Future<void> signOut() async {
     try {
-      await _supabaseClient.auth.signOut();
-    } catch (e, s) {
-      debugPrint("Supabase SignOut Error: $e\nStackTrace: $s");
-      throw ServerException('An error occurred during sign out.');
+      await _supabaseClient.auth.signOut(scope: SignOutScope.local);
+    } catch (_) {
+      throw ServerException('Đã xảy ra lỗi khi đăng xuất.');
+    }
+  }
+
+  @override
+  Future<void> revokeOtherSessions() async {
+    try {
+      await _supabaseClient.auth.signOut(scope: SignOutScope.others);
+    } on AuthException catch (e) {
+      throw AuthServerException(e.message);
+    } catch (_) {
+      throw ServerException('Đã xảy ra lỗi khi thu hồi các session khác.');
     }
   }
 
@@ -142,12 +155,10 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
         UserAttributes(password: newPassword),
       );
     } on AuthException catch (e) {
-      debugPrint("Supabase UpdatePassword Error: ${e.message}");
       throw AuthServerException(e.message);
-    } catch (e, s) {
-      debugPrint("Unknown UpdatePassword Error: $e\nStackTrace: $s");
+    } catch (_) {
       throw ServerException(
-        'An unexpected error occurred while updating password.',
+        'Đã xảy ra lỗi không mong đợi khi cập nhật mật khẩu.',
       );
     }
   }

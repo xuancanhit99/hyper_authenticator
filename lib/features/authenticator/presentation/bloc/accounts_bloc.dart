@@ -1,6 +1,5 @@
 import 'package:bloc/bloc.dart';
 import 'package:equatable/equatable.dart';
-import 'package:fpdart/fpdart.dart';
 import 'package:hyper_authenticator/core/error/failures.dart';
 import 'package:hyper_authenticator/core/usecases/usecase.dart';
 import 'package:hyper_authenticator/features/authenticator/domain/entities/authenticator_account.dart';
@@ -13,7 +12,7 @@ import 'package:injectable/injectable.dart'; // Moved import here
 part 'accounts_event.dart';
 part 'accounts_state.dart';
 
-@injectable // Register Bloc
+@lazySingleton
 class AccountsBloc extends Bloc<AccountsEvent, AccountsState> {
   final GetAccounts getAccounts;
   final AddAccount addAccount;
@@ -31,7 +30,6 @@ class AccountsBloc extends Bloc<AccountsEvent, AccountsState> {
     on<LoadAccounts>(_onLoadAccounts);
     on<AddAccountRequested>(_onAddAccountRequested);
     on<DeleteAccountRequested>(_onDeleteAccountRequested);
-    on<ReplaceAccountsEvent>(_onReplaceAccounts); // Added handler
     on<UpdateAccountRequested>(
       _onUpdateAccountRequested,
     ); // Added handler for update
@@ -111,108 +109,12 @@ class AccountsBloc extends Bloc<AccountsEvent, AccountsState> {
 
   // Helper to convert Failure objects to user-friendly messages
   String _mapFailureToMessage(Failure failure) {
-    switch (failure.runtimeType) {
-      case StorageFailure:
-      case AccountNotFoundFailure:
-      case ValidationFailure:
-        return failure.message;
-      // Add mappings for other core failures if necessary
-      // case ServerFailure:
-      //   return 'Server Error';
-      default:
-        return 'An unexpected error occurred.';
+    if (failure is StorageFailure ||
+        failure is AccountNotFoundFailure ||
+        failure is ValidationFailure) {
+      return failure.message;
     }
-  }
-
-  Future<void> _onReplaceAccounts(
-    ReplaceAccountsEvent event, // Contains downloadedAccounts
-    Emitter<AccountsState> emit,
-  ) async {
-    emit(AccountsLoading()); // Indicate processing state
-
-    // 1. Get current local accounts for comparison
-    final failureOrCurrentAccounts = await getAccounts(NoParams());
-
-    await failureOrCurrentAccounts.fold(
-      (failure) async {
-        // If fetching current accounts fails, emit error and stop
-        emit(
-          AccountsError(
-            'Failed to get current accounts before merging: ${_mapFailureToMessage(failure)}',
-          ),
-        );
-      },
-      (currentLocalAccounts) async {
-        // Create a set of identifiers for existing local accounts for efficient lookup
-        // Using issuer and accountName as the key for comparison (case-insensitive)
-        final existingLocalIdentifiers =
-            currentLocalAccounts
-                .map(
-                  (acc) =>
-                      '${acc.issuer.toLowerCase()}:${acc.accountName.toLowerCase()}',
-                )
-                .toSet();
-
-        // 2. Add only the accounts from the server that are not already present locally
-        bool hasAddError = false;
-        String firstAddErrorMessage = '';
-        int addedCount = 0;
-
-        for (final downloadedAccount in event.accounts) {
-          final downloadedIdentifier =
-              '${downloadedAccount.issuer.toLowerCase()}:${downloadedAccount.accountName.toLowerCase()}';
-
-          // Check if an account with the same issuer/name already exists locally
-          if (!existingLocalIdentifiers.contains(downloadedIdentifier)) {
-            // If not present, add it
-            final addResult = await addAccount(
-              AddAccountParams(
-                issuer: downloadedAccount.issuer,
-                accountName: downloadedAccount.accountName,
-                secretKey: downloadedAccount.secretKey,
-                algorithm: downloadedAccount.algorithm,
-                digits: downloadedAccount.digits,
-                period: downloadedAccount.period,
-              ),
-            );
-            await addResult.fold(
-              (failure) async {
-                if (!hasAddError) {
-                  hasAddError = true;
-                  firstAddErrorMessage = _mapFailureToMessage(failure);
-                }
-                print(
-                  'Error adding account ${downloadedAccount.accountName} during merge: ${failure.message}',
-                );
-              },
-              (_) async {
-                addedCount++;
-                // Add the newly added identifier to prevent adding duplicates
-                // if the server list somehow contained duplicates itself.
-                existingLocalIdentifiers.add(downloadedIdentifier);
-              },
-            );
-          } else {
-            print(
-              'Skipping account ${downloadedAccount.accountName} as it already exists locally.',
-            );
-          }
-          // Method _onUpdateAccountRequested was moved out of this loop
-        }
-
-        if (hasAddError) {
-          print(
-            'Merge finished with errors. First error: $firstAddErrorMessage',
-          );
-          // Optionally emit a specific state
-        }
-
-        print('Merge complete. Added $addedCount new accounts.');
-
-        // 3. Finally, reload the accounts to reflect the merged state
-        add(LoadAccounts());
-      },
-    );
+    return 'Đã xảy ra lỗi không mong đợi.';
   }
 
   Future<void> _onUpdateAccountRequested(

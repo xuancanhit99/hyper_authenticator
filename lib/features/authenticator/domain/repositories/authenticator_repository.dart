@@ -21,6 +21,14 @@ abstract class AuthenticatorRepository {
     required int period, // Added
   });
 
+  /// Persists an account while preserving its stable ID.
+  ///
+  /// This is used by migration/restore boundaries. Interactive create flows
+  /// should continue to use [addAccount], which generates a new ID.
+  Future<Either<Failure, AuthenticatorAccount>> saveAccount(
+    AuthenticatorAccount account,
+  );
+
   /// Deletes an authenticator account by its ID.
   /// Returns [Right(unit)] on successful deletion.
   /// Returns [Left] with a [Failure] if the account is not found or deletion fails.
@@ -30,6 +38,11 @@ abstract class AuthenticatorRepository {
   /// Returns [Right(unit)] on successful update.
   /// Returns [Left] with a [Failure] if the account is not found or update fails.
   Future<Either<Failure, Unit>> updateAccount(AuthenticatorAccount account);
+
+  /// Replaces the complete local vault using one copy-on-write commit.
+  Future<Either<Failure, Unit>> replaceAccounts(
+    List<AuthenticatorAccount> accounts,
+  );
 
   // Note: Generating the TOTP code itself is often considered a domain/usecase logic
   // rather than a repository function, as it doesn't involve data persistence.

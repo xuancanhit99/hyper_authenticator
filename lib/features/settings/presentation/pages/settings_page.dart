@@ -1,648 +1,541 @@
-import 'dart:async'; // Added for StreamSubscription
+import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:provider/provider.dart'; // Import Provider
-import 'package:hyper_authenticator/features/auth/presentation/bloc/auth_bloc.dart'; // For logout
+import 'package:hyper_authenticator/core/platform/platform_capabilities.dart';
+import 'package:hyper_authenticator/features/auth/domain/entities/user_entity.dart';
+import 'package:hyper_authenticator/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:hyper_authenticator/features/settings/presentation/bloc/settings_bloc.dart';
-import 'package:hyper_authenticator/features/sync/presentation/bloc/sync_bloc.dart'; // Added
-import 'package:hyper_authenticator/features/authenticator/presentation/bloc/accounts_bloc.dart'; // Added
+import 'package:hyper_authenticator/features/settings/presentation/bloc/session_security_bloc.dart';
+import 'package:hyper_authenticator/features/settings/presentation/widgets/encrypted_sync_unavailable_tile.dart';
+import 'package:hyper_authenticator/features/settings/presentation/widgets/authentication_session_tile.dart';
+import 'package:hyper_authenticator/features/settings/presentation/widgets/recovery_import_dialog.dart';
+import 'package:hyper_authenticator/features/sync/presentation/bloc/sync_bloc.dart';
 import 'package:hyper_authenticator/injection_container.dart';
-import 'package:intl/intl.dart'; // Added for date formatting
-import 'package:hyper_authenticator/features/authenticator/domain/entities/authenticator_account.dart';
-import 'package:hyper_authenticator/features/auth/domain/entities/user_entity.dart'; // Import UserEntity
-import 'package:hyper_authenticator/core/theme/theme_provider.dart'; // Import ThemeProvider
-import 'package:hyper_authenticator/core/constants/app_colors.dart'; // Added for _SyncSection
+import 'package:intl/intl.dart';
 
 class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key});
 
   @override
   Widget build(BuildContext context) {
-    // Provide multiple Blocs needed for this page
     return MultiBlocProvider(
       providers: [
         BlocProvider(create: (_) => sl<SettingsBloc>()..add(LoadSettings())),
-        BlocProvider(
-          // Create the SyncBloc instance, but DO NOT add CheckSyncStatus here.
-          // The check should be triggered explicitly when the page is viewed or refreshed.
-          create: (_) => sl<SyncBloc>(),
-        ),
-        // AccountsBloc is likely provided higher up, but ensure it's accessible
-        // If not provided higher up, add: BlocProvider.value(value: sl<AccountsBloc>()),
+        BlocProvider(create: (_) => sl<SyncBloc>()),
+        BlocProvider(create: (_) => sl<SessionSecurityBloc>()),
       ],
+      child: const _SettingsView(),
+    );
+  }
+}
+
+class _SettingsView extends StatelessWidget {
+  const _SettingsView();
+
+  @override
+  Widget build(BuildContext context) {
+    final authState = context.watch<AuthBloc>().state;
+    final currentUser = authState is AuthAuthenticated ? authState.user : null;
+    final encryptedSyncSupported =
+        PlatformCapabilities.supportsEncryptedCloudSync;
+
+    return BlocListener<SessionSecurityBloc, SessionSecurityState>(
+      listener: (context, state) {
+        final message = switch (state) {
+          SessionSecuritySuccess() =>
+            'Đã đăng xuất tất cả phiên khác. Thiết bị này vẫn đăng nhập.',
+          SessionSecurityFailure(:final message) => message,
+          _ => null,
+        };
+        if (message != null) {
+          ScaffoldMessenger.of(context)
+            ..hideCurrentSnackBar()
+            ..showSnackBar(SnackBar(content: Text(message)));
+        }
+      },
       child: Scaffold(
-        appBar: AppBar(
-          backgroundColor:
-              Theme.of(context).scaffoldBackgroundColor, // Set background color
-          elevation: 0, // Remove shadow
-          title: const Text('Settings'),
-          actions: [],
-        ),
-        body: BlocListener<SyncBloc, SyncState>(
-          // Listen for sync success/failure messages
-          listener: (context, state) {
-            if (state is SyncSuccess) {
-              ScaffoldMessenger.of(context)
-                ..hideCurrentSnackBar()
-                ..showSnackBar(
-                  SnackBar(
-                    content: Text(state.message),
-                    backgroundColor: Colors.green,
-                  ),
-                );
-            } else if (state is SyncFailure) {
-              ScaffoldMessenger.of(context)
-                ..hideCurrentSnackBar()
-                ..showSnackBar(
-                  SnackBar(
-                    content: Text(state.message),
-                    backgroundColor: Colors.red,
-                  ),
-                );
+        appBar: AppBar(title: const Text('Cài đặt')),
+        body: BlocBuilder<SettingsBloc, SettingsState>(
+          builder: (context, state) {
+            if (state is SettingsLoading) {
+              return const Center(child: CircularProgressIndicator());
             }
-          },
-          child: BlocBuilder<SettingsBloc, SettingsState>(
-            builder: (context, settingsState) {
-              final isDarkMode =
-                  Theme.of(context).brightness == Brightness.dark;
-              // Renamed state to settingsState
-              // Access AuthBloc state to get user info
-              final authState = context.watch<AuthBloc>().state;
-              UserEntity? currentUser;
-              if (authState is AuthAuthenticated) {
-                currentUser = authState.user;
-              }
-
-              bool isBiometricEnabled = false;
-              bool canCheckBiometrics = false;
-
-              if (settingsState is SettingsLoaded) {
-                isBiometricEnabled = settingsState.isBiometricEnabled;
-                canCheckBiometrics = settingsState.canCheckBiometrics;
-              } else if (settingsState is SettingsLoading) {
-                return const Center(child: CircularProgressIndicator());
-              }
-              // Handle SettingsError state if needed
-
-              return ListView(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16.0,
-                  vertical: 8.0,
-                ),
-                children: [
-                  // --- User Info Card ---
-                  if (currentUser !=
-                      null) // Only show card if user is logged in
-                    Card(
-                      color:
-                          isDarkMode
-                              ? AppColors
-                                  .cCardDarkColor // Use custom dark color
-                              : Theme.of(
-                                context,
-                              ).cardColor, // Use default theme color for light mode
-                      margin: const EdgeInsets.only(
-                        bottom: 16.0,
-                      ), // Add margin below the card
-                      child: ListTile(
-                        leading: CircleAvatar(
-                          // Simple avatar
-                          // backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-                          child: Text(
-                            // Use first letter of name for avatar
-                            currentUser.name?.isNotEmpty == true
-                                ? currentUser.name![0].toUpperCase()
-                                : (currentUser.email?.isNotEmpty == true
-                                    ? currentUser.email![0].toUpperCase()
-                                    : '?'), // Fallback to email initial
-                            // style: TextStyle(color: Theme.of(context).colorScheme.onPrimaryContainer),
-                          ),
-                        ),
-                        title: Text(
-                          // Display name as title
-                          currentUser.name ??
-                              'N/A', // Use name, fallback to N/A
-                          style: Theme.of(context).textTheme.titleMedium,
-                        ),
+            final loaded = state is SettingsLoaded ? state : null;
+            return ListView(
+              padding: const EdgeInsets.all(16),
+              children: [
+                if (currentUser != null) _UserCard(currentUser),
+                Card(
+                  child: Column(
+                    children: [
+                      ListTile(
+                        leading: const Icon(Icons.fingerprint),
+                        title: const Text('Khóa bằng sinh trắc học'),
                         subtitle: Text(
-                          currentUser.email ?? 'No email',
-                        ), // Display email as subtitle
-                        // subtitle: Text(currentUser.email ?? 'No email'), // Remove subtitle or display something else
+                          loaded?.canCheckBiometrics == true
+                              ? 'Dùng Face ID, vân tay hoặc mã khóa thiết bị.'
+                              : 'Thiết bị hoặc platform không hỗ trợ.',
+                        ),
+                        trailing: loaded?.canCheckBiometrics == true
+                            ? Switch(
+                                value: loaded!.isBiometricEnabled,
+                                onChanged: (enabled) => context
+                                    .read<SettingsBloc>()
+                                    .add(ToggleBiometric(isEnabled: enabled)),
+                              )
+                            : null,
                       ),
-                    ),
-                  // --- Settings Card ---
-                  Card(
-                    color:
-                        isDarkMode
-                            ? AppColors
-                                .cCardDarkColor // Use custom dark color
-                            : Theme.of(
-                              context,
-                            ).cardColor, // Use default theme color for light mode
-                    margin: const EdgeInsets.only(
-                      bottom: 16.0,
-                    ), // Add margin below the card
-                    child: Column(
-                      // Wrap settings in a Column inside the Card
-                      children: [
-                        // --- Biometric Login Section ---
-                        ListTile(
-                          leading: const Icon(Icons.fingerprint),
-                          title: const Text('Biometric Login'),
-                          subtitle: Text(
-                            canCheckBiometrics
-                                ? 'Use FaceID / Fingerprint to unlock the app'
-                                : 'Biometrics not available on this device',
-                          ),
-                          trailing:
-                              canCheckBiometrics
-                                  ? Switch(
-                                    value: isBiometricEnabled,
-                                    activeTrackColor:
-                                        Colors
-                                            .green, // Changed to activeTrackColor
-                                    onChanged: (value) {
-                                      context.read<SettingsBloc>().add(
-                                        ToggleBiometric(isEnabled: value),
-                                      );
-                                    },
-                                  )
-                                  : null,
-                          // Disable switch if not supported
-                          onTap:
-                              canCheckBiometrics
-                                  ? () {
-                                    // Allow tapping row to toggle
-                                    context.read<SettingsBloc>().add(
-                                      ToggleBiometric(
-                                        isEnabled: !isBiometricEnabled,
-                                      ),
-                                    );
-                                  }
-                                  : null,
+                      const Divider(height: 1),
+                      _EncryptedSyncSection(
+                        currentUser: currentUser,
+                        isSupported: encryptedSyncSupported,
+                      ),
+                      if (currentUser != null || encryptedSyncSupported) ...[
+                        const Divider(height: 1),
+                        BlocBuilder<SessionSecurityBloc, SessionSecurityState>(
+                          builder: (context, sessionSecurityState) =>
+                              AuthenticationSessionTile(
+                                currentUser: currentUser,
+                                sessionSecurityState: sessionSecurityState,
+                              ),
                         ),
-                        const Divider(),
-
-                        // --- Sync Accounts Section ---
-                        _SyncSection(), // Use the dedicated widget
-                        const Divider(),
-
-                        // --- Account Section (Moved to bottom) ---
-                        // Add other settings here later
-
-                        // --- Logout Section ---
-                        ListTile(
-                          leading: const Icon(Icons.logout, color: Colors.red),
-                          title: const Text(
-                            'Logout',
-                            style: TextStyle(color: Colors.red),
-                          ),
-                          onTap: () {
-                            // Show confirmation dialog before logging out
-                            showDialog(
-                              context: context,
-                              builder:
-                                  (dialogContext) => AlertDialog(
-                                    title: const Text('Confirm Logout'),
-                                    content: const Text(
-                                      'Are you sure you want to log out?',
-                                    ),
-                                    actions: [
-                                      TextButton(
-                                        onPressed:
-                                            () => Navigator.pop(dialogContext),
-                                        child: const Text('Cancel'),
-                                      ),
-                                      TextButton(
-                                        onPressed: () {
-                                          Navigator.pop(
-                                            dialogContext,
-                                          ); // Close dialog
-                                          context.read<AuthBloc>().add(
-                                            AuthSignOutRequested(), // Removed const
-                                          );
-                                          // Router redirect logic will handle navigation to login
-                                        },
-                                        child: const Text(
-                                          'Logout',
-                                          style: TextStyle(color: Colors.red),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                            );
-                          },
-                        ),
-                        // const Divider(),
                       ],
-                    ),
+                    ],
                   ),
-                  // Add other settings here later (outside the card)
-                ],
-              );
-            },
-          ),
+                ),
+              ],
+            );
+          },
         ),
       ),
     );
   }
 }
 
-// Widget dedicated to the Sync section UI and logic
-class _SyncSection extends StatefulWidget {
+class _UserCard extends StatelessWidget {
+  final UserEntity user;
+
+  const _UserCard(this.user);
+
   @override
-  _SyncSectionState createState() => _SyncSectionState();
+  Widget build(BuildContext context) {
+    final name = user.name?.trim();
+    final email = user.email?.trim();
+    final label = name?.isNotEmpty == true
+        ? name!
+        : email?.isNotEmpty == true
+        ? email!
+        : 'Tài khoản Supabase';
+    return Card(
+      margin: const EdgeInsets.only(bottom: 16),
+      child: ListTile(
+        leading: CircleAvatar(
+          child: Text(label.characters.first.toUpperCase()),
+        ),
+        title: Text(label),
+        subtitle: email?.isNotEmpty == true ? Text(email!) : null,
+      ),
+    );
+  }
 }
 
-class _SyncSectionState extends State<_SyncSection> {
-  StreamSubscription<AuthState>? _authSubscription;
+class _EncryptedSyncSection extends StatefulWidget {
+  final UserEntity? currentUser;
+  final bool isSupported;
 
-  // Removed local _isSyncEnabled state. Will rely solely on SyncBloc state.
+  const _EncryptedSyncSection({
+    required this.currentUser,
+    required this.isSupported,
+  });
+
+  @override
+  State<_EncryptedSyncSection> createState() => _EncryptedSyncSectionState();
+}
+
+class _EncryptedSyncSectionState extends State<_EncryptedSyncSection> {
+  StreamSubscription<AuthState>? _authSubscription;
 
   @override
   void initState() {
     super.initState();
-    // Listen to AuthBloc state changes
-    _authSubscription = context.read<AuthBloc>().stream.listen((authState) {
-      // Trigger check only when authenticated and widget is mounted
-      if (mounted && authState is AuthAuthenticated) {
-        print(
-          "[_SyncSectionState] AuthAuthenticated detected, dispatching CheckSyncStatus.",
-        );
-        context.read<SyncBloc>().add(CheckSyncStatus());
-      } else {
-        print(
-          "[_SyncSectionState] Auth state is not AuthAuthenticated (${authState.runtimeType}), not dispatching CheckSyncStatus.",
-        );
+    _authSubscription = context.read<AuthBloc>().stream.listen((state) {
+      if (mounted && widget.isSupported && state is AuthAuthenticated) {
+        context.read<SyncBloc>().add(const CheckSyncStatus());
       }
     });
-
-    // Also trigger an initial check if already authenticated when widget builds
-    // (Handles cases where settings page is visited after initial auth)
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
-        final currentAuthState = context.read<AuthBloc>().state;
-        if (currentAuthState is AuthAuthenticated) {
-          print(
-            "[_SyncSectionState] Already authenticated on build, dispatching CheckSyncStatus.",
-          );
-          // Request initial status including enabled state and last sync time
-          context.read<SyncBloc>().add(CheckSyncStatus());
-          // Initial CheckSyncStatus is dispatched. UI will update via BlocBuilder.
-        }
+      if (mounted && widget.isSupported && widget.currentUser != null) {
+        context.read<SyncBloc>().add(const CheckSyncStatus());
       }
     });
-    // No need for a separate listener, BlocBuilder handles UI updates based on state.
+  }
+
+  @override
+  void didUpdateWidget(covariant _EncryptedSyncSection oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.isSupported &&
+        oldWidget.currentUser?.id != widget.currentUser?.id &&
+        widget.currentUser != null) {
+      context.read<SyncBloc>().add(const CheckSyncStatus());
+    }
   }
 
   @override
   void dispose() {
-    _authSubscription?.cancel(); // Cancel subscription on dispose
+    _authSubscription?.cancel();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    // Access AccountsBloc to get the current list for upload
-    final accountsState = context.watch<AccountsBloc>().state;
-    final currentAccounts =
-        (accountsState is AccountsLoaded)
-            ? accountsState.accounts
-            : <AuthenticatorAccount>[];
+    if (!widget.isSupported) {
+      return const EncryptedSyncUnavailableTile();
+    }
 
-    return BlocBuilder<SyncBloc, SyncState>(
-      builder: (context, state) {
-        // Determine state variables directly from SyncBloc's state
-        final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-        bool isCurrentlySyncEnabled = false; // Default to false
-        DateTime? lastSyncTime;
-        bool hasRemoteData = false;
-        bool isSyncing = state is SyncInProgress;
-        String syncProgressMessage = '';
-
-        if (state is SyncStatusChecked) {
-          isCurrentlySyncEnabled = state.isSyncEnabled;
-          lastSyncTime = state.lastSyncTime;
-          hasRemoteData = state.hasRemoteData;
-        } else if (state is SyncFailure) {
-          isCurrentlySyncEnabled = state.isSyncEnabled;
-          // Potentially retrieve last known sync time if needed, but error state takes precedence
-        } else if (state is SyncSuccess) {
-          // After success, we might not know the enabled status without another check,
-          // but we can assume it's enabled if a sync just happened.
-          // Let's rely on the subsequent CheckSyncStatus triggered by the BLoC.
-          // For immediate UI feedback, we can infer:
-          isCurrentlySyncEnabled = true; // Assume enabled after success
-          lastSyncTime = state.lastSyncTime;
-        } else if (state is SyncInProgress) {
-          syncProgressMessage = state.message;
-          // Infer enabled status from previous state if possible, or default
-          // This requires more complex state management or passing previous state.
-          // Simplification: Assume it's enabled if syncing is in progress.
-          isCurrentlySyncEnabled = true;
-        }
-        // If state is SyncInitial, isCurrentlySyncEnabled remains false.
-
-        Widget statusWidget = const Text(
-          'Sync status unknown.',
-        ); // Default status
-
-        if (state is SyncInitial ||
-            state is SyncInProgress &&
-                state.message == 'Checking sync status...') {
-          statusWidget = Row(
-            // Keep the checking status indicator
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const SizedBox(
-                width: 16, // Slightly smaller
-                height: 16,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              ),
-              const SizedBox(width: 8),
-              Text(
-                'Checking status...',
-                style: Theme.of(context).textTheme.bodySmall,
-              ),
-            ],
+    return BlocConsumer<SyncBloc, SyncState>(
+      listener: (context, state) async {
+        if (state is SyncRecoveryKeyReady) {
+          await _showRecoveryKeyDialog(
+            context,
+            state.recoveryCode,
+            operation: _RecoveryKeyOperation.setup,
           );
-        } else if (state is SyncStatusChecked) {
-          // isCurrentlySyncEnabled, lastSyncTime, hasRemoteData already set above
-
-          // Display last sync time if available and sync is enabled
-          if (isCurrentlySyncEnabled && lastSyncTime != null) {
-            final formattedTime = DateFormat.yMd().add_jm().format(
-              lastSyncTime,
-            );
-            statusWidget = Text(
-              'Last sync: $formattedTime',
-              style: Theme.of(context).textTheme.bodySmall,
-            );
-          } else if (isCurrentlySyncEnabled) {
-            statusWidget = Text(
-              'Sync enabled. Ready to sync.', // Or 'No previous sync found.'
-              style: Theme.of(context).textTheme.bodySmall,
-            );
-          } else {
-            statusWidget = Text(
-              'Sync is disabled.',
-              style: Theme.of(context).textTheme.bodySmall,
-            );
-          }
-
-          // Actions (Sync Now button) are only relevant if sync is enabled
-          // No separate actions list needed anymore
-        } else if (state is SyncFailure) {
-          statusWidget = Row(
-            // Show error with a retry button inline
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                Icons.error_outline,
-                color: Theme.of(context).colorScheme.error,
-                size: 16,
-              ),
-              const SizedBox(width: 4),
-              Expanded(
-                // Allow text to wrap if needed
-                child: Text(
-                  'Error: ${state.message}',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(context).colorScheme.error,
-                  ),
-                  overflow: TextOverflow.ellipsis,
+        } else if (state is SyncRecoveryKeyRotationReady) {
+          await _showRecoveryKeyDialog(
+            context,
+            state.recoveryCode,
+            operation: _RecoveryKeyOperation.recoveryKeyRotation,
+          );
+        } else if (state is SyncVaultKeyRotationReady) {
+          await _showRecoveryKeyDialog(
+            context,
+            state.recoveryCode,
+            operation: _RecoveryKeyOperation.vaultKeyRotation,
+          );
+        } else if (state is SyncSuccess) {
+          ScaffoldMessenger.of(context)
+            ..hideCurrentSnackBar()
+            ..showSnackBar(
+              SnackBar(
+                content: Text(
+                  'Đồng bộ mã hóa hoàn tất ở revision ${state.revision}.',
                 ),
               ),
-              // Optionally add a small retry button here if desired
-              // TextButton(onPressed: () => context.read<SyncBloc>().add(CheckSyncStatus()), child: Text('Retry'))
-            ],
-          );
-        } else if (state is SyncSuccess) {
-          // isCurrentlySyncEnabled, lastSyncTime already set above
-          if (isCurrentlySyncEnabled && lastSyncTime != null) {
-            final formattedTime = DateFormat.yMd().add_jm().format(
-              lastSyncTime,
             );
-            statusWidget = Text(
-              'Last sync: $formattedTime',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: Colors.green,
-              ), // Indicate success
-            );
-          } else if (isCurrentlySyncEnabled) {
-            statusWidget = Text(
-              'Sync successful.',
-              style: Theme.of(
-                context,
-              ).textTheme.bodySmall?.copyWith(color: Colors.green),
-            );
-          }
+        } else if (state is SyncFailure) {
+          ScaffoldMessenger.of(context)
+            ..hideCurrentSnackBar()
+            ..showSnackBar(SnackBar(content: Text(state.message)));
         }
-        // Handle other states like SyncInitial if needed
-
-        // Determine if "Sync Now" should be enabled
-        final bool canSyncNow =
-            isCurrentlySyncEnabled &&
-            !isSyncing &&
-            accountsState is AccountsLoaded;
-
-        return Column(
-          mainAxisSize: MainAxisSize.min, // Take minimum vertical space
-          crossAxisAlignment: CrossAxisAlignment.start,
+      },
+      builder: (context, state) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             ListTile(
-              leading: const Icon(Icons.sync),
-              title: const Text('Sync Accounts'),
-              subtitle:
-                  isSyncing &&
-                          syncProgressMessage !=
-                              'Checking sync status...' // Show progress only during actual sync
-                      ? Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            syncProgressMessage, // Show specific progress message
-                            style: Theme.of(context).textTheme.bodySmall,
-                          ),
-                        ],
-                      )
-                      : statusWidget, // Otherwise show the determined status
-              trailing: IconButton(
-                iconSize: 32.0, // Increased icon size
-                icon: Icon(
-                  isCurrentlySyncEnabled
-                      ? Icons
-                          .cloud_done // Kept user's icon
-                      : Icons
-                          .cloud_off_outlined, // Use filled cloud when enabled
-                  color:
-                      isDarkMode
-                          ? AppColors.cDarkIconBg
-                          : AppColors.cLightIconBg,
-                ),
-                tooltip:
-                    isCurrentlySyncEnabled ? 'Disable Sync' : 'Enable Sync',
-                onPressed: () {
-                  // Dispatch event to BLoC to toggle the state
-                  context.read<SyncBloc>().add(
-                    ToggleSyncEnabled(
-                      isEnabled: !isCurrentlySyncEnabled,
-                    ), // Send the opposite of the current state
-                  );
-                  // UI will update automatically via BlocBuilder when state changes
-                },
-              ), // Removed custom contentPadding
+              leading: const Icon(Icons.enhanced_encryption),
+              title: const Text('Đồng bộ cloud mã hóa đầu cuối'),
+              subtitle: _statusText(context, state),
+              trailing: state is SyncReady
+                  ? Switch(
+                      value: state.isEnabled,
+                      onChanged: (enabled) => context.read<SyncBloc>().add(
+                        SetEncryptedSyncEnabled(enabled),
+                      ),
+                    )
+                  : null,
             ),
-            // Conditionally display the "Sync Now" button and last sync time
-            if (isCurrentlySyncEnabled)
+            if (widget.currentUser != null)
               Padding(
-                padding: const EdgeInsets.only(
-                  left: 72.0, // Indent to align with ListTile content
-                  right: 16.0,
-                  bottom: 8.0,
-                  top: 0, // Reduce top padding
-                ),
-                child: ElevatedButton.icon(
-                  icon: const Icon(Icons.sync, size: 18),
-                  label: const Text('Sync Now'),
-                  onPressed:
-                      canSyncNow
-                          ? () {
-                            // Show confirmation dialog before syncing
-                            showDialog(
-                              context: context,
-                              builder:
-                                  (dialogContext) => AlertDialog(
-                                    title: const Text('Choose Sync Option'),
-                                    // Use content to explain the options briefly or remove if buttons are clear enough
-                                    content: SingleChildScrollView(
-                                      // Use SingleChildScrollView if content might overflow
-                                      child: ListBody(
-                                        children: <Widget>[
-                                          Text(
-                                            'Select how you want to synchronize your accounts:',
-                                          ),
-                                          SizedBox(
-                                            height: 16,
-                                          ), // Add some spacing
-                                          _buildSyncOption(
-                                            context: dialogContext,
-                                            // Pass dialog context
-                                            title: 'Sync and Merge',
-                                            description:
-                                                'Adds new local/cloud accounts, updates existing ones based on cloud data, then uploads the merged result.',
-                                            icon: Icons.merge_type,
-                                            color: AppColors.cPrimaryColor,
-                                            onPressed: () {
-                                              Navigator.pop(
-                                                dialogContext,
-                                              ); // Close dialog
-                                              // Dispatch the original SyncNowRequested event for merge logic
-                                              context.read<SyncBloc>().add(
-                                                SyncNowRequested(
-                                                  accountsToUpload:
-                                                      currentAccounts,
-                                                ),
-                                              );
-                                            },
-                                          ),
-                                          SizedBox(height: 12),
-                                          _buildSyncOption(
-                                            context: dialogContext,
-                                            // Pass dialog context
-                                            title: 'Sync and Overwrite Cloud',
-                                            description:
-                                                'Replaces ALL cloud data with your current local data. Use with caution!',
-                                            icon: Icons.cloud_upload_outlined,
-                                            // Or Icons.warning_amber_rounded
-                                            color: Colors.red,
-                                            onPressed: () {
-                                              Navigator.pop(
-                                                dialogContext,
-                                              ); // Close dialog
-                                              // Dispatch the new event for overwrite logic
-                                              context.read<SyncBloc>().add(
-                                                SyncOverwriteCloudRequested(
-                                                  // Use the new event
-                                                  accountsToUpload:
-                                                      currentAccounts,
-                                                ),
-                                              );
-                                            },
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                    actions: [
-                                      TextButton(
-                                        onPressed:
-                                            () => Navigator.pop(dialogContext),
-                                        child: const Text('Cancel'),
-                                      ),
-                                    ],
-                                  ),
-                            );
-                          }
-                          : null, // Disable if not enabled, syncing, or no accounts
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 8,
+                padding: const EdgeInsets.fromLTRB(72, 0, 16, 8),
+                child: _actions(context, state),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _statusText(BuildContext context, SyncState state) {
+    return switch (state) {
+      SyncInitial() => const Text('Chưa kiểm tra trạng thái.'),
+      SyncInProgress(:final message) => Row(
+        children: [
+          const SizedBox(
+            width: 14,
+            height: 14,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
+          const SizedBox(width: 8),
+          Expanded(child: Text(message)),
+        ],
+      ),
+      SyncUnavailable(:final message) => Text(message),
+      SyncSetupRequired() => const Text(
+        'Chưa có cloud vault. Recovery key sẽ chỉ hiển thị một lần.',
+      ),
+      SyncRecoveryRequired(:final remoteUpdatedAt) => Text(
+        'Thiết bị này cần recovery key. Snapshot: ${_format(remoteUpdatedAt)}.',
+      ),
+      SyncRecoveryKeyReady() => const Text('Đang chờ xác nhận recovery key.'),
+      SyncRecoveryKeyRotationReady() => const Text(
+        'Đang chờ xác nhận recovery key mới.',
+      ),
+      SyncVaultKeyRotationReady() => const Text(
+        'Đang chờ xác nhận vault key và recovery key mới.',
+      ),
+      SyncReady(:final isEnabled, :final revision, :final updatedAt) => Text(
+        '${isEnabled ? 'Đang bật' : 'Đang tắt'} · revision $revision · ${_format(updatedAt)}',
+      ),
+      SyncConflict(:final remoteRevision) => Text(
+        'Phát hiện thay đổi đồng thời ở cloud revision $remoteRevision. Cần chọn dữ liệu giữ lại.',
+        style: TextStyle(color: Theme.of(context).colorScheme.error),
+      ),
+      SyncSuccess(:final revision, :final completedAt) => Text(
+        'Đã đồng bộ revision $revision · ${_format(completedAt)}',
+      ),
+      SyncFailure(:final message) => Text(
+        message,
+        style: TextStyle(color: Theme.of(context).colorScheme.error),
+      ),
+    };
+  }
+
+  Widget _actions(BuildContext context, SyncState state) {
+    if (state is SyncInProgress ||
+        state is SyncRecoveryKeyReady ||
+        state is SyncRecoveryKeyRotationReady ||
+        state is SyncVaultKeyRotationReady) {
+      return const SizedBox.shrink();
+    }
+    if (state is SyncSetupRequired) {
+      return FilledButton.icon(
+        onPressed: () =>
+            context.read<SyncBloc>().add(const BeginEncryptedSyncSetup()),
+        icon: const Icon(Icons.vpn_key),
+        label: const Text('Thiết lập recovery key'),
+      );
+    }
+    if (state is SyncRecoveryRequired) {
+      return FilledButton.icon(
+        onPressed: () => _showRecoveryImportDialog(context),
+        icon: const Icon(Icons.key),
+        label: const Text('Nhập recovery key'),
+      );
+    }
+    if (state is SyncConflict) {
+      return Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        children: [
+          OutlinedButton(
+            onPressed: () => _confirmUseCloud(context),
+            child: const Text('Dùng bản cloud'),
+          ),
+          FilledButton.tonal(
+            onPressed: () => _confirmKeepLocal(context),
+            child: const Text('Giữ bản local'),
+          ),
+        ],
+      );
+    }
+    if (state is SyncFailure) {
+      return OutlinedButton.icon(
+        onPressed: () => context.read<SyncBloc>().add(const CheckSyncStatus()),
+        icon: const Icon(Icons.refresh),
+        label: const Text('Kiểm tra lại'),
+      );
+    }
+    final canSync = switch (state) {
+      SyncReady(:final isEnabled) => isEnabled,
+      SyncSuccess() => true,
+      _ => false,
+    };
+    final canRotate = state is SyncReady || state is SyncSuccess;
+    if (!canSync && !canRotate) return const SizedBox.shrink();
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: [
+        if (canSync)
+          FilledButton.icon(
+            onPressed: () =>
+                context.read<SyncBloc>().add(const SyncNowRequested()),
+            icon: const Icon(Icons.sync),
+            label: const Text('Đồng bộ ngay'),
+          ),
+        if (canRotate)
+          OutlinedButton.icon(
+            onPressed: () =>
+                context.read<SyncBloc>().add(const BeginRecoveryKeyRotation()),
+            icon: const Icon(Icons.key),
+            label: const Text('Đổi recovery key'),
+          ),
+        if (canRotate)
+          OutlinedButton.icon(
+            onPressed: () =>
+                context.read<SyncBloc>().add(const BeginVaultKeyRotation()),
+            icon: const Icon(Icons.security_update_warning),
+            label: const Text('Xoay vault key'),
+          ),
+      ],
+    );
+  }
+
+  Future<void> _showRecoveryKeyDialog(
+    BuildContext context,
+    String recoveryCode, {
+    required _RecoveryKeyOperation operation,
+  }) async {
+    var confirmedSaved = false;
+    final accepted = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: Text(
+            operation == _RecoveryKeyOperation.setup
+                ? 'Lưu recovery key'
+                : 'Lưu recovery key mới',
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(switch (operation) {
+                  _RecoveryKeyOperation.setup =>
+                    'Key này không được gửi lên server. Mất mọi thiết bị và key sẽ không thể khôi phục cloud vault.',
+                  _RecoveryKeyOperation.recoveryKeyRotation =>
+                    'Recovery key cũ không thể mở snapshot hiện tại sau khi hoàn tất. Thiết bị đã giữ vault key vẫn tiếp tục hoạt động.',
+                  _RecoveryKeyOperation.vaultKeyRotation =>
+                    'Cả vault key và recovery key sẽ đổi. Thiết bị khác chỉ giữ vault key cũ sẽ không đọc được snapshot mới và phải nhập recovery key mới. Thao tác không đăng xuất session Supabase khác và không xóa backup lịch sử.',
+                }),
+                const SizedBox(height: 16),
+                DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.surfaceContainerHighest,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: SelectableText(
+                      recoveryCode,
+                      style: const TextStyle(fontFamily: 'monospace'),
                     ),
                   ),
                 ),
-              ),
+                const SizedBox(height: 12),
+                CheckboxListTile(
+                  contentPadding: EdgeInsets.zero,
+                  value: confirmedSaved,
+                  onChanged: (value) =>
+                      setDialogState(() => confirmedSaved = value ?? false),
+                  title: const Text(
+                    'Tôi đã lưu key vào password manager hoặc nơi an toàn.',
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: const Text('Hủy'),
+            ),
+            FilledButton(
+              onPressed: confirmedSaved
+                  ? () => Navigator.pop(dialogContext, true)
+                  : null,
+              child: Text(switch (operation) {
+                _RecoveryKeyOperation.setup => 'Bật encrypted sync',
+                _RecoveryKeyOperation.recoveryKeyRotation =>
+                  'Xoay recovery key',
+                _RecoveryKeyOperation.vaultKeyRotation => 'Xoay vault key',
+              }),
+            ),
           ],
-        );
-      },
+        ),
+      ),
     );
+    if (!context.mounted) return;
+    if (accepted == true) {
+      context.read<SyncBloc>().add(switch (operation) {
+        _RecoveryKeyOperation.setup => const ConfirmRecoveryKeySaved(),
+        _RecoveryKeyOperation.recoveryKeyRotation =>
+          const ConfirmRecoveryKeyRotation(),
+        _RecoveryKeyOperation.vaultKeyRotation =>
+          const ConfirmVaultKeyRotation(),
+      });
+    } else {
+      context.read<SyncBloc>().add(const CancelSensitiveSyncOperation());
+    }
   }
 
-  // Helper widget to build sync option buttons in the dialog
-  Widget _buildSyncOption({
-    required BuildContext context, // Dialog context
-    required String title,
-    required String description,
-    required IconData icon,
-    required Color color,
-    required VoidCallback onPressed,
-  }) {
-    return OutlinedButton.icon(
-      icon: Icon(icon, color: color, size: 20),
-      label: Column(
-        // Removed Padding widget
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min, // Take minimum space
-        children: [
-          Text(
-            title,
-            style: TextStyle(color: color, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            description,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              fontSize: 11,
-            ), // Smaller font for description
-          ),
-        ],
-      ),
-      style: OutlinedButton.styleFrom(
-        foregroundColor: color,
-        side: BorderSide(color: color.withOpacity(0.5)),
-        alignment: Alignment.centerLeft,
-        // Align icon and text to the left
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        padding: const EdgeInsets.all(12.0), // Added padding here
-      ),
-      onPressed: onPressed,
-    );
+  Future<void> _showRecoveryImportDialog(BuildContext context) async {
+    final recoveryCode = await showRecoveryImportDialog(context);
+    if (recoveryCode?.trim().isNotEmpty == true && context.mounted) {
+      context.read<SyncBloc>().add(RecoverEncryptedSync(recoveryCode!.trim()));
+    }
   }
+
+  Future<void> _confirmUseCloud(BuildContext context) async {
+    final confirmed = await _confirmResolution(
+      context,
+      title: 'Thay local vault bằng bản cloud?',
+      message:
+          'Thao tác tạo một local snapshot mới từ cloud. Snapshot local hợp lệ hiện tại vẫn có generation rollback nhưng sẽ không còn là bản active.',
+      action: 'Dùng cloud',
+    );
+    if (confirmed && context.mounted) {
+      context.read<SyncBloc>().add(const ResolveSyncConflictWithCloud());
+    }
+  }
+
+  Future<void> _confirmKeepLocal(BuildContext context) async {
+    final confirmed = await _confirmResolution(
+      context,
+      title: 'Ghi bản local lên cloud?',
+      message:
+          'Một encrypted revision mới sẽ thay thế snapshot cloud hiện tại. Server sẽ từ chối nếu cloud tiếp tục thay đổi trước lúc commit.',
+      action: 'Giữ local',
+    );
+    if (confirmed && context.mounted) {
+      context.read<SyncBloc>().add(const ResolveSyncConflictWithLocal());
+    }
+  }
+
+  Future<bool> _confirmResolution(
+    BuildContext context, {
+    required String title,
+    required String message,
+    required String action,
+  }) async =>
+      await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: Text(title),
+          content: Text(message),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: const Text('Hủy'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(dialogContext, true),
+              child: Text(action),
+            ),
+          ],
+        ),
+      ) ??
+      false;
+
+  String _format(DateTime value) =>
+      DateFormat.yMd().add_Hm().format(value.toLocal());
 }
+
+enum _RecoveryKeyOperation { setup, recoveryKeyRotation, vaultKeyRotation }

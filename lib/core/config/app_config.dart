@@ -1,34 +1,54 @@
 // lib/core/config/app_config.dart
-import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:flutter/foundation.dart';
 import 'package:injectable/injectable.dart';
+import 'package:hyper_authenticator/core/config/public_runtime_config.dart';
 
-@lazySingleton // Make sure to use @LazySingleton instead of camelCase
+@lazySingleton
 class AppConfig {
   final String supabaseUrl;
-  final String supabaseAnonKey;
+  final String supabasePublishableKey;
+  final String? passwordRecoveryUrl;
+  final bool allowInsecurePlaintextSync;
+  final bool releaseMode;
 
-  // Regular constructor (not private)
-  AppConfig({
+  const AppConfig({
     required this.supabaseUrl,
-    required this.supabaseAnonKey,
+    required this.supabasePublishableKey,
+    this.passwordRecoveryUrl,
+    this.allowInsecurePlaintextSync = false,
+    this.releaseMode = kReleaseMode,
   });
 
-  // Add a factory method for DI
-  @factoryMethod
-  static AppConfig fromEnv() {
-    final url = dotenv.env['SUPABASE_URL'];
-    final anonKey = dotenv.env['SUPABASE_ANON_KEY'];
+  bool get plaintextSyncAvailable => allowInsecurePlaintextSync && !releaseMode;
 
-    if (url == null || url.isEmpty) {
-      throw Exception('SUPABASE_URL not found in .env file');
-    }
-    if (anonKey == null || anonKey.isEmpty) {
-      throw Exception('SUPABASE_ANON_KEY not found in .env file');
-    }
+  @factoryMethod
+  static AppConfig fromEnvironment() {
+    const url = String.fromEnvironment('SUPABASE_URL');
+    const publishableKey = String.fromEnvironment(
+      'SUPABASE_PUBLISHABLE_KEY',
+      defaultValue: String.fromEnvironment('SUPABASE_ANON_KEY'),
+    );
+    const allowInsecurePlaintextSync = bool.fromEnvironment(
+      'ALLOW_INSECURE_PLAINTEXT_SYNC',
+      defaultValue: false,
+    );
+    const passwordRecoveryUrlValue = String.fromEnvironment(
+      'PASSWORD_RECOVERY_URL',
+    );
+
+    final validated = PublicRuntimeConfig.validate(
+      supabaseUrl: url,
+      supabasePublishableKey: publishableKey,
+      passwordRecoveryUrl: passwordRecoveryUrlValue,
+      allowInsecurePlaintextSync: allowInsecurePlaintextSync,
+      releaseMode: kReleaseMode,
+    );
 
     return AppConfig(
-      supabaseUrl: url,
-      supabaseAnonKey: anonKey,
+      supabaseUrl: validated.supabaseUrl.toString(),
+      supabasePublishableKey: validated.supabasePublishableKey,
+      passwordRecoveryUrl: validated.passwordRecoveryUrl?.toString(),
+      allowInsecurePlaintextSync: validated.allowInsecurePlaintextSync,
     );
   }
 }

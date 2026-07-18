@@ -2,10 +2,8 @@ import 'package:fpdart/fpdart.dart';
 import 'package:hyper_authenticator/core/error/failures.dart';
 import 'package:hyper_authenticator/core/usecases/usecase.dart';
 import 'package:hyper_authenticator/features/sync/domain/repositories/sync_repository.dart';
-import 'package:injectable/injectable.dart';
 
 // Renamed class to GetLastSyncTimeUseCase for consistency
-@lazySingleton
 class GetLastSyncTimeUseCase implements UseCase<DateTime?, NoParams> {
   // Renamed class
   // Renamed class

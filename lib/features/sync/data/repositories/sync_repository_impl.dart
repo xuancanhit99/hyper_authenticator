@@ -4,9 +4,7 @@ import 'package:hyper_authenticator/core/error/failures.dart';
 import 'package:hyper_authenticator/features/authenticator/domain/entities/authenticator_account.dart';
 import 'package:hyper_authenticator/features/sync/data/datasources/sync_remote_data_source.dart';
 import 'package:hyper_authenticator/features/sync/domain/repositories/sync_repository.dart';
-import 'package:injectable/injectable.dart'; // Assuming you use injectable
 
-@LazySingleton(as: SyncRepository) // Assuming you use injectable
 class SyncRepositoryImpl implements SyncRepository {
   final SyncRemoteDataSource remoteDataSource;
   // final NetworkInfo networkInfo; // Optional: Add if network check is needed
@@ -23,7 +21,7 @@ class SyncRepositoryImpl implements SyncRepository {
       final remoteAccounts = await remoteDataSource.downloadAccounts();
       return Right(remoteAccounts);
     } on ServerException catch (e) {
-      return Left(ServerFailure(e.message ?? 'Failed to download accounts'));
+      return Left(ServerFailure(e.message));
     } catch (e) {
       // Catch other potential errors (e.g., unexpected format)
       return Left(
@@ -43,7 +41,7 @@ class SyncRepositoryImpl implements SyncRepository {
       await remoteDataSource.uploadAccounts(accounts);
       return const Right(unit);
     } on ServerException catch (e) {
-      return Left(ServerFailure(e.message ?? 'Failed to upload accounts'));
+      return Left(ServerFailure(e.message));
     } catch (e) {
       return Left(
         ServerFailure(
@@ -60,7 +58,7 @@ class SyncRepositoryImpl implements SyncRepository {
       final hasData = await remoteDataSource.hasRemoteData();
       return Right(hasData);
     } on ServerException catch (e) {
-      return Left(ServerFailure(e.message ?? 'Failed to check remote data'));
+      return Left(ServerFailure(e.message));
     } catch (e) {
       return Left(
         ServerFailure(
@@ -80,7 +78,7 @@ class SyncRepositoryImpl implements SyncRepository {
       return Right(lastUploadTime);
     } on ServerException catch (e) {
       // Return failure only for critical communication errors, not if timestamp is just null
-      return Left(ServerFailure(e.message ?? 'Failed to get last upload time'));
+      return Left(ServerFailure(e.message));
     } catch (e) {
       return Left(
         ServerFailure(
@@ -95,9 +93,6 @@ class SyncRepositoryImpl implements SyncRepository {
   @override
   Future<Either<Failure, Unit>> saveUserSalt(String salt) async {
     // TODO: Implement actual logic to save salt via remoteDataSource
-    print(
-      "SyncRepositoryImpl: saveUserSalt called with salt: $salt (Not Implemented)",
-    );
     // For now, return a failure or success based on expected behavior if implemented
     // Assuming it should succeed if network is okay, but depends on data source impl.
     // Let's return failure until implemented.

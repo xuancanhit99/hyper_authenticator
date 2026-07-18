@@ -35,11 +35,11 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
 
   String? _validateEmail(String? value) {
     if (value == null || value.trim().isEmpty) {
-      return 'Please enter your email';
+      return 'Vui lòng nhập email.';
     }
     final emailRegex = RegExp(r'^[^@]+@[^@]+\.[^@]+');
     if (!emailRegex.hasMatch(value.trim())) {
-      return 'Please enter a valid email address';
+      return 'Vui lòng nhập địa chỉ email hợp lệ.';
     }
     return null;
   }
@@ -60,7 +60,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
             ..showSnackBar(
               const SnackBar(
                 content: Text(
-                  'Password reset link sent (if account exists). Check your email.',
+                  'Nếu tài khoản tồn tại, liên kết đặt lại mật khẩu đã được gửi. Hãy kiểm tra email.',
                 ),
               ),
             );
@@ -72,7 +72,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
       },
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('Forgot Password'),
+          title: const Text('Quên mật khẩu'),
           elevation: 0,
           backgroundColor: Colors.transparent,
         ),
@@ -87,9 +87,8 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     const AuthHeader(
-                      title: 'Reset Password',
-                      subtitle:
-                          'Enter your email to receive a password reset link',
+                      title: 'Đặt lại mật khẩu',
+                      subtitle: 'Nhập email để nhận liên kết đặt lại mật khẩu',
                     ),
                     TextFormField(
                       controller: _emailController,
@@ -101,8 +100,8 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                       keyboardType: TextInputType.emailAddress,
                       validator: _validateEmail,
                       textInputAction: TextInputAction.done,
-                      onFieldSubmitted:
-                          (_) => _sendResetLink(context), // Pass context
+                      onFieldSubmitted: (_) =>
+                          _sendResetLink(context), // Pass context
                     ),
                     const SizedBox(height: 24),
                     // Use BlocBuilder for loading state
@@ -110,26 +109,23 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                       builder: (context, state) {
                         final isLoading = state is AuthLoading;
                         return ElevatedButton(
-                          onPressed:
-                              isLoading
-                                  ? null
-                                  : () =>
-                                      _sendResetLink(context), // Pass context
+                          onPressed: isLoading
+                              ? null
+                              : () => _sendResetLink(context), // Pass context
                           style: ElevatedButton.styleFrom(
                             padding: const EdgeInsets.symmetric(vertical: 16),
                             textStyle: Theme.of(context).textTheme.titleMedium,
                           ),
-                          child:
-                              isLoading
-                                  ? const SizedBox(
-                                    width: 24,
-                                    height: 24,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      color: Colors.white,
-                                    ),
-                                  )
-                                  : const Text('Send Reset Link'),
+                          child: isLoading
+                              ? const SizedBox(
+                                  width: 24,
+                                  height: 24,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              : const Text('Gửi liên kết đặt lại'),
                         );
                       },
                     ),
@@ -144,7 +140,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                           // print('Navigate to Login (Fallback)');
                         }
                       },
-                      child: const Text('Back to Login'),
+                      child: const Text('Quay lại đăng nhập'),
                     ),
                   ],
                 ),

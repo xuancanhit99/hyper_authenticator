@@ -53,16 +53,6 @@ class DeleteAccountRequested extends AccountsEvent {
 // Code generation will be handled reactively in the UI based on the loaded accounts
 // and a timer/ticker, using the GenerateTotpCode use case.
 
-/// Event to replace all existing local accounts with a new list (e.g., after sync download).
-class ReplaceAccountsEvent extends AccountsEvent {
-  final List<AuthenticatorAccount> accounts;
-
-  const ReplaceAccountsEvent({required this.accounts});
-
-  @override
-  List<Object> get props => [accounts];
-}
-
 /// Event to update an existing account.
 class UpdateAccountRequested extends AccountsEvent {
   final AuthenticatorAccount account;

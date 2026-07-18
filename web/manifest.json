@@ -1,11 +1,11 @@
 {
-    "name": "hyper_authenticator",
-    "short_name": "hyper_authenticator",
+    "name": "Hyper Authenticator",
+    "short_name": "Hyper Auth",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "description": "Ứng dụng xác thực TOTP đa nền tảng.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

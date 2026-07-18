@@ -2,8 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:hyper_authenticator/features/authenticator/domain/entities/authenticator_account.dart';
 import 'package:hyper_authenticator/features/authenticator/presentation/bloc/accounts_bloc.dart';
-import 'package:hyper_authenticator/features/authenticator/presentation/utils/logo_service.dart'; // Import LogoService
-import 'package:hyper_authenticator/features/authenticator/presentation/widgets/logo_picker_dialog.dart'; // Import LogoPickerDialog
+import 'package:hyper_authenticator/features/authenticator/presentation/widgets/account_avatar.dart';
 
 class EditAccountPage extends StatefulWidget {
   final AuthenticatorAccount account;
@@ -26,16 +25,10 @@ class _EditAccountPageState extends State<EditAccountPage> {
   late TextEditingController _digitsController;
   late TextEditingController _periodController;
 
-  String? _selectedIssuer;
-  List<String> _availableIssuers = [];
-  String? _previewLogoPath;
-
   @override
   void initState() {
     super.initState();
-    _issuerController = TextEditingController(
-      text: widget.account.issuer ?? '',
-    );
+    _issuerController = TextEditingController(text: widget.account.issuer);
     _accountNameController = TextEditingController(
       text: widget.account.accountName,
     );
@@ -50,53 +43,11 @@ class _EditAccountPageState extends State<EditAccountPage> {
       text: widget.account.period.toString(),
     );
 
-    _loadAvailableIssuers().then((_) {
-      // Initialize selectedIssuer and previewLogoPath after issuers are loaded
-      if (mounted) {
-        setState(() {
-          if (widget.account.issuer != null &&
-              _availableIssuers.contains(widget.account.issuer)) {
-            _selectedIssuer = widget.account.issuer;
-          }
-          _updatePreviewLogo(widget.account.issuer ?? _issuerController.text);
-        });
-      }
-    });
-
     _issuerController.addListener(() {
-      // Update preview when text field changes, unless a dropdown item was just selected
-      if (_selectedIssuer != _issuerController.text) {
-        _updatePreviewLogo(_issuerController.text);
-        // If user types something that matches an available issuer, select it in dropdown
-        if (_availableIssuers.contains(_issuerController.text)) {
-          setState(() {
-            _selectedIssuer = _issuerController.text;
-          });
-        } else {
-          // If user types something different, clear dropdown selection
-          setState(() {
-            _selectedIssuer = null;
-          });
-        }
+      if (mounted) {
+        setState(() {});
       }
     });
-  }
-
-  Future<void> _loadAvailableIssuers() async {
-    await LogoService.instance.loadLogoMap();
-    if (mounted) {
-      setState(() {
-        _availableIssuers = LogoService.instance.getAvailableIssuers();
-      });
-    }
-  }
-
-  void _updatePreviewLogo(String? issuerName) {
-    if (mounted) {
-      setState(() {
-        _previewLogoPath = LogoService.instance.getLogoPath(issuerName);
-      });
-    }
   }
 
   @override
@@ -116,9 +67,8 @@ class _EditAccountPageState extends State<EditAccountPage> {
         id: widget.account.id, // Keep the original ID
         issuer: _issuerController.text.trim(),
         accountName: _accountNameController.text.trim(),
-        secretKey:
-            _secretController.text
-                .trim(), // Secret key modification might be risky/complex in real 2FA
+        secretKey: _secretController.text
+            .trim(), // Secret key modification might be risky/complex in real 2FA
         algorithm: _algorithmController.text.trim().toUpperCase(),
         digits:
             int.tryParse(_digitsController.text.trim()) ??
@@ -149,33 +99,13 @@ class _EditAccountPageState extends State<EditAccountPage> {
     }
   }
 
-  Future<void> _showLogoSelectionDialog() async {
-    final String? selectedIssuerFromDialog = await showDialog<String>(
-      context: context,
-      builder: (BuildContext dialogContext) {
-        return LogoPickerDialog(
-          availableIssuers: _availableIssuers,
-          currentIssuer: _issuerController.text,
-        );
-      },
-    );
-
-    if (selectedIssuerFromDialog != null) {
-      setState(() {
-        _issuerController.text = selectedIssuerFromDialog;
-        _selectedIssuer = selectedIssuerFromDialog;
-        _updatePreviewLogo(selectedIssuerFromDialog);
-      });
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         elevation: 0,
-        title: const Text('Edit Account'),
+        title: const Text('Chỉnh sửa tài khoản'),
       ),
       body: BlocListener<AccountsBloc, AccountsState>(
         listener: (context, state) {
@@ -194,12 +124,12 @@ class _EditAccountPageState extends State<EditAccountPage> {
               // This logic might need refinement. For simplicity, pop if loaded.
               Navigator.pop(context);
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Account updated successfully!')),
+                const SnackBar(content: Text('Đã cập nhật tài khoản.')),
               );
             }
           } else if (state is AccountsError) {
             if (mounted) {
-              _showError('Failed to update account: ${state.message}');
+              _showError('Không thể cập nhật tài khoản: ${state.message}');
             }
           }
         },
@@ -209,169 +139,71 @@ class _EditAccountPageState extends State<EditAccountPage> {
             key: _formKey,
             child: ListView(
               children: [
-                if (_previewLogoPath != null)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 16.0),
-                    child: Center(
-                      child: InkWell(
-                        onTap: _showLogoSelectionDialog,
-                        child: Tooltip(
-                          message: "Tap to change logo",
-                          child: Stack(
-                            clipBehavior: Clip.none, // Allow overflow
-                            alignment: Alignment.center,
-                            children: [
-                              SizedBox(
-                                width: 72, // Increased size
-                                height: 72,
-                                child: ClipRRect(
-                                  borderRadius: BorderRadius.circular(8.0),
-                                  child:
-                                      _previewLogoPath == null ||
-                                              _previewLogoPath!.isEmpty
-                                          ? Container(
-                                            // Placeholder when no logo is available
-                                            decoration: BoxDecoration(
-                                              color: Colors.grey[200],
-                                              borderRadius:
-                                                  BorderRadius.circular(8.0),
-                                            ),
-                                            child: const Icon(
-                                              Icons.image_search,
-                                              size: 40,
-                                              color: Colors.grey,
-                                            ),
-                                          )
-                                          : Image.asset(
-                                            _previewLogoPath!,
-                                            fit: BoxFit.contain,
-                                            errorBuilder:
-                                                (
-                                                  context,
-                                                  error,
-                                                  stackTrace,
-                                                ) => Container(
-                                                  decoration: BoxDecoration(
-                                                    color: Colors.grey[200],
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                          8.0,
-                                                        ),
-                                                  ),
-                                                  child: const Icon(
-                                                    Icons
-                                                        .business_center_outlined,
-                                                    size: 40,
-                                                    color: Colors.grey,
-                                                  ),
-                                                ),
-                                          ),
-                                ),
-                              ),
-                              Positioned(
-                                right: -4, // Adjust to make it slightly outside
-                                bottom:
-                                    -4, // Adjust to make it slightly outside
-                                child: Container(
-                                  padding: const EdgeInsets.all(
-                                    4,
-                                  ), // Slightly more padding
-                                  decoration: BoxDecoration(
-                                    color:
-                                        Theme.of(context)
-                                            .colorScheme
-                                            .primary, // Solid primary color background
-                                    shape: BoxShape.circle,
-                                    // Optional: Add a slight shadow to make it "pop" more
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Colors.black.withOpacity(0.2),
-                                        spreadRadius: 1,
-                                        blurRadius: 2,
-                                        offset: const Offset(0, 1),
-                                      ),
-                                    ],
-                                  ),
-                                  child: Icon(
-                                    Icons.edit,
-                                    size:
-                                        16, // Slightly smaller icon if padding is increased
-                                    color:
-                                        Theme.of(context)
-                                            .colorScheme
-                                            .onPrimary, // Ensure contrast
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  child: Center(
+                    child: AccountAvatar(
+                      issuer: _issuerController.text,
+                      size: 72,
                     ),
                   ),
-                const SizedBox(height: 24), // Increased spacing after logo
+                ),
                 TextFormField(
                   controller: _issuerController,
-                  decoration: InputDecoration(
-                    labelText: 'Issuer (e.g., Google, GitHub)',
-                    hintText:
-                        _selectedIssuer != null
-                            ? 'Selected: $_selectedIssuer'
-                            : 'Type to search or add new',
+                  decoration: const InputDecoration(
+                    labelText: 'Nhà cung cấp (ví dụ: Google, GitHub)',
+                    hintText: 'Nhập tên nhà cung cấp',
                   ),
-                  validator:
-                      (value) =>
-                          (value == null || value.isEmpty)
-                              ? 'Please enter an issuer'
-                              : null,
+                  validator: (value) => (value == null || value.isEmpty)
+                      ? 'Vui lòng nhập nhà cung cấp.'
+                      : null,
                 ),
                 const SizedBox(height: 16),
                 TextFormField(
                   controller: _accountNameController,
                   decoration: const InputDecoration(
-                    labelText: 'Account Name (e.g., user@example.com)',
+                    labelText: 'Tên tài khoản (ví dụ: user@example.com)',
                   ),
-                  validator:
-                      (value) =>
-                          (value == null || value.isEmpty)
-                              ? 'Please enter an account name'
-                              : null,
+                  validator: (value) => (value == null || value.isEmpty)
+                      ? 'Vui lòng nhập tên tài khoản.'
+                      : null,
                 ),
                 const SizedBox(height: 16),
                 TextFormField(
                   controller: _secretController,
                   decoration: const InputDecoration(
-                    labelText: 'Secret Key (Base32 encoded)',
+                    labelText: 'Secret key (mã hóa Base32)',
                     // Consider making this read-only or adding strong warnings
                     // helperText: 'Warning: Changing the secret key will invalidate existing 2FA setups.',
                   ),
                   validator: (value) {
                     if (value == null || value.isEmpty) {
-                      return 'Please enter the secret key';
+                      return 'Vui lòng nhập secret key.';
                     }
                     return null;
                   },
                 ),
                 const SizedBox(height: 24),
                 const Text(
-                  "Advanced Options (Edit with caution):",
+                  'Tùy chọn nâng cao (chỉ sửa khi hiểu rõ):',
                   style: TextStyle(fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 8),
                 TextFormField(
                   controller: _algorithmController,
                   decoration: const InputDecoration(
-                    labelText: 'Algorithm (SHA1, SHA256, SHA512)',
+                    labelText: 'Thuật toán (SHA1, SHA256, SHA512)',
                   ),
                   validator: (value) {
-                    if (value == null || value.isEmpty)
-                      return 'Please enter an algorithm';
+                    if (value == null || value.isEmpty) {
+                      return 'Vui lòng nhập thuật toán.';
+                    }
                     if (![
                       'SHA1',
                       'SHA256',
                       'SHA512',
                     ].contains(value.toUpperCase())) {
-                      return 'Invalid algorithm. Use SHA1, SHA256, or SHA512.';
+                      return 'Thuật toán không hợp lệ. Dùng SHA1, SHA256 hoặc SHA512.';
                     }
                     return null;
                   },
@@ -380,15 +212,16 @@ class _EditAccountPageState extends State<EditAccountPage> {
                 TextFormField(
                   controller: _digitsController,
                   decoration: const InputDecoration(
-                    labelText: 'Digits (e.g., 6 or 8)',
+                    labelText: 'Số chữ số (ví dụ: 6 hoặc 8)',
                   ),
                   keyboardType: TextInputType.number,
                   validator: (value) {
-                    if (value == null || value.isEmpty)
-                      return 'Please enter number of digits';
+                    if (value == null || value.isEmpty) {
+                      return 'Vui lòng nhập số chữ số.';
+                    }
                     final n = int.tryParse(value);
-                    if (n == null) return 'Invalid number';
-                    if (n < 6 || n > 8) return 'Digits must be 6, 7, or 8';
+                    if (n == null) return 'Số không hợp lệ.';
+                    if (n < 6 || n > 8) return 'Số chữ số phải là 6, 7 hoặc 8.';
                     return null;
                   },
                 ),
@@ -396,22 +229,24 @@ class _EditAccountPageState extends State<EditAccountPage> {
                 TextFormField(
                   controller: _periodController,
                   decoration: const InputDecoration(
-                    labelText: 'Period (seconds, e.g., 30)',
+                    labelText: 'Chu kỳ (giây, ví dụ: 30)',
                   ),
                   keyboardType: TextInputType.number,
                   validator: (value) {
-                    if (value == null || value.isEmpty)
-                      return 'Please enter period';
+                    if (value == null || value.isEmpty) {
+                      return 'Vui lòng nhập chu kỳ.';
+                    }
                     final n = int.tryParse(value);
-                    if (n == null || n <= 0)
-                      return 'Period must be a positive number';
+                    if (n == null || n <= 0) {
+                      return 'Chu kỳ phải là số dương.';
+                    }
                     return null;
                   },
                 ),
                 const SizedBox(height: 32),
                 ElevatedButton(
                   onPressed: _submitUpdate,
-                  child: const Text('Save Changes'),
+                  child: const Text('Lưu thay đổi'),
                 ),
               ],
             ),

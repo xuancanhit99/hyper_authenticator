@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Hyper Authenticator
+Comment=Ứng dụng xác thực TOTP local-first
+Exec=/usr/bin/hyper-authenticator
+Icon=app.hyperz.authenticator
+Terminal=false
+Categories=System;Security;
+StartupNotify=true
+StartupWMClass=app.hyperz.authenticator

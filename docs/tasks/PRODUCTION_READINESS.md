@@ -1,0 +1,144 @@
+# Task: Hoàn thiện production readiness
+
+- Trạng thái: Hoàn thành baseline kỹ thuật; còn external release gate
+- Bắt đầu/cập nhật: 2026-07-18
+- Owner: canhvx
+- ADR: 0002, 0003, 0004, 0005, 0007, 0009
+
+## Mục tiêu
+
+Đưa project từ alpha local-first tới baseline có encrypted cloud sync, failure
+behavior an toàn, backend có backup/restore/health harness và release gate tái hiện.
+
+## Ngoài phạm vi
+
+- Không tự tạo signing certificate, store account, SMTP mailbox hoặc credential
+  production thay owner.
+- Không tuyên bố device/store test khi chỉ có compile evidence.
+- Không drop plaintext compatibility table trong client rollout.
+
+## Acceptance criteria
+
+- [x] Release runtime chỉ dùng encrypted snapshot + atomic revision RPC.
+- [x] Onboarding yêu cầu xem/xác nhận recovery key trước khi enable.
+- [x] Device mới import key; decrypt failure không overwrite local.
+- [x] Conflict/network/retry không delete snapshot hợp lệ.
+- [x] Recovery-key rotation atomic; cancel/conflict giữ key cũ và lỗi verify cảnh báo trạng thái mơ hồ.
+- [x] DEK + recovery-key rotation atomic; thiết bị giữ DEK cũ cần recovery và
+  post-commit ambiguity không nâng metadata mù.
+- [x] Không có secret thật trong log/fixture/remote plaintext request.
+- [x] 105 test + analyzer + platform/release-config gate pass.
+- [x] Bulk revoke mọi session khác; RLS/RPC chặn JWT của session đã revoke ngay
+  trong khi session hiện tại và local vault được giữ.
+- [x] Local-vault integration smoke pass trên Android emulator và iOS Simulator,
+  có explicit reset opt-in và cleanup fixture.
+- [x] Linux configured release và local-vault smoke pass trong private D-Bus
+  Secret Service/Xvfb sandbox, không chạm keyring hoặc vault người dùng.
+- [x] Linux `.deb` candidate sinh dependency bằng `dpkg-shlibdeps`, checksum và
+  clean-container install/launch/metadata-upgrade/remove retention smoke.
+- [x] Linux authenticated E2EE client runtime pass qua production Supabase với
+  isolated user: setup/sync/recovery/recovery-key rotation/vault-key rotation và
+  remote cleanup được xác minh, không đưa service-role key vào client hoặc CI.
+- [x] Windows hosted local-vault runtime và NSIS unsigned candidate pass
+  install/launch/metadata-upgrade/uninstall, giữ AppData và checksum portable.
+- [x] Windows upgrade từ source `1.0.0+9` + plugin 3.1.2 đọc đủ field và publish
+  COW v2 trên hosted runner tạm, có cleanup.
+- [x] Remote E2EE/recovery/Studio contract pass.
+- [x] Daily backup, restore rehearsal, encrypted off-host copy và health timer pass.
+- [x] Public Auth load budget fail-closed: 100 request/concurrency 10, 100% HTTP
+  200, p95 ≤ 1 giây và max ≤ 2 giây; không tạo user hoặc payload.
+- [x] Asset/font không rõ license bị loại khỏi release.
+- [ ] Signed store artifact/device test — phụ thuộc credential và thiết bị owner.
+- [ ] SMTP mailbox/expired link — phụ thuộc mailbox nhận.
+- [ ] External alert channel — cần owner chọn destination.
+
+## Thay đổi chính
+
+- Thêm encrypted repository/key/metadata/use case và SyncBloc state machine.
+- Thêm atomic local `replaceAccounts`, generation retention và fail-closed app lock tests.
+- Gỡ runtime DI của plaintext sync; giữ bridge cho migration test có kiểm soát.
+- Đưa settings sync sang onboarding/recovery/conflict UI tiếng Việt.
+- Bump version `1.1.0+10`.
+- Thay third-party logo pack bằng code-rendered account avatar; bỏ Averta.
+- Thêm systemd backup/health, restore rehearsal, `age` off-host pull và LaunchAgent.
+- Viết lại canonical docs theo runtime evidence.
+
+## Data/migration/rollback
+
+- Encrypted schema additive; một row/user, `FORCE RLS`, atomic compare-and-swap.
+- Không drop `synced_accounts`; production clean không có row legacy cần migrate.
+- Disable sync giữ local vault và remote encrypted row.
+- Decrypt/validation/conflict failure không mutate local.
+- Windows giữ storage identity lịch sử; sibling pre-release chỉ được copy atomic,
+  giữ nguồn và conflict hai vault làm startup fail closed.
+- Rollback client không được ghi plaintext; có thể tắt cloud capability và tiếp tục local-only.
+
+## Bằng chứng xác minh
+
+| Command/gate | Kết quả |
+|---|---|
+| `flutter analyze` | Pass, 0 diagnostic |
+| `flutter test` | 105 pass |
+| Scanner feedback widget test | 2 pass trên VM và Chrome platform; không gọi camera thật |
+| Platform/release config | Pass; Android network + Apple Keychain regression gate |
+| Gitleaks full history | Pass; chỉ allowlist exact public RFC test vector |
+| `scripts/agent/build.sh host .env` | Android/Web pass; macOS unsigned compile pass |
+| iOS 26.5 configured simulator | Pass build + launch; Supabase init thành công |
+| Web configured release | Pass + Wasm dry-run |
+| Web browser smoke | Pass `/` và direct `/settings` trên production TLS origin; console sạch |
+| Web production-serving contract | Pass TLS/proxy/CSP/cache/SPA/read-only/no-log; browser image render sạch |
+| Linux configured release + runtime | Pass `linux/x64`; private keyring/Xvfb đi đủ bootstrap, add, storage round-trip, lifecycle, reload, navigation và cleanup |
+| Linux Debian artifact | `1.1.0+10` amd64, SHA-256 `b90f880c…f0eaf561`, root entry 0755; dependency/install/launch/metadata-upgrade/remove và package-level data retention pass trong Ubuntu 24.04 sạch |
+| Linux distro compatibility local | Cùng release bundle đóng gói trên Ubuntu 22.04 arm64 có glibc floor 2.34; sau regression fix explicit `libegl1`, `libgles2`, `libgl1`, `gnome-keyring`, exact matrix script pass private Secret Service + X11/Wayland trên Ubuntu 22.04/24.04 và Debian 12/13 |
+| Linux authenticated E2EE operator gate | Pass hai lượt trên Ubuntu 24.04 arm64/private Secret Service: setup revision 1, sync revision 2, fresh recovery, recovery-key rotation revision 3 + reject key cũ, vault-key rotation revision 4 + recovery; mỗi lượt xóa isolated user và DB probe cuối trả `test_users=0`, `test_vault_rows=0` |
+| GitHub Actions run `29646554828` | Pass 7/7 Web, Android debug, Apple compile, Linux runtime/package, Windows runtime/installer, secret và quality gates tại commit `e077032` |
+| Windows runtime + NSIS candidate | Windows Server 2025 local-vault UI/secure-storage/lifecycle pass; configured x64 bundle; NSIS 3.12 install/launch/metadata-upgrade/uninstall giữ AppData pass; unsigned installer SHA-256 `fc267661…331388b3` audit portable trên macOS; bundle + installer artifact giữ 14 ngày |
+| GitHub Actions run `29648450700` | Pass 7/7 tại `3ba300d`: historical `1.0.0+9` seed DPAPI, current app visibility, SHA256/8 digits/45 giây round-trip, COW v2, cleanup; local-vault/release/NSIS transition tiếp tục pass |
+| GitHub Actions run `29648841164` | Pass 7/7 tại branch head `09c7024`; xác nhận toàn bộ Windows historical/runtime/installer gate cùng Linux, Apple, Android, Web, quality và secret history tiếp tục xanh sau khi cập nhật tài liệu bằng chứng |
+| GitHub Actions run `29652281356` | Pass 7/7 tại `12fce73`; Linux hosted amd64 historical `1.0.0+9` upgrade, private keyring, `.deb` transition, Ubuntu 22.04/24.04 + Debian 12/13 X11/Wayland và artifact đều pass; Windows/Apple/Android/Web/quality/secret tiếp tục xanh |
+| GitHub Actions run `29652820428` | Pass 7/7 tại `ae1ab36`; khóa runtime locale `vi` tiếp tục pass toàn bộ Linux/Windows/Apple/Android/Web/quality/secret gate |
+| Windows artifact tại `3ba300d` | Current unsigned installer SHA-256 `c981974d…bd37f85`; release bundle và installer artifact upload thành công, hết hạn 01-08-2026 |
+| Android configured release | Fail closed vì thiếu upload keystore |
+| Android Pixel AVD E2E | Pass login return, setup revision 1, recovery-key rotation revision 2, vault-key rotation revision 3, fresh-device recovery revision 3 và SDK bulk revoke 2→1 session; cleanup user/row/app data |
+| Android Pixel AVD local-vault smoke | Pass UI add, storage round-trip, lifecycle, BLoC reload, navigation và cleanup |
+| iOS 26.5 local-vault smoke | Pass cùng contract trên Simulator; cleanup trong `finally` |
+| macOS configured release | Bị chặn vì thiếu certificate |
+| Remote encrypted contract | 20/20 pass, gồm atomic rotation và active-session revoke enforcement |
+| Remote recovery contract | 8/8 pass |
+| Studio proxy contract | Pass |
+| Backup restore rehearsal | Full restore DB tạm + schema/FORCE RLS/active-session guard pass |
+| Auth load budget | 100/100 HTTP 200, concurrency 10, p95 578 ms, max 862 ms dưới budget 1.000/2.000 ms; negative path 1 ms fail đúng |
+| Web production rollout | Image `1.1.0-ae1ab36` `linux/amd64` healthy; local/public `main.dart.js` SHA-256 `1a0d63a6…f66ea6` khớp; `/`, `/settings`, `/privacy`, `/login`, `/reset-password` trả 200; TLS/HSTS/CSP/cache/Permissions-Policy pass; browser xác minh Flutter runtime `lang=vi`, render và console sạch |
+
+Full `scripts/agent/check.sh full` pass: docs, generated drift, format, analyzer,
+platform config, 106 test và encrypted migration/active-session contract.
+
+## Rủi ro còn lại
+
+- Signing/store/physical-device/SMTP/alert destination là external gate, không phải source defect.
+- Windows còn code signing và physical-device/Windows Hello; historical upgrade
+  từ `1.0.0+9` đã pass hosted runtime và branch-head CI.
+- Flutter Web còn camera permission/QR scan smoke trên browser-device thật.
+- Linux còn KDE login/unlock/physical desktop và release-channel signing/support
+  metadata. Hosted amd64 historical upgrade + X11/Wayland distro matrix đã pass;
+  authenticated E2EE vẫn là debug container, chưa phải signed amd64 package/public
+  distribution smoke.
+- E2EE v1 đã có DEK rotation và bulk revoke session khác; device registry/revoke
+  riêng từng thiết bị, device-specific key wrap và Web trust model vẫn chưa có.
+- `mobile_scanner` upstream còn Kotlin legacy warning.
+- Off-host backup đang phụ thuộc máy Mac thay vì dedicated backup host.
+- Low-concurrency Auth budget đã có; long-duration soak và production-scale
+  workload vẫn chưa có.
+
+## Tài liệu cập nhật
+
+- [x] `PROJECT_STATUS.md`
+- [x] `SYSTEM_DESIGN.md`
+- [x] `DATA_MODELS.md`
+- [x] `SECURITY.md`
+- [x] `SUPABASE_INTEGRATION.md`
+- [x] `DEVELOPMENT.md`
+- [x] `TESTING_STRATEGY.md`
+- [x] `DEPLOYMENT.md`
+- [x] `E2EE_DESIGN.md`
+- [x] ADR asset provenance

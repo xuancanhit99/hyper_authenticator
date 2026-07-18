@@ -26,14 +26,16 @@ class ThemeProvider with ChangeNotifier {
   Future<void> setThemeMode(ThemeMode themeMode) async {
     if (_themeMode == themeMode) return; // No change
 
+    final previousThemeMode = _themeMode;
     _themeMode = themeMode;
-    try {
-      await sharedPreferences.setString(_themeModePrefKey, themeMode.name);
-      notifyListeners(); // Notify listeners about the change
-    } catch (e) {
-      // Handle potential error saving preference
-      debugPrint("Error saving theme mode preference: $e");
-      // Optionally revert _themeMode or handle error differently
+    notifyListeners();
+    final saved = await sharedPreferences.setString(
+      _themeModePrefKey,
+      themeMode.name,
+    );
+    if (!saved) {
+      _themeMode = previousThemeMode;
+      notifyListeners();
     }
   }
 }

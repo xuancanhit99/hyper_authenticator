@@ -1,15 +1,28 @@
-import 'package:flutter/material.dart';
-import 'dart:io'; // Needed for File path
+import 'dart:async';
 
+import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:image_picker/image_picker.dart'; // Import image_picker
-import 'package:mobile_scanner/mobile_scanner.dart';
+import 'package:hyper_authenticator/core/platform/platform_capabilities.dart';
+import 'package:hyper_authenticator/features/authenticator/domain/services/totp_uri_parser.dart';
 import 'package:hyper_authenticator/features/authenticator/presentation/bloc/accounts_bloc.dart';
-import 'package:hyper_authenticator/features/authenticator/presentation/utils/logo_service.dart'; // Import LogoService
-import 'package:hyper_authenticator/features/authenticator/presentation/widgets/logo_picker_dialog.dart'; // Import LogoPickerDialog
+import 'package:hyper_authenticator/features/authenticator/presentation/widgets/account_avatar.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:mobile_scanner/mobile_scanner.dart';
 
 class AddAccountPage extends StatefulWidget {
-  const AddAccountPage({super.key});
+  const AddAccountPage({super.key, this.scannerController});
+
+  static const issuerFieldKey = ValueKey<String>('add-account-issuer');
+  static const accountNameFieldKey = ValueKey<String>('add-account-name');
+  static const secretFieldKey = ValueKey<String>('add-account-secret');
+  static const submitButtonKey = ValueKey<String>('add-account-submit');
+  static const scannerLoadingKey = ValueKey<String>('scanner-loading');
+  static const scannerErrorKey = ValueKey<String>('scanner-error');
+  static const scannerRetryKey = ValueKey<String>('scanner-retry');
+  static const scannerManualEntryKey = ValueKey<String>('scanner-manual-entry');
+
+  @visibleForTesting
+  final MobileScannerController? scannerController;
 
   @override
   State<AddAccountPage> createState() => _AddAccountPageState();
@@ -21,37 +34,19 @@ class _AddAccountPageState extends State<AddAccountPage> {
   final _accountNameController = TextEditingController();
   final _secretController = TextEditingController();
 
-  String? _selectedIssuer;
-  List<String> _availableIssuers = [];
-  String? _previewLogoPath;
-
-  bool _isScanning = false; // To toggle between manual entry and scanner view
-  MobileScannerController scannerController =
-      MobileScannerController(); // Controller for scanner
+  bool _isScanning = false;
+  late final MobileScannerController _scannerController;
 
   @override
   void initState() {
     super.initState();
-    _loadAvailableIssuers();
+    _scannerController =
+        widget.scannerController ?? MobileScannerController(autoStart: false);
     _issuerController.addListener(() {
-      // Update preview when text field changes, unless a dropdown item was just selected
-      // This avoids a double update if onChanged from dropdown also sets the text field
-      if (_selectedIssuer != _issuerController.text) {
-        _updatePreviewLogo(_issuerController.text);
-        // If user types something that matches an available issuer, select it in dropdown
-        if (_availableIssuers.contains(_issuerController.text)) {
-          setState(() {
-            _selectedIssuer = _issuerController.text;
-          });
-        } else {
-          // If user types something different, clear dropdown selection
-          setState(() {
-            _selectedIssuer = null;
-          });
-        }
+      if (mounted) {
+        setState(() {});
       }
     });
-    _updatePreviewLogo(_issuerController.text); // Initial preview
   }
 
   @override
@@ -59,143 +54,79 @@ class _AddAccountPageState extends State<AddAccountPage> {
     _issuerController.dispose();
     _accountNameController.dispose();
     _secretController.dispose();
-    scannerController.dispose(); // Dispose scanner controller
+    unawaited(_scannerController.dispose());
     super.dispose();
   }
 
-  Future<void> _loadAvailableIssuers() async {
-    // Ensure LogoService is loaded - it's a singleton, loadLogoMap handles multiple calls
-    await LogoService.instance.loadLogoMap();
-    if (mounted) {
-      setState(() {
-        _availableIssuers = LogoService.instance.getAvailableIssuers();
-        // Attempt to set initial preview based on controller, if any text exists
-        if (_issuerController.text.isNotEmpty) {
-          _updatePreviewLogo(_issuerController.text);
-          if (_availableIssuers.contains(_issuerController.text)) {
-            _selectedIssuer = _issuerController.text;
-          }
-        }
-      });
+  void _toggleScanner() {
+    if (_isScanning) {
+      _showManualEntry();
+      return;
     }
+
+    setState(() {
+      _isScanning = true;
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && _isScanning) {
+        unawaited(_scannerController.start());
+      }
+    });
   }
 
-  void _updatePreviewLogo(String? issuerName) {
-    if (mounted) {
-      setState(() {
-        _previewLogoPath = LogoService.instance.getLogoPath(issuerName);
-      });
+  void _showManualEntry() {
+    unawaited(_scannerController.stop());
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _isScanning = false;
+    });
+  }
+
+  Future<void> _retryScanner() async {
+    await _scannerController.stop();
+    if (mounted && _isScanning) {
+      await _scannerController.start();
     }
   }
 
   void _handleBarcode(BarcodeCapture capture) {
-    // Stop scanning immediately after detection
-    scannerController.stop();
+    unawaited(_scannerController.stop());
+    if (!mounted) {
+      return;
+    }
     setState(() {
       _isScanning = false;
-    }); // Switch back to form view
+    });
 
-    final String? code = capture.barcodes.first.rawValue;
+    final String? code = capture.barcodes.isEmpty
+        ? null
+        : capture.barcodes.first.rawValue;
     if (code == null || code.isEmpty) {
-      _showError('Could not read QR code data.');
+      _showError('Không thể đọc dữ liệu trong mã QR.');
       return;
     }
 
-    debugPrint('QR Code Scanned: $code');
     try {
-      final uri = Uri.parse(code);
-
-      // Basic validation
-      if (uri.scheme != 'otpauth' || uri.host != 'totp') {
-        throw const FormatException(
-          'Invalid QR code. Must start with otpauth://totp/',
-        );
-      }
-
-      final secret = uri.queryParameters['secret'];
-      final issuer = uri.queryParameters['issuer'];
-      // Label is in the path segment, potentially with issuer prefix
-      String label = '';
-      if (uri.pathSegments.isNotEmpty) {
-        label = Uri.decodeComponent(uri.pathSegments.last);
-        if (issuer != null && label.startsWith('$issuer:')) {
-          // Remove issuer prefix if present
-          label = label.substring(issuer.length + 1).trim();
-        }
-      }
-
-      if (secret == null || secret.isEmpty) {
-        throw const FormatException('Missing secret key in QR code.');
-      }
-
-      // Parse optional OTP parameters with defaults
-      final String algorithm =
-          uri.queryParameters['algorithm']?.toUpperCase() ?? 'SHA1';
-      final int digits =
-          int.tryParse(uri.queryParameters['digits'] ?? '6') ?? 6;
-      final int period =
-          int.tryParse(uri.queryParameters['period'] ?? '30') ?? 30;
-
-      // Basic validation for parameters (optional but recommended)
-      if (!['SHA1', 'SHA256', 'SHA512'].contains(algorithm)) {
-        _showError('Unsupported algorithm specified: $algorithm. Using SHA1.');
-        // Fallback or throw error - choosing fallback for now
-        // throw const FormatException('Unsupported algorithm specified in QR code.');
-      }
-      if (digits < 6 || digits > 8) {
-        _showError('Unsupported digits specified: $digits. Using 6.');
-        // Fallback or throw error
-        // throw const FormatException('Unsupported number of digits specified in QR code.');
-      }
-      if (period <= 0) {
-        _showError('Invalid period specified: $period. Using 30.');
-        // Fallback or throw error
-        // throw const FormatException('Invalid period specified in QR code.');
-      }
-
-      // Dispatch event to add account with all parameters
+      final account = TotpUriParser.parse(code);
       context.read<AccountsBloc>().add(
         AddAccountRequested(
-          issuer: issuer ?? '', // Use issuer from query or empty string
-          accountName:
-              label.isNotEmpty
-                  ? label
-                  : (issuer ??
-                      'Unknown Account'), // Use parsed label or issuer or default
-          secretKey: secret, // Pass the secret directly
-          // Use validated/defaulted values
-          algorithm:
-              ['SHA1', 'SHA256', 'SHA512'].contains(algorithm)
-                  ? algorithm
-                  : 'SHA1',
-          digits: (digits >= 6 && digits <= 8) ? digits : 6,
-          period: (period > 0) ? period : 30,
+          issuer: account.issuer,
+          accountName: account.accountName,
+          secretKey: account.secretKey,
+          algorithm: account.algorithm,
+          digits: account.digits,
+          period: account.period,
         ),
       );
-      // Update UI elements after QR scan
-      if (mounted) {
-        _issuerController.text = issuer ?? '';
-        _accountNameController.text =
-            label.isNotEmpty ? label : (issuer ?? 'Unknown Account');
-        _secretController.text = secret;
-        _updatePreviewLogo(issuer);
-        if (_availableIssuers.contains(issuer)) {
-          setState(() {
-            _selectedIssuer = issuer;
-          });
-        } else {
-          setState(() {
-            _selectedIssuer = null;
-          });
-        }
-      }
-      // Navigation and feedback are now handled by BlocListener
+      _issuerController.text = account.issuer;
+      _accountNameController.text = account.accountName;
+      _secretController.text = account.secretKey;
     } on FormatException catch (e) {
-      debugPrint('Error parsing OTP Auth URI: $e');
-      _showError('Failed to parse QR code: ${e.message}');
-    } catch (e) {
-      debugPrint('Unexpected error handling QR code: $e');
-      _showError('An unexpected error occurred while processing the QR code.');
+      _showError(e.message);
+    } catch (_) {
+      _showError('Đã xảy ra lỗi khi xử lý mã QR.');
     }
   }
 
@@ -225,27 +156,6 @@ class _AddAccountPageState extends State<AddAccountPage> {
     }
   }
 
-  Future<void> _showLogoSelectionDialog() async {
-    final String? selectedIssuerFromDialog = await showDialog<String>(
-      context: context,
-      builder: (BuildContext dialogContext) {
-        return LogoPickerDialog(
-          availableIssuers: _availableIssuers,
-          currentIssuer: _issuerController.text,
-        );
-      },
-    );
-
-    if (selectedIssuerFromDialog != null) {
-      setState(() {
-        _issuerController.text = selectedIssuerFromDialog;
-        _selectedIssuer =
-            selectedIssuerFromDialog; // Keep this to indicate a choice was made
-        _updatePreviewLogo(selectedIssuerFromDialog);
-      });
-    }
-  }
-
   // --- Function to pick image and analyze QR code ---
   Future<void> _pickAndAnalyzeImage() async {
     final ImagePicker picker = ImagePicker();
@@ -253,29 +163,20 @@ class _AddAccountPageState extends State<AddAccountPage> {
     final XFile? image = await picker.pickImage(source: ImageSource.gallery);
 
     if (image == null) {
-      // User cancelled the picker
-      debugPrint('Image picking cancelled.');
       return;
     }
 
-    debugPrint('Analyzing image: ${image.path}');
-    // Analyze the image
     try {
-      // analyzeImage returns BarcodeCapture? not bool
-      final BarcodeCapture? barcodeCapture = await scannerController
+      final BarcodeCapture? barcodeCapture = await _scannerController
           .analyzeImage(image.path);
 
       if (barcodeCapture != null && barcodeCapture.barcodes.isNotEmpty) {
-        // Barcode found, manually call the handler
         _handleBarcode(barcodeCapture);
       } else {
-        // No barcode found in the image
-        _showError('No QR code found in the selected image.');
+        _showError('Không tìm thấy mã QR trong ảnh đã chọn.');
       }
-      // If a barcode is found, the onDetect listener (_handleBarcode) will be called automatically.
-    } catch (e) {
-      debugPrint('Error analyzing image: $e');
-      _showError('Could not analyze the selected image.');
+    } catch (_) {
+      _showError('Không thể phân tích ảnh đã chọn.');
     }
   }
 
@@ -283,35 +184,24 @@ class _AddAccountPageState extends State<AddAccountPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        backgroundColor:
-            Theme.of(context).scaffoldBackgroundColor, // Set background color
+        backgroundColor: Theme.of(
+          context,
+        ).scaffoldBackgroundColor, // Set background color
         elevation: 0, // Remove shadow
         title: Text(_isScanning ? 'Scan QR Code' : 'Add Account'),
         actions: [
-          // Add "Select Image" button first (only when not scanning)
-          if (!_isScanning)
+          if (!_isScanning && PlatformCapabilities.supportsBarcodeImageAnalysis)
             IconButton(
               icon: const Icon(Icons.image_outlined),
-              tooltip: 'Select QR Code Image',
-              onPressed: _pickAndAnalyzeImage, // Call the new function
+              tooltip: 'Chọn ảnh mã QR',
+              onPressed: _pickAndAnalyzeImage,
             ),
-          // Toggle Button second
-          IconButton(
-            icon: Icon(_isScanning ? Icons.edit : Icons.qr_code_scanner),
-            tooltip: _isScanning ? 'Enter Manually' : 'Scan QR Code',
-            onPressed: () {
-              setState(() {
-                _isScanning = !_isScanning;
-                if (_isScanning) {
-                  scannerController
-                      .start(); // Start scanner when switching to scan view
-                } else {
-                  scannerController
-                      .stop(); // Stop scanner when switching to manual view
-                }
-              });
-            },
-          ),
+          if (PlatformCapabilities.supportsBarcodeScanning)
+            IconButton(
+              icon: Icon(_isScanning ? Icons.edit : Icons.qr_code_scanner),
+              tooltip: _isScanning ? 'Nhập thủ công' : 'Quét mã QR',
+              onPressed: _toggleScanner,
+            ),
         ],
       ),
       body: BlocListener<AccountsBloc, AccountsState>(
@@ -332,7 +222,7 @@ class _AddAccountPageState extends State<AddAccountPage> {
               // For now, assume AccountsLoaded after AddAccountRequested implies success.
               Navigator.pop(context);
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Account added successfully!')),
+                const SnackBar(content: Text('Đã thêm tài khoản.')),
               );
             }
           } else if (state is AccountsError) {
@@ -340,12 +230,12 @@ class _AddAccountPageState extends State<AddAccountPage> {
               // Check if the error is relevant to the add operation.
               // The current BLoC emits a generic AccountsError.
               // We might need a more specific error state later if needed.
-              _showError('Failed to add account: ${state.message}');
+              _showError('Không thể thêm tài khoản: ${state.message}');
               // Optionally restart scanner or allow retry for QR scan
               if (_isScanning && mounted) {
                 // Add a small delay before restarting scanner to avoid immediate re-scan issues
                 Future.delayed(const Duration(milliseconds: 500), () {
-                  if (mounted) scannerController.start();
+                  if (mounted) unawaited(_scannerController.start());
                 });
               }
             }
@@ -359,8 +249,14 @@ class _AddAccountPageState extends State<AddAccountPage> {
 
   Widget _buildScannerView() {
     return MobileScanner(
-      controller: scannerController, // Use the controller
+      controller: _scannerController,
       onDetect: _handleBarcode,
+      placeholderBuilder: (_) => const _ScannerLoadingView(),
+      errorBuilder: (_, error) => _ScannerErrorView(
+        message: _scannerErrorMessage(error.errorCode),
+        onRetry: _retryScanner,
+        onManualEntry: _showManualEntry,
+      ),
     );
   }
 
@@ -372,142 +268,45 @@ class _AddAccountPageState extends State<AddAccountPage> {
         child: ListView(
           // Use ListView for scrollability on small screens
           children: [
-            if (_previewLogoPath != null)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 16.0),
-                child: Center(
-                  child: InkWell(
-                    onTap: _showLogoSelectionDialog,
-                    child: Tooltip(
-                      message: "Tap to change logo",
-                      child: Stack(
-                        clipBehavior: Clip.none, // Allow overflow
-                        alignment: Alignment.center,
-                        children: [
-                          SizedBox(
-                            width:
-                                72, // Increased size for better tap target and icon placement
-                            height: 72,
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(8.0),
-                              child:
-                                  _previewLogoPath == null ||
-                                          _previewLogoPath!.isEmpty
-                                      ? Container(
-                                        // Placeholder when no logo is available
-                                        decoration: BoxDecoration(
-                                          color: Colors.grey[200],
-                                          borderRadius: BorderRadius.circular(
-                                            8.0,
-                                          ),
-                                        ),
-                                        child: const Icon(
-                                          Icons.image_search,
-                                          size: 40,
-                                          color: Colors.grey,
-                                        ),
-                                      )
-                                      : Image.asset(
-                                        _previewLogoPath!,
-                                        fit: BoxFit.contain,
-                                        errorBuilder:
-                                            (
-                                              context,
-                                              error,
-                                              stackTrace,
-                                            ) => Container(
-                                              decoration: BoxDecoration(
-                                                color: Colors.grey[200],
-                                                borderRadius:
-                                                    BorderRadius.circular(8.0),
-                                              ),
-                                              child: const Icon(
-                                                Icons.business_center_outlined,
-                                                size: 40,
-                                                color: Colors.grey,
-                                              ),
-                                            ),
-                                      ),
-                            ),
-                          ),
-                          Positioned(
-                            right: -4, // Adjust to make it slightly outside
-                            bottom: -4, // Adjust to make it slightly outside
-                            child: Container(
-                              padding: const EdgeInsets.all(
-                                4,
-                              ), // Slightly more padding
-                              decoration: BoxDecoration(
-                                color:
-                                    Theme.of(context)
-                                        .colorScheme
-                                        .primary, // Solid primary color background
-                                shape: BoxShape.circle,
-                                // Optional: Add a slight shadow to make it "pop" more
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withOpacity(0.2),
-                                    spreadRadius: 1,
-                                    blurRadius: 2,
-                                    offset: const Offset(0, 1),
-                                  ),
-                                ],
-                              ),
-                              child: Icon(
-                                Icons.edit,
-                                size:
-                                    16, // Slightly smaller icon if padding is increased
-                                color:
-                                    Theme.of(
-                                      context,
-                                    ).colorScheme.onPrimary, // Ensure contrast
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              child: Center(
+                child: AccountAvatar(issuer: _issuerController.text, size: 72),
               ),
-            const SizedBox(height: 24), // Increased spacing after logo
+            ),
             TextFormField(
+              key: AddAccountPage.issuerFieldKey,
               controller: _issuerController,
-              decoration: InputDecoration(
-                labelText: 'Issuer (e.g., Google, GitHub)',
-                hintText:
-                    _selectedIssuer != null
-                        ? 'Selected: $_selectedIssuer'
-                        : 'Type to search or add new',
+              decoration: const InputDecoration(
+                labelText: 'Nhà cung cấp (ví dụ: Google, GitHub)',
+                hintText: 'Nhập tên nhà cung cấp',
               ),
-              validator:
-                  (value) =>
-                      (value == null || value.isEmpty)
-                          ? 'Please enter an issuer'
-                          : null,
+              validator: (value) => (value == null || value.isEmpty)
+                  ? 'Vui lòng nhập nhà cung cấp.'
+                  : null,
               // Listener is in initState to update preview dynamically
             ),
             const SizedBox(height: 16),
             TextFormField(
+              key: AddAccountPage.accountNameFieldKey,
               controller: _accountNameController,
               decoration: const InputDecoration(
-                labelText: 'Account Name (e.g., user@example.com)',
+                labelText: 'Tên tài khoản (ví dụ: user@example.com)',
               ),
-              validator:
-                  (value) =>
-                      (value == null || value.isEmpty)
-                          ? 'Please enter an account name'
-                          : null,
+              validator: (value) => (value == null || value.isEmpty)
+                  ? 'Vui lòng nhập tên tài khoản.'
+                  : null,
             ),
             const SizedBox(height: 16),
             TextFormField(
+              key: AddAccountPage.secretFieldKey,
               controller: _secretController,
               decoration: const InputDecoration(
-                labelText: 'Secret Key (Base32 encoded)',
+                labelText: 'Secret key (mã hóa Base32)',
               ),
               validator: (value) {
                 if (value == null || value.isEmpty) {
-                  return 'Please enter the secret key';
+                  return 'Vui lòng nhập secret key.';
                 }
                 // Optional: Add a more robust Base32 validation if needed
                 return null;
@@ -515,10 +314,114 @@ class _AddAccountPageState extends State<AddAccountPage> {
             ),
             const SizedBox(height: 32),
             ElevatedButton(
+              key: AddAccountPage.submitButtonKey,
               onPressed: _submitManualEntry,
-              child: const Text('Add Account'),
+              child: const Text('Thêm tài khoản'),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+String _scannerErrorMessage(MobileScannerErrorCode errorCode) {
+  return switch (errorCode) {
+    MobileScannerErrorCode.permissionDenied =>
+      'Ứng dụng chưa có quyền dùng camera. Hãy cho phép camera trong cài đặt '
+          'của trình duyệt hoặc hệ điều hành rồi thử lại.',
+    MobileScannerErrorCode.unsupported =>
+      'Thiết bị hoặc trình duyệt này không hỗ trợ quét mã QR bằng camera.',
+    _ =>
+      'Không thể khởi động camera. Hãy kiểm tra camera đang không bị ứng dụng '
+          'khác sử dụng rồi thử lại.',
+  };
+}
+
+class _ScannerLoadingView extends StatelessWidget {
+  const _ScannerLoadingView();
+
+  @override
+  Widget build(BuildContext context) {
+    return const ColoredBox(
+      key: AddAccountPage.scannerLoadingKey,
+      color: Colors.black,
+      child: Center(
+        child: Padding(
+          padding: EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(height: 20),
+              Text(
+                'Đang khởi động camera…',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.white),
+              ),
+              SizedBox(height: 8),
+              Text(
+                'Nếu trình duyệt hoặc hệ điều hành hỏi quyền camera, hãy chọn Cho phép.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.white70),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ScannerErrorView extends StatelessWidget {
+  const _ScannerErrorView({
+    required this.message,
+    required this.onRetry,
+    required this.onManualEntry,
+  });
+
+  final String message;
+  final Future<void> Function() onRetry;
+  final VoidCallback onManualEntry;
+
+  @override
+  Widget build(BuildContext context) {
+    return ColoredBox(
+      key: AddAccountPage.scannerErrorKey,
+      color: Colors.black,
+      child: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.videocam_off_outlined, color: Colors.white),
+              const SizedBox(height: 16),
+              Text(
+                message,
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: Colors.white),
+              ),
+              const SizedBox(height: 20),
+              Wrap(
+                alignment: WrapAlignment.center,
+                spacing: 12,
+                runSpacing: 8,
+                children: [
+                  OutlinedButton(
+                    key: AddAccountPage.scannerManualEntryKey,
+                    onPressed: onManualEntry,
+                    child: const Text('Nhập thủ công'),
+                  ),
+                  FilledButton(
+                    key: AddAccountPage.scannerRetryKey,
+                    onPressed: () => unawaited(onRetry()),
+                    child: const Text('Thử lại'),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );

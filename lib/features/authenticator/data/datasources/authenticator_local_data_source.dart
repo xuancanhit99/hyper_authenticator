@@ -1,10 +1,11 @@
+import 'dart:async';
 import 'dart:convert';
+
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:hyper_authenticator/features/authenticator/domain/entities/authenticator_account.dart';
-import 'package:uuid/uuid.dart'; // For generating unique IDs
-import 'package:injectable/injectable.dart'; // Moved import here
+import 'package:injectable/injectable.dart';
+import 'package:uuid/uuid.dart';
 
-// Define potential errors for the data source
 abstract class AuthenticatorLocalDataSourceException implements Exception {}
 
 class StorageReadException extends AuthenticatorLocalDataSourceException {}
@@ -16,165 +17,527 @@ class StorageDeleteException extends AuthenticatorLocalDataSourceException {}
 class AccountNotFoundException extends AuthenticatorLocalDataSourceException {}
 
 abstract class AuthenticatorLocalDataSource {
-  /// Fetches all stored [AuthenticatorAccount]s.
-  ///
-  /// Throws [StorageReadException] if reading fails.
   Future<List<AuthenticatorAccount>> getAccounts();
 
-  /// Saves a new [AuthenticatorAccount].
-  /// Assigns a unique ID if the account doesn't have one.
-  ///
-  /// Throws [StorageWriteException] if saving fails.
-  /// Returns the saved account (with ID).
   Future<AuthenticatorAccount> saveAccount(AuthenticatorAccount account);
 
-  /// Deletes the account with the given [id].
-  ///
-  /// Throws [StorageDeleteException] if deletion fails.
-  /// Throws [AccountNotFoundException] if the account doesn't exist.
   Future<void> deleteAccount(String id);
 
-  /// Updates an existing [AuthenticatorAccount].
-  ///
-  /// Throws [StorageWriteException] if saving fails.
-  /// Throws [AccountNotFoundException] if the account with the given ID doesn't exist.
   Future<void> updateAccount(AuthenticatorAccount account);
+
+  /// Atomically publishes a complete validated local snapshot.
+  Future<void> replaceAccounts(List<AuthenticatorAccount> accounts);
 }
 
-@LazySingleton(as: AuthenticatorLocalDataSource) // Register as implementation
+@LazySingleton(as: AuthenticatorLocalDataSource)
 class AuthenticatorLocalDataSourceImpl implements AuthenticatorLocalDataSource {
-  final FlutterSecureStorage secureStorage;
-  final Uuid uuid; // Inject Uuid
+  static const _legacyAccountIndexKey = 'authenticator_account_index';
+  static const _formatVersion = 2;
+  static const _namespace = 'ha:v2:';
+  static const _recordPrefix = '${_namespace}record:';
+  static const _manifestPrefix = '${_namespace}manifest:';
+  static const _commitPrefix = '${_namespace}commit:';
+  static const _retainedGenerationCount = 2;
 
-  // Key used to store the list of account IDs in secure storage
-  static const _accountIndexKey = 'authenticator_account_index';
+  static final RegExp _legacyAccountKeyPattern = RegExp(
+    r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$',
+  );
+
+  final FlutterSecureStorage secureStorage;
+  final Uuid uuid;
+
+  Future<void> _operationTail = Future<void>.value();
 
   AuthenticatorLocalDataSourceImpl({
     required this.secureStorage,
     required this.uuid,
   });
 
-  // Helper to get the list of account IDs
-  Future<List<String>> _getAccountIds() async {
+  @override
+  Future<List<AuthenticatorAccount>> getAccounts() => _serialized(() async {
     try {
-      final indexJson = await secureStorage.read(key: _accountIndexKey);
-      if (indexJson == null || indexJson.isEmpty) {
-        return [];
-      }
-      return List<String>.from(jsonDecode(indexJson));
-    } catch (e) {
-      // Consider logging the error e
+      final snapshot = await _ensureV2Snapshot();
+      return List<AuthenticatorAccount>.unmodifiable(snapshot.accounts);
+    } catch (_) {
       throw StorageReadException();
     }
-  }
-
-  // Helper to save the list of account IDs
-  Future<void> _saveAccountIds(List<String> ids) async {
-    try {
-      await secureStorage.write(key: _accountIndexKey, value: jsonEncode(ids));
-    } catch (e) {
-      // Consider logging the error e
-      throw StorageWriteException();
-    }
-  }
+  });
 
   @override
-  Future<List<AuthenticatorAccount>> getAccounts() async {
-    final accountIds = await _getAccountIds();
-    final accounts = <AuthenticatorAccount>[];
-    try {
-      for (final id in accountIds) {
-        final accountJson = await secureStorage.read(key: id);
-        if (accountJson != null) {
-          accounts.add(AuthenticatorAccount.fromJson(jsonDecode(accountJson)));
-        } else {
-          // Handle inconsistency: ID in index but data missing?
-          // Option: Log warning, remove ID from index? For now, just skip.
-          print('Warning: Account data not found for ID: $id');
-        }
-      }
-      return accounts;
-    } catch (e) {
-      // Consider logging the error e
-      throw StorageReadException();
-    }
-  }
-
-  @override
-  Future<AuthenticatorAccount> saveAccount(AuthenticatorAccount account) async {
-    // Assign a new UUID if the account ID is empty or doesn't conform (optional check)
-    final accountToSave =
-        account.id.isEmpty
+  Future<AuthenticatorAccount> saveAccount(AuthenticatorAccount account) =>
+      _serialized(() async {
+        final accountToSave = account.id.isEmpty
             ? AuthenticatorAccount(
-              id: uuid.v4(), // Generate a new ID
-              issuer: account.issuer,
-              accountName: account.accountName,
-              secretKey: account.secretKey,
-            )
+                id: uuid.v4(),
+                issuer: account.issuer,
+                accountName: account.accountName,
+                secretKey: account.secretKey,
+                algorithm: account.algorithm,
+                digits: account.digits,
+                period: account.period,
+              )
             : account;
 
-    try {
-      final accountJson = jsonEncode(accountToSave.toJson());
-      await secureStorage.write(key: accountToSave.id, value: accountJson);
+        try {
+          final current = await _ensureV2Snapshot();
+          final accounts = List<AuthenticatorAccount>.from(current.accounts);
+          final existingIndex = accounts.indexWhere(
+            (stored) => stored.id == accountToSave.id,
+          );
+          if (existingIndex == -1) {
+            accounts.add(accountToSave);
+          } else {
+            accounts[existingIndex] = accountToSave;
+          }
 
-      // Update the index
-      final currentIds = await _getAccountIds();
-      if (!currentIds.contains(accountToSave.id)) {
-        currentIds.add(accountToSave.id);
-        await _saveAccountIds(currentIds);
-      }
-      return accountToSave; // Return the account with the potentially new ID
-    } catch (e) {
-      // Consider logging the error e
-      throw StorageWriteException();
-    }
-  }
+          await _commitSnapshot(
+            previous: current,
+            accounts: accounts,
+            changedAccountIds: <String>{accountToSave.id},
+          );
+          return accountToSave;
+        } catch (_) {
+          throw StorageWriteException();
+        }
+      });
 
   @override
-  Future<void> deleteAccount(String id) async {
+  Future<void> deleteAccount(String id) => _serialized(() async {
     try {
-      // Check if account exists before deleting index entry
-      final existingData = await secureStorage.read(key: id);
-      if (existingData == null) {
+      final current = await _ensureV2Snapshot();
+      if (!current.entriesById.containsKey(id)) {
         throw AccountNotFoundException();
       }
 
-      await secureStorage.delete(key: id);
-
-      // Update the index
-      final currentIds = await _getAccountIds();
-      if (currentIds.contains(id)) {
-        currentIds.remove(id);
-        await _saveAccountIds(currentIds);
-      }
+      final accounts = current.accounts
+          .where((account) => account.id != id)
+          .toList(growable: false);
+      await _commitSnapshot(
+        previous: current,
+        accounts: accounts,
+        changedAccountIds: const <String>{},
+      );
     } on AccountNotFoundException {
-      rethrow; // Re-throw specific exception
-    } catch (e) {
-      // Consider logging the error e
+      rethrow;
+    } catch (_) {
       throw StorageDeleteException();
     }
-  }
+  });
 
   @override
-  Future<void> updateAccount(AuthenticatorAccount account) async {
-    try {
-      // First, check if the account exists by trying to read it.
-      // This ensures we don't create a new entry if an update is intended for a non-existent ID.
-      final existingAccountJson = await secureStorage.read(key: account.id);
-      if (existingAccountJson == null) {
-        throw AccountNotFoundException(); // Account to update not found
+  Future<void> updateAccount(AuthenticatorAccount account) =>
+      _serialized(() async {
+        try {
+          final current = await _ensureV2Snapshot();
+          final existingIndex = current.accounts.indexWhere(
+            (stored) => stored.id == account.id,
+          );
+          if (existingIndex == -1) {
+            throw AccountNotFoundException();
+          }
+
+          final accounts = List<AuthenticatorAccount>.from(current.accounts);
+          accounts[existingIndex] = account;
+          await _commitSnapshot(
+            previous: current,
+            accounts: accounts,
+            changedAccountIds: <String>{account.id},
+          );
+        } on AccountNotFoundException {
+          rethrow;
+        } catch (_) {
+          throw StorageWriteException();
+        }
+      });
+
+  @override
+  Future<void> replaceAccounts(List<AuthenticatorAccount> accounts) =>
+      _serialized(() async {
+        try {
+          final current = await _ensureV2Snapshot();
+          final replacement = List<AuthenticatorAccount>.unmodifiable(accounts);
+          if (replacement.any((account) => account.id.isEmpty) ||
+              replacement.map((account) => account.id).toSet().length !=
+                  replacement.length) {
+            throw const FormatException('Replacement snapshot không hợp lệ.');
+          }
+          await _commitSnapshot(
+            previous: current,
+            accounts: replacement,
+            changedAccountIds: replacement.map((account) => account.id).toSet(),
+          );
+        } catch (_) {
+          throw StorageWriteException();
+        }
+      });
+
+  Future<_V2Snapshot> _ensureV2Snapshot() async {
+    final storedValues = await secureStorage.readAll();
+    final existing = _loadLatestCommittedSnapshot(storedValues);
+    if (existing != null) {
+      return existing;
+    }
+
+    final legacyAccounts = _loadLegacyAccounts(storedValues);
+    return _commitSnapshot(
+      previous: null,
+      accounts: legacyAccounts,
+      changedAccountIds: legacyAccounts.map((account) => account.id).toSet(),
+    );
+  }
+
+  _V2Snapshot? _loadLatestCommittedSnapshot(Map<String, String> storedValues) {
+    final commitEntries = storedValues.entries
+        .where((entry) => entry.key.startsWith(_commitPrefix))
+        .toList(growable: false);
+    if (commitEntries.isEmpty) {
+      return null;
+    }
+
+    final candidates = <_CommitCandidate>[];
+    for (final entry in commitEntries) {
+      try {
+        final decoded = jsonDecode(entry.value);
+        if (decoded is! Map<String, dynamic> ||
+            decoded['formatVersion'] != _formatVersion ||
+            decoded['generation'] is! int ||
+            decoded['manifestKey'] is! String) {
+          continue;
+        }
+        candidates.add(
+          _CommitCandidate(
+            commitKey: entry.key,
+            generation: decoded['generation'] as int,
+            manifestKey: decoded['manifestKey'] as String,
+          ),
+        );
+      } catch (_) {
+        // A damaged latest commit is recoverable if an older commit is valid.
+      }
+    }
+
+    candidates.sort((left, right) {
+      final generationOrder = right.generation.compareTo(left.generation);
+      return generationOrder != 0
+          ? generationOrder
+          : right.commitKey.compareTo(left.commitKey);
+    });
+
+    for (final candidate in candidates) {
+      try {
+        return _loadManifest(candidate, storedValues);
+      } catch (_) {
+        // Continue to the previous committed generation.
+      }
+    }
+
+    throw const FormatException('No valid committed local-storage snapshot.');
+  }
+
+  _V2Snapshot _loadManifest(
+    _CommitCandidate candidate,
+    Map<String, String> storedValues,
+  ) {
+    final manifestJson = storedValues[candidate.manifestKey];
+    if (manifestJson == null ||
+        !candidate.manifestKey.startsWith(_manifestPrefix)) {
+      throw const FormatException('Manifest is missing.');
+    }
+
+    final decoded = jsonDecode(manifestJson);
+    if (decoded is! Map<String, dynamic> ||
+        decoded['formatVersion'] != _formatVersion ||
+        decoded['generation'] != candidate.generation ||
+        decoded['records'] is! List<dynamic>) {
+      throw const FormatException('Manifest shape is invalid.');
+    }
+
+    final accounts = <AuthenticatorAccount>[];
+    final entriesById = <String, _V2RecordEntry>{};
+    for (final descriptor in decoded['records'] as List<dynamic>) {
+      if (descriptor is! Map<String, dynamic> ||
+          descriptor['id'] is! String ||
+          descriptor['recordKey'] is! String) {
+        throw const FormatException('Record descriptor is invalid.');
       }
 
-      // If it exists, overwrite it with the new data.
-      final accountJson = jsonEncode(account.toJson());
-      await secureStorage.write(key: account.id, value: accountJson);
-      // The index of account IDs does not need to be changed for an update,
-      // as the ID remains the same and is already in the index.
-    } on AccountNotFoundException {
-      rethrow; // Re-throw to be caught by the repository
-    } catch (e) {
-      // Consider logging the error e
-      throw StorageWriteException(); // Use StorageWriteException for update failures too
+      final id = descriptor['id'] as String;
+      final recordKey = descriptor['recordKey'] as String;
+      if (id.isEmpty ||
+          !recordKey.startsWith(_recordPrefix) ||
+          entriesById.containsKey(id)) {
+        throw const FormatException('Record identity is invalid.');
+      }
+
+      final recordJson = storedValues[recordKey];
+      if (recordJson == null) {
+        throw const FormatException('Record is missing.');
+      }
+      final record = AuthenticatorAccount.fromJson(
+        jsonDecode(recordJson) as Map<String, dynamic>,
+      );
+      if (record.id != id) {
+        throw const FormatException('Record identity does not match its key.');
+      }
+
+      accounts.add(record);
+      entriesById[id] = _V2RecordEntry(recordKey: recordKey, account: record);
+    }
+
+    return _V2Snapshot(
+      generation: candidate.generation,
+      accounts: accounts,
+      entriesById: entriesById,
+    );
+  }
+
+  List<AuthenticatorAccount> _loadLegacyAccounts(
+    Map<String, String> storedValues,
+  ) {
+    final accounts = <AuthenticatorAccount>[];
+    final seenIds = <String>{};
+    final indexJson = storedValues[_legacyAccountIndexKey];
+    var indexedIds = const <String>[];
+
+    if (indexJson != null && indexJson.isNotEmpty) {
+      try {
+        final decodedIndex = jsonDecode(indexJson);
+        if (decodedIndex is List<dynamic> &&
+            decodedIndex.every((id) => id is String)) {
+          indexedIds = decodedIndex.cast<String>();
+        }
+      } catch (_) {
+        // A corrupt legacy index is recoverable by scanning strict UUID keys.
+      }
+    }
+
+    for (final id in indexedIds) {
+      if (seenIds.contains(id)) {
+        continue;
+      }
+      final recordJson = storedValues[id];
+      if (recordJson == null) {
+        // Repair the legacy delete failure mode by omitting dangling IDs.
+        continue;
+      }
+      try {
+        final account = AuthenticatorAccount.fromJson(
+          jsonDecode(recordJson) as Map<String, dynamic>,
+        );
+        if (account.id != id) {
+          throw const FormatException('Legacy record identity is invalid.');
+        }
+        seenIds.add(id);
+        accounts.add(account);
+      } catch (_) {
+        // Skip a damaged record and continue recovering other UUID-keyed data.
+      }
+    }
+
+    final orphanKeys =
+        storedValues.keys
+            .where(
+              (key) =>
+                  !seenIds.contains(key) &&
+                  _legacyAccountKeyPattern.hasMatch(key),
+            )
+            .toList()
+          ..sort();
+    for (final key in orphanKeys) {
+      try {
+        final account = AuthenticatorAccount.fromJson(
+          jsonDecode(storedValues[key]!) as Map<String, dynamic>,
+        );
+        if (account.id == key && seenIds.add(key)) {
+          accounts.add(account);
+        }
+      } catch (_) {
+        // Only strictly shaped UUID-keyed account records are recovered.
+      }
+    }
+
+    return accounts;
+  }
+
+  Future<_V2Snapshot> _commitSnapshot({
+    required _V2Snapshot? previous,
+    required List<AuthenticatorAccount> accounts,
+    required Set<String> changedAccountIds,
+  }) async {
+    final generation = (previous?.generation ?? 0) + 1;
+    final transactionId = uuid.v4();
+    final generationKey = generation.toString().padLeft(20, '0');
+    final entriesById = <String, _V2RecordEntry>{};
+    final recordDescriptors = <Map<String, String>>[];
+
+    for (final account in accounts) {
+      if (entriesById.containsKey(account.id)) {
+        throw const FormatException('Duplicate account identity.');
+      }
+
+      final previousEntry = previous?.entriesById[account.id];
+      final shouldWriteRecord =
+          previousEntry == null || changedAccountIds.contains(account.id);
+      final recordKey = shouldWriteRecord
+          ? '$_recordPrefix${account.id}:$transactionId'
+          : previousEntry.recordKey;
+
+      if (shouldWriteRecord) {
+        final recordJson = jsonEncode(account.toJson());
+        await secureStorage.write(key: recordKey, value: recordJson);
+        if (await secureStorage.read(key: recordKey) != recordJson) {
+          throw const FormatException('Record verification failed.');
+        }
+      }
+
+      entriesById[account.id] = _V2RecordEntry(
+        recordKey: recordKey,
+        account: account,
+      );
+      recordDescriptors.add(<String, String>{
+        'id': account.id,
+        'recordKey': recordKey,
+      });
+    }
+
+    final manifestKey = '$_manifestPrefix$generationKey:$transactionId';
+    final manifestJson = jsonEncode(<String, dynamic>{
+      'formatVersion': _formatVersion,
+      'generation': generation,
+      'records': recordDescriptors,
+    });
+    await secureStorage.write(key: manifestKey, value: manifestJson);
+    if (await secureStorage.read(key: manifestKey) != manifestJson) {
+      throw const FormatException('Manifest verification failed.');
+    }
+
+    final commitKey = '$_commitPrefix$generationKey:$transactionId';
+    final commitJson = jsonEncode(<String, dynamic>{
+      'formatVersion': _formatVersion,
+      'generation': generation,
+      'manifestKey': manifestKey,
+    });
+    await secureStorage.write(key: commitKey, value: commitJson);
+    if (await secureStorage.read(key: commitKey) != commitJson) {
+      throw const FormatException('Commit verification failed.');
+    }
+
+    final verifiedValues = await secureStorage.readAll();
+    final verified = _loadManifest(
+      _CommitCandidate(
+        commitKey: commitKey,
+        generation: generation,
+        manifestKey: manifestKey,
+      ),
+      verifiedValues,
+    );
+    if (verified.accounts.length != accounts.length) {
+      throw const FormatException('Committed snapshot verification failed.');
+    }
+    await _compactV2Artifacts(verifiedValues);
+    return verified;
+  }
+
+  Future<void> _compactV2Artifacts(Map<String, String> storedValues) async {
+    final candidates = <_CommitCandidate>[];
+    for (final entry in storedValues.entries.where(
+      (entry) => entry.key.startsWith(_commitPrefix),
+    )) {
+      try {
+        final decoded = jsonDecode(entry.value);
+        if (decoded is Map<String, dynamic> &&
+            decoded['formatVersion'] == _formatVersion &&
+            decoded['generation'] is int &&
+            decoded['manifestKey'] is String) {
+          candidates.add(
+            _CommitCandidate(
+              commitKey: entry.key,
+              generation: decoded['generation'] as int,
+              manifestKey: decoded['manifestKey'] as String,
+            ),
+          );
+        }
+      } catch (_) {
+        // Invalid artifacts are eligible for best-effort cleanup below.
+      }
+    }
+    candidates.sort((left, right) {
+      final generationOrder = right.generation.compareTo(left.generation);
+      return generationOrder != 0
+          ? generationOrder
+          : right.commitKey.compareTo(left.commitKey);
+    });
+
+    final retainedKeys = <String>{};
+    var retainedGenerations = 0;
+    for (final candidate in candidates) {
+      if (retainedGenerations >= _retainedGenerationCount) break;
+      try {
+        final snapshot = _loadManifest(candidate, storedValues);
+        retainedKeys
+          ..add(candidate.commitKey)
+          ..add(candidate.manifestKey)
+          ..addAll(snapshot.entriesById.values.map((entry) => entry.recordKey));
+        retainedGenerations++;
+      } catch (_) {
+        // Do not count an invalid generation toward rollback retention.
+      }
+    }
+
+    final obsoleteKeys = storedValues.keys
+        .where(
+          (key) => key.startsWith(_namespace) && !retainedKeys.contains(key),
+        )
+        .toList(growable: false);
+    for (final key in obsoleteKeys) {
+      try {
+        await secureStorage.delete(key: key);
+      } catch (_) {
+        // Compaction failure must not invalidate the committed active snapshot.
+      }
     }
   }
+
+  Future<T> _serialized<T>(Future<T> Function() operation) {
+    final completer = Completer<T>();
+    _operationTail = _operationTail.then((_) async {
+      try {
+        completer.complete(await operation());
+      } catch (error, stackTrace) {
+        completer.completeError(error, stackTrace);
+      }
+    });
+    return completer.future;
+  }
+}
+
+class _V2Snapshot {
+  final int generation;
+  final List<AuthenticatorAccount> accounts;
+  final Map<String, _V2RecordEntry> entriesById;
+
+  const _V2Snapshot({
+    required this.generation,
+    required this.accounts,
+    required this.entriesById,
+  });
+}
+
+class _V2RecordEntry {
+  final String recordKey;
+  final AuthenticatorAccount account;
+
+  const _V2RecordEntry({required this.recordKey, required this.account});
+}
+
+class _CommitCandidate {
+  final String commitKey;
+  final int generation;
+  final String manifestKey;
+
+  const _CommitCandidate({
+    required this.commitKey,
+    required this.generation,
+    required this.manifestKey,
+  });
 }

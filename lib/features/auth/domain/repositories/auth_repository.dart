@@ -26,6 +26,8 @@ abstract class AuthRepository {
 
   Future<Either<Failure, void>> signOut();
 
+  Future<Either<Failure, void>> revokeOtherSessions();
+
   // Added method for updating password
   Future<Either<Failure, void>> updatePassword(String newPassword);
 }

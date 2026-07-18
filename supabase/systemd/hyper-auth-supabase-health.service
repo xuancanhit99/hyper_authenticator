@@ -1,0 +1,24 @@
+[Unit]
+Description=Hyper Authenticator Supabase production health gate
+Requires=docker.service
+After=docker.service
+
+[Service]
+Type=oneshot
+User=xuancanhit
+Group=xuancanhit
+Environment=STACK_ENV=/opt/stacks/supabase/.env
+Environment=BACKUP_ROOT=/home/xuancanhit/backups/hyper-authenticator/scheduled
+EnvironmentFile=-/etc/hyper-authenticator/supabase-health.env
+ExecStart=/usr/local/lib/hyper-authenticator/check_production_health.sh
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=read-only
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6

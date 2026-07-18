@@ -17,7 +17,6 @@ class AppTheme {
     primaryColor: AppColors.facebookBlue, // Use Facebook blue
     scaffoldBackgroundColor:
         AppColors.lightBackground, // White or light gray background
-    fontFamily: 'Averta', // Set default font
     appBarTheme: AppBarTheme(
       // Facebook style AppBar (usually light)
       backgroundColor: AppColors.lightBackground, // White or light gray
@@ -36,10 +35,10 @@ class AppTheme {
     inputDecorationTheme: CTextFormFieldTheme.lightInputDecorationTheme,
     navigationBarTheme: NavigationBarThemeData(
       backgroundColor: AppColors.lightBackground,
-      indicatorColor: AppColors.facebookBlue.withOpacity(0.15),
+      indicatorColor: AppColors.facebookBlue.withValues(alpha: 0.15),
       indicatorShape: const StadiumBorder(),
-      labelTextStyle: MaterialStateProperty.resolveWith((states) {
-        if (states.contains(MaterialState.selected)) {
+      labelTextStyle: WidgetStateProperty.resolveWith((states) {
+        if (states.contains(WidgetState.selected)) {
           return TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w600,
@@ -52,8 +51,8 @@ class AppTheme {
           color: AppColors.textSecondaryLight,
         );
       }),
-      iconTheme: MaterialStateProperty.resolveWith((states) {
-        if (states.contains(MaterialState.selected)) {
+      iconTheme: WidgetStateProperty.resolveWith((states) {
+        if (states.contains(WidgetState.selected)) {
           return IconThemeData(color: AppColors.facebookBlue);
         }
         return IconThemeData(color: AppColors.textSecondaryLight);
@@ -91,9 +90,7 @@ class AppTheme {
       brightness: Brightness.light,
       // Override specific scheme colors if needed
       primary: AppColors.facebookBlue,
-      background: AppColors.lightBackground,
       surface: AppColors.lightBackground,
-      onBackground: AppColors.textPrimaryLight,
       onSurface: AppColors.textPrimaryLight,
     ),
   );
@@ -106,7 +103,6 @@ class AppTheme {
         AppColors.facebookBlue, // Use Facebook blue (adjust if needed for dark)
     scaffoldBackgroundColor:
         AppColors.darkBackground, // Use defined dark background
-    fontFamily: 'Averta', // Set default font
     appBarTheme: AppBarTheme(
       // backgroundColor: AppColors.darkSurface, // Use defined dark surface
       backgroundColor: AppColors.cDarkColor, // Use defined dark surface
@@ -122,10 +118,10 @@ class AppTheme {
     // Set color cDarkColor for background bottomNavigationBar
     navigationBarTheme: NavigationBarThemeData(
       backgroundColor: AppColors.cDarkColor,
-      indicatorColor: AppColors.cBlueColor.withOpacity(0.25),
+      indicatorColor: AppColors.cBlueColor.withValues(alpha: 0.25),
       indicatorShape: const StadiumBorder(),
-      labelTextStyle: MaterialStateProperty.resolveWith((states) {
-        if (states.contains(MaterialState.selected)) {
+      labelTextStyle: WidgetStateProperty.resolveWith((states) {
+        if (states.contains(WidgetState.selected)) {
           return TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w600,
@@ -138,8 +134,8 @@ class AppTheme {
           color: AppColors.textSecondaryDark,
         );
       }),
-      iconTheme: MaterialStateProperty.resolveWith((states) {
-        if (states.contains(MaterialState.selected)) {
+      iconTheme: WidgetStateProperty.resolveWith((states) {
+        if (states.contains(WidgetState.selected)) {
           return IconThemeData(color: AppColors.cBlueColor);
         }
         return IconThemeData(color: AppColors.textSecondaryDark);
@@ -186,10 +182,8 @@ class AppTheme {
       brightness: Brightness.dark,
       // Override specific scheme colors for better dark theme control
       primary: AppColors.facebookBlue, // Keep primary blue
-      background: AppColors.darkBackground,
       surface: AppColors.darkSurface,
       onPrimary: Colors.white, // Text on primary color button
-      onBackground: AppColors.textPrimaryDark,
       onSurface: AppColors.textPrimaryDark,
       // You might need to adjust secondary, error colors etc. based on the seed generation
     ),

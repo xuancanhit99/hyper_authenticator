@@ -1,10 +1,15 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Auth và encrypted cloud sync luôn dùng HTTPS. Debug manifest chỉ thêm
+         quyền phục vụ Flutter tooling; release vẫn cần INTERNET tại đây. -->
+    <uses-permission android:name="android.permission.INTERNET"/>
     <!-- Required for local_auth plugin -->
     <uses-permission android:name="android.permission.USE_BIOMETRIC"/>
     <application
-        android:label="HyperZ"
+        android:label="Hyper Authenticator"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/ic_launcher"
+        android:allowBackup="false"
+        android:usesCleartextTraffic="false">
         <activity
             android:name=".MainActivity"
             android:exported="true"

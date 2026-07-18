@@ -50,19 +50,19 @@ class _LoginPageState extends State<LoginPage> {
 
   String? _validateEmail(String? value) {
     if (value == null || value.isEmpty) {
-      return 'Please enter your email';
+      return 'Vui lòng nhập email.';
     }
     // Basic email validation regex
     final emailRegex = RegExp(r'^[^@]+@[^@]+\.[^@]+');
     if (!emailRegex.hasMatch(value)) {
-      return 'Please enter a valid email address';
+      return 'Vui lòng nhập địa chỉ email hợp lệ.';
     }
     return null;
   }
 
   String? _validatePassword(String? value) {
     if (value == null || value.isEmpty) {
-      return 'Please enter your password';
+      return 'Vui lòng nhập mật khẩu.';
     }
     return null;
   }
@@ -72,11 +72,20 @@ class _LoginPageState extends State<LoginPage> {
     // Wrap with BlocListener to show errors
     return BlocListener<AuthBloc, AuthState>(
       // Listen for AuthInitial state to pre-fill email
-      listenWhen:
-          (previous, current) =>
-              current is AuthInitial || current is AuthFailure,
+      listenWhen: (previous, current) =>
+          current is AuthInitial ||
+          current is AuthFailure ||
+          current is AuthAuthenticated,
       listener: (context, state) {
-        if (state is AuthInitial) {
+        if (state is AuthAuthenticated) {
+          context.go(
+            AppRedirectPolicy.authenticatedDestination(
+              returnTo: GoRouterState.of(
+                context,
+              ).uri.queryParameters['returnTo'],
+            ),
+          );
+        } else if (state is AuthInitial) {
           // Pre-fill email if available
           if (state.rememberedEmail != null) {
             _emailController.text = state.rememberedEmail!;
@@ -106,8 +115,8 @@ class _LoginPageState extends State<LoginPage> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     const AuthHeader(
-                      title: 'Welcome Back!',
-                      subtitle: 'Sign in to continue',
+                      title: 'Chào mừng bạn trở lại!',
+                      subtitle: 'Đăng nhập để tiếp tục',
                     ),
                     TextFormField(
                       controller: _emailController,
@@ -123,7 +132,7 @@ class _LoginPageState extends State<LoginPage> {
                     TextFormField(
                       controller: _passwordController,
                       decoration: InputDecoration(
-                        labelText: 'Password',
+                        labelText: 'Mật khẩu',
                         prefixIcon: const Icon(Icons.lock_outline),
                         // Add suffix icon for password visibility toggle
                         suffixIcon: IconButton(
@@ -164,12 +173,10 @@ class _LoginPageState extends State<LoginPage> {
                                     _rememberMe = newValue ?? false;
                                   });
                                 },
-                                visualDensity:
-                                    VisualDensity
-                                        .compact, // Make checkbox smaller
-                                materialTapTargetSize:
-                                    MaterialTapTargetSize
-                                        .shrinkWrap, // Reduce tap area
+                                visualDensity: VisualDensity
+                                    .compact, // Make checkbox smaller
+                                materialTapTargetSize: MaterialTapTargetSize
+                                    .shrinkWrap, // Reduce tap area
                               ),
                             ),
                             const SizedBox(
@@ -181,7 +188,7 @@ class _LoginPageState extends State<LoginPage> {
                                   _rememberMe = !_rememberMe;
                                 });
                               },
-                              child: const Text("Remember Me"),
+                              child: const Text('Ghi nhớ đăng nhập'),
                             ),
                           ],
                         ),
@@ -194,11 +201,10 @@ class _LoginPageState extends State<LoginPage> {
                             padding: EdgeInsets.zero, // Remove default padding
                             minimumSize:
                                 Size.zero, // Remove minimum size constraint
-                            tapTargetSize:
-                                MaterialTapTargetSize
-                                    .shrinkWrap, // Reduce tap area
+                            tapTargetSize: MaterialTapTargetSize
+                                .shrinkWrap, // Reduce tap area
                           ),
-                          child: const Text('Forgot Password?'),
+                          child: const Text('Quên mật khẩu?'),
                         ),
                       ],
                     ),
@@ -214,25 +220,24 @@ class _LoginPageState extends State<LoginPage> {
                             padding: const EdgeInsets.symmetric(vertical: 16),
                             textStyle: Theme.of(context).textTheme.titleMedium,
                           ),
-                          child:
-                              isLoading
-                                  ? SizedBox(
-                                    // Remove const here
-                                    width: 24,
-                                    height: 24,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      // Set indicator color based on theme brightness
-                                      color:
-                                          Theme.of(context).brightness ==
-                                                  Brightness.dark
-                                              ? Colors
-                                                  .black // Black indicator in dark mode
-                                              : Colors
-                                                  .white, // White indicator in light mode
-                                    ),
-                                  )
-                                  : const Text('Login'),
+                          child: isLoading
+                              ? SizedBox(
+                                  // Remove const here
+                                  width: 24,
+                                  height: 24,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    // Set indicator color based on theme brightness
+                                    color:
+                                        Theme.of(context).brightness ==
+                                            Brightness.dark
+                                        ? Colors
+                                              .black // Black indicator in dark mode
+                                        : Colors
+                                              .white, // White indicator in light mode
+                                  ),
+                                )
+                              : const Text('Đăng nhập'),
                         );
                       },
                     ),
@@ -240,7 +245,7 @@ class _LoginPageState extends State<LoginPage> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Text("Don't have an account?"),
+                        const Text('Chưa có tài khoản?'),
                         TextButton(
                           onPressed: () {
                             // Navigate to Register page
@@ -251,11 +256,10 @@ class _LoginPageState extends State<LoginPage> {
                             padding: EdgeInsets.zero, // Remove default padding
                             // minimumSize:
                             // Size.zero, // Remove minimum size constraint
-                            tapTargetSize:
-                                MaterialTapTargetSize
-                                    .shrinkWrap, // Reduce tap area
+                            tapTargetSize: MaterialTapTargetSize
+                                .shrinkWrap, // Reduce tap area
                           ),
-                          child: const Text('Sign Up'),
+                          child: const Text('Đăng ký'),
                         ),
                       ],
                     ),

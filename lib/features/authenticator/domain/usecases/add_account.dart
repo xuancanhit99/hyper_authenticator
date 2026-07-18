@@ -4,6 +4,7 @@ import 'package:hyper_authenticator/core/error/failures.dart';
 import 'package:hyper_authenticator/core/usecases/usecase.dart';
 import 'package:hyper_authenticator/features/authenticator/domain/entities/authenticator_account.dart';
 import 'package:hyper_authenticator/features/authenticator/domain/repositories/authenticator_repository.dart';
+import 'package:hyper_authenticator/features/authenticator/domain/services/totp_validator.dart';
 import 'package:injectable/injectable.dart'; // Add import
 
 @injectable // Register use case
@@ -16,24 +17,32 @@ class AddAccount implements UseCase<AuthenticatorAccount, AddAccountParams> {
   Future<Either<Failure, AuthenticatorAccount>> call(
     AddAccountParams params,
   ) async {
-    // Basic validation could be added here if needed
-    if (params.secretKey.isEmpty ||
-        params.issuer.isEmpty ||
-        params.accountName.isEmpty) {
+    final issuer = params.issuer.trim();
+    final accountName = params.accountName.trim();
+    if (issuer.isEmpty || accountName.isEmpty) {
       return Left(
-        ValidationFailure(
-          'Issuer, Account Name, and Secret Key cannot be empty.',
-        ),
+        ValidationFailure('Issuer và tên tài khoản không được để trống.'),
       );
     }
-    // Add more specific secret key validation (e.g., Base32 check) if desired
 
-    // Pass all parameters, including OTP details, to the repository
-    return await repository.addAccount(
-      issuer: params.issuer,
-      accountName: params.accountName,
-      secretKey: params.secretKey,
-      algorithm: params.algorithm,
+    late final String secretKey;
+    late final String algorithm;
+    try {
+      secretKey = TotpValidator.normalizeSecret(params.secretKey);
+      algorithm = TotpValidator.normalizeAlgorithm(params.algorithm);
+      TotpValidator.validateParameters(
+        digits: params.digits,
+        period: params.period,
+      );
+    } on FormatException catch (error) {
+      return Left(ValidationFailure(error.message));
+    }
+
+    return repository.addAccount(
+      issuer: issuer,
+      accountName: accountName,
+      secretKey: secretKey,
+      algorithm: algorithm,
       digits: params.digits,
       period: params.period,
     );

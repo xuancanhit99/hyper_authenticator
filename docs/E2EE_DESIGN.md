@@ -1,126 +1,151 @@
-# End-to-End Encryption (E2EE) Design for Cloud Synchronization
+# Thiết kế E2EE snapshot
 
-This document details the proposed design for implementing client-side End-to-End Encryption (E2EE) for the cloud synchronization feature in Hyper Authenticator. The goal is to ensure that sensitive user data, particularly TOTP secrets, are encrypted on the client device before being uploaded to the Supabase backend, making them unreadable by the server or any intermediaries.
+Trạng thái: **Đã triển khai v1 trên native client và Supabase production**.
 
-## 1. Goals
+## Mục tiêu
 
-*   **Confidentiality:** Only the user should be able to decrypt and access their synchronized TOTP secrets. The backend provider (Supabase) should not have access to the plaintext secrets.
-*   **Integrity:** Ensure that the encrypted data stored on the backend has not been tampered with.
-*   **Usability:** The encryption/decryption process should be largely transparent to the user during normal operation. Key management should be as secure and user-friendly as possible.
+Supabase không thấy plaintext TOTP secret. Network/database compromise không đủ
+để decrypt vault nếu recovery key và thiết bị không bị compromise. E2EE không bảo
+vệ khỏi client đã unlock bị kiểm soát hoàn toàn.
 
-## 2. Cryptographic Primitives
+## Key hierarchy
 
-*   **Symmetric Encryption Algorithm:** AES-GCM (Advanced Encryption Standard with Galois/Counter Mode) using a 256-bit key.
-    *   **Reasoning:** AES is a widely adopted, secure, and performant standard. GCM mode provides both confidentiality (encryption) and integrity (authentication tag), protecting against tampering.
-*   **Key Derivation Function (KDF):** Argon2id (preferred) or PBKDF2-HMAC-SHA256.
-    *   **Reasoning:** Used if deriving the encryption key from a user-defined master password. These KDFs are designed to be computationally intensive, making brute-force attacks on the master password much harder. Argon2id is generally considered stronger against various attacks.
-*   **Random Number Generation:** Cryptographically secure pseudo-random number generator (CSPRNG) provided by the OS/platform (e.g., via `dart:math`'s `Random.secure()` or the `cryptography` package utilities). Used for generating nonces/IVs and potentially random encryption keys.
-*   **Library:** `cryptography` package in Dart/Flutter. Provides implementations for AES-GCM, KDFs, and secure random generation.
+- DEK ngẫu nhiên 256-bit mã hóa account snapshot.
+- Recovery key ngẫu nhiên 256-bit, có prefix/version `HA1-`, đóng vai KEK wrap DEK.
+- DEK plaintext lưu trong platform secure storage theo Supabase user ID.
+- Backend lưu wrapped DEK, không lưu recovery key/DEK plaintext.
+- Supabase password không dùng làm KEK/KDF; password reset không phục hồi vault.
 
-## 3. Key Management Strategy
+## Primitive và encoding
 
-This is the most critical and complex part of E2EE. Two primary approaches are considered:
+- Package `cryptography` 2.9.0.
+- AES-256-GCM, random nonce mỗi encryption.
+- Nonce/ciphertext/tag dùng Base64URL.
+- AAD bind purpose, format version, Supabase user ID và revision.
+- Unknown version hoặc tamper bị từ chối trước local persistence.
 
-### Approach A: Key Derived from Master Password
+## Snapshot
 
-1.  **Setup:**
-    *   When enabling sync for the first time (or setting up E2EE), the user is prompted to create a strong **Master Password**. *This password is known only to the user and is NEVER sent to the server.*
-    *   A unique, cryptographically secure **salt** (e.g., 16 bytes) is generated for the user and stored alongside their *encrypted* data on Supabase (or potentially in a separate user profile table). The salt is not secret but must be unique per user.
-    *   The **Encryption Key (EK)** is derived from the Master Password and the salt using the chosen KDF (Argon2id or PBKDF2). `EK = KDF(MasterPassword, Salt, parameters)`. Parameters (iterations, memory cost, parallelism for Argon2) should be chosen carefully for adequate security.
-2.  **Encryption/Decryption:**
-    *   The derived EK is used for all AES-GCM encryption/decryption operations for that user's data.
-    *   The EK is held in memory only when needed (e.g., during sync, potentially cached briefly after successful login/unlock) and should be cleared as soon as possible. It is **never** stored directly on disk.
-3.  **Login/Unlock:**
-    *   When the user logs in or unlocks the sync feature, they must provide the Master Password.
-    *   The app retrieves the user's salt from Supabase.
-    *   It re-derives the EK using the provided password and the salt.
-    *   To verify the password is correct *without* decrypting all data, a separate **Verification Value (VV)** can be stored on Supabase. VV = Encrypt(KnownConstant, EK). During login, the app derives EK, decrypts VV, and checks if it matches the KnownConstant.
-4.  **Pros:**
-    *   Key is not stored directly anywhere, only derived.
-    *   Relatively simpler cross-device setup (user just needs to remember the Master Password and enter it on new devices).
-5.  **Cons:**
-    *   **Password Forgetting:** If the user forgets the Master Password, the EK cannot be derived, and **all encrypted data becomes permanently inaccessible**. Recovery is extremely difficult without compromising security (e.g., pre-generated recovery codes stored securely by the user).
-    *   **Password Strength:** Security relies heavily on the strength of the user's chosen Master Password and the KDF parameters.
-    *   Requires user interaction (entering password) to unlock sync features.
+Plaintext canonical chứa đầy đủ `AuthenticatorAccount`, sort theo stable ID.
+Remote envelope chứa format, cipher, revision, nonce, ciphertext, auth tag và
+wrapped-key envelope. Backend metadata không chứa issuer/account/secret.
 
-### Approach B: Randomly Generated Key Stored Securely
+## Onboarding đã triển khai
 
-1.  **Setup:**
-    *   When enabling sync/E2EE, a strong, unique **Encryption Key (EK)** (e.g., 256-bit) is generated using a CSPRNG.
-    *   This EK is stored directly in the device's `FlutterSecureStorage`.
-2.  **Encryption/Decryption:**
-    *   The EK is retrieved from `FlutterSecureStorage` when needed for AES-GCM operations.
-3.  **Login/Unlock:**
-    *   Access to the EK in `FlutterSecureStorage` might be implicitly protected by device lock (PIN/Biometrics) depending on the platform implementation. No separate Master Password needed for decryption itself.
-4.  **Pros:**
-    *   No Master Password for the user to forget (related to encryption key).
-    *   Key strength is guaranteed by the CSPRNG.
-    *   Potentially more seamless user experience (no extra password prompt for decryption if device is unlocked).
-5.  **Cons:**
-    *   **Key Loss:** If the app is uninstalled, the device is wiped, or `FlutterSecureStorage` data is lost, the EK is gone, and **all encrypted data becomes permanently inaccessible**.
-    *   **Cross-Device Setup:** Getting the *same* EK onto a new device securely is challenging. Options:
-        *   **Manual Backup/Transfer:** User manually exports the key (e.g., as a QR code or file) and imports it on the new device. Requires careful user action and secure handling of the exported key.
-        *   **Cloud Key Sync (Complex & Risky):** Attempting to sync the EK itself via a cloud service introduces significant security risks and complexity (e.g., encrypting the EK with another key derived from user login password - partially defeats the purpose). Generally discouraged unless implemented with extreme care.
-        *   **Recovery Codes:** Generate recovery codes during setup that the user stores securely. These codes could potentially be used to re-access/re-encrypt data if the primary key is lost (complex implementation).
+1. Cloud row phải chưa tồn tại.
+2. Sinh DEK + recovery key trong memory.
+3. Hiển thị recovery key một lần.
+4. User xác nhận đã lưu.
+5. Encrypt local snapshot revision 1.
+6. Atomic publish expected revision 0.
+7. Read-after-write verification.
+8. Persist DEK + last revision + enabled flag.
 
-**Chosen Approach (Recommendation):** Approach A (Key Derived from Master Password) is often preferred for user-facing E2EE due to the simpler cross-device story, despite the password recovery challenge. Implementing secure recovery codes alongside Approach A is highly recommended.
+Cancel, conflict hoặc network failure trước bước 8 không persist setup state.
 
-## 4. Data Structure for Encryption
+## Recovery đã triển khai
 
-*   Instead of encrypting each field (`secretKey`, `issuer`, `accountName`) individually, it's generally more efficient and secure to:
-    1.  Serialize the sensitive parts of the `AuthenticatorAccount` object (or a dedicated DTO) into a structured format (e.g., JSON string).
-    2.  Encrypt this entire serialized string using AES-GCM with the EK.
-    3.  Store the resulting ciphertext (and the nonce/IV used for encryption) in a single field (e.g., `encrypted_data`) in the Supabase table (`synced_accounts`).
-    4.  Non-sensitive fields needed for querying or sorting (like `id`, `user_id`, `order_index`, `created_at`) can remain unencrypted in separate columns.
+1. Download encrypted row.
+2. Parse/validate recovery key.
+3. Unwrap DEK với user-bound AAD.
+4. Authenticate/decrypt snapshot.
+5. Validate toàn bộ account.
+6. Persist DEK verified.
+7. Nếu local khác và không rỗng, chuyển sang explicit conflict.
+8. Chỉ atomic replace sau khi user chọn cloud.
 
-*   **Encryption Process:**
-    1.  Get EK (derive from Master Password or retrieve from SecureStorage).
-    2.  Serialize account data (e.g., `{'secret': '...', 'issuer': '...', 'name': '...'}`).
-    3.  Generate a unique, random nonce (IV) for each encryption operation (e.g., 12 bytes for AES-GCM). **Never reuse a nonce with the same key.**
-    4.  Encrypt the serialized data using AES-GCM, EK, and the nonce. This produces ciphertext and an authentication tag.
-    5.  Store the nonce + ciphertext + tag together (e.g., base64 encoded) in the `encrypted_data` column.
+Sai key/tamper/future version không mutate local vault.
 
-*   **Decryption Process:**
-    1.  Get EK.
-    2.  Retrieve the stored value (nonce + ciphertext + tag) from `encrypted_data`.
-    3.  Extract the nonce.
-    4.  Decrypt the ciphertext using AES-GCM, EK, nonce, and the tag. GCM automatically verifies the tag for integrity. If decryption fails or the tag is invalid, the data has been tampered with or the wrong key/nonce was used.
-    5.  Deserialize the resulting plaintext back into the account object/DTO.
+## Xoay recovery key đã triển khai
 
-## 5. Synchronization Flow Integration
+Thiết bị đang giữ DEK có thể tạo recovery key 256-bit mới. Client xác thực DEK
+với snapshot hiện tại, re-wrap cùng DEK, re-encrypt snapshot bằng nonce mới rồi
+atomic publish ở revision kế tiếp. Người dùng phải xác nhận đã lưu key mới trước
+khi publish.
 
-*   **Upload:**
-    1.  User triggers sync (e.g., manual sync, background sync).
-    2.  App prompts for Master Password if EK is not already in memory (Approach A). Derives/Retrieves EK.
-    3.  For each local `AuthenticatorAccount` to be synced:
-        *   Serialize sensitive fields.
-        *   Generate nonce.
-        *   Encrypt using EK and nonce.
-        *   Prepare `SyncedAccountDto` with `encrypted_data` (containing nonce+ciphertext+tag) and unencrypted fields (`id`, `user_id`, `order_index`, etc.).
-    4.  Call `SyncRemoteDataSource.uploadToSupabase` with the list of DTOs.
-*   **Download:**
-    1.  User triggers sync or logs in on a new device.
-    2.  App prompts for Master Password if EK is not already in memory (Approach A). Derives/Retrieves EK.
-    3.  Call `SyncRemoteDataSource.downloadFromSupabase`.
-    4.  For each received `SyncedAccountDto`:
-        *   Extract nonce and ciphertext+tag from `encrypted_data`.
-        *   Decrypt using EK and nonce. Verify integrity tag.
-        *   Deserialize plaintext into account details.
-        *   Create/Update local `AuthenticatorAccount` in `FlutterSecureStorage`.
+- Hủy hoặc revision conflict không đổi remote snapshot; key cũ còn hiệu lực.
+- Publish thành công làm key cũ không unwrap được DEK của **snapshot hiện tại**.
+- Nếu read-after-write không xác nhận được, UI cảnh báo key mới có thể đã hiệu lực
+  và yêu cầu giữ key mới; metadata local không được nâng revision mù.
+- Đây không phải DEK rotation/device revocation: thiết bị đã giữ DEK vẫn truy cập.
+- Backup lịch sử giữ wrapped DEK cũ nên key cũ có thể mở snapshot backup cũ;
+  rotation không xóa hoặc viết lại backup.
 
-## 6. Recovery Mechanism (Essential for Approach A)
+## Xoay vault encryption key đã triển khai
 
-*   **Concept:** Generate a set of single-use recovery codes (e.g., 12-24 words or alphanumeric codes) when the user sets up E2EE/Master Password.
-*   **Storage:** The user **must** store these codes securely offline (print them, save in a password manager). The app/server should **not** store them.
-*   **Usage:** If the user forgets the Master Password:
-    1.  They initiate a recovery process.
-    2.  They enter one of their recovery codes.
-    3.  The app/server verifies the code (requires a mechanism to store hashes of recovery codes or a related verification value server-side without storing the codes themselves).
-    4.  If valid, allow the user to set a *new* Master Password.
-    5.  **Crucially:** All existing data on the server needs to be downloaded, decrypted with the *old* EK (which might be temporarily derived/retrieved using the recovery code mechanism if designed carefully, or this step might be impossible depending on the exact recovery design), and then **re-encrypted** with the *new* EK derived from the new Master Password. This is a complex and potentially slow process.
-    6.  Invalidate the used recovery code.
+Thiết bị đang giữ DEK hợp lệ có thể sinh **DEK mới và recovery key mới** trong
+memory. Client decrypt snapshot remote hiện tại bằng DEK cũ, re-encrypt cùng
+plaintext bằng DEK mới ở revision kế tiếp và atomic publish ciphertext cùng
+wrapped DEK mới. Chỉ sau read-after-write verification client mới thay DEK trong
+secure storage và cập nhật last-seen revision.
 
-## 7. Future Considerations
+- User phải xác nhận đã lưu recovery key mới trước publish.
+- Hủy hoặc revision conflict giữ nguyên DEK, recovery key và snapshot cũ.
+- Thiết bị chỉ giữ DEK cũ không decrypt được current snapshot và chuyển sang flow
+  recovery; đây là bulk cryptographic read revocation cho client tuân thủ.
+- Lỗi transport sau request, lỗi verify hoặc lỗi persist DEK là trạng thái mơ hồ:
+  metadata không được nâng revision, UI bắt buộc giữ recovery key mới và recovery
+  lại nếu inspect yêu cầu.
+- Rotation không đổi local account snapshot. Local mutation chưa sync vẫn còn và
+  được xử lý bởi conflict/sync flow ở lần tiếp theo.
+- Đây chưa phải revoke riêng từng thiết bị. Sau rotation, một phiên tin cậy có thể
+  bulk revoke mọi Supabase session khác; RLS/RPC active-session guard chặn session
+  đã revoke. Trong khoảng trước revoke, client bị kiểm soát vẫn có thể gửi
+  ciphertext tùy ý qua RPC.
+- Backup lịch sử vẫn có ciphertext/wrapped DEK cũ. Xoay key không crypto-erase
+  backup đã tạo và không làm thiết bị cũ quên DEK plaintext đã giữ.
 
-*   **Key Rotation:** Periodically rotating the EK could enhance security but adds significant complexity to key management and synchronization.
-*   **Algorithm Agility:** Design the storage format (e.g., how nonce/ciphertext/tag are combined) to potentially accommodate different encryption algorithms in the future.
+## Optimistic revision
+
+Một row/user, monotonic revision. Client encrypt revision `N+1` và RPC chỉ publish
+khi current revision bằng `N`. RPC trả `PT409` nếu stale. Client verify response
+và re-download trước cập nhật last-seen revision.
+
+Conflict UX:
+
+- **Dùng cloud:** re-check revision rồi atomic replace local.
+- **Giữ local:** encrypt local và publish revision mới qua compare-and-swap.
+
+Cloud đổi lần nữa trong lúc review làm operation fail và yêu cầu inspect lại.
+
+## Platform boundary
+
+Android, iOS, macOS, Windows và Linux bật E2EE sync. Web tắt vì browser key storage
+khác native trust boundary. Đây là capability gate trong code, không chỉ text UI.
+
+## Migration plaintext
+
+Production hiện không có legacy app data cần migrate. `synced_accounts` vẫn tồn tại
+cho rollback/audit; runtime client không inject bridge. Nếu môi trường khác có data:
+
+1. full backup;
+2. inventory user/row, không log secret;
+3. client/operator đọc + validate plaintext;
+4. tạo recovery setup theo user;
+5. encrypt và atomic publish;
+6. read-after-write decrypt verification;
+7. đánh dấu migrated;
+8. drop plaintext chỉ trong migration riêng có rollback.
+
+## Bằng chứng
+
+- Crypto/key-store/model tests: tamper, wrong user/key, future format, round-trip.
+- Use-case tests: setup/cancel/recovery/conflict/publish conflict/read-after-write.
+- Remote contract: 20 checks cho anonymous/RLS/two-user/revision/RPC, atomic thay
+  ciphertext + wrapped key và hai-session revoke enforcement.
+- Android Pixel AVD E2E: Supabase login, setup vault rỗng revision 1, xoay recovery
+  key tới revision 2, xoay DEK + recovery key tới revision 3, xóa app data để mô
+  phỏng thiết bị mới rồi recovery thành công về revision 3; authenticated RLS read
+  xác nhận remote và test user/row được xóa sau kiểm tra.
+- Android Pixel AVD session smoke: isolated user có hai auth session, client SDK
+  bulk revoke xuống một session, current session vẫn authenticated; cleanup pass.
+- Release plaintext guard và DI generation test path.
+
+## Khoảng trống đã biết
+
+- Chưa có individual device registry, revoke riêng một thiết bị hoặc
+  device-specific key wrap; hiện chỉ có bulk revoke mọi session khác.
+- Trusted-device/QR transfer.
+- Tombstone hoặc history ngoài một current snapshot.
+- Browser E2EE threat model.
+- Independent security review và physical two-device E2E test.

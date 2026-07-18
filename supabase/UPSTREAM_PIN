@@ -1,0 +1,15 @@
+release=self-hosted/v0.7.0
+commit=244301c09ddba21aa963ebea09e712ce89b0401a
+released_at=2026-07-07
+postgres=17.6.1.136
+studio=2026.07.07-sha-a6a04f2
+kong=3.9.1
+auth=2.189.0
+postgrest=14.12
+realtime=2.102.3
+storage=1.60.4
+imgproxy=3.30.1
+postgres_meta=0.96.6
+edge_runtime=1.74.0
+supavisor=2.9.5
+logs_analytics=disabled_resource_constraint

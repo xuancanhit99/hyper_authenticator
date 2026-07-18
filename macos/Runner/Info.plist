@@ -29,6 +29,10 @@
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
 	<key>NSFaceIDUsageDescription</key>
-	<string>Please authenticate to access your accounts securely.</string>
+	<string>Xác thực để bảo vệ các tài khoản của bạn.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Cho phép dùng camera để quét mã QR khi thêm tài khoản.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Cho phép chọn ảnh chứa mã QR để thêm tài khoản.</string>
 </dict>
 </plist>

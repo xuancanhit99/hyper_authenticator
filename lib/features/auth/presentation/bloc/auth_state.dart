@@ -17,6 +17,10 @@ class AuthInitial extends AuthState {
 
   @override
   List<Object?> get props => [rememberedEmail, rememberedMeState];
+
+  @override
+  String toString() =>
+      'AuthInitial(rememberedEmail: [REDACTED], rememberedMeState: $rememberedMeState)';
 }
 
 // When checking auth status or performing login/signup/logout
@@ -30,6 +34,9 @@ class AuthAuthenticated extends AuthState {
 
   @override
   List<Object> get props => [user];
+
+  @override
+  String toString() => 'AuthAuthenticated(user: [REDACTED])';
 }
 
 // User is not logged in
@@ -37,6 +44,10 @@ class AuthUnauthenticated extends AuthState {}
 
 // User has requested a password reset
 class AuthPasswordResetEmailSent extends AuthState {}
+
+class AuthSignUpSuccess extends AuthState {}
+
+class AuthPasswordUpdateSuccess extends AuthState {}
 
 // An error occurred during an auth operation
 class AuthFailure extends AuthState {

@@ -1,0 +1,2 @@
+# Public RFC 6238 TOTP test vector, không phải credential.
+757f1bb58db87d525b9d0bf04d31f2436de2181e:test/features/authenticator/generate_totp_code_test.dart:generic-api-key:8

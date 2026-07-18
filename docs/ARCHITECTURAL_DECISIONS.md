@@ -1,77 +1,54 @@
-# Architectural & Technological Decisions Justification
+# Quyết định kiến trúc
 
-This document provides justifications for the key architectural and technological choices made during the development of the Hyper Authenticator application. It aims to compare the chosen solutions with alternatives and explain the reasoning behind the final decisions, relevant for academic analysis (e.g., Master's Thesis).
+Tài liệu này lập chỉ mục quyết định bền vững. Quyết định mới có ảnh hưởng dài hạn cần record riêng trong `docs/adr`.
 
-## 1. Choice of Cross-Platform Framework: Flutter
+## Quyết định đã áp dụng
 
-*   **Chosen:** Flutter
-*   **Alternatives Considered:** React Native, Native Development (Kotlin/Swift), Xamarin, etc.
-*   **Justification:**
-    *   Single codebase for multiple platforms (Android, iOS, Web, Desktop) -> Reduced development time and cost.
-    *   High performance (compiles to native code, Skia rendering engine).
-    *   Rich widget library and strong community support.
-    *   Hot reload/restart for faster development cycles.
-    *   Suitable UI/UX consistency across platforms.
-*   **Trade-offs:** App size might be larger than native; requires learning Dart.
+| ID | Quyết định | Trạng thái | Bằng chứng |
+|---|---|---|---|
+| A-001 | Flutter/Dart cho client đa nền tảng | Đã áp dụng | `pubspec.yaml`, sáu platform runner và Web |
+| A-002 | Presentation/Domain/Data theo feature | Đã áp dụng, chưa tuyệt đối | `lib/features` |
+| A-003 | BLoC cho feature state, Provider cho theme | Đã áp dụng | `flutter_bloc`, `ThemeProvider` |
+| A-004 | GetIt/Injectable cho dependency | Đã áp dụng | `injection_container*` |
+| A-005 | FlutterSecureStorage cho TOTP record | Đã áp dụng | Authenticator local data source |
+| A-006 | SharedPreferences cho preference không phải secret | Đã áp dụng | Theme, lock, sync, Remember Me |
+| A-007 | Supabase cho authentication và remote sync | Đã áp dụng | Auth/sync data source |
+| A-008 | fpdart `Either` tại repository/use-case boundary | Đã áp dụng | Domain/data layer |
+| A-009 | GoRouter redirect từ auth và app-lock state | Đã áp dụng | `AppRouter` |
+| A-010 | Supabase client config qua compile-time `dart-define` | Đã áp dụng | `AppConfig`, `.env.example` |
+| A-011 | Shared Auth/Accounts BLoC instance cho UI và sync | Đã áp dụng | Lazy singleton + `BlocProvider.value` |
+| A-012 | Logout giữ authenticator data local | Đã áp dụng | `AuthBloc` |
+| A-013 | Swift Package Manager là Apple dependency manager duy nhất | Đã áp dụng | iOS/macOS project |
+| A-014 | Capability theo platform được kiểm soát tập trung | Đã áp dụng | `PlatformCapabilities` |
+| A-015 | Pin self-hosted Supabase release và version hóa remote snake_case/RLS contract | Đã áp dụng | [ADR-0001](adr/0001-pin-self-hosted-supabase-and-remote-contract.md) |
+| A-016 | Local vault dùng versioned copy-on-write snapshot | Đã áp dụng | [ADR-0002](adr/0002-versioned-local-vault-storage.md) |
+| A-017 | Local vault offline độc lập Supabase identity | Chấp nhận | [ADR-0003](adr/0003-offline-first-local-vault.md) |
+| A-018 | Web là password-recovery surface canonical | Chấp nhận | [ADR-0004](adr/0004-web-password-recovery.md) |
+| A-019 | E2EE versioned snapshot và user-held recovery key | Chấp nhận theo giai đoạn | [ADR-0005](adr/0005-e2ee-versioned-snapshot-sync.md) |
+| A-020 | Source dùng Apache License 2.0 | Chấp nhận | [ADR-0006](adr/0006-apache-2-license.md) |
+| A-021 | Chỉ phân phối asset có provenance/license rõ ràng | Chấp nhận | [ADR-0007](adr/0007-require-provenance-for-distributed-assets.md) |
+| A-022 | Encrypted vault chỉ cho auth session còn active; client bulk revoke session khác | Chấp nhận | [ADR-0008](adr/0008-enforce-active-session-for-encrypted-vault.md) |
+| A-023 | Đóng băng Windows storage identity tương thích release lịch sử | Chấp nhận | [ADR-0009](adr/0009-freeze-windows-storage-identity.md) |
+| A-024 | GitHub Releases là binary channel đầu tiên; Windows/Linux unsigned chỉ phát hành dưới dạng preview | Chấp nhận | [ADR-0010](adr/0010-github-preview-release-first.md) |
 
-## 2. Choice of Application Architecture: Clean Architecture
+Đã áp dụng không đồng nghĩa production-ready; defect/risk nằm trong `PROJECT_STATUS.md`.
 
-*   **Chosen:** Clean Architecture (Layers: Presentation, Domain, Data)
-*   **Alternatives Considered:** MVVM (Model-View-ViewModel), MVC (Model-View-Controller), Simple Layered Architecture.
-*   **Justification:**
-    *   **Separation of Concerns:** Clear boundaries between UI, business logic, and data access.
-    *   **Testability:** Layers can be tested independently (especially Domain and Data layers). Dependencies are injected.
-    *   **Maintainability & Scalability:** Easier to modify or replace components (e.g., change state management, data source) without affecting other layers. Business logic is independent of frameworks.
-    *   **Framework Independence:** Domain layer is independent of Flutter framework details.
-*   **Trade-offs:** Can introduce more boilerplate code compared to simpler architectures; requires discipline to maintain layer boundaries.
+## Quyết định còn mở
 
-## 3. Choice of State Management: BLoC / Cubit
+| ID đề xuất | Quyết định cần có | Lý do |
+|---|---|---|
+| P-006 | Platform support/SLA chính thức | Build matrix chưa phải product commitment |
+| P-007 | Tên identifier dài hạn | Display name đã thống nhất, bundle ID cũ được giữ để bảo toàn install identity |
+| P-009 | Web security/support level | Browser storage khác native secure storage |
 
-*   **Chosen:** `flutter_bloc` (BLoC/Cubit) for primary state management, `provider` for Theme.
-*   **Alternatives Considered:** Riverpod, GetX, Provider (for all state), Redux, MobX.
-*   **Justification:**
-    *   **Predictable State:** Clear separation of events, states, and business logic. Makes state changes predictable and traceable.
-    *   **Testability:** `bloc_test` package provides excellent support for testing BLoCs/Cubits.
-    *   **Scalability:** Suitable for complex applications with multiple features interacting.
-    *   **Separation from UI:** Encourages separation of business logic from widget code.
-    *   `Provider` is sufficient and simpler for dependency injection and simple state like theme management.
-*   **Trade-offs:** Can have a steeper learning curve initially compared to Provider or GetX; might involve more boilerplate for simple state changes compared to Cubit/Provider.
+## Khi nào cần ADR
 
-## 4. Choice of Backend Service: Supabase
+Tạo ADR khi thay đổi trust boundary/cryptography, persisted contract, platform/backend được hỗ trợ, destructive data semantics, state ownership chính hoặc dependency strategy dài hạn.
 
-*   **Chosen:** Supabase (Backend-as-a-Service)
-*   **Alternatives Considered:** Firebase, AWS Amplify, Custom Backend (e.g., Node.js/Python/Go with PostgreSQL), Appwrite.
-*   **Justification:**
-    *   **Open Source:** Based on open-source tools (PostgreSQL, GoTrue, etc.), reducing vendor lock-in compared to some alternatives.
-    *   **Integrated Services:** Provides Authentication, Database (PostgreSQL with real-time), Storage, and Edge Functions in one platform.
-    *   **PostgreSQL:** Powerful and familiar relational database. Row Level Security (RLS) provides fine-grained access control.
-    *   **Generous Free Tier:** Suitable for development and small-scale deployment.
-    *   **Flutter Client Library:** Well-maintained `supabase_flutter` package.
-*   **Trade-offs:** Newer compared to Firebase; ecosystem might be less mature in some areas; scaling costs need consideration for large applications.
+Quy trình:
 
-## 5. Choice of Local Storage
-
-*   **Chosen:** `FlutterSecureStorage` (for sensitive data), `SharedPreferences` (for non-sensitive data).
-*   **Alternatives Considered:** Hive, Moor/Drift (SQLite wrappers), File System.
-*   **Justification:**
-    *   **`FlutterSecureStorage`:** Leverages platform-specific secure storage (Keystore/Keychain) for maximum security of TOTP secrets. Essential for sensitive data.
-    *   **`SharedPreferences`:** Simple key-value store, easy to use for basic settings like theme preference or feature flags. Sufficient for non-critical data.
-    *   Using dedicated secure storage for secrets is a security best practice.
-*   **Trade-offs:** `FlutterSecureStorage` access can be slightly slower than `SharedPreferences`; `SharedPreferences` is not suitable for sensitive data.
-
-## 6. Choice of Biometric Authentication: `local_auth` Plugin
-
-*   **Chosen:** `local_auth`
-*   **Alternatives Considered:** Platform-specific native implementations (more complex).
-*   **Justification:**
-    *   Official Flutter Favorite plugin, providing a unified API for accessing native biometric (fingerprint, face ID) and device credential (PIN, pattern, password) authentication.
-    *   Abstracts platform differences.
-*   **Trade-offs & Security Considerations:**
-    *   **Reliance on OS Security:** The plugin acts as a bridge to the native OS authentication mechanisms. Its security fundamentally depends on the security of the underlying platform (Android Keystore, iOS Secure Enclave, etc.) and the OS's implementation of biometric handling. Vulnerabilities in the OS could potentially compromise the authentication.
-    *   **No Direct Biometric Access:** The plugin does *not* provide the application with raw biometric data (e.g., fingerprint image). It only returns a boolean success/failure status from the OS, which is a good security practice (least privilege).
-    *   **Platform Inconsistencies:** Behavior and available options (e.g., specific biometric types, error messages, UI presentation) can vary significantly between Android versions, iOS versions, and different device manufacturers. Requires careful testing across target devices.
-    *   **Rooted/Jailbroken Devices:** On compromised devices (rooted Android, jailbroken iOS), the OS-level security guarantees might be bypassed, potentially allowing attackers to tamper with the authentication mechanism or bypass the lock screen. Detecting rooted/jailbroken status is complex and often unreliable.
-    *   **Fallback Mechanism:** Relies on the device's PIN/pattern/password as a fallback. The security of this fallback depends on the strength of the user's chosen credential.
-    *   **Limited Context:** The plugin primarily confirms the *presence* of the authenticated user at the time of the check, but doesn't guarantee continuous presence or prevent the app from being backgrounded and later resumed by an unauthorized user if the OS lock screen isn't triggered immediately. (The app lifecycle listener helps mitigate this by re-prompting on resume).
-
-*(This section should be expanded with more detailed comparisons and specific project constraints that influenced the decisions.)*
+1. Sao chép `docs/adr/0000-template.md`.
+2. Gán số và slug.
+3. Ghi context, decision, alternative, consequence, migration, rollback, verification.
+4. Đặt trạng thái **Đề xuất**, lấy phê duyệt owner rồi chuyển **Chấp nhận**.
+5. Thêm record vào chỉ mục và đánh dấu **Bị thay thế** thay vì sửa lịch sử.

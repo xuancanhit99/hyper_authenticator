@@ -2,35 +2,27 @@
 import 'dart:async';
 import 'package:bloc/bloc.dart';
 import 'package:equatable/equatable.dart';
-import 'package:flutter/foundation.dart';
 import 'package:injectable/injectable.dart';
 import 'package:shared_preferences/shared_preferences.dart'; // Import SharedPreferences
-import 'package:flutter_secure_storage/flutter_secure_storage.dart'; // Import FlutterSecureStorage
 import 'package:hyper_authenticator/features/auth/domain/entities/user_entity.dart';
 import 'package:hyper_authenticator/features/auth/domain/repositories/auth_repository.dart';
 
 part 'auth_event.dart';
 part 'auth_state.dart';
 
-// Key must match the one used in SettingsBloc and LocalAuthBloc
-const String _biometricPrefKey = 'biometric_enabled';
 const String _rememberedEmailKey =
     'remembered_email'; // Key for remembered email
 const String _rememberedMeStateKey =
     'remembered_me_state'; // Key for remember me checkbox state
 
-@injectable
+@lazySingleton
 class AuthBloc extends Bloc<AuthEvent, AuthState> {
   final AuthRepository _authRepository;
-  final SharedPreferences _sharedPreferences; // Add dependency
-  final FlutterSecureStorage _secureStorage; // Add dependency
+  final SharedPreferences _sharedPreferences;
   StreamSubscription<UserEntity?>? _authEntitySubscription;
 
-  AuthBloc(
-    this._authRepository,
-    this._sharedPreferences, // Add to constructor
-    this._secureStorage, // Add to constructor
-  ) : super(AuthInitial()) {
+  AuthBloc(this._authRepository, this._sharedPreferences)
+    : super(AuthInitial()) {
     _authEntitySubscription = _authRepository.authEntityChanges.listen(
       (userEntity) => add(_AuthUserChanged(userEntity)),
     );
@@ -67,10 +59,13 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   }
 
   void _onAuthUserChanged(_AuthUserChanged event, Emitter<AuthState> emit) {
-    debugPrint("Auth Entity Changed: ${event.user?.email ?? 'Logged Out'}");
+    // Supabase can deliver a previously queued null session event after a
+    // successful password sign-in. Reconcile it with the repository's current
+    // session so a stale stream event cannot overwrite AuthAuthenticated.
+    final currentUser = event.user ?? _authRepository.currentUserEntity;
     emit(
-      event.user != null
-          ? AuthAuthenticated(event.user!)
+      currentUser != null
+          ? AuthAuthenticated(currentUser)
           : AuthUnauthenticated(),
     );
   }
@@ -84,20 +79,17 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       email: event.email,
       password: event.password,
     );
-    result.fold((failure) => emit(AuthFailure(failure.message)), (userEntity) {
-      debugPrint(
-        "Sign In successful for ${userEntity.email}, waiting for stream update.",
-      );
-      // Handle Remember Me
+    await result.fold((failure) async => emit(AuthFailure(failure.message)), (
+      user,
+    ) async {
       if (event.rememberMe) {
-        // Save both email and the state (true)
-        _sharedPreferences.setString(_rememberedEmailKey, event.email);
-        _sharedPreferences.setBool(_rememberedMeStateKey, true);
+        await _sharedPreferences.setString(_rememberedEmailKey, event.email);
+        await _sharedPreferences.setBool(_rememberedMeStateKey, true);
       } else {
-        // Remove both email and the state
-        _sharedPreferences.remove(_rememberedEmailKey);
-        _sharedPreferences.remove(_rememberedMeStateKey);
+        await _sharedPreferences.remove(_rememberedEmailKey);
+        await _sharedPreferences.remove(_rememberedMeStateKey);
       }
+      emit(AuthAuthenticated(user));
     });
   }
 
@@ -113,11 +105,14 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       password: event.password,
       // phone: event.phone, // REMOVE phone from the call
     );
-    result.fold((failure) => emit(AuthFailure(failure.message)), (userEntity) {
-      debugPrint(
-        "Sign Up successful for ${userEntity.email}, waiting for stream update.",
-      );
-    });
+    result.fold(
+      (failure) => emit(AuthFailure(failure.message)),
+      (user) => emit(
+        _authRepository.currentUserEntity == null
+            ? AuthSignUpSuccess()
+            : AuthAuthenticated(user),
+      ),
+    );
   }
 
   Future<void> _onRecoverPasswordRequested(
@@ -138,21 +133,11 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   ) async {
     emit(AuthLoading());
     final result = await _authRepository.signOut();
-    result.fold(
+    await result.fold(
       (failure) {
-        debugPrint("Sign Out failed: ${failure.message}");
         emit(AuthFailure(failure.message));
       },
       (_) async {
-        // Add async here
-        debugPrint(
-          "Sign Out successful, disabling biometrics and waiting for stream update.",
-        );
-        // Disable biometric preference on successful sign out
-        await _sharedPreferences.setBool(_biometricPrefKey, false);
-        // Clear secure storage on successful sign out
-        await _secureStorage.deleteAll();
-        debugPrint("Cleared secure storage.");
         // Also clear remembered email and state on sign out
         await _sharedPreferences.remove(_rememberedEmailKey);
         await _sharedPreferences.remove(_rememberedMeStateKey);
@@ -160,7 +145,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         await _sharedPreferences.remove(
           'sync_enabled',
         ); // Use the key defined in SyncBloc
-        // The stream update will handle the state change to AuthUnauthenticated
+        emit(AuthUnauthenticated());
       },
     );
   }
@@ -173,15 +158,10 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     emit(AuthLoading());
     // Assuming a new method in the repository
     final result = await _authRepository.updatePassword(event.newPassword);
-    result.fold((failure) => emit(AuthFailure(failure.message)), (_) {
-      // Password updated successfully. We might rely on AuthUserChanged
-      // or emit a specific success state if needed for UI feedback before navigation.
-      // For now, just print and assume navigation happens in UI based on state change.
-      debugPrint("Password update successful.");
-      // Optionally emit a specific state like AuthPasswordUpdateSuccess
-      // emit(AuthPasswordUpdateSuccess());
-      // Or rely on the user stream update if the session changes/refreshes.
-    });
+    result.fold(
+      (failure) => emit(AuthFailure(failure.message)),
+      (_) => emit(AuthPasswordUpdateSuccess()),
+    );
   }
 
   Future<void> _onLoadRememberedUser(

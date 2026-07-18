@@ -1,0 +1,154 @@
+import 'dart:convert';
+
+import 'package:flutter_test/flutter_test.dart';
+import 'package:hyper_authenticator/core/config/public_runtime_config.dart';
+
+// Synthetic public key that only exercises the documented format.
+const publishableKey =
+    'sb_publishable_0123456789abcdefghij-__01234567'; // gitleaks:allow
+
+String legacyKeyForRole(String role) {
+  String encode(Map<String, Object?> value) =>
+      base64Url.encode(utf8.encode(jsonEncode(value))).replaceAll('=', '');
+
+  return '${encode({'alg': 'HS256', 'typ': 'JWT'})}.'
+      '${encode({'role': role, 'iss': 'supabase-test'})}.'
+      'TEST_ONLY_SIGNATURE';
+}
+
+void main() {
+  group('PublicRuntimeConfig', () {
+    test('nhận HTTPS origin và publishable key đúng format', () {
+      final config = PublicRuntimeConfig.validate(
+        supabaseUrl: 'https://supabase.example.com',
+        supabasePublishableKey: publishableKey,
+        passwordRecoveryUrl: 'https://auth.example.com/reset-password/',
+        allowInsecurePlaintextSync: false,
+        releaseMode: true,
+      );
+
+      expect(config.supabaseUrl.host, 'supabase.example.com');
+      expect(config.passwordRecoveryUrl?.path, '/reset-password/');
+    });
+
+    test('giữ tương thích legacy anon JWT', () {
+      final config = PublicRuntimeConfig.validate(
+        supabaseUrl: 'https://supabase.example.com/',
+        supabasePublishableKey: legacyKeyForRole('anon'),
+        passwordRecoveryUrl: '',
+        allowInsecurePlaintextSync: true,
+        releaseMode: false,
+      );
+
+      expect(config.passwordRecoveryUrl, isNull);
+      expect(config.allowInsecurePlaintextSync, isTrue);
+    });
+
+    test('từ chối HTTP và Supabase URL có path', () {
+      expect(
+        () => PublicRuntimeConfig.validate(
+          supabaseUrl: 'http://supabase.example.com',
+          supabasePublishableKey: publishableKey,
+          passwordRecoveryUrl: '',
+          allowInsecurePlaintextSync: false,
+          releaseMode: false,
+        ),
+        throwsStateError,
+      );
+      expect(
+        () => PublicRuntimeConfig.validate(
+          supabaseUrl: 'https://supabase.example.com/rest/v1',
+          supabasePublishableKey: publishableKey,
+          passwordRecoveryUrl: '',
+          allowInsecurePlaintextSync: false,
+          releaseMode: false,
+        ),
+        throwsStateError,
+      );
+    });
+
+    test('từ chối sb_secret và legacy service_role key', () {
+      for (final unsafeKey in [
+        ['sb', 'secret', 'test-only-rejected-key'].join('_'),
+        legacyKeyForRole('service_role'),
+      ]) {
+        expect(
+          () => PublicRuntimeConfig.validate(
+            supabaseUrl: 'https://supabase.example.com',
+            supabasePublishableKey: unsafeKey,
+            passwordRecoveryUrl: '',
+            allowInsecurePlaintextSync: false,
+            releaseMode: false,
+          ),
+          throwsStateError,
+        );
+      }
+    });
+
+    test('không đưa key bị từ chối vào error message', () {
+      const unsafeKey = 'SERVER_CREDENTIAL_MUST_NOT_BE_LOGGED';
+
+      expect(
+        () => PublicRuntimeConfig.validate(
+          supabaseUrl: 'https://supabase.example.com',
+          supabasePublishableKey: unsafeKey,
+          passwordRecoveryUrl: '',
+          allowInsecurePlaintextSync: false,
+          releaseMode: false,
+        ),
+        throwsA(
+          isA<StateError>().having(
+            (error) => error.toString(),
+            'message',
+            isNot(contains(unsafeKey)),
+          ),
+        ),
+      );
+    });
+
+    test('release bắt buộc recovery URL', () {
+      expect(
+        () => PublicRuntimeConfig.validate(
+          supabaseUrl: 'https://supabase.example.com',
+          supabasePublishableKey: publishableKey,
+          passwordRecoveryUrl: '',
+          allowInsecurePlaintextSync: false,
+          releaseMode: true,
+        ),
+        throwsStateError,
+      );
+    });
+
+    test('release luôn từ chối plaintext sync flag', () {
+      expect(
+        () => PublicRuntimeConfig.validate(
+          supabaseUrl: 'https://supabase.example.com',
+          supabasePublishableKey: publishableKey,
+          passwordRecoveryUrl: 'https://auth.example.com/reset-password/',
+          allowInsecurePlaintextSync: true,
+          releaseMode: true,
+        ),
+        throwsStateError,
+      );
+    });
+
+    test('recovery URL từ chối user info, query và fragment', () {
+      for (final unsafeUrl in [
+        'https://user@auth.example.com/reset-password/',
+        'https://auth.example.com/reset-password/?token=unsafe',
+        'https://auth.example.com/reset-password/#token',
+      ]) {
+        expect(
+          () => PublicRuntimeConfig.validate(
+            supabaseUrl: 'https://supabase.example.com',
+            supabasePublishableKey: publishableKey,
+            passwordRecoveryUrl: unsafeUrl,
+            allowInsecurePlaintextSync: false,
+            releaseMode: false,
+          ),
+          throwsStateError,
+        );
+      }
+    });
+  });
+}

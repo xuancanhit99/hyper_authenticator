@@ -28,13 +28,18 @@ class HeaderForm extends StatelessWidget {
       crossAxisAlignment: crossAxisAlignment,
       children: [
         Image(
-            image: AssetImage(image),
-            color: imageColor,
-            height: size.height * imageHeight,
-            width: size.width * 0.6),
-        SizedBox(height: heightBetween,),
+          image: AssetImage(image),
+          color: imageColor,
+          height: size.height * imageHeight,
+          width: size.width * 0.6,
+        ),
+        SizedBox(height: heightBetween),
         Text(title, style: Theme.of(context).textTheme.headlineMedium),
-        Text(subtitle, textAlign: textAlign, style: Theme.of(context).textTheme.bodyLarge),
+        Text(
+          subtitle,
+          textAlign: textAlign,
+          style: Theme.of(context).textTheme.bodyLarge,
+        ),
       ],
     );
   }

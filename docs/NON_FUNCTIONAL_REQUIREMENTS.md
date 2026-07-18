@@ -1,72 +1,125 @@
-# Non-Functional Requirements (NFRs) Analysis
+# Yêu cầu phi chức năng
 
-This document outlines key non-functional requirements for the Hyper Authenticator application and discusses how the chosen architecture and technologies aim to address them. This analysis is relevant for academic work like a Master's Thesis.
+Mục tiêu có nhãn **Đề xuất** chưa được đo hoặc enforce.
 
-## 1. Security
+## Bảo mật
 
-*   **Requirement:** Protect sensitive user data (TOTP secrets) both locally and during optional cloud synchronization. Prevent unauthorized access to the application.
-*   **Architectural Solution:**
-    *   **Local Storage:** Use of `FlutterSecureStorage` leverages platform-native secure enclaves (Keystore/Keychain) for storing TOTP secrets.
-    *   **App Lock:** Integration with `local_auth` provides device-level biometric/PIN protection against unauthorized app access.
-    *   **Cloud Sync (Planned E2EE):** The planned client-side End-to-End Encryption ensures secrets are encrypted before leaving the device, making them unreadable by the backend provider (Supabase). Requires robust key management.
-    *   **Cloud Sync (Transport & Auth):** HTTPS ensures secure data transmission. Supabase authentication and Row Level Security (RLS) restrict data access on the backend to authorized users.
-    *   **Clean Architecture:** Separation of concerns helps isolate security-critical components.
+Bắt buộc:
 
-## 2. Performance
+- Không TOTP secret dạng đọc được nào rời client khi sync production.
+- Không credential nào xuất hiện trong log, analytics, crash report, screenshot hoặc fixture.
+- Cross-user Supabase test từ chối mọi operation.
+- App lock đã cấu hình fail closed khi plugin hoặc routing error.
+- Không production artifact nào chứa service-role hoặc server secret.
+- Mọi finding bảo mật Critical và High được xử lý trước release.
 
-*   **Requirement:** The application should feel responsive. TOTP code generation must be fast. UI interactions (scrolling, navigation) should be smooth. App startup time should be reasonable.
-*   **Architectural Solution:**
-    *   **Flutter:** Compiles to native code, generally offering good performance. Skia rendering engine provides smooth UI.
-    *   **TOTP Generation:** The `otp` library performs calculations locally and quickly.
-    *   **State Management (BLoC):** Efficient state updates, minimizing unnecessary widget rebuilds when implemented correctly.
-    *   **Asynchronous Operations:** Use of `async/await` and background processing (e.g., for sync) prevents blocking the UI thread.
-    *   **Web Renderer:** Choice between CanvasKit (better performance/fidelity) and HTML (smaller initial load size) allows optimization for web deployment.
-    *   **Code Optimization:** Standard Dart/Flutter optimization practices (e.g., `const` widgets, efficient list building).
+## Tính đúng đắn và độ tin cậy
 
-## 3. Reliability / Availability
+Bắt buộc:
 
-*   **Requirement:** The application must reliably generate correct TOTP codes. Core functionality should work offline. Optional sync features depend on backend availability but should handle failures gracefully.
-*   **Architectural Solution:**
-    *   **Offline-First Core:** TOTP generation and account storage are entirely local, ensuring core functionality works without network access.
-    *   **Error Handling:** Use of `Either<Failure, SuccessType>` allows graceful handling of expected errors (network issues, storage errors, etc.) without crashing the app. Specific `Failure` types allow targeted error reporting/recovery.
-    *   **Testing:** Comprehensive testing strategy (Unit, Widget, Integration) helps catch bugs and ensure reliability.
-    *   **Supabase Availability:** Relies on Supabase's SLA for sync/auth features. The app should clearly indicate sync status and handle backend unavailability (e.g., show cached data, disable sync actions).
+- TOTP output khớp RFC 6238 hoặc known-answer vector tương đương cho algorithm được hỗ trợ.
+- Mọi account field round-trip qua local storage.
+- Sync bị gián đoạn không thể phá hủy snapshot local/cloud hợp lệ gần nhất.
+- Merge và deletion semantic deterministic và được ghi lại.
+- Retry idempotent.
+- Schema hoặc encrypted-format version không được hỗ trợ phải fail mà không ghi đè dữ liệu hợp lệ.
 
-## 4. Usability
+## Tính sẵn sàng
 
-*   **Requirement:** The application should be intuitive and easy to use for adding accounts, viewing codes, and managing settings. Biometric login should be seamless.
-*   **Architectural Solution:**
-    *   **Flutter:** Provides tools for building modern, user-friendly interfaces.
-    *   **Presentation Layer:** Dedicated layer for UI and user interaction logic. BLoC helps manage UI state clearly.
-    *   **`local_auth`:** Provides a standard, familiar interface for biometric/PIN authentication.
-    *   **QR Code Scanning/Image Picking:** Simplifies account addition using `mobile_scanner` and `image_picker`.
-    *   **GoRouter:** Enables clear navigation flows.
+Cần quyết định sản phẩm: offline-only access hay Supabase authentication bắt buộc.
 
-## 5. Maintainability
+Nếu chấp nhận offline core use, việc xem TOTP phải tiếp tục được khi mất network sau local unlock. Nếu vẫn bắt buộc auth, dependency và outage behavior phải được công bố.
 
-*   **Requirement:** The codebase should be easy to understand, modify, and extend over time. Bugs should be relatively easy to locate and fix.
-*   **Architectural Solution:**
-    *   **Clean Architecture:** Strong separation of concerns is the primary driver for maintainability. Changes in one layer have minimal impact on others.
-    *   **Modularity:** Feature-based directory structure (`auth`, `authenticator`, `sync`, `settings`).
-    *   **Dependency Injection (`GetIt`/`Injectable`):** Reduces coupling between components, making them easier to replace or modify.
-    *   **State Management (BLoC):** Clear state transition logic makes debugging easier.
-    *   **Testing:** A good test suite makes refactoring safer and helps document component behavior.
-    *   **Code Conventions:** Consistent coding style (enforced by `analysis_options.yaml`).
+## Hiệu năng
 
-## 6. Portability / Cross-Platform Compatibility
+Budget backend đã enforce cho release regression, chưa phải SLA người dùng:
 
-*   **Requirement:** The application must run consistently across target platforms (Android, iOS, Web, Windows, macOS).
-*   **Architectural Solution:**
-    *   **Flutter:** Designed specifically for cross-platform development from a single codebase.
-    *   **Plugin Abstraction:** Platform-specific features (like biometrics, secure storage) are accessed via plugins (`local_auth`, `flutter_secure_storage`) that abstract away native differences.
-    *   **Responsive UI:** Flutter's layout system allows building UIs that adapt to different screen sizes and orientations.
+- Supabase Auth public health: 100 request, concurrency 10, HTTP 200 tuyệt đối,
+  p95 không quá 1.000 ms và request chậm nhất không quá 2.000 ms;
+- `scripts/supabase/test_auth_load_budget.sh` fail closed khi lỗi HTTP hoặc vượt
+  ngưỡng; long-duration soak và production-scale workload vẫn là mục tiêu riêng.
 
-## 7. Scalability
+Mục tiêu ban đầu đề xuất trên thiết bị mobile tầm trung đại diện:
 
-*   **Requirement:** (Primarily for Sync Feature) The backend should handle a growing number of users and synchronized accounts. The client app architecture should support adding new features.
-*   **Architectural Solution:**
-    *   **Supabase:** As a BaaS, Supabase is designed to scale. Its PostgreSQL backend can handle significant load (scaling plans available).
-    *   **Clean Architecture:** Makes adding new features (new layers/modules) or modifying existing ones more manageable without disrupting the entire application.
-    *   **RLS:** Efficiently filters data on the backend, reducing load.
+- danh sách account cache hiển thị trong 500 ms sau khi app shell sẵn sàng;
+- tạo TOTP dưới 10 ms mỗi account ở percentile 95 với 100 account;
+- scroll danh sách vẫn responsive với 500 account;
+- không có network hoặc secure-storage loop block UI thread;
+- tiến trình sync có thể quan sát và cancel.
 
-*(This section provides a starting point. A full NFR analysis in a thesis would likely involve more specific metrics and deeper discussion.)*
+Đo thực tế trước khi nhận các giá trị này làm release SLO.
+
+## Quyền riêng tư
+
+Bắt buộc:
+
+- Data inventory khớp privacy policy.
+- Cloud sync do user kích hoạt được phân biệt rõ với local storage.
+- Hành vi xóa account và retention được ghi lại.
+- Giảm tối đa dữ liệu cá nhân trong log và support workflow.
+- Công bố third-party service và hosted dependency.
+
+## Usability và accessibility
+
+Mục tiêu đề xuất:
+
+- mọi critical flow dùng được bằng screen reader;
+- text tuân theo system scaling mà không bị cắt;
+- action không phụ thuộc riêng vào màu;
+- destructive action giải thích chính xác tác động dữ liệu;
+- feedback copy không làm lộ secret đã sao chép;
+- định nghĩa localization strategy trước khi thêm hard-coded text.
+
+## Khả năng bảo trì
+
+Bắt buộc:
+
+- Tài liệu canonical cập nhật cùng behavior.
+- Không có generated DI drift.
+- Defect mới có regression test.
+- Persisted contract có version trước incompatible change.
+- Thay đổi kiến trúc có ADR.
+- Static-analysis diagnostic không tăng khi thiếu lý do rõ ràng.
+
+## Tính portable
+
+Một platform chỉ được hỗ trợ sau khi:
+
+- plugin cần thiết tương thích;
+- permission và entitlement đúng;
+- secure-storage và local-auth behavior được test;
+- release build, install, upgrade và rollback pass;
+- limitation được ghi lại.
+
+Có runner không đồng nghĩa được hỗ trợ.
+
+## Observability
+
+Đề xuất:
+
+- structured event category với redaction ở boundary;
+- không có raw auth hoặc sync payload;
+- correlation ID không làm lộ user/account identity;
+- actionable error class cho auth, storage, network, schema và crypto;
+- crash reporting opt-in với retention và provider được ghi rõ.
+
+## Recovery
+
+Bắt buộc trước production:
+
+- recovery khi local storage không nhất quán;
+- rollback remote snapshot;
+- policy key loss và E2EE recovery;
+- quyết định account export hoặc backup;
+- incident response khi credential hoặc backend bị compromise.
+
+## Cách enforce
+
+Mỗi requirement cuối cùng phải map tới một hoặc nhiều:
+
+- automated test;
+- CI rule;
+- platform release checklist;
+- security review;
+- operational monitor;
+- accepted risk có owner và thời hạn.
