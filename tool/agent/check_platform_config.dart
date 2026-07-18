@@ -102,6 +102,16 @@ void main() {
     'Linux isolated local-vault runtime gate',
   );
   requireText(
+    '.github/workflows/ci.yml',
+    'scripts/agent/linux_package_smoke.sh',
+    'Linux package install/upgrade/remove gate',
+  );
+  requireText(
+    '.github/workflows/ci.yml',
+    r'hyper-authenticator-linux-deb-${{ github.sha }}',
+    'Linux immutable Debian artifact',
+  );
+  requireText(
     'scripts/agent/linux_integration.sh',
     r'XDG_DATA_HOME="$SANDBOX/data"',
     'Linux integration storage sandbox',
