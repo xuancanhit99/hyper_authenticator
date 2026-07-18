@@ -22,7 +22,7 @@ PostgreSQL migration contract. Nó không tự boot emulator/simulator.
 
 ## Coverage hiện tại
 
-115 Flutter tests bao phủ:
+122 Flutter tests bao phủ:
 
 - router/auth/logout/offline-local-vault boundary;
 - post-login navigation trực tiếp hoặc return an toàn về Settings, stale null auth
@@ -51,14 +51,16 @@ PostgreSQL migration contract. Nó không tự boot emulator/simulator.
   Web source cũng khai báo document language `vi`.
 - Scanner pending permission không còn là màn hình đen; permission denied có
   thông báo, retry và đường quay lại nhập thủ công bằng controller giả không gọi camera.
-- Auth, account list và form thêm account pass labeled tap target cùng Android
-  48×48 guideline ở viewport 320×640/text scale 200%; regression test khóa
-  password/search/copy semantics tiếng Việt, TOTP countdown và layout không overflow.
+- Auth, account list và form thêm account pass labeled tap target, Android 48×48
+  và WCAG text-contrast guideline trên light/dark theme ở viewport 320×640/text
+  scale 200%; regression test khóa password/search/copy semantics tiếng Việt,
+  TOTP countdown và layout không overflow.
 - Settings recovery import/key confirmation, sync conflict và session revoke dialog
-  pass semantics + Android 48×48 guideline ở viewport 320×640/text scale 200%; raw
-  recovery key không vào semantics tree, copy action có accessible name, import
-  field obscured/autofocus/keyboard submit và destructive dialog mặc định Enter
-  vào **Hủy**. Dialog content scroll được thay vì overflow ở text scale lớn.
+  pass semantics + Android 48×48 + WCAG text-contrast guideline trên light/dark
+  theme ở viewport 320×640/text scale 200%; raw recovery key không vào semantics
+  tree, copy action có accessible name, import field obscured/autofocus/keyboard
+  submit và destructive dialog mặc định Enter vào **Hủy**. Dialog content scroll
+  được thay vì overflow ở text scale lớn.
 
 ## Remote contract
 
@@ -238,6 +240,6 @@ post-probe current image/health/hash và 5/5 public SPA route pass.
    Windows còn code signing và physical-device/Windows Hello. Linux còn KDE
    login-unlock/physical desktop và signed package E2EE runtime.
 6. Accessibility automation đã bao phủ Auth, account list, form thêm account và
-   sensitive Settings recovery/conflict/session dialog. Chưa thay TalkBack/
-   VoiceOver runtime, full keyboard traversal, contrast, screenshot/privacy hoặc
-   audit toàn bộ Settings page.
+   sensitive Settings recovery/conflict/session dialog với WCAG text-contrast
+   gate trên light/dark theme. Chưa thay TalkBack/VoiceOver runtime, full keyboard
+   traversal, screenshot/privacy hoặc audit toàn bộ Settings page.

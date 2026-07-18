@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:fpdart/fpdart.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hyper_authenticator/core/error/failures.dart';
+import 'package:hyper_authenticator/core/theme/app_theme.dart';
 import 'package:hyper_authenticator/features/auth/domain/entities/user_entity.dart';
 import 'package:hyper_authenticator/features/auth/domain/repositories/auth_repository.dart';
 import 'package:hyper_authenticator/features/auth/presentation/bloc/auth_bloc.dart';
@@ -27,6 +28,7 @@ void main() {
     required String initialLocation,
     Size? viewSize,
     TextScaler? textScaler,
+    ThemeMode themeMode = ThemeMode.light,
   }) async {
     if (viewSize != null) {
       tester.view.devicePixelRatio = 1;
@@ -67,6 +69,9 @@ void main() {
         value: authBloc,
         child: MaterialApp.router(
           routerConfig: router,
+          theme: AppTheme.lightTheme,
+          darkTheme: AppTheme.darkTheme,
+          themeMode: themeMode,
           builder: textScaler == null
               ? null
               : (context, child) => MediaQuery(
@@ -119,32 +124,36 @@ void main() {
     expect(find.text('Chào mừng bạn trở lại!'), findsNothing);
   });
 
-  testWidgets(
-    'auth có accessible name, tap target và không overflow ở text scale 200%',
-    (tester) async {
-      final semantics = tester.ensureSemantics();
-      await pumpApp(
-        tester,
-        initialLocation: '/login',
-        viewSize: const Size(320, 640),
-        textScaler: const TextScaler.linear(2),
-      );
+  for (final themeMode in [ThemeMode.light, ThemeMode.dark]) {
+    testWidgets(
+      'auth pass accessibility/contrast ${themeMode.name} ở text scale 200%',
+      (tester) async {
+        final semantics = tester.ensureSemantics();
+        await pumpApp(
+          tester,
+          initialLocation: '/login',
+          viewSize: const Size(320, 640),
+          textScaler: const TextScaler.linear(2),
+          themeMode: themeMode,
+        );
 
-      expect(find.byTooltip('Hiện mật khẩu'), findsOneWidget);
-      expect(tester.takeException(), isNull);
-      await expectLater(tester, meetsGuideline(labeledTapTargetGuideline));
-      await expectLater(tester, meetsGuideline(androidTapTargetGuideline));
+        expect(find.byTooltip('Hiện mật khẩu'), findsOneWidget);
+        expect(tester.takeException(), isNull);
+        await expectLater(tester, meetsGuideline(labeledTapTargetGuideline));
+        await expectLater(tester, meetsGuideline(androidTapTargetGuideline));
+        await expectLater(tester, meetsGuideline(textContrastGuideline));
 
-      router.go('/register');
-      await tester.pumpAndSettle();
-      expect(find.byTooltip('Hiện mật khẩu'), findsNWidgets(2));
+        router.go('/register');
+        await tester.pumpAndSettle();
+        expect(find.byTooltip('Hiện mật khẩu'), findsNWidgets(2));
 
-      router.go('/update-password');
-      await tester.pumpAndSettle();
-      expect(find.byTooltip('Hiện mật khẩu'), findsNWidgets(2));
-      semantics.dispose();
-    },
-  );
+        router.go('/update-password');
+        await tester.pumpAndSettle();
+        expect(find.byTooltip('Hiện mật khẩu'), findsNWidgets(2));
+        semantics.dispose();
+      },
+    );
+  }
 
   test('auth event/state string redact password và user identity', () {
     const email = 'sensitive@example.invalid';

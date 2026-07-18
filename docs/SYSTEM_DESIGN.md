@@ -155,6 +155,11 @@ scroll được ở viewport hẹp hoặc text scale lớn. Sync status progress
 success/failure là live region, còn switch sinh trắc học/encrypted sync gắn trực
 tiếp accessible name với title của setting.
 
+Light/dark theme dùng primary/on-primary token riêng để giữ brand blue nhưng đạt
+WCAG AA text contrast trên các core surface. Widget regression khóa contract này
+ở Auth, account list, form thêm account và sensitive Settings dialog; đây không
+thay cho TalkBack/VoiceOver hoặc audit toàn bộ UI trên thiết bị thật.
+
 ### Xoay recovery key
 
 Thiết bị đang giữ DEK có thể tạo KEK mới, re-wrap cùng DEK, re-encrypt current

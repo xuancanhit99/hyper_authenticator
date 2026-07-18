@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:hyper_authenticator/core/theme/app_theme.dart';
 import 'package:hyper_authenticator/features/settings/presentation/widgets/recovery_import_dialog.dart';
 
 void main() {
@@ -60,9 +61,10 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets(
-    'field có accessible name, autofocus, che key và submit bằng keyboard',
-    (tester) async {
+  for (final themeMode in [ThemeMode.light, ThemeMode.dark]) {
+    testWidgets('recovery import pass accessibility/contrast ${themeMode.name}', (
+      tester,
+    ) async {
       final semantics = tester.ensureSemantics();
       tester.view.devicePixelRatio = 1;
       tester.view.physicalSize = const Size(320, 640);
@@ -73,6 +75,9 @@ void main() {
 
       await tester.pumpWidget(
         MaterialApp(
+          theme: AppTheme.lightTheme,
+          darkTheme: AppTheme.darkTheme,
+          themeMode: themeMode,
           builder: (context, child) => MediaQuery(
             data: MediaQuery.of(
               context,
@@ -116,6 +121,7 @@ void main() {
       expect(tester.takeException(), isNull);
       await expectLater(tester, meetsGuideline(labeledTapTargetGuideline));
       await expectLater(tester, meetsGuideline(androidTapTargetGuideline));
+      await expectLater(tester, meetsGuideline(textContrastGuideline));
 
       await tester.testTextInput.receiveAction(TextInputAction.done);
       await tester.pumpAndSettle();
@@ -123,6 +129,6 @@ void main() {
       expect(submitted, recoveryCode);
       expect(find.byType(RecoveryImportDialog), findsNothing);
       semantics.dispose();
-    },
-  );
+    });
+  }
 }

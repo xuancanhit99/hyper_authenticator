@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fpdart/fpdart.dart';
 import 'package:hyper_authenticator/core/error/failures.dart';
+import 'package:hyper_authenticator/core/theme/app_theme.dart';
 import 'package:hyper_authenticator/features/auth/domain/entities/user_entity.dart';
 import 'package:hyper_authenticator/features/auth/domain/repositories/auth_repository.dart';
 import 'package:hyper_authenticator/features/settings/presentation/bloc/session_security_bloc.dart';
@@ -78,59 +79,65 @@ void main() {
     expect(repository.revokeCalls, 0);
   });
 
-  testWidgets(
-    'session action có semantics/tap target và keyboard mặc định hủy',
-    (tester) async {
-      final semantics = tester.ensureSemantics();
-      tester.view.devicePixelRatio = 1;
-      tester.view.physicalSize = const Size(320, 640);
-      addTearDown(tester.view.resetPhysicalSize);
-      addTearDown(tester.view.resetDevicePixelRatio);
-      final repository = _FakeAuthRepository();
-      final bloc = SessionSecurityBloc(repository);
-      addTearDown(bloc.close);
+  for (final themeMode in [ThemeMode.light, ThemeMode.dark]) {
+    testWidgets(
+      'session action pass accessibility/contrast ${themeMode.name}',
+      (tester) async {
+        final semantics = tester.ensureSemantics();
+        tester.view.devicePixelRatio = 1;
+        tester.view.physicalSize = const Size(320, 640);
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+        final repository = _FakeAuthRepository();
+        final bloc = SessionSecurityBloc(repository);
+        addTearDown(bloc.close);
 
-      await tester.pumpWidget(
-        BlocProvider.value(
-          value: bloc,
-          child: MaterialApp(
-            builder: (context, child) => MediaQuery(
-              data: MediaQuery.of(
-                context,
-              ).copyWith(textScaler: const TextScaler.linear(2)),
-              child: child!,
-            ),
-            home: const Scaffold(
-              body: SingleChildScrollView(
-                child: AuthenticationSessionTile(
-                  currentUser: user,
-                  sessionSecurityState: SessionSecurityIdle(),
+        await tester.pumpWidget(
+          BlocProvider.value(
+            value: bloc,
+            child: MaterialApp(
+              theme: AppTheme.lightTheme,
+              darkTheme: AppTheme.darkTheme,
+              themeMode: themeMode,
+              builder: (context, child) => MediaQuery(
+                data: MediaQuery.of(
+                  context,
+                ).copyWith(textScaler: const TextScaler.linear(2)),
+                child: child!,
+              ),
+              home: const Scaffold(
+                body: SingleChildScrollView(
+                  child: AuthenticationSessionTile(
+                    currentUser: user,
+                    sessionSecurityState: SessionSecurityIdle(),
+                  ),
                 ),
               ),
             ),
           ),
-        ),
-      );
+        );
 
-      expect(
-        find.bySemanticsLabel(RegExp('^Đăng xuất các phiên khác')),
-        findsOneWidget,
-      );
-      expect(find.bySemanticsLabel(RegExp('^Đăng xuất\n')), findsOneWidget);
-      expect(tester.takeException(), isNull);
-      await expectLater(tester, meetsGuideline(labeledTapTargetGuideline));
-      await expectLater(tester, meetsGuideline(androidTapTargetGuideline));
+        expect(
+          find.bySemanticsLabel(RegExp('^Đăng xuất các phiên khác')),
+          findsOneWidget,
+        );
+        expect(find.bySemanticsLabel(RegExp('^Đăng xuất\n')), findsOneWidget);
+        expect(tester.takeException(), isNull);
+        await expectLater(tester, meetsGuideline(labeledTapTargetGuideline));
+        await expectLater(tester, meetsGuideline(androidTapTargetGuideline));
+        await expectLater(tester, meetsGuideline(textContrastGuideline));
 
-      await tester.tap(find.text('Đăng xuất các phiên khác'));
-      await tester.pumpAndSettle();
-      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
-      await tester.pumpAndSettle();
+        await tester.tap(find.text('Đăng xuất các phiên khác'));
+        await tester.pumpAndSettle();
+        await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+        await tester.pumpAndSettle();
 
-      expect(repository.revokeCalls, 0);
-      expect(find.text('Đăng xuất các phiên khác?'), findsNothing);
-      semantics.dispose();
-    },
-  );
+        expect(repository.revokeCalls, 0);
+        expect(find.text('Đăng xuất các phiên khác?'), findsNothing);
+        semantics.dispose();
+      },
+    );
+  }
 }
 
 class _FakeAuthRepository implements AuthRepository {

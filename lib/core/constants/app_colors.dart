@@ -7,7 +7,10 @@ class AppColors {
   AppColors._();
 
   // --- Primary Colors ---
-  static const Color facebookBlue = Color(0xFF1877F2);
+  /// Brand blue variants tuned for WCAG AA text contrast in each theme.
+  static const Color primaryLight = Color(0xFF0B57D0);
+  static const Color primaryDark = Color(0xFF8AB4F8);
+  static const Color onPrimaryDark = Color(0xFF001B3E);
 
   // --- Neutral Colors ---
   static const Color lightBackground = Color(
