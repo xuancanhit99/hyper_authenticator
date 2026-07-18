@@ -28,7 +28,10 @@ if (Test-Path -LiteralPath $destination) {
 }
 
 $archive = Join-Path $destination "nsis-$nsisVersion.zip"
-Invoke-WebRequest -Uri $archiveUrl -OutFile $archive
+Invoke-WebRequest `
+  -Uri $archiveUrl `
+  -OutFile $archive `
+  -UserAgent 'HyperAuthenticator-CI/1.0'
 $actualSha256 = (Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash.ToLowerInvariant()
 if ($actualSha256 -ne $archiveSha256) {
   throw "NSIS archive checksum không khớp: $actualSha256"
