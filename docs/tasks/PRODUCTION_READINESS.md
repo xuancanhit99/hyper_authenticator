@@ -77,6 +77,7 @@ platform config, 67 test và encrypted migration contract.
 ## Rủi ro còn lại
 
 - Signing/store/device/SMTP/alert destination là external gate, không phải source defect.
+- Flutter Web còn production hosting/header/cache/camera smoke trên domain thật.
 - E2EE v1 chưa có revoke/rotation/Web.
 - `mobile_scanner` upstream còn Kotlin legacy warning.
 - Off-host backup đang phụ thuộc máy Mac thay vì dedicated backup host.

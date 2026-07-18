@@ -8,7 +8,8 @@ nhập/xuất QR và giao diện sáng/tối.
 > Trạng thái dự án: **production baseline kỹ thuật, chưa hoàn tất store release**.
 > Native client đã có E2EE cloud sync và backend production có backup/restore/
 > health harness. Signed artifact, device test, SMTP mailbox và public legal/support
-> metadata vẫn là release gate phụ thuộc owner. Xem [Trạng thái dự án](docs/PROJECT_STATUS.md).
+> metadata vẫn là release gate phụ thuộc owner; Flutter Web còn cần production
+> hosting/header smoke. Xem [Trạng thái dự án](docs/PROJECT_STATUS.md).
 
 ## Chức năng
 

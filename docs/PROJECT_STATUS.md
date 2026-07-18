@@ -117,6 +117,8 @@ Capability là hành vi source hiện tại, không thay thế device test và s
    vẫn cần test trên thiết bị thật.
 7. Windows/Linux build dựa trên CI; installer, signing và device smoke test chưa xong.
 8. Privacy policy cần được host tại URL công khai và điền kênh support trước store submission.
+9. Flutter Web mới có local release/browser smoke; production host còn phải chứng
+   minh HTTPS, CSP/HSTS/security headers, cache policy và camera smoke thực tế.
 
 ## Automation
 
