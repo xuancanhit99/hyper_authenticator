@@ -95,6 +95,8 @@ jobs:
       PASSWORD_RECOVERY_URL: ${{ vars.PASSWORD_RECOVERY_URL }}
     steps:
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
       - name: Cài native build dependencies
         run: >-
           sudo apt-get update && sudo apt-get install -y
@@ -129,6 +131,11 @@ jobs:
         run: >-
           flutter build linux --release
           --dart-define-from-file="$RELEASE_CONFIG_PATH"
+      - name: Nâng cấp vault thật từ Linux 1.0.0+9
+        run: >-
+          scripts/agent/linux_historical_upgrade.sh
+          "$RELEASE_CONFIG_PATH"
+          --allow-historical-vault-migration
       - name: Chạy local-vault smoke trong private keyring
         run: >-
           scripts/agent/linux_integration.sh
