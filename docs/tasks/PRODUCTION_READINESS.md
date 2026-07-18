@@ -1,0 +1,92 @@
+# Task: Hoàn thiện production readiness
+
+- Trạng thái: Hoàn thành baseline kỹ thuật; còn external release gate
+- Bắt đầu/cập nhật: 2026-07-18
+- Owner: canhvx
+- ADR: 0002, 0003, 0004, 0005, 0007
+
+## Mục tiêu
+
+Đưa project từ alpha local-first tới baseline có encrypted cloud sync, failure
+behavior an toàn, backend có backup/restore/health harness và release gate tái hiện.
+
+## Ngoài phạm vi
+
+- Không tự tạo signing certificate, store account, SMTP mailbox hoặc credential
+  production thay owner.
+- Không tuyên bố device/store test khi chỉ có compile evidence.
+- Không drop plaintext compatibility table trong client rollout.
+
+## Acceptance criteria
+
+- [x] Release runtime chỉ dùng encrypted snapshot + atomic revision RPC.
+- [x] Onboarding yêu cầu xem/xác nhận recovery key trước khi enable.
+- [x] Device mới import key; decrypt failure không overwrite local.
+- [x] Conflict/network/retry không delete snapshot hợp lệ.
+- [x] Không có secret thật trong log/fixture/remote plaintext request.
+- [x] 58 test + analyzer + host debug/Web release build pass.
+- [x] Remote E2EE/recovery/Studio contract pass.
+- [x] Daily backup, restore rehearsal, encrypted off-host copy và health timer pass.
+- [x] Asset/font không rõ license bị loại khỏi release.
+- [ ] Signed store artifact/device test — phụ thuộc credential và thiết bị owner.
+- [ ] SMTP mailbox/expired link — phụ thuộc mailbox nhận.
+- [ ] External alert channel — cần owner chọn destination.
+
+## Thay đổi chính
+
+- Thêm encrypted repository/key/metadata/use case và SyncBloc state machine.
+- Thêm atomic local `replaceAccounts`, generation retention và fail-closed app lock tests.
+- Gỡ runtime DI của plaintext sync; giữ bridge cho migration test có kiểm soát.
+- Đưa settings sync sang onboarding/recovery/conflict UI tiếng Việt.
+- Bump version `1.1.0+10`.
+- Thay third-party logo pack bằng code-rendered account avatar; bỏ Averta.
+- Thêm systemd backup/health, restore rehearsal, `age` off-host pull và LaunchAgent.
+- Viết lại canonical docs theo runtime evidence.
+
+## Data/migration/rollback
+
+- Encrypted schema additive; một row/user, `FORCE RLS`, atomic compare-and-swap.
+- Không drop `synced_accounts`; production clean không có row legacy cần migrate.
+- Disable sync giữ local vault và remote encrypted row.
+- Decrypt/validation/conflict failure không mutate local.
+- Rollback client không được ghi plaintext; có thể tắt cloud capability và tiếp tục local-only.
+
+## Bằng chứng xác minh
+
+| Command/gate | Kết quả |
+|---|---|
+| `flutter analyze` | Pass, 0 diagnostic |
+| `flutter test` | 58 pass |
+| `scripts/agent/build.sh host` | Android debug, Web release, macOS debug pass |
+| iOS 26.5 configured simulator | Pass build + launch; Supabase init thành công |
+| Web configured release | Pass + Wasm dry-run |
+| Android configured release | Fail closed vì thiếu upload keystore |
+| macOS configured release | Bị chặn vì thiếu certificate |
+| Remote encrypted contract | 11/11 pass |
+| Remote recovery contract | 8/8 pass |
+| Studio proxy contract | Pass |
+| Backup restore rehearsal | Full restore DB tạm + schema/FORCE RLS pass |
+| Auth smoke load | 100/100 HTTP 200, concurrency 10, p95 ~0,38 giây |
+
+Full `scripts/agent/check.sh full` pass: docs, generated drift, format, analyzer,
+58 test và encrypted migration contract.
+
+## Rủi ro còn lại
+
+- Signing/store/device/SMTP/alert destination là external gate, không phải source defect.
+- E2EE v1 chưa có revoke/rotation/Web.
+- `mobile_scanner` upstream còn Kotlin legacy warning.
+- Off-host backup đang phụ thuộc máy Mac thay vì dedicated backup host.
+
+## Tài liệu cập nhật
+
+- [x] `PROJECT_STATUS.md`
+- [x] `SYSTEM_DESIGN.md`
+- [x] `DATA_MODELS.md`
+- [x] `SECURITY.md`
+- [x] `SUPABASE_INTEGRATION.md`
+- [x] `DEVELOPMENT.md`
+- [x] `TESTING_STRATEGY.md`
+- [x] `DEPLOYMENT.md`
+- [x] `E2EE_DESIGN.md`
+- [x] ADR asset provenance

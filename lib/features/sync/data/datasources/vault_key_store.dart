@@ -44,6 +44,26 @@ class VaultKeyStore {
     return bundle;
   }
 
+  Future<void> writeDataKey(String userId, List<int> dataKeyBytes) async {
+    _requireUserId(userId);
+    if (dataKeyBytes.length != 32) {
+      throw const VaultKeyStoreException();
+    }
+    await _writeVerified(userId, dataKeyBytes);
+  }
+
+  Future<void> deleteDataKey(String userId) async {
+    _requireUserId(userId);
+    try {
+      await _secureStorage.delete(key: '$_keyPrefix$userId');
+      if (await _secureStorage.read(key: '$_keyPrefix$userId') != null) {
+        throw const VaultKeyStoreException();
+      }
+    } catch (_) {
+      throw const VaultKeyStoreException();
+    }
+  }
+
   Future<List<int>> recoverForUser({
     required String userId,
     required String recoveryCode,

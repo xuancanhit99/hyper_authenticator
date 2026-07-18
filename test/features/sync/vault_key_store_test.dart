@@ -32,6 +32,21 @@ void main() {
       throwsA(isA<VaultKeyStoreException>()),
     );
   });
+
+  test(
+    'write/delete explicit được verify cho onboarding transaction',
+    () async {
+      final storage = _MemorySecureStorage();
+      final keyStore = VaultKeyStore(storage, VaultCipher());
+      final bytes = List<int>.generate(32, (index) => index);
+
+      await keyStore.writeDataKey('TEST_ONLY_USER', bytes);
+      expect(await keyStore.readDataKey('TEST_ONLY_USER'), bytes);
+
+      await keyStore.deleteDataKey('TEST_ONLY_USER');
+      expect(await keyStore.readDataKey('TEST_ONLY_USER'), isNull);
+    },
+  );
 }
 
 class _MemorySecureStorage extends FlutterSecureStorage {
@@ -64,5 +79,18 @@ class _MemorySecureStorage extends FlutterSecureStorage {
     } else {
       values[key] = value;
     }
+  }
+
+  @override
+  Future<void> delete({
+    required String key,
+    AppleOptions? iOptions,
+    AndroidOptions? aOptions,
+    LinuxOptions? lOptions,
+    WebOptions? webOptions,
+    AppleOptions? mOptions,
+    WindowsOptions? wOptions,
+  }) async {
+    values.remove(key);
   }
 }

@@ -168,7 +168,7 @@ Dừng và yêu cầu owner quyết định khi:
 
 - phải chọn offline hay mandatory account;
 - quyền sở hữu dữ liệu khi logout thay đổi;
-- E2EE recovery policy chưa quyết định;
+- thay đổi E2EE recovery policy hoặc key hierarchy đã chấp nhận;
 - migration có thể xóa plaintext hoặc ciphertext không thể đảo ngược;
 - claim platform support thay đổi;
 - cấu hình legal, store hoặc external production cần phê duyệt.

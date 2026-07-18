@@ -165,4 +165,11 @@ class _MemoryAuthenticatorRepository implements AuthenticatorRepository {
   Future<Either<Failure, Unit>> updateAccount(AuthenticatorAccount account) {
     throw UnimplementedError();
   }
+
+  @override
+  Future<Either<Failure, Unit>> replaceAccounts(
+    List<AuthenticatorAccount> accounts,
+  ) {
+    throw UnimplementedError();
+  }
 }

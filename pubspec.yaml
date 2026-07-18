@@ -1,7 +1,7 @@
 name: hyper_authenticator
 description: Ứng dụng xác thực TOTP đa nền tảng.
 publish_to: 'none'
-version: 1.0.0+9
+version: 1.1.0+10
 
 environment:
   sdk: ^3.12.0
@@ -40,6 +40,7 @@ dev_dependencies:
   flutter_lints: ^6.0.0
   flutter_native_splash: ^2.4.8
   injectable_generator: ^3.1.0
+  local_auth_platform_interface: ^1.1.0
   rename: ^3.1.0
 
 flutter_native_splash:
@@ -56,14 +57,7 @@ flutter_native_splash:
 flutter:
   uses-material-design: true
   assets:
-    - assets/images/
     - assets/logos/
-    - assets/logos/authenticators/
-    - assets/data/authenticator_logo_map.json
-  fonts:
-    - family: Averta
-      fonts:
-        - asset: assets/fonts/averta.ttf
 
 flutter_launcher_icons:
   android: true

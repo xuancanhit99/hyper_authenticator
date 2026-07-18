@@ -1,79 +1,100 @@
-part of 'sync_bloc.dart'; // Will create sync_bloc.dart next
+part of 'sync_bloc.dart';
 
-abstract class SyncState extends Equatable {
+sealed class SyncState extends Equatable {
   const SyncState();
 
   @override
-  List<Object?> get props => [];
+  List<Object?> get props => const [];
 }
 
-/// Initial state before any sync operation has started.
-class SyncInitial extends SyncState {}
+class SyncInitial extends SyncState {
+  const SyncInitial();
+}
 
-/// Cloud sync is intentionally unavailable because its security contract is
-/// not safe for production use yet.
 class SyncUnavailable extends SyncState {
   final String message;
 
-  const SyncUnavailable({required this.message});
+  const SyncUnavailable(this.message);
 
   @override
   List<Object?> get props => [message];
 }
 
-/// State indicating a sync operation (check, upload, download) is in progress.
 class SyncInProgress extends SyncState {
-  final String
-  message; // e.g., "Checking status...", "Downloading...", "Uploading..."
+  final String message;
 
-  const SyncInProgress({this.message = 'Syncing...'}); // Default message
+  const SyncInProgress(this.message);
 
   @override
   List<Object?> get props => [message];
 }
 
-/// State after checking the remote server status.
-class SyncStatusChecked extends SyncState {
-  final bool isSyncEnabled; // Added: Is sync functionally enabled?
-  final bool hasRemoteData;
-  final DateTime? lastSyncTime; // Renamed from lastUploadTime
-
-  const SyncStatusChecked({
-    required this.isSyncEnabled, // Added
-    required this.hasRemoteData,
-    this.lastSyncTime,
-  }); // Updated constructor
-
-  @override
-  List<Object?> get props => [isSyncEnabled, hasRemoteData, lastSyncTime]; // Updated props
+class SyncSetupRequired extends SyncState {
+  const SyncSetupRequired();
 }
 
-/// State indicating a sync operation (upload or download) completed successfully.
+class SyncRecoveryRequired extends SyncState {
+  final DateTime remoteUpdatedAt;
+
+  const SyncRecoveryRequired(this.remoteUpdatedAt);
+
+  @override
+  List<Object?> get props => [remoteUpdatedAt];
+}
+
+class SyncRecoveryKeyReady extends SyncState {
+  final String recoveryCode;
+
+  const SyncRecoveryKeyReady(this.recoveryCode);
+
+  @override
+  List<Object?> get props => [recoveryCode];
+}
+
+class SyncReady extends SyncState {
+  final bool isEnabled;
+  final int revision;
+  final DateTime updatedAt;
+
+  const SyncReady({
+    required this.isEnabled,
+    required this.revision,
+    required this.updatedAt,
+  });
+
+  @override
+  List<Object?> get props => [isEnabled, revision, updatedAt];
+}
+
+class SyncConflict extends SyncState {
+  final int remoteRevision;
+  final DateTime remoteUpdatedAt;
+
+  const SyncConflict({
+    required this.remoteRevision,
+    required this.remoteUpdatedAt,
+  });
+
+  @override
+  List<Object?> get props => [remoteRevision, remoteUpdatedAt];
+}
+
 class SyncSuccess extends SyncState {
-  final String
-  message; // e.g., "Accounts uploaded successfully." or "Accounts downloaded."
-  final DateTime
-  lastSyncTime; // Renamed from timestamp, represents the time of this success
-  // Consider making message optional or more specific if needed
-  SyncSuccess({required this.message})
-    : lastSyncTime =
-          DateTime.now(); // Use the time of success as last sync time
+  final int revision;
+  final DateTime completedAt;
+
+  const SyncSuccess({required this.revision, required this.completedAt});
 
   @override
-  List<Object?> get props => [message, lastSyncTime];
+  List<Object?> get props => [revision, completedAt];
 }
 
-/// State indicating an error occurred during a sync operation.
 class SyncFailure extends SyncState {
   final String message;
-  final bool
-  isSyncEnabled; // Added: Reflects the enabled state when failure occurred
+  final bool isConflict;
 
-  const SyncFailure({
-    required this.message,
-    required this.isSyncEnabled,
-  }); // Added isSyncEnabled
+  const SyncFailure(this.message, {this.isConflict = false});
 
   @override
-  List<Object?> get props => [message, isSyncEnabled]; // Added isSyncEnabled
+  List<Object?> get props => [message, isConflict];
 }

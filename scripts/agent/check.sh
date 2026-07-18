@@ -59,6 +59,8 @@ run_full() {
   run_quick || status=1
   printf '\n%s\n' "== Flutter test gate =="
   flutter test || status=1
+  printf '\n%s\n' "== Supabase encrypted migration gate =="
+  scripts/supabase/test_encrypted_vault_migration.sh || status=1
   return "$status"
 }
 

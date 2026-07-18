@@ -16,10 +16,21 @@ read_env_value() {
     "$ENV_FILE"
 }
 
+first_env_value() {
+  local key value
+  for key in "$@"; do
+    value=$(read_env_value "$key")
+    if [[ -n "$value" ]]; then
+      printf '%s' "$value"
+      return
+    fi
+  done
+}
+
 if [[ -z "$BASE_URL" ]]; then
-  BASE_URL=$(read_env_value SUPABASE_PUBLIC_URL)
+  BASE_URL=$(first_env_value SUPABASE_PUBLIC_URL API_EXTERNAL_URL)
 fi
-PUBLISHABLE_KEY=$(read_env_value SUPABASE_PUBLISHABLE_KEY)
+PUBLISHABLE_KEY=$(first_env_value SUPABASE_PUBLISHABLE_KEY PUBLISHABLE_KEY ANON_KEY)
 SERVICE_ROLE_KEY=$(read_env_value SERVICE_ROLE_KEY)
 
 if [[ -z "$BASE_URL" || -z "$PUBLISHABLE_KEY" || -z "$SERVICE_ROLE_KEY" ]]; then

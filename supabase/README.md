@@ -1,81 +1,84 @@
 # Supabase harness
 
-Thư mục này giữ phần có thể version control của backend contract. Secret, public URL,
-database volume và backup không được đặt trong repository.
+Thư mục này version-control backend contract, proxy overlay và service templates.
+Secret, URL thật, database volume và backup thật không được commit.
 
 ## Nội dung
 
-- `UPSTREAM_PIN`: release/commit official đã dùng để dựng stack hiện tại.
-- `docker-compose.public-proxy.yml`: overlay bind Kong/Supavisor vào loopback,
-  đồng thời nối Kong và Studio vào external network `proxy-network` để reverse
-  proxy resolve upstream bằng service name.
-- `docker-compose.recovery-web.yml`: inject internal recovery-template URL vào
-  Auth; URL thật nằm trong `.env` operator, không nằm trong repository.
-- `migrations/`: schema, grant và RLS policy của ứng dụng.
-- `../scripts/supabase/test_remote_contract.sh`: isolated end-to-end test cho
-  Auth, mapper contract và cross-user RLS.
-- `../scripts/supabase/test_encrypted_vault_migration.sh`: PostgreSQL ephemeral
-  test cho encrypted snapshot revision/conflict/RLS, không cần remote secret.
-- `../scripts/supabase/test_remote_encrypted_vault_contract.sh`: PostgREST/Auth
-  contract cho encrypted snapshot trên isolated self-hosted environment.
-- `../scripts/supabase/test_remote_recovery_contract.sh`: one-time recovery-token,
-  password update/re-login/reuse contract; không gửi email thật.
-- `../scripts/supabase/test_remote_studio_proxy.sh`: health/network/DNS/upstream
-  contract cho Studio và Basic Auth public boundary.
+- `UPSTREAM_PIN`: exact self-hosted upstream pin.
+- `docker-compose.public-proxy.yml`: loopback/public proxy network boundary.
+- `docker-compose.recovery-web.yml`: Recovery Web template URL injection.
+- `migrations/`: plaintext compatibility và encrypted snapshot/RPC schema.
+- `systemd/`: daily backup và 5-minute health service/timer templates.
+- `launchd/`: encrypted off-host pull LaunchAgent template.
+- `../scripts/supabase/`: migration, remote contract, backup, health và restore harness.
 
-## Áp dụng trên một stack mới
+## Dựng stack mới
 
-1. Checkout đúng release/commit trong `UPSTREAM_PIN` từ repository Supabase.
-2. Sinh secret/key mới bằng utility official; không sao chép `.env` production
-   vào repository hoặc client build.
-3. Copy overlay thành `docker-compose.local.yml` cạnh compose official và xác
-   minh external network `proxy-network` đã tồn tại.
-4. Start stack, chờ toàn bộ core service healthy rồi áp dụng migration theo thứ
-   tự tên file.
-5. Chạy smoke test official, auth-key test official và contract test của dự án.
-6. Dọn isolated test user/data và xác nhận các table ứng dụng rỗng trước bàn giao.
+1. Checkout exact official self-hosted pin trong `UPSTREAM_PIN`.
+2. Sinh toàn bộ secret/key mới bằng official utility; không copy production env vào repo.
+3. Cấu hình reverse proxy network và loopback binding.
+4. Start stack; chờ 11 core container healthy.
+5. Apply migration theo thứ tự filename.
+6. Deploy Recovery Web + exact redirect allow-list/template.
+7. Chạy encrypted/recovery/Studio contract.
+8. Xác nhận isolated test user/data đã cleanup.
+9. Cài backup/health timer và chạy restore rehearsal trước nhận traffic.
 
-Ví dụ áp dụng migration từ host chạy Docker:
+Apply E2EE migration:
 
     docker exec -i supabase-db \
       psql -X -v ON_ERROR_STOP=1 -U supabase_admin -d postgres \
-      < supabase/migrations/20260717163000_create_synced_accounts.sql
+      < supabase/migrations/20260718190000_create_encrypted_vault_snapshots.sql
 
-Ví dụ chạy RLS contract test ngay trên server, nơi `.env` của stack được bảo vệ:
-
-    scripts/supabase/test_remote_contract.sh /path/to/supabase/.env
-
-Trước khi deploy E2EE migration additive:
+Test migration local:
 
     scripts/supabase/test_encrypted_vault_migration.sh
 
-Sau đó áp migration `20260718190000_create_encrypted_vault_snapshots.sql` trên
-staging trước. Migration không drop/sửa table plaintext. Baseline self-hosted hiện
-tại đã deploy migration này và pass 11 remote contract check; xem
-`docs/operations/SUPABASE_E2EE_ROLLOUT.md`.
+Test remote trong protected operator context:
 
-Script cần `SERVICE_ROLE_KEY` để tạo và dọn isolated user. Không copy key này
-vào `.env` của Flutter; không chạy script trong log có shell tracing.
+    scripts/supabase/test_remote_encrypted_vault_contract.sh \
+      /path/to/supabase/.env https://api.example.com
 
-Khi deploy Recovery Web, thêm exact URL vào `ADDITIONAL_REDIRECT_URLS`, đặt
-`GOTRUE_MAILER_TEMPLATES_RECOVERY` trong server `.env`, rồi recreate riêng Auth:
-
-    docker compose -f compose.yaml -f compose.recovery-web.yml up -d --no-deps auth
-
-Remote recovery contract không gửi email thật và dọn user bằng Admin API. GoTrue
-vẫn giữ audit entry; chỉ xóa audit trong isolated zero-data rehearsal, không xóa
-audit production.
-
-Sau khi recreate Studio hoặc Docker network, chạy trên server:
+    scripts/supabase/test_remote_recovery_contract.sh \
+      /path/to/supabase/.env https://api.example.com \
+      https://auth.example.com/reset-password/
 
     scripts/supabase/test_remote_studio_proxy.sh https://studio.example.com
 
-Public status `401` khi không có credential là expected vì dashboard dùng Basic
-Auth. Contract còn xác minh Nginx Proxy Manager resolve được `supabase-studio` và
-upstream profile trả 200; container healthy một mình không đủ chứng minh route.
+Các script cần service-role key để tạo/dọn isolated user. Không copy key vào Flutter
+`.env`, CI fork hoặc shell trace.
 
-## Giới hạn hiện tại
+## Operations
 
-`synced_accounts.secret_key` vẫn là plaintext compatibility table và upload cũ vẫn
-xóa-rồi-chèn. Encrypted schema/RPC v2 đã deploy nhưng chưa nối client; release sync
-vẫn khóa. Backup định kỳ và restore rehearsal vẫn bắt buộc.
+- `backup_production.sh`: DB/globals/Storage/config + checksum/catalog/tar verify.
+- `check_production_health.sh`: container/resource/RLS/public endpoint/backup age.
+- `rehearse_backup_restore.sh`: full restore vào DB tạm, probe schema/FORCE RLS, drop.
+- `pull_encrypted_backup.sh`: SSH stream → `age`, không tạo plaintext local archive.
+
+Chi tiết deploy/service/retention/incident:
+`../docs/operations/SUPABASE_PRODUCTION_OPERATIONS.md`.
+
+## Trạng thái production đã xác minh
+
+- 11 core container healthy.
+- Encrypted remote contract 11/11.
+- Recovery contract 8/8.
+- Studio HTTPS + Basic Auth proxy contract pass.
+- Daily backup service, restore rehearsal và encrypted off-host LaunchAgent pass.
+- Health/backup timers active.
+
+## Compatibility và rollback
+
+`synced_accounts.secret_key` là plaintext compatibility table. Runtime client mới
+không inject bridge và release guard chặn nó. Không drop table trong client rollout;
+drop chỉ qua migration riêng sau backup/migration audit.
+
+Encrypted rollback giữ local vault và current encrypted row; tắt cloud capability
+thay vì ghi plaintext.
+
+## Khoảng trống
+
+- External alert channel.
+- Dedicated off-host backup system/PITR.
+- SMTP mailbox delivery/expired-link E2E.

@@ -1,0 +1,11 @@
+[Unit]
+Description=Periodic Hyper Authenticator Supabase health gate
+
+[Timer]
+OnBootSec=5m
+OnUnitActiveSec=5m
+RandomizedDelaySec=30s
+Unit=hyper-auth-supabase-health.service
+
+[Install]
+WantedBy=timers.target

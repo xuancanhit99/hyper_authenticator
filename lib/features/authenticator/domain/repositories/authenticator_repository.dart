@@ -39,6 +39,11 @@ abstract class AuthenticatorRepository {
   /// Returns [Left] with a [Failure] if the account is not found or update fails.
   Future<Either<Failure, Unit>> updateAccount(AuthenticatorAccount account);
 
+  /// Replaces the complete local vault using one copy-on-write commit.
+  Future<Either<Failure, Unit>> replaceAccounts(
+    List<AuthenticatorAccount> accounts,
+  );
+
   // Note: Generating the TOTP code itself is often considered a domain/usecase logic
   // rather than a repository function, as it doesn't involve data persistence.
   // We will create a separate use case for that later.

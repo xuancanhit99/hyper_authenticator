@@ -1,14 +1,11 @@
 import 'package:hyper_authenticator/features/sync/domain/entities/encrypted_vault_envelope.dart';
+import 'package:hyper_authenticator/features/sync/domain/entities/encrypted_vault_snapshot.dart';
 
-class RemoteEncryptedVaultSnapshot {
-  final EncryptedVaultEnvelope envelope;
-  final WrappedVaultKey wrappedDataKey;
-  final DateTime updatedAt;
-
+class RemoteEncryptedVaultSnapshot extends EncryptedVaultSnapshot {
   const RemoteEncryptedVaultSnapshot({
-    required this.envelope,
-    required this.wrappedDataKey,
-    required this.updatedAt,
+    required super.envelope,
+    required super.wrappedDataKey,
+    required super.updatedAt,
   });
 
   factory RemoteEncryptedVaultSnapshot.fromRow(Map<String, dynamic> row) {

@@ -13,7 +13,7 @@ import 'package:hyper_authenticator/core/constants/app_colors.dart'; // Import A
 import 'package:hyper_authenticator/features/authenticator/domain/entities/authenticator_account.dart';
 import 'package:hyper_authenticator/features/authenticator/domain/usecases/generate_totp_code.dart';
 import 'package:hyper_authenticator/features/authenticator/presentation/bloc/accounts_bloc.dart';
-import 'package:hyper_authenticator/features/authenticator/presentation/utils/logo_service.dart'; // Import LogoService
+import 'package:hyper_authenticator/features/authenticator/presentation/widgets/account_avatar.dart';
 import 'package:hyper_authenticator/features/authenticator/presentation/widgets/circular_countdown_timer.dart'; // Import Countdown Timer
 import 'package:hyper_authenticator/injection_container.dart';
 import 'package:go_router/go_router.dart'; // Import GoRouter for navigation
@@ -61,14 +61,7 @@ class _AccountsPageState extends State<AccountsPage>
     _searchController.addListener(
       _onSearchChanged,
     ); // Add listener for search input
-    // Load logo map first (async)
-    LogoService.instance.loadLogoMap().then((_) {
-      // Then load accounts
-      if (mounted) {
-        // Check if widget is still mounted after async operation
-        context.read<AccountsBloc>().add(LoadAccounts());
-      }
-    });
+    context.read<AccountsBloc>().add(LoadAccounts());
     _startTimer();
   }
 
@@ -492,9 +485,6 @@ class _AccountsPageState extends State<AccountsPage>
                                             .id]!; // Use cached code during refresh
                                   }
 
-                                  final String logoPath = LogoService.instance
-                                      .getLogoPath(account.issuer);
-
                                   // --- Start New Row Layout ---
                                   return InkWell(
                                     // Wrap with InkWell for onTap
@@ -525,35 +515,7 @@ class _AccountsPageState extends State<AccountsPage>
                                       child: Row(
                                         children: [
                                           // 1. Logo (Cropped with rounded corners) - Updated
-                                          SizedBox(
-                                            // Constrain the size
-                                            width: 40,
-                                            height: 40,
-                                            child: ClipRRect(
-                                              // Apply rounded corners directly to the image
-                                              borderRadius:
-                                                  BorderRadius.circular(4.0),
-                                              child: Image.asset(
-                                                logoPath,
-                                                fit: BoxFit
-                                                    .contain, // Use contain to avoid stretching
-                                                errorBuilder: (context, error, stackTrace) {
-                                                  // Fallback icon if image fails to load
-                                                  return Container(
-                                                    // Add a background for the fallback icon
-                                                    // color: Colors.grey.shade200, // Optional: Light grey background
-                                                    alignment: Alignment.center,
-                                                    child: const Icon(
-                                                      Icons.shield_outlined,
-                                                      size: 24,
-                                                      color: Colors
-                                                          .grey, // Grey icon color
-                                                    ),
-                                                  );
-                                                },
-                                              ),
-                                            ),
-                                          ),
+                                          AccountAvatar(issuer: account.issuer),
                                           const SizedBox(width: 12), // Spacing
                                           // 2. Issuer / Account Name
                                           Expanded(
@@ -680,10 +642,6 @@ class _AccountsPageState extends State<AccountsPage>
                         version: QrVersions.auto,
                         size:
                             200.0, // This size is for the QR code itself within the QrImageView
-                        // embeddedImage: AssetImage('assets/images/hyper-logo.png'), // Optional: if you have a logo
-                        // embeddedImageStyle: QrEmbeddedImageStyle(
-                        //   size: Size(40, 40),
-                        // ),
                       ),
                     ),
                   ),
@@ -715,7 +673,6 @@ class _AccountsPageState extends State<AccountsPage>
     BuildContext context,
     AuthenticatorAccount account,
   ) {
-    final String logoPath = LogoService.instance.getLogoPath(account.issuer);
     showDialog(
       context: context,
       builder: (BuildContext dialogContext) {
@@ -724,27 +681,7 @@ class _AccountsPageState extends State<AccountsPage>
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: <Widget>[
-              SizedBox(
-                width: 60,
-                height: 60,
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(8.0),
-                  child: Image.asset(
-                    logoPath,
-                    fit: BoxFit.contain,
-                    errorBuilder: (context, error, stackTrace) {
-                      return Container(
-                        alignment: Alignment.center,
-                        child: const Icon(
-                          Icons.shield_outlined,
-                          size: 30,
-                          color: Colors.grey,
-                        ),
-                      );
-                    },
-                  ),
-                ),
-              ),
+              AccountAvatar(issuer: account.issuer, size: 60),
               const SizedBox(height: 16),
               Text(
                 'Are you sure you want to delete this account?',

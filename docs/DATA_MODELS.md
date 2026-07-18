@@ -1,177 +1,138 @@
-# Mô hình dữ liệu và storage contract
+# Mô hình dữ liệu
 
-Tài liệu mô tả shape đã triển khai. Encrypted format mục tiêu nằm trong `E2EE_DESIGN.md`.
+Không đặt secret thật trong ví dụ, fixture hoặc log. Chuỗi minh họa bên dưới chỉ
+mô tả shape.
 
-## AuthenticatorAccount
-
-Source: `lib/features/authenticator/domain/entities/authenticator_account.dart`.
-
-| Field | Kiểu | Nullable | Default | Nhạy cảm |
-|---|---|---:|---|---:|
-| `id` | String | Không | Không | Không |
-| `issuer` | String | Không | Không | Có thể |
-| `accountName` | String | Không | Không | Có |
-| `secretKey` | String | Không | Không | Credential tối quan trọng |
-| `algorithm` | String | Không | SHA1 | Không |
-| `digits` | int | Không | 6 | Không |
-| `period` | int | Không | 30 | Không |
-
-Model chưa có record version, timestamp, order, icon, counter hoặc tag.
-
-### JSON contract
+## `AuthenticatorAccount`
 
 ~~~json
 {
-  "id": "account-uuid",
-  "issuer": "Example",
+  "id": "uuid-stable",
+  "issuer": "Service",
   "accountName": "user@example.invalid",
-  "secretKey": "TEST_ONLY_REDACTED",
-  "algorithm": "SHA1",
-  "digits": 6,
-  "period": 30
+  "secretKey": "TEST_ONLY_BASE32_PLACEHOLDER",
+  "algorithm": "SHA256",
+  "digits": 8,
+  "period": 45
 }
 ~~~
 
-Key dùng camelCase. `fromJson` yêu cầu `id`, `issuer`, `accountName`, `secretKey`; record cũ thiếu algorithm/digits/period nhận default. Unit test xác minh cả round-trip đầy đủ và compatibility này.
-
-### Bất biến
-
-- `id` ổn định, duy nhất.
-- `secretKey` là Base32 hợp lệ.
-- `algorithm` thuộc SHA1/SHA256/SHA512.
-- `digits` từ 6 đến 8; `period` dương.
-- Mọi field round-trip không bị thay default âm thầm.
-- Log/test output redact secret.
-
-Local add hiện giữ nguyên algorithm/digits/period khi gán UUID.
-
-## Local secure storage
-
-### Format legacy v1
-
-| Storage key | Giá trị |
-|---|---|
-| `authenticator_account_index` | JSON array account ID |
-| Mỗi account ID | JSON `AuthenticatorAccount` |
-
-Reader v2 chỉ dùng v1 để migration/rollback và không ghi mutation mới về format này.
-
-### Format v2 đã triển khai
-
-| Prefix | Vai trò |
-|---|---|
-| `ha:v2:record:` | Immutable account JSON, key gồm stable ID và transaction ID |
-| `ha:v2:manifest:` | Generation cùng danh sách `id → recordKey` |
-| `ha:v2:commit:` | Publication marker trỏ manifest đã verify |
-
-Mutation được serialize trong data-source instance. Writer ghi/verify record và
-manifest trước, commit marker sau cùng. Reader chọn committed generation mới nhất
-hợp lệ và fallback generation trước nếu record/manifest mới hỏng.
-
-Migration lần đầu:
-
-1. Đọc legacy index và UUID-keyed record bằng `readAll`.
-2. Bỏ dangling ID/record hỏng, recover orphan có UUID/payload hợp lệ.
-3. Ghi và verify snapshot v2 rồi mới publish commit.
-4. Giữ nguyên legacy key; chưa có compaction/secure-deletion claim.
-
-Logout giữ nguyên namespace account. Local vault thuộc installation/profile local,
-không thuộc Supabase user. Xem
-[ADR-0002](adr/0002-versioned-local-vault-storage.md) và
-[ADR-0003](adr/0003-offline-first-local-vault.md).
-
-## UserEntity
-
-| Field | Kiểu | Nullable | Nguồn |
-|---|---|---:|---|
-| `id` | String | Không | Supabase `User.id` |
-| `email` | String | Có | Supabase `User.email` |
-| `name` | String | Có | `name` trong user metadata |
-
-Entity không chứa mật khẩu hoặc session token.
-
-## SharedPreferences
-
-| Key | Ý nghĩa | Nhạy cảm |
-|---|---|---:|
-| `biometric_enabled` | Yêu cầu local authentication | Không |
-| `sync_enabled` | Cho phép sync thủ công | Không |
-| `remembered_email` | Điền sẵn login email | Dữ liệu cá nhân |
-| `remember_me_state` | Trạng thái checkbox | Không |
-| Theme key của `ThemeProvider` | Theme đã chọn | Không |
-
-Thay đổi key cần compatibility/migration cho bản cài hiện có.
-
-## Supabase row contract đã triển khai
-
-Migration `supabase/migrations/20260717163000_create_synced_accounts.sql` tạo
-`public.synced_accounts`. Mapper tại data boundary chuyển model local camelCase
-sang PostgreSQL snake_case:
-
-| Local | Remote | Ghi chú |
-|---|---|---|
-| Session user | `user_id` | UUID owner, FK `auth.users` |
-| `id` | `account_id` | UUID, cùng `user_id` tạo primary key |
-| `issuer` | `issuer` | Text 1–255 |
-| `accountName` | `account_name` | Text 1–512 |
-| `secretKey` | `secret_key` | Plaintext credential 16–512 |
-| `algorithm` | `algorithm` | SHA1/SHA256/SHA512 |
-| `digits` | `digits` | 6–8 |
-| `period` | `period` | 1–300 |
-| — | `format_version` | Database default `1` |
-| — | `updated_at` | Database default UTC khi insert |
-
-Client download map đủ các field về entity. `hasRemoteData` select `account_id`;
-last-upload query dùng `updated_at`. Unit test mapper và remote RLS contract test
-xác minh round-trip algorithm/digits/period.
-
-Build client cũ còn gửi `accountName`/`secretKey` không tương thích với schema
-snake_case. Dữ liệu legacy không được import vào instance mới.
-
-## Encrypted vault snapshot v2
-
-**Đã triển khai trên self-hosted Supabase; client vẫn staged.** Table
-`encrypted_vault_snapshots` giữ một snapshot hiện hành cho mỗi `user_id`:
-
 | Field | Contract |
 |---|---|
-| `format_version` | Envelope version `1` |
-| `revision` | Optimistic revision, bắt đầu từ 1 |
-| `cipher` | `AES-256-GCM` |
-| `nonce`, `ciphertext`, `auth_tag` | Snapshot encrypted/authenticated |
-| `key_format_version` | Wrapped-DEK version `1` |
-| `wrapped_key_*` | DEK wrap bằng recovery key do user giữ |
-| `updated_at` | Server timestamp |
+| `id` | UUID stable qua add/update/restore/sync |
+| `issuer` | Không rỗng |
+| `accountName` | Không rỗng |
+| `secretKey` | Base32 đã normalize; credential |
+| `algorithm` | `SHA1`, `SHA256` hoặc `SHA512` |
+| `digits` | 6–8 |
+| `period` | Số nguyên dương |
 
-Plaintext trong cipher là JSON snapshot canonical gồm `format_version` và danh
-sách `AuthenticatorAccount` sort theo stable ID. AAD bind purpose/version,
-Supabase user ID và revision. RPC `publish_encrypted_vault_snapshot` chỉ commit
-khi `expected_revision` khớp rồi tăng revision atomically. Conflict dùng SQLSTATE
-`PT409`/HTTP 409; remote contract đã xác minh owner isolation và revision behavior.
+Logo không phải persisted field. UI sinh avatar từ `issuer` nên việc loại icon
+asset không cần migration data.
 
-Local DEK dùng secure-storage key `ha:e2ee:v1:dek:<supabase-user-id>` và không bị
-xóa khi logout. Recovery code dạng `HA1-<base64url-256-bit>` không được lưu remote
-plaintext. Migration v2 additive, không drop table plaintext.
+## Local vault v2
 
-## Remote identity và merge
+Secure storage chứa immutable generation:
 
-- Owner: `user_id`.
-- Record identity tại DB boundary: `account_id`.
-- Compatibility merge identity hiện tại: stable `account_id`.
+- record account theo generation + stable ID;
+- manifest có version, generation ID và danh sách ID;
+- commit marker trỏ generation active;
+- legacy keys được giữ trong giai đoạn compatibility.
 
-Remote record chưa có được persist với nguyên ID; label trùng nhưng ID khác được
-giữ riêng. Khi cùng ID, local record tạm thắng. Protocol này vẫn chưa biểu diễn
-revision conflict, deletion/tombstone hoặc concurrent device.
+Mutation ghi generation mới rồi mới đổi commit marker. Reader validate manifest,
+record và model; nếu active generation lỗi thì thử rollback generation. Compaction
+giữ hai generation hợp lệ gần nhất, không xóa active/rollback trước khi generation
+mới được verify.
 
-## Protocol thay đổi model
+## Encrypted plaintext snapshot trước khi mã hóa
 
-Persisted model change phải có:
+Payload canonical là object versioned chứa danh sách account sort theo stable ID.
+Nó chỉ tồn tại trong memory trước/ sau AES-GCM và không được gửi tới backend.
 
-1. Format/schema version.
-2. Backward-compatible read.
-3. Local/remote migration và recovery/rollback.
-4. Round-trip test old-to-new và new-to-new.
-5. Cross-client conflict behavior.
-6. Cập nhật tài liệu này, `SUPABASE_INTEGRATION.md` và `SECURITY.md`.
+~~~json
+{
+  "formatVersion": 1,
+  "accounts": [
+    {
+      "id": "uuid-stable",
+      "issuer": "Service",
+      "accountName": "user@example.invalid",
+      "secretKey": "TEST_ONLY_BASE32_PLACEHOLDER",
+      "algorithm": "SHA256",
+      "digits": 8,
+      "period": 45
+    }
+  ]
+}
+~~~
 
-Không dùng silent default để che record hỏng hoặc giá trị không hỗ trợ.
+## Encrypted envelope v1
+
+~~~json
+{
+  "formatVersion": 1,
+  "revision": 3,
+  "cipher": "AES-256-GCM",
+  "nonce": "base64url",
+  "ciphertext": "base64url",
+  "authTag": "base64url"
+}
+~~~
+
+Associated authenticated data bind purpose string, format version, Supabase user
+ID và revision. Thay user/revision/envelope field làm authentication thất bại.
+
+## Wrapped DEK v1
+
+~~~json
+{
+  "keyFormatVersion": 1,
+  "wrappedKeyNonce": "base64url",
+  "wrappedKeyCiphertext": "base64url",
+  "wrappedKeyAuthTag": "base64url"
+}
+~~~
+
+Recovery key 256-bit có prefix/version `HA1-`; backend chỉ giữ wrapped DEK. DEK
+plaintext được giữ theo Supabase user ID trong platform secure storage.
+
+## PostgreSQL encrypted contract
+
+Table `public.encrypted_vault_snapshots`:
+
+| Column | Ý nghĩa |
+|---|---|
+| `user_id uuid` | PK/FK tới `auth.users`; tenant owner |
+| `format_version smallint` | Envelope format, hiện bằng 1 |
+| `revision bigint` | Monotonic revision > 0 |
+| `cipher text` | Hiện chỉ `AES-256-GCM` |
+| `nonce`, `ciphertext`, `auth_tag` | Encrypted snapshot |
+| `key_format_version` | Wrapped key format, hiện bằng 1 |
+| `wrapped_key_*` | DEK được wrap bằng recovery key |
+| `updated_at timestamptz` | Server timestamp |
+
+`publish_encrypted_vault_snapshot` nhận expected revision và toàn bộ encrypted
+field. Nó insert revision 1 khi expected=0 hoặc update revision+1 khi current
+revision khớp; ngược lại trả `PT409`.
+
+## Metadata thiết bị
+
+SharedPreferences giữ theo Supabase user ID:
+
+- sync enabled/disabled;
+- last-seen remote revision.
+
+Không lưu TOTP secret, DEK hoặc recovery key trong SharedPreferences.
+
+## Compatibility plaintext
+
+`synced_accounts` dùng snake_case và từng chứa `secret_key` plaintext. Runtime DI
+không đăng ký datasource/repository/use case cũ; release guard vẫn chặn. Table chỉ
+được giữ cho migration/rollback có kiểm soát và phải backup trước khi drop.
+
+## Versioning và migration
+
+- Unknown future encrypted format bị từ chối trước decrypt.
+- Không downgrade hoặc silently default field đã persist.
+- Schema E2EE là additive; plaintext table chưa bị drop trong rollout này.
+- Migration phá hủy table cũ cần backup, compatibility audit và rollback riêng.

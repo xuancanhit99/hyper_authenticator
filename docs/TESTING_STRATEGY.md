@@ -1,165 +1,81 @@
 # Chiến lược kiểm thử
 
-## Baseline hiện tại
+## Mục tiêu
 
-Ngày 18 tháng 7 năm 2026:
+Ưu tiên chống lộ TOTP credential, mất vault, bypass app lock, cross-tenant access
+và cloud overwrite khi conflict. Build pass không thay thế runtime/data contract test.
 
-- `flutter analyze`: pass, không có diagnostic.
-- `flutter test`: 42 test pass.
-- Format gate: pass.
-- CI đa nền tảng đã được track.
-- Đã có widget test countdown; chưa có BLoC test hoặc `integration_test` đầy đủ.
+## Gate canonical
 
-Test hiện có:
-
-| Nhóm | Coverage |
+| Scope | Command |
 |---|---|
-| `AuthenticatorAccount` | JSON round-trip và default tương thích record cũ |
-| `TotpUriParser` | URI đầy đủ, suy luận issuer và input không hợp lệ |
-| `TotpValidator` | Chuẩn hóa Base32 và từ chối secret/algorithm/digits/period không hợp lệ |
-| `GenerateTotpCode` | RFC 6238 SHA1 known-answer vector tại mốc 59 giây |
-| `AuthBloc` | Sign-in emit authenticated và sign-up chờ email không mắc kẹt ở loading |
-| `SupabaseAccountMapper` | camelCase ↔ snake_case và round-trip đủ tham số TOTP |
-| Local storage v2 | Migration legacy, orphan/corruption, concurrent write, commit failure và fallback generation |
-| Countdown | Period tùy chỉnh, boundary, lifecycle resume và semantics |
-| Merge sync | Stable ID, same-label record, local-wins và persistence failure |
-| Plaintext sync guard | Chặn trước session/network và luôn chặn ở release |
-| Offline redirect/Auth | Local vault không cần session; app lock/logout boundary |
-| E2EE primitive | Round-trip, no-plaintext, tamper, wrong user/key và future version |
-| Vault key store | Verified DEK persistence, recovery unwrap và no-overwrite |
+| Docs | `scripts/agent/check.sh docs` |
+| Dart/UI | `scripts/agent/check.sh quick` |
+| Auth/storage/sync/DI/platform | `scripts/agent/check.sh full` |
 
-## Quality gate
+`full` phải pass generated-code drift, format, analyze, Flutter test và encrypted
+PostgreSQL migration contract.
 
-    scripts/agent/check.sh docs
-    scripts/agent/check.sh quick
-    scripts/agent/check.sh full
+## Coverage hiện tại
 
-- `docs`: kiểm tra link, cấu trúc và drift tài liệu.
-- `quick`: generated-code drift, format và analyze.
-- `full`: toàn bộ quick gate cùng `flutter test`.
+58 Flutter tests bao phủ:
 
-Build verification độc lập:
+- router/auth/logout/offline-local-vault boundary;
+- TOTP URI/validator, countdown nhiều period và lifecycle resume;
+- local vault migration, concurrent mutation, corruption rollback, atomic replace
+  và generation compaction;
+- local-auth startup lock, relock và plugin-error fail closed;
+- AES-GCM round-trip, tamper, wrong user, future format và recovery unwrap;
+- secure key-store initialize/write/delete verification;
+- encrypted setup/cancel/recovery/wrong key/sync/conflict/use-cloud/keep-local;
+- remote encrypted mapper, revision response và conflict mapping;
+- plaintext bridge release guard.
 
-    scripts/agent/build.sh host
-    scripts/agent/build.sh <android|ios|macos|web|windows|linux>
+## Remote contract
 
-Không biến lỗi baseline thành success giả. Platform không build được trên host phải được ghi là chưa xác minh và chuyển sang runner phù hợp.
+Production/staging test dùng isolated user và tự cleanup:
 
-## Các tầng test cần bổ sung
+- encrypted RLS/RPC contract: 11 checks;
+- password recovery token contract: 8 checks;
+- Studio network/upstream/Basic Auth contract;
+- backup checksum/catalog/tar validation;
+- full restore vào database tạm + schema/FORCE RLS probe;
+- low-concurrency public Auth health smoke load.
 
-### Unit test
+Remote script cần service-role key nên chỉ chạy trong protected operator context,
+không trong untrusted fork CI.
 
-- RFC 6238 SHA1/SHA256/SHA512, digits và period khác nhau.
-- Base32 normalization và validation boundary.
-- Local storage compaction, commit-response ambiguity và device-backed recovery;
-  CRUD/index corruption/partial commit đã có regression test in-memory.
-- Failure mapping ở repository.
-- Merge identity, conflict, deletion và encrypted envelope sau khi có E2EE.
+## Build matrix
 
-### BLoC test
+| Target | Gate |
+|---|---|
+| Android | Debug build mỗi CI; signed release trước store |
+| iOS | Simulator build mỗi CI; signed archive + device/TestFlight trước store |
+| macOS | Debug CI; signed/notarized release trước phân phối |
+| Web | Release build + runtime config + browser smoke |
+| Windows | Native release CI; installer/device/signing trước phân phối |
+| Linux | Native release CI; package/device smoke trước phân phối |
 
-- `AuthBloc`: sign-in/up/recovery/sign-out và giữ dữ liệu local khi logout.
-- `AccountsBloc`: load/add/update/delete/merge và partial failure.
-- `LocalAuthBloc`: lifecycle, cancel, unsupported platform và fail-closed error.
-- `SyncBloc`: disabled, merge, overwrite, network failure, conflict và retry.
-- `SettingsBloc`: persistence của preference.
+## Regression rule
 
-### Widget test
+- Bug phải có test fail trên behavior cũ nếu có thể tái hiện deterministically.
+- Storage/security change phải test success, interruption/corruption và rollback.
+- Remote schema change phải có migration test + isolated cross-user contract.
+- Field persist phải có round-trip test, không silently default.
+- UI conflict/destructive operation cần widget/integration coverage khi ổn định.
 
-- Validation auth và manual TOTP.
-- Parse QR, hiển thị lỗi không lộ secret và capability theo platform.
-- Countdown/copy code, delete confirmation và lock-screen retry.
-- Theme và sync settings.
+## Secret hygiene trong test
 
-Plugin boundary cần wrapper hoặc fake để test không phụ thuộc camera/keychain/sinh trắc học thật.
+- Không dùng secret/JWT/recovery key thật.
+- Không snapshot full network request có credential.
+- Temp file permission 0700/0600 và cleanup bằng trap.
+- Email test dùng domain `.invalid`; user được xóa sau test.
+- Không bật shell tracing cho operator harness.
 
-### Integration test
+## Khoảng trống đã biết
 
-1. Đăng nhập và load dữ liệu local.
-2. Thêm SHA1/SHA256/SHA512, 6–8 digits và period tùy chỉnh rồi restart.
-3. Background/resume và unlock.
-4. Logout không làm mất TOTP local.
-5. Interrupted upload không làm mất snapshot hợp lệ gần nhất.
-6. Merge/concurrency hai thiết bị.
-7. User A không truy cập row của User B qua RLS — đã có remote contract test;
-   còn thiếu orchestration từ Flutter client.
-8. Recovery link thành công, hết hạn, malformed và reuse.
-
-Dùng Supabase environment isolated và dữ liệu tổng hợp.
-
-### Recovery web
-
-    reset-password-web/test.sh
-
-Harness local xác minh JavaScript behavior, runtime config validation, dependency
-pin/SRI, container chạy non-root/read-only, CSP/security header, no-log và không
-copy `.env`. Remote HTTPS smoke test cùng Auth contract đã pass successful update,
-re-login, malformed và reused token. Chúng chưa thay thế email-provider E2E hoặc
-expired-token time-travel test.
-
-### Supabase remote contract
-
-Backend rollout chạy sáu suite ngoài Flutter unit test:
-
-| Suite | Coverage | Baseline |
-|---|---|---:|
-| Official `test-self-hosted.sh` | Container, Studio, Auth, REST, Storage/TUS, Edge Functions, pg-meta, Realtime | 35 pass |
-| Official `test-auth-keys.sh` | Legacy/opaque key, ES256/JWKS, HS256 compatibility, WebSocket | 43 pass |
-| `scripts/supabase/test_remote_contract.sh` | Anonymous denial, mapper shape và owner/cross-user CRUD RLS | 17 pass |
-| `scripts/supabase/test_remote_encrypted_vault_contract.sh` | Encrypted shape, optimistic revision và cross-user RLS qua PostgREST/Auth | 11 pass |
-| `scripts/supabase/test_remote_recovery_contract.sh` | Generate/verify/update/re-login/reuse/malformed recovery token | 8 pass |
-| `scripts/supabase/test_remote_studio_proxy.sh` | Studio health, shared network, NPM DNS/upstream và public Basic Auth | Pass |
-
-Contract script cần server `.env` có service role chỉ để tạo/dọn isolated user.
-Không copy credential đó vào client hoặc CI log. Script dùng placeholder được đánh
-dấu `TEST_ONLY`, không in response/session và cleanup bằng `trap`.
-
-Sau suite phải xác minh Auth user/audit, Storage bucket/object, Realtime message và
-`synced_accounts` không còn test data. Remote suite chưa chạy trong CI mặc định vì
-cần isolated self-hosted environment cùng secret operator.
-
-Additive E2EE migration có harness Docker không cần remote secret:
-
-    scripts/supabase/test_encrypted_vault_migration.sh
-
-Nó xác minh SQL apply, optimistic revision, conflict, anonymous denial và owner
-RLS trên PostgreSQL tạm. Sau deploy, remote contract riêng đã xác minh cùng boundary
-qua PostgREST/Auth và cleanup toàn bộ isolated test data.
-
-## Xác minh platform
-
-Với mỗi platform được quảng bá:
-
-- clean install và upgrade;
-- secure-storage persistence/deletion;
-- local authentication và cancel nếu có hỗ trợ;
-- camera/gallery permission nếu có hỗ trợ;
-- network trong release build;
-- lifecycle và deep link;
-- signing, entitlement/sandbox và installer;
-- accessibility cơ bản.
-
-## CI hiện tại
-
-`.github/workflows/ci.yml` gồm:
-
-- quality gate trên Ubuntu;
-- Android debug APK;
-- Web release;
-- Linux release;
-- Windows release;
-- macOS debug;
-- iOS simulator debug không codesign.
-
-CI pin Flutter 3.44.6 và Java 17 cho Android. Không đưa production credential vào CI; build không cần Supabase define. Nếu tự động hóa remote contract sau này, dùng ephemeral environment riêng và secret store cho service-role cleanup credential.
-
-## Fixture và báo lỗi
-
-- Dùng email/domain `.invalid` và RFC vector tổng hợp.
-- Đánh dấu fixture trông giống secret là `TEST_ONLY`.
-- Không snapshot Supabase session/response thật.
-- Redact URI `otpauth`, secret, token và password khỏi output.
-
-## Definition of done
-
-Thay đổi hành vi hoàn tất khi có acceptance criteria quan sát được, regression test theo rủi ro, quality gate pass, failure behavior được kiểm tra và tài liệu canonical liên quan đã cập nhật. Thay đổi platform cần kèm bằng chứng build/test trên runner hoặc thiết bị phù hợp.
+1. Chưa có device integration suite cho Keychain/Keystore/biometric/camera.
+2. Chưa có two-device physical E2EE test.
+3. Chưa có mailbox SMTP/expired-link E2E.
+4. Chưa có long-duration soak hoặc production-scale load test.
+5. Windows/Linux installer chưa smoke test trên máy người dùng.

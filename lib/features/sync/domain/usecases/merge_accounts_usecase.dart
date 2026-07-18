@@ -3,14 +3,12 @@ import 'package:hyper_authenticator/core/error/failures.dart';
 import 'package:hyper_authenticator/features/authenticator/domain/entities/authenticator_account.dart';
 import 'package:hyper_authenticator/features/authenticator/domain/repositories/authenticator_repository.dart';
 import 'package:hyper_authenticator/features/authenticator/domain/services/totp_validator.dart';
-import 'package:injectable/injectable.dart';
 
 /// Merges downloaded records into the local vault by stable account ID.
 ///
 /// This compatibility bridge deliberately keeps an existing local record when
 /// the same ID is present remotely. Full conflict/deletion semantics require
 /// the revisioned sync-v2 protocol.
-@lazySingleton
 class MergeAccountsUseCase {
   final AuthenticatorRepository repository;
 

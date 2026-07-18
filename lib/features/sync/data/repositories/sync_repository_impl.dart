@@ -4,9 +4,7 @@ import 'package:hyper_authenticator/core/error/failures.dart';
 import 'package:hyper_authenticator/features/authenticator/domain/entities/authenticator_account.dart';
 import 'package:hyper_authenticator/features/sync/data/datasources/sync_remote_data_source.dart';
 import 'package:hyper_authenticator/features/sync/domain/repositories/sync_repository.dart';
-import 'package:injectable/injectable.dart'; // Assuming you use injectable
 
-@LazySingleton(as: SyncRepository) // Assuming you use injectable
 class SyncRepositoryImpl implements SyncRepository {
   final SyncRemoteDataSource remoteDataSource;
   // final NetworkInfo networkInfo; // Optional: Add if network check is needed

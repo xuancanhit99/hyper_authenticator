@@ -1,204 +1,149 @@
 # Thiết kế hệ thống
 
-Tài liệu này mô tả implementation hiện tại. Thiết kế E2EE và sync dài hạn được ghi riêng và không được xem là đã triển khai.
+Tài liệu này mô tả runtime đã triển khai. Hạng mục tương lai phải có nhãn
+**Dự kiến** hoặc **Khoảng trống đã biết**.
 
-## Bối cảnh
+## Bối cảnh và trust boundary
 
-Hyper Authenticator là Flutter client đa nền tảng với hai ranh giới persistence:
-
-- storage trên thiết bị cho TOTP và preference;
-- Supabase Auth/PostgreSQL cho session và sync thủ công.
-
-Sản phẩm hiện bắt buộc xác thực Supabase trước khi vào UI authenticator.
+Hyper Authenticator là Flutter client local-first. TOTP secret ở local vault;
+Supabase cung cấp Auth và một encrypted snapshot cho mỗi user. Backend chỉ nhận
+ciphertext, wrapped DEK và concurrency metadata.
 
 ~~~mermaid
 flowchart LR
-    User["Người dùng"] --> App["Ứng dụng Flutter"]
-    App --> DeviceAuth["Sinh trắc học / credential OS"]
-    App --> SecureStorage["FlutterSecureStorage"]
-    App --> Preferences["SharedPreferences"]
-    App --> Proxy["Reverse proxy HTTPS"]
-    Proxy --> SupabaseAuth["Supabase Auth / JWKS"]
-    Proxy --> SupabaseDB["PostgREST / synced_accounts + RLS"]
-    Recovery["Trang recovery tĩnh"] --> SupabaseAuth
+  User["Người dùng"] --> App["Flutter app"]
+  App --> Lock["OS local authentication"]
+  App --> Vault["Platform secure storage\nversioned local vault"]
+  App --> Prefs["SharedPreferences\nkhông chứa secret"]
+  App --> Cipher["AES-256-GCM + recovery key"]
+  Cipher --> HTTPS["Reverse proxy HTTPS"]
+  HTTPS --> Auth["Supabase Auth"]
+  HTTPS --> RPC["Atomic revision RPC"]
+  RPC --> DB["encrypted_vault_snapshots\nFORCE RLS"]
+  Recovery["Recovery Web"] --> Auth
 ~~~
+
+Web không bật encrypted sync vì browser key storage khác native secure storage.
+Web vẫn chạy TOTP local trong storage do platform plugin cung cấp; người dùng phải
+hiểu browser profile compromise nằm ngoài native trust boundary.
 
 ## Bootstrap
 
 1. Khởi tạo Flutter binding.
-2. Đăng ký Injectable/GetIt và pre-resolve SharedPreferences.
-3. `AppConfig` đọc `SUPABASE_URL` và `SUPABASE_PUBLISHABLE_KEY` từ compile-time environment; `SUPABASE_ANON_KEY` chỉ là fallback cũ.
-4. Khởi tạo Supabase.
-5. Cấp shared instance `AuthBloc`, `AccountsBloc`, `LocalAuthBloc`, `SettingsBloc` và `SyncBloc` vào widget tree.
-6. Auth/local-lock state khởi tạo.
-7. GoRouter chọn login, startup, lock hoặc main navigation.
+2. Injectable/GetIt đăng ký dependency và pre-resolve SharedPreferences.
+3. `AppConfig` đọc compile-time define; `.env` không được bundle làm asset.
+4. Khởi tạo Supabase client.
+5. Cấp shared `AuthBloc`, `AccountsBloc`, `LocalAuthBloc`, `SettingsBloc`; tạo
+   `SyncBloc` dùng chính `AccountsBloc` đó.
+6. Router kết hợp Auth và local-lock state để chọn public route, startup, lock
+   hoặc main navigation.
 
-Thiếu Supabase configuration sẽ hiển thị bootstrap error. `.env` không được load hoặc đóng gói ở runtime; lệnh chạy dùng `--dart-define-from-file=.env`.
+Thiếu URL/publishable key gây bootstrap error rõ ràng, không fallback tới server
+khác. Service-role key không tồn tại trong client config.
 
-## Điều hướng
+## Kiến trúc feature
 
-| Route | Mục đích | Quyền truy cập |
-|---|---|---|
-| `/login` | Đăng nhập | Công khai |
-| `/register` | Đăng ký | Công khai |
-| `/forgot-password` | Yêu cầu recovery email | Công khai |
-| `/update-password` | Đặt mật khẩu mới | Public route; deep-link flow chưa hoàn thiện |
-| `/` | Accounts và Settings | Đã xác thực, đã qua app lock |
-| `/add-account` | Thêm TOTP | Đã xác thực, đã qua app lock |
-| `/edit-account` | Sửa account từ route state | Đã xác thực, đã qua app lock |
-| `/lock-screen` | Challenge credential thiết bị | Đã xác thực và đang bị khóa |
+- Presentation phát event và render state.
+- Domain giữ entity, repository contract, crypto service contract và use case.
+- Data source sở hữu secure storage, SharedPreferences và Supabase calls.
+- Repository chuyển exception sang typed `Failure` bằng `Either`.
+- `injection_container.config.dart` được generate, không sửa thủ công.
 
-Router refresh từ `AuthBloc` và `LocalAuthBloc`. Trạng thái local-auth lỗi được xem là bị khóa (fail closed); startup state không hiển thị nội dung được bảo vệ trước khi auth hoàn tất.
+## Local vault
 
-## Kiến trúc Flutter
+`AuthenticatorLocalDataSource` serialize mutation bằng critical section:
 
-    lib/
-      core/
-        config/
-        platform/
-        router/
-      features/
-        auth/
-        authenticator/
-        main_navigation/
-        settings/
-        sync/
+1. Đọc generation committed hiện tại.
+2. Validate toàn bộ account và tạo snapshot mới.
+3. Ghi immutable record/manifest của generation mới.
+4. Ghi commit marker sau cùng.
+5. Đọc lại để verify.
+6. Best-effort compaction, giữ hai generation hợp lệ gần nhất.
 
-Mỗi feature chủ yếu gồm:
+Nếu generation mới hỏng, reader fallback generation trước. Legacy index/record
+được dual-read và repair nhưng không bị xóa ngay, giúp rollback. `replaceAccounts`
+dùng cùng transaction copy-on-write và là primitive duy nhất cho cloud recovery.
 
-- **Presentation:** page, widget, event/state và BLoC.
-- **Domain:** entity, repository contract, service và use case.
-- **Data:** implementation Supabase/local storage.
+## TOTP
 
-GetIt/Injectable quản lý dependency, BLoC quản lý feature state, Provider quản lý theme và fpdart `Either` truyền failure qua domain boundary. `AuthBloc` và `AccountsBloc` là lazy singleton; provider dùng `BlocProvider.value` nên UI và sync quan sát cùng instance.
+- Manual entry dùng default SHA1/6 digits/30 giây.
+- QR parser giữ algorithm, digits và period không mặc định.
+- Account có UUID stable; update/restore không tự đổi ID.
+- Code dùng Unix epoch và period của từng account; UI cache theo time step và
+  refresh khi app resume.
+- Full `otpauth` URI, `secretKey` và generated code không được log.
 
-## Luồng TOTP
+## App lock và logout
 
-### Nhập và lưu
+Local-auth preference nằm trong SharedPreferences; OS challenge do `local_auth`.
+Khi lock đã bật, plugin error là locked state. App relock khi rời foreground.
+Logout chỉ kết thúc Supabase session, giữ local vault và lock preference.
 
-1. `AddAccountPage` nhận input thủ công, barcode camera hoặc ảnh trên platform hỗ trợ.
-2. `TotpUriParser` chỉ chấp nhận `otpauth://totp`, parse label/issuer và validate Base32, SHA1/SHA256/SHA512, digits 6–8, period dương.
-3. `AccountsBloc` gọi use case add.
-4. Local data source gán UUID nhưng giữ toàn bộ tham số TOTP.
-5. Local data source serialize mutation, ghi immutable record cùng versioned
-   manifest rồi publish commit marker sau cùng.
+## Encrypted sync
 
-Local vault v2 fallback về committed generation trước nếu generation mới hỏng.
-Lần đọc đầu dual-read legacy index/record, repair dangling ID, recover UUID-keyed
-orphan hợp lệ và không xóa legacy key. Xem [ADR-0002](adr/0002-versioned-local-vault-storage.md).
+### Setup
 
-### Tạo mã
+1. Xác minh user đã đăng nhập và cloud vault chưa tồn tại.
+2. Sinh DEK 256-bit cùng recovery key `HA1-...`.
+3. Hiển thị recovery key một lần; user phải xác nhận đã lưu.
+4. Encrypt snapshot local revision 1, atomic publish với expected revision 0.
+5. Download/read-after-write verify revision và envelope.
+6. Chỉ sau đó persist DEK vào secure storage và bật sync metadata.
 
-`GenerateTotpCode` dùng package `otp`, clock hiện tại và algorithm/digits/period
-đã lưu. Countdown tính từ Unix epoch theo period của từng account; code cache theo
-time step và được đồng bộ lại khi app resume. Test có thể inject timestamp/clock.
+Cancel hoặc publish failure không persist key và không bật sync.
 
-### Cập nhật và xóa
+### Sync thường
 
-Update/delete publish generation mới; active record/generation cũ không bị sửa
-trước commit. Compaction/retention lịch sử vẫn là khoảng trống đã biết.
+1. Download current encrypted snapshot và decrypt/validate trong memory.
+2. So sánh remote revision với last-seen revision trên thiết bị.
+3. Nếu không conflict và local khác remote, encrypt local ở revision kế tiếp.
+4. RPC compare-and-swap theo expected revision.
+5. Download lại và verify trước khi cập nhật last-seen revision.
 
-## Khả năng theo platform
+RPC không delete snapshot cũ trước update. Conflict trả typed failure, giữ cả
+local snapshot và cloud snapshot hiện có.
 
-`PlatformCapabilities` giữ policy tập trung:
+### Recovery và conflict
 
-| Capability | Android | iOS | macOS | Windows | Linux | Web |
-|---|:---:|:---:|:---:|:---:|:---:|:---:|
-| Camera QR | Có | Có | Có | Không | Không | Có |
-| Phân tích ảnh QR | Có | Có | Có | Không | Không | Không |
-| Local authentication | Có | Có | Có | Có | Không | Không |
-| Nhập TOTP thủ công | Có | Có | Có | Có | Có | Có |
+Thiết bị mới nhập recovery key để unwrap DEK. Remote payload phải authenticate,
+decrypt và validate hoàn toàn trước khi local write. Nếu local không rỗng và khác
+cloud, UI yêu cầu chọn:
 
-UI không hiển thị action plugin không hỗ trợ. Capability này phản ánh package/API hiện tại, không phải cam kết release-readiness.
+- **Dùng cloud:** re-download đúng revision đã review rồi atomic replace local.
+- **Giữ local:** encrypt local và compare-and-swap thành revision mới.
 
-## Khóa thiết bị
+Nếu cloud đổi tiếp trong lúc chọn, thao tác dừng và yêu cầu review lại.
 
-Preference `biometric_enabled` lưu trong SharedPreferences.
+## Backend
 
-- `local_auth` cho phép biometrics hoặc credential của OS.
-- Không dùng PIN riêng của ứng dụng.
-- Authentication có thể tiếp tục qua background transition do plugin quản lý.
-- Khi app hidden/paused/detached, BLoC reset và router khóa lại.
-- Unsupported platform bỏ qua feature; lỗi trên platform đã bật khóa thì fail closed.
+- Một row `encrypted_vault_snapshots` cho mỗi `auth.users.id`.
+- Client authenticated chỉ có SELECT row của chính mình qua `FORCE RLS`.
+- Write chỉ qua `SECURITY DEFINER` RPC dùng `auth.uid()`.
+- Expected revision sai trả SQLSTATE `PT409`/`revision_conflict`.
+- `synced_accounts` plaintext còn là compatibility schema, không nằm trong runtime DI.
 
-Đây là UI gate, không phải encryption cho từng record.
+## Recovery password
 
-## Supabase authentication
+Web recovery là canonical surface. GoTrue template dùng one-time `token_hash` và
+exact HTTPS redirect allow-list. Password recovery chỉ khôi phục Supabase account;
+nó không thay thế E2EE recovery key.
 
-Data source bọc `signInWithPassword`, `signUp`, password recovery/update, `signOut`
-và auth-state stream. Remember Me chỉ lưu email cùng trạng thái checkbox trong
-SharedPreferences. Supabase login là tùy chọn cho cloud feature; router không dùng
-session để chặn local vault. Logout chỉ kết thúc session, không xóa TOTP local hoặc
-tắt app lock.
+## Platform capability
 
-Self-hosted baseline dùng release official đã pin với PostgreSQL 17. Public traffic
-đi qua reverse proxy và Kong; session JWT mới ký ES256. Flutter chỉ mang
-publishable key, còn service-role/secret key ở server operator boundary.
+`PlatformCapabilities` là source of truth để ẩn camera/image/local-auth/E2EE trên
+platform plugin không hỗ trợ. Windows/Linux vẫn hỗ trợ nhập TOTP thủ công và E2EE;
+Web chỉ có local TOTP + camera QR.
 
-## Đồng bộ
+## Failure behavior
 
-Sync được kích hoạt thủ công; preference chỉ điều khiển availability trong UI.
-Do remote contract còn plaintext, sync bị khóa mặc định. Chỉ build migration/test
-có `ALLOW_INSECURE_PLAINTEXT_SYNC=true` mới đi qua cả BLoC và remote data source.
+- Decrypt/validation/auth failure: không mutate local vault.
+- Local commit failure: generation cũ vẫn active.
+- Publish conflict/network failure: cloud snapshot cũ vẫn tồn tại.
+- Session đổi giữa operation: request bị từ chối trước network/write kế tiếp.
+- Secure key write không verify được: setup/recovery trả failure.
 
-E2EE v2 rollout theo ADR-0005: `VaultCipher` cung cấp AES-256-GCM snapshot/AAD và
-DEK wrapping; `VaultKeyStore` giữ DEK per Supabase user; migration tạo một encrypted
-snapshot/user cùng RPC optimistic revision. Các primitive chưa nối vào `SyncBloc`
-hoặc onboarding UI, nên release sync tiếp tục fail closed.
+## Khoảng trống đã biết
 
-### Merge
-
-1. Download remote rows.
-2. `MergeAccountsUseCase` đọc local accounts và dùng stable `account_id` làm identity.
-3. Remote record chưa có được validate/persist với nguyên ID; local record thắng
-   trong compatibility bridge khi trùng ID.
-4. Nếu persistence lỗi, emit failure và dừng; UI reload chỉ sau commit local.
-5. Upload snapshot local sau merge khi dangerous development flag được bật.
-
-Merge không còn điều phối bằng Bloc-to-Bloc stream/completer nên không báo success
-trước khi persistence hoàn tất. Revision/conflict/deletion vẫn cần sync-v2 ADR.
-
-### Overwrite/upload
-
-1. Xóa mọi row remote thuộc user.
-2. `SupabaseAccountMapper` đổi camelCase local sang snake_case remote.
-3. Chèn toàn bộ snapshot.
-
-Thuộc tính chưa an toàn:
-
-- secret ở plaintext;
-- thao tác xóa-rồi-chèn không atomic;
-- không có tombstone, revision, optimistic concurrency hoặc encrypted-format migration;
-- RLS chỉ authorization theo owner, không phải E2EE.
-
-Schema/RLS đã được version hóa trong `supabase/migrations`; force RLS và bốn policy
-CRUD dùng `auth.uid() = user_id`. Cross-user contract test chạy qua public API và
-dọn isolated user/row sau khi hoàn tất.
-
-Xem [Bảo mật](SECURITY.md), [Tích hợp Supabase](SUPABASE_INTEGRATION.md) và [Thiết kế E2EE](E2EE_DESIGN.md).
-
-## Trang recovery
-
-`reset-password-web` là canonical recovery surface, container Nginx read-only/non-root. Entrypoint validate và
-runtime-inject URL/publishable key, response dùng CSP/no-store và frontend không
-log session. Flutter gửi `PASSWORD_RECOVERY_URL`; self-hosted template đóng gói
-dùng fragment `token_hash`, còn trang gọi `verifyOtp`. HTTPS service, exact
-allow-list và template đã deploy; SMTP delivery và expired-token E2E vẫn là
-khoảng trống nên flow production chưa hoàn tất toàn bộ release gate.
-
-## Platform build
-
-- Android: Gradle/AGP/Kotlin hiện đại, JVM 17.
-- iOS/macOS: Swift Package Manager hoàn toàn, không CocoaPods.
-- Web: release build đã xác minh.
-- Windows/Linux: native CI build; manual entry là fallback khi scanner/local-auth không có.
-
-Chi tiết xác minh và release gate nằm trong `PROJECT_STATUS.md` và `DEPLOYMENT.md`.
-
-## Bản đồ tác động thay đổi
-
-- Persisted field: entity JSON, round-trip test, migration, remote contract và `DATA_MODELS.md`.
-- Auth/route: redirect test và tài liệu này.
-- Sync: ADR, conflict semantic, `SECURITY.md`, `SUPABASE_INTEGRATION.md` và destructive-path test.
-- Plugin/platform: capability, permission/entitlement, CI và `DEPLOYMENT.md`.
-- Encryption: ADR, format version, recovery/migration và cryptographic test.
+- E2EE v1 chưa có key rotation, revoke device, tombstone hoặc Web support.
+- Device-level camera/biometric/secure-storage integration coverage chưa đầy đủ.
+- Alerting backend chưa có external notification channel.

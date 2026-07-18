@@ -1,218 +1,110 @@
-# Hướng dẫn phát triển
+# Phát triển
 
-## Điều kiện cần
+## Yêu cầu
 
-- Flutter stable và Dart SDK tương thích `pubspec.yaml`.
-- Git và toolchain của platform đích.
-- Supabase project không phải production để chạy luồng auth/sync.
-- Xcode với Swift Package Manager cho iOS/macOS.
+- Flutter 3.44.6 stable, Dart 3.12.x.
+- Android Studio/JDK 17+ và Android SDK cho Android.
+- Xcode 26.5 + matching iOS Simulator runtime cho iOS/macOS.
+- Docker chỉ cần cho Supabase migration test local.
+- `jq`, `curl`, `ssh`, `age` cho production operator harness tương ứng.
 
-Kiểm tra máy:
+Chạy đầu tiên:
 
     flutter doctor -v
+    flutter pub get
     scripts/agent/doctor.sh
 
-## Thiết lập lần đầu
+## Cấu hình client
 
-1. Tạo public client configuration local:
+    cp .env.example .env
 
-       cp .env.example .env
+Điền public client config; không thêm service-role/server/SSH credential:
 
-2. Điền giá trị development:
+    SUPABASE_URL=https://api.example.com
+    SUPABASE_PUBLISHABLE_KEY=public-key
+    PASSWORD_RECOVERY_URL=https://auth.example.com/reset-password/
+    ALLOW_INSECURE_PLAINTEXT_SYNC=false
 
-       SUPABASE_URL=https://your-project.supabase.co
-       SUPABASE_PUBLISHABLE_KEY=your-publishable-key
-       PASSWORD_RECOVERY_URL=https://auth.example.com/reset-password/
-       ALLOW_INSECURE_PLAINTEXT_SYNC=false
+Chạy app:
 
-3. Tải dependency và generate Injectable:
+    flutter run --dart-define-from-file=.env
 
-       flutter pub get
-       dart run build_runner build
+`.env` chỉ được Flutter đọc ở build time qua command flag, không load runtime và
+không bundle như asset.
 
-4. Chọn thiết bị và chạy:
+## Workflow AI Agent
 
-       flutter devices
-       flutter run --dart-define-from-file=.env
-
-`.env` bị Git ignore và không phải Flutter asset. Không đặt service-role key, database password, SMTP credential, TOTP secret hoặc user token thật trong file này. Analyze, test và build có thể chạy không cần `.env`; bootstrap runtime cần Supabase define hợp lệ.
-
-Có thể truyền trực tiếp trong CI/release:
-
-    flutter build web \
-      --dart-define=SUPABASE_URL=... \
-      --dart-define=SUPABASE_PUBLISHABLE_KEY=...
-
-Alias `SUPABASE_ANON_KEY` cũ chỉ còn là fallback chuyển tiếp; configuration mới phải dùng `SUPABASE_PUBLISHABLE_KEY`.
-
-`ALLOW_INSECURE_PLAINTEXT_SYNC` phải giữ `false`. Chỉ đặt `true` trong non-release
-build dùng dữ liệu tổng hợp để kiểm tra migration/compatibility; release build vẫn
-khóa sync plaintext ở runtime dù define này bị truyền nhầm.
-
-## Workflow hằng ngày
-
-Trước khi sửa:
+Mỗi lượt bắt đầu:
 
     git status --short --branch
     scripts/agent/context.sh
+
+Sau đó đọc `docs/PROJECT_STATUS.md`, canonical doc của subsystem và test/call site
+lân cận. Công việc nhiều subsystem tạo task record từ `docs/tasks/TEMPLATE.md`.
+
+Không reset/format thay đổi không liên quan. Không log secret hoặc full process env.
+
+## Quality gate
+
+Chỉ tài liệu:
+
     scripts/agent/check.sh docs
 
-Sau thay đổi Dart:
+Dart/UI thông thường:
 
-    dart format lib test
     scripts/agent/check.sh quick
 
-Sau thay đổi auth, storage, sync, routing, DI, plugin hoặc platform:
+Auth/storage/sync/DI/plugin/platform:
 
     scripts/agent/check.sh full
+
+`full` chạy docs gate, generated-code drift, format, analyze, 58 Flutter tests và
+Supabase encrypted migration test local.
+
+## Generated code
+
+Sau khi đổi Injectable annotation/constructor:
+
+    dart run build_runner build --delete-conflicting-outputs
+    git diff -- lib/injection_container.config.dart
+
+Không sửa generated file thủ công.
+
+## Build
+
+Compile smoke theo host:
+
     scripts/agent/build.sh host
 
-Build target rõ ràng:
+Runtime-configured build:
 
-    scripts/agent/build.sh android
-    scripts/agent/build.sh ios
-    scripts/agent/build.sh macos
-    scripts/agent/build.sh web
-    scripts/agent/build.sh windows
-    scripts/agent/build.sh linux
+    flutter build web --release --dart-define-from-file=.env
+    flutter build apk --debug --dart-define-from-file=.env
+    flutter build ios --simulator --debug --dart-define-from-file=.env
+    flutter build macos --debug --dart-define-from-file=.env
 
-Script sẽ báo target không hỗ trợ trên host thay vì giả vờ thành công.
+Android/macOS/iOS store release cần signing credential; thiếu credential phải fail,
+không fallback debug/unsigned.
 
-## Supabase backend harness
+## Test chọn lọc
 
-Phần có thể version control nằm trong `supabase/`:
+    flutter test test/features/sync/encrypted_vault_sync_usecase_test.dart
+    flutter test test/features/sync/vault_cipher_test.dart
+    flutter test test/features/authenticator/authenticator_local_data_source_test.dart
+    flutter test test/features/authenticator/local_auth_bloc_test.dart
 
-- release/commit pin ở `supabase/UPSTREAM_PIN`;
-- reverse-proxy overlay không chứa secret;
-- migration schema/RLS;
-- contract test ở `scripts/supabase/test_remote_contract.sh`.
+Không thêm secret thật vào fixture. Dùng `TEST_ONLY_*` và UUID/email isolated.
 
-Áp dụng migration vào fresh self-hosted database từ host operator:
+## Dependency
 
-    docker exec -i supabase-db \
-      psql -X -v ON_ERROR_STOP=1 -U supabase_admin -d postgres \
-      < supabase/migrations/20260717163000_create_synced_accounts.sql
+    flutter pub outdated
 
-Chạy remote contract test ngay trên server có stack `.env`:
+Chỉ nâng package resolvable, đọc changelog plugin/platform và chạy `full` + build
+matrix. `build_runner` 2.15.2 hiện không resolvable do Flutter test SDK pin `meta`.
 
-    scripts/supabase/test_remote_contract.sh /path/to/supabase/.env
+## Backend operator boundary
 
-Test cần `curl`, `jq`, public endpoint, publishable key và service-role key. Service
-role chỉ dùng tạo/dọn isolated user; không copy key về Flutter `.env`, không bật
-`set -x` và không lưu response body ngoài temporary directory của script.
+Client repo không chứa server secret. Remote contract/backup script nhận operator
+env path bên ngoài repository. Chạy script với `set -x` là vi phạm bảo mật.
 
-Sau backend change, chạy cả test official của release pin, contract test dự án và
-`scripts/agent/check.sh full`. Xem rollout/backup trong `docs/DEPLOYMENT.md` và
-`docs/operations/SUPABASE_LEGACY_BACKUP.md`.
-
-Kiểm tra recovery web và container hardening:
-
-    reset-password-web/test.sh
-    reset-password-web/test-remote.sh https://recovery.example.com
-
-Remote Auth token contract chạy trên isolated self-hosted environment:
-
-    scripts/supabase/test_remote_recovery_contract.sh \
-      /path/to/supabase/.env "" https://recovery.example.com/reset-password/
-
-Script chạy JavaScript harness, build image, kiểm tra invalid/public config,
-security header, loopback/no-log và xác nhận `.env` không lọt vào image. Auth
-contract dùng service-role chỉ để tạo/dọn user tổng hợp và không gửi email thật.
-
-Kiểm tra additive E2EE schema/RPC bằng PostgreSQL cô lập:
-
-    scripts/supabase/test_encrypted_vault_migration.sh
-
-Harness tạo temporary container/roles/auth stub, áp migration rồi test revision
-1→2, conflict, anonymous denial và owner RLS; không dùng production database.
-
-## Cấu trúc repository
-
-    lib/
-      main.dart
-      app.dart
-      core/
-      features/
-    test/
-    assets/
-    docs/
-    scripts/agent/
-    scripts/supabase/
-    supabase/
-    reset-password-web/
-    android/ ios/ macos/ web/ windows/ linux/
-
-`lib/injection_container.config.dart` được generate. Không sửa tay; thay annotation/module rồi chạy:
-
-    dart run build_runner build
-
-## Luồng thay đổi thường gặp
-
-### Thêm hoặc sửa field tài khoản
-
-1. Cập nhật entity, equality, `toJson` và `fromJson`.
-2. Cập nhật use case, local round-trip và sync serialization.
-3. Định nghĩa migration/backward compatibility.
-4. Cập nhật UI import/edit/export.
-5. Thêm test cho format cũ và mới.
-6. Cập nhật `DATA_MODELS.md`, `SUPABASE_INTEGRATION.md` và `SECURITY.md`.
-
-### Thêm route
-
-Cập nhật `AppRoutes`/`AppRouter`, xác định public/protected/fail-closed behavior, thêm redirect test và cập nhật `SYSTEM_DESIGN.md`.
-
-### Thay đổi dependency injection
-
-Sửa annotation hoặc module, generate lại, rồi xác minh lifecycle. State dùng chung giữa feature phải là shared instance và được cấp bằng `BlocProvider.value` khi provider không sở hữu lifecycle.
-
-### Thay đổi sync
-
-Bắt đầu từ `SECURITY.md`, `SUPABASE_INTEGRATION.md` và ADR. Định nghĩa idempotency, conflict, deletion, migration và rollback trước implementation.
-
-## Lưu ý theo platform
-
-### Android
-
-- Application ID: `app.hyperz.authenticator`.
-- Baseline dùng AGP 9.0.1, Gradle 9.1, Kotlin 2.3.20 và JVM 17.
-- Release task dừng ngay nếu thiếu một phần signing credential; debug build không
-  cần release keystore.
-- `allowBackup=false`; vẫn phải test secure-storage behavior trên thiết bị/API đại diện.
-
-### iOS
-
-- Bundle ID hiện giữ `app.hyperz.authenticator` để không đổi install identity.
-- Plugin được resolve bằng Swift Package Manager; không còn CocoaPods integration.
-- Đã có camera, photo library, Face ID usage description và keychain entitlement.
-- Cần cài đúng iOS Simulator Runtime hoặc dùng thiết bị vật lý.
-- Password recovery dùng Web canonical; cần deploy template/allow-list và email E2E.
-
-### macOS
-
-- Plugin được resolve bằng Swift Package Manager.
-- Debug build dùng keychain mặc định để có thể ký ad-hoc; Release có keychain access group và cần signing identity hợp lệ.
-- Sandbox đã bật network client và camera. Release cần xác minh local-auth, keychain, signing và notarization.
-
-### Web, Windows và Linux
-
-- Web không bật `local_auth`; scanner hỗ trợ camera nhưng không hỗ trợ analyze ảnh file.
-- Windows hỗ trợ device authentication nhưng scanner plugin hiện không hỗ trợ camera.
-- Linux chưa có local-auth hoặc scanner trong dependency hiện tại.
-- Manual TOTP entry vẫn là đường dùng chung trên mọi platform.
-
-## Debug an toàn
-
-- Xem `secretKey`, URI `otpauth`, session, password và recovery material là credential.
-- Không log email hoặc raw exception chứa request data theo mặc định.
-- Chỉ dùng fixture tổng hợp và domain `.invalid`.
-- Không chụp screenshot có secret thật.
-
-## Dọn và generate lại
-
-Chỉ clean khi chẩn đoán cache/generated state:
-
-    flutter clean
-    flutter pub get
-    dart run build_runner build
-
-`flutter clean` không thay thế việc tìm nguyên nhân build failure và không được dùng để xóa thay đổi platform của người khác.
+Runbook: `docs/operations/SUPABASE_PRODUCTION_OPERATIONS.md`.

@@ -25,8 +25,9 @@ Thư mục này chứa tài liệu engineering canonical của Hyper Authenticat
 | [DEVELOPMENT.md](DEVELOPMENT.md) | Local workflow có thể tái hiện | Quy trình |
 | [TESTING_STRATEGY.md](TESTING_STRATEGY.md) | Test layer và quality gate | Quy trình + mục tiêu |
 | [DEPLOYMENT.md](DEPLOYMENT.md) | Release gate theo platform | Quy trình |
+| [PRIVACY_POLICY.md](PRIVACY_POLICY.md) | Privacy behavior và phần owner phải điền trước store | Hiện tại + release input |
 | [NON_FUNCTIONAL_REQUIREMENTS.md](NON_FUNCTIONAL_REQUIREMENTS.md) | Mục tiêu chất lượng có thể đo | Yêu cầu |
-| [E2EE_DESIGN.md](E2EE_DESIGN.md) | Thiết kế mã hóa đầu cuối đề xuất | Dự kiến |
+| [E2EE_DESIGN.md](E2EE_DESIGN.md) | Contract mã hóa đầu cuối v1 | Hiện tại + khoảng trống |
 | [ROADMAP.md](ROADMAP.md) | Trình tự xử lý theo ưu tiên | Dự kiến |
 | [ARCHITECTURAL_DECISIONS.md](ARCHITECTURAL_DECISIONS.md) | Chỉ mục và trạng thái quyết định | Quyết định |
 | [AI_AGENT_PLAYBOOK.md](AI_AGENT_PLAYBOOK.md) | Workflow dài hạn cho AI Agent | Quy trình |
@@ -38,6 +39,7 @@ Tài liệu theo component:
 - [Rollout Supabase E2EE snapshot](operations/SUPABASE_E2EE_ROLLOUT.md)
 - [Rollout password recovery](operations/SUPABASE_RECOVERY_ROLLOUT.md)
 - [Supabase backend harness](../supabase/README.md)
+- [Vận hành Supabase production](operations/SUPABASE_PRODUCTION_OPERATIONS.md)
 
 ## Từ vựng trạng thái
 

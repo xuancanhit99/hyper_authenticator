@@ -3,13 +3,11 @@ import 'package:hyper_authenticator/core/config/app_config.dart';
 import 'package:hyper_authenticator/features/authenticator/domain/entities/authenticator_account.dart';
 import 'package:hyper_authenticator/features/sync/data/datasources/sync_remote_data_source.dart';
 import 'package:hyper_authenticator/features/sync/data/mappers/supabase_account_mapper.dart';
-import 'package:injectable/injectable.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 const String accountsTableName = 'synced_accounts';
 const String profilesTableName = 'user_profiles'; // Define profiles table name
 
-@LazySingleton(as: SyncRemoteDataSource)
 class SupabaseSyncRemoteDataSourceImpl implements SyncRemoteDataSource {
   final SupabaseClient supabaseClient;
   final AppConfig appConfig;

@@ -1,137 +1,104 @@
-# Thiết kế mã hóa đầu cuối
+# Thiết kế E2EE snapshot
 
-Trạng thái: **Chấp nhận theo giai đoạn** trong
-[ADR-0005](adr/0005-e2ee-versioned-snapshot-sync.md).
-
-**Đã triển khai:** AES-256-GCM snapshot primitive, AAD bind user/revision, random
-DEK, user-held recovery key wrapping, secure key-store primitive, schema/RPC v2 và
-regression/migration test.
-
-**Khoảng trống đã biết:** onboarding/export/import recovery key UI, client remote
-orchestration, staging deployment, conflict UX và plaintext migration chưa hoàn tất;
-do đó release cloud sync vẫn bị khóa và chưa được mô tả là E2EE production.
+Trạng thái: **Đã triển khai v1 trên native client và Supabase production**.
 
 ## Mục tiêu
 
-Supabase và network intermediary không thể đọc TOTP secret hoặc account label trong dữ liệu sync. Client phải phát hiện ciphertext bị sửa và ngăn decryption nhầm giữa user hoặc record.
+Supabase không thấy plaintext TOTP secret. Network/database compromise không đủ
+để decrypt vault nếu recovery key và thiết bị không bị compromise. E2EE không bảo
+vệ khỏi client đã unlock bị kiểm soát hoàn toàn.
 
-## Ngoài phạm vi
+## Key hierarchy
 
-- Bảo vệ secret khỏi thiết bị client đã unlock và bị compromise hoàn toàn.
-- Thay thế Supabase authentication hoặc RLS.
-- Tự phát minh cryptographic primitive.
-- Khẳng định có thể recovery khi chưa thiết kế key recovery rõ ràng.
-
-## Key hierarchy đã chọn
-
-Dùng hai tầng key:
-
-1. Data Encryption Key (DEK) ngẫu nhiên mã hóa account payload.
-2. Key Encryption Key (KEK) wrap DEK cho từng thiết bị hoặc recovery method được cho phép.
-
-Recovery key ngẫu nhiên 256-bit có prefix/version `HA1-` là KEK để wrap DEK.
-Thiết bị giữ DEK trong platform secure storage theo Supabase user ID. Thiết bị mới
-nhập recovery key, tải wrapped DEK rồi unwrap local; backend không nhận key plaintext.
-Supabase password không được dùng làm KEK/KDF.
-
-## Payload đã chọn
-
-Versioned envelope có thể có dạng:
-
-~~~json
-{
-  "formatVersion": 1,
-  "cipher": "AES-256-GCM",
-  "nonce": "base64",
-  "ciphertext": "base64",
-  "createdAt": "server-or-client-defined",
-  "revision": 1
-}
-~~~
-
-Plaintext là snapshot canonical chứa đầy đủ `AuthenticatorAccount`, sort theo stable
-ID. Associated authenticated data bind:
-
-- format version;
-- user identity hoặc tenant scope;
-- purpose string;
-- revision.
-
-Nonce phải duy nhất với cùng một key. Dùng cryptography library để tạo nonce ngẫu nhiên và authenticated ciphertext.
+- DEK ngẫu nhiên 256-bit mã hóa account snapshot.
+- Recovery key ngẫu nhiên 256-bit, có prefix/version `HA1-`, đóng vai KEK wrap DEK.
+- DEK plaintext lưu trong platform secure storage theo Supabase user ID.
+- Backend lưu wrapped DEK, không lưu recovery key/DEK plaintext.
+- Supabase password không dùng làm KEK/KDF; password reset không phục hồi vault.
 
 ## Primitive và encoding
 
-Client dùng package `cryptography` 2.9.0 và AES-256-GCM. Nonce được library sinh
-random cho mỗi encrypt. Nonce, ciphertext và tag dùng Base64URL. Không tự triển khai
-cipher/KDF và không dùng password-derived key trong format v1.
+- Package `cryptography` 2.9.0.
+- AES-256-GCM, random nonce mỗi encryption.
+- Nonce/ciphertext/tag dùng Base64URL.
+- AAD bind purpose, format version, Supabase user ID và revision.
+- Unknown version hoặc tamper bị từ chối trước local persistence.
 
-## Onboarding thiết bị
+## Snapshot
 
-Version đầu dùng nhập recovery key entropy cao. UI phải hiển thị key một lần và yêu
-cầu user xác nhận đã lưu trước enable sync. QR/trusted-device transfer là mở rộng sau.
+Plaintext canonical chứa đầy đủ `AuthenticatorAccount`, sort theo stable ID.
+Remote envelope chứa format, cipher, revision, nonce, ciphertext, auth tag và
+wrapped-key envelope. Backend metadata không chứa issuer/account/secret.
 
-## Recovery
+## Onboarding đã triển khai
 
-Recovery là quyết định sản phẩm và bảo mật, không phải chi tiết implementation.
+1. Cloud row phải chưa tồn tại.
+2. Sinh DEK + recovery key trong memory.
+3. Hiển thị recovery key một lần.
+4. User xác nhận đã lưu.
+5. Encrypt local snapshot revision 1.
+6. Atomic publish expected revision 0.
+7. Read-after-write verification.
+8. Persist DEK + last revision + enabled flag.
 
-Các lựa chọn:
+Cancel, conflict hoặc network failure trước bước 8 không persist setup state.
 
-- **Không recovery:** mất key đồng nghĩa mất dữ liệu sync.
-- **Recovery key do user giữ:** entropy cao, chỉ hiển thị một lần, backend không lưu plaintext.
-- **Threshold hoặc trusted-device recovery:** phức tạp hơn và cần threat review riêng.
+## Recovery đã triển khai
 
-Không khẳng định email reset mật khẩu có thể khôi phục dữ liệu E2EE trừ khi cryptographic design cho phép rõ ràng.
+1. Download encrypted row.
+2. Parse/validate recovery key.
+3. Unwrap DEK với user-bound AAD.
+4. Authenticate/decrypt snapshot.
+5. Validate toàn bộ account.
+6. Persist DEK verified.
+7. Nếu local khác và không rỗng, chuyển sang explicit conflict.
+8. Chỉ atomic replace sau khi user chọn cloud.
 
-## Tích hợp synchronization
+Sai key/tamper/future version không mutate local vault.
 
-Upload:
+## Optimistic revision
 
-1. Validate và serialize account.
-2. Lấy DEK vào memory.
-3. Tạo nonce duy nhất.
-4. Encrypt với authenticated associated data.
-5. Chỉ upload versioned envelope và concurrency metadata không nhạy cảm.
+Một row/user, monotonic revision. Client encrypt revision `N+1` và RPC chỉ publish
+khi current revision bằng `N`. RPC trả `PT409` nếu stale. Client verify response
+và re-download trước cập nhật last-seen revision.
 
-Download:
+Conflict UX:
 
-1. Validate shape và version được hỗ trợ của envelope.
-2. Lấy DEK.
-3. Verify rồi decrypt bằng associated data.
-4. Validate plaintext model.
-5. Chỉ persist local sau khi authentication và validation thành công.
+- **Dùng cloud:** re-check revision rồi atomic replace local.
+- **Giữ local:** encrypt local và publish revision mới qua compare-and-swap.
 
-Decryption hoặc validation failure không được ghi đè record local hợp lệ.
+Cloud đổi lần nữa trong lúc review làm operation fail và yêu cầu inspect lại.
+
+## Platform boundary
+
+Android, iOS, macOS, Windows và Linux bật E2EE sync. Web tắt vì browser key storage
+khác native trust boundary. Đây là capability gate trong code, không chỉ text UI.
 
 ## Migration plaintext
 
-Trước khi bật E2EE ở production:
+Production hiện không có legacy app data cần migrate. `synced_accounts` vẫn tồn tại
+cho rollback/audit; runtime client không inject bridge. Nếu môi trường khác có data:
 
-1. Kiểm kê row plaintext cũ.
-2. Release client có thể đọc format cũ lẫn encrypted nhưng chỉ ghi encrypted.
-3. Xác thực user và thiết lập DEK.
-4. Download, validate, encrypt và migrate snapshot atomically.
-5. Xác minh đọc encrypted thành công.
-6. Xóa field plaintext.
-7. Theo dõi migration completion mà không lộ secret.
-8. Định nghĩa rollback trước khi xóa dữ liệu cũ.
+1. full backup;
+2. inventory user/row, không log secret;
+3. client/operator đọc + validate plaintext;
+4. tạo recovery setup theo user;
+5. encrypt và atomic publish;
+6. read-after-write decrypt verification;
+7. đánh dấu migrated;
+8. drop plaintext chỉ trong migration riêng có rollback.
 
-## Yêu cầu kiểm thử
+## Bằng chứng
 
-- Known-answer test cho encryption và decryption.
-- Chiến lược test tính duy nhất của random nonce.
-- Test nonce, ciphertext, tag, associated data, record ID và version bị sửa.
-- Test sai user, sai device key và sai master password.
-- Hành vi với format version cũ và tương lai.
-- Migration bị gián đoạn và retry.
-- Onboarding và revoke đa thiết bị.
-- Recovery thành công và thất bại.
-- Không có plaintext secret trong remote request fixture, log, crash report hoặc database row.
-- Ghi lại performance trên target platform và giới hạn secure memory.
+- Crypto/key-store/model tests: tamper, wrong user/key, future format, round-trip.
+- Use-case tests: setup/cancel/recovery/conflict/publish conflict/read-after-write.
+- Remote contract: 11 checks cho anonymous/RLS/two-user/revision/RPC.
+- Release plaintext guard và DI generation test path.
 
-## Quyết định triển khai còn mở
+## Khoảng trống đã biết
 
-- Key rotation và device revocation.
-- Conflict UX khi optimistic revision mismatch.
-- Metadata/timing privacy.
-- Kỳ vọng secure deletion theo platform.
-- Web support và browser threat model.
+- Device revocation và DEK/recovery-key rotation.
+- Trusted-device/QR transfer.
+- Tombstone hoặc history ngoài một current snapshot.
+- Browser E2EE threat model.
+- Independent security review và physical two-device E2E test.

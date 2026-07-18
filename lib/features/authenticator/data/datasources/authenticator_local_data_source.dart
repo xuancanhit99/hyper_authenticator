@@ -24,6 +24,9 @@ abstract class AuthenticatorLocalDataSource {
   Future<void> deleteAccount(String id);
 
   Future<void> updateAccount(AuthenticatorAccount account);
+
+  /// Atomically publishes a complete validated local snapshot.
+  Future<void> replaceAccounts(List<AuthenticatorAccount> accounts);
 }
 
 @LazySingleton(as: AuthenticatorLocalDataSource)
@@ -34,6 +37,7 @@ class AuthenticatorLocalDataSourceImpl implements AuthenticatorLocalDataSource {
   static const _recordPrefix = '${_namespace}record:';
   static const _manifestPrefix = '${_namespace}manifest:';
   static const _commitPrefix = '${_namespace}commit:';
+  static const _retainedGenerationCount = 2;
 
   static final RegExp _legacyAccountKeyPattern = RegExp(
     r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$',
@@ -141,6 +145,27 @@ class AuthenticatorLocalDataSourceImpl implements AuthenticatorLocalDataSource {
           );
         } on AccountNotFoundException {
           rethrow;
+        } catch (_) {
+          throw StorageWriteException();
+        }
+      });
+
+  @override
+  Future<void> replaceAccounts(List<AuthenticatorAccount> accounts) =>
+      _serialized(() async {
+        try {
+          final current = await _ensureV2Snapshot();
+          final replacement = List<AuthenticatorAccount>.unmodifiable(accounts);
+          if (replacement.any((account) => account.id.isEmpty) ||
+              replacement.map((account) => account.id).toSet().length !=
+                  replacement.length) {
+            throw const FormatException('Replacement snapshot không hợp lệ.');
+          }
+          await _commitSnapshot(
+            previous: current,
+            accounts: replacement,
+            changedAccountIds: replacement.map((account) => account.id).toSet(),
+          );
         } catch (_) {
           throw StorageWriteException();
         }
@@ -409,7 +434,68 @@ class AuthenticatorLocalDataSourceImpl implements AuthenticatorLocalDataSource {
     if (verified.accounts.length != accounts.length) {
       throw const FormatException('Committed snapshot verification failed.');
     }
+    await _compactV2Artifacts(verifiedValues);
     return verified;
+  }
+
+  Future<void> _compactV2Artifacts(Map<String, String> storedValues) async {
+    final candidates = <_CommitCandidate>[];
+    for (final entry in storedValues.entries.where(
+      (entry) => entry.key.startsWith(_commitPrefix),
+    )) {
+      try {
+        final decoded = jsonDecode(entry.value);
+        if (decoded is Map<String, dynamic> &&
+            decoded['formatVersion'] == _formatVersion &&
+            decoded['generation'] is int &&
+            decoded['manifestKey'] is String) {
+          candidates.add(
+            _CommitCandidate(
+              commitKey: entry.key,
+              generation: decoded['generation'] as int,
+              manifestKey: decoded['manifestKey'] as String,
+            ),
+          );
+        }
+      } catch (_) {
+        // Invalid artifacts are eligible for best-effort cleanup below.
+      }
+    }
+    candidates.sort((left, right) {
+      final generationOrder = right.generation.compareTo(left.generation);
+      return generationOrder != 0
+          ? generationOrder
+          : right.commitKey.compareTo(left.commitKey);
+    });
+
+    final retainedKeys = <String>{};
+    var retainedGenerations = 0;
+    for (final candidate in candidates) {
+      if (retainedGenerations >= _retainedGenerationCount) break;
+      try {
+        final snapshot = _loadManifest(candidate, storedValues);
+        retainedKeys
+          ..add(candidate.commitKey)
+          ..add(candidate.manifestKey)
+          ..addAll(snapshot.entriesById.values.map((entry) => entry.recordKey));
+        retainedGenerations++;
+      } catch (_) {
+        // Do not count an invalid generation toward rollback retention.
+      }
+    }
+
+    final obsoleteKeys = storedValues.keys
+        .where(
+          (key) => key.startsWith(_namespace) && !retainedKeys.contains(key),
+        )
+        .toList(growable: false);
+    for (final key in obsoleteKeys) {
+      try {
+        await secureStorage.delete(key: key);
+      } catch (_) {
+        // Compaction failure must not invalidate the committed active snapshot.
+      }
+    }
   }
 
   Future<T> _serialized<T>(Future<T> Function() operation) {

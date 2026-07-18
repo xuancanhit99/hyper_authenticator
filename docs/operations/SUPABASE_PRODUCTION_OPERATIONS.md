@@ -1,0 +1,140 @@
+# Vận hành Supabase production
+
+Tài liệu này mô tả harness version-controlled. URL, key, password, SSH identity và
+backup thật nằm ngoài repository. Không chạy operator script với `set -x`.
+
+## Health check
+
+Script: `scripts/supabase/check_production_health.sh`.
+
+Kiểm tra:
+
+- 11 core container running/healthy;
+- disk, RAM available và swap;
+- encrypted table bật + force RLS;
+- public Auth và Recovery HTTP boundary;
+- verified backup gần nhất chưa quá hạn.
+
+Systemd template:
+
+- `supabase/systemd/hyper-auth-supabase-health.service`;
+- `supabase/systemd/hyper-auth-supabase-health.timer`;
+- config thật `/etc/hyper-authenticator/supabase-health.env` mode 0640.
+
+Baseline production: timer mỗi 5 phút, service sandbox run pass. Xem log:
+
+    systemctl status hyper-auth-supabase-health.timer
+    journalctl -u hyper-auth-supabase-health.service --since today
+
+Không paste journal có credential vào issue.
+
+## Daily local backup
+
+Script: `scripts/supabase/backup_production.sh`.
+
+Một backup gồm:
+
+- `database-full.dump`: custom-format logical dump;
+- database globals/roles cần cho restore plan;
+- Storage filesystem tar trong thời gian Storage service được quiesce;
+- sensitive config tar, loại database volume và Storage duplicate;
+- catalog/metadata và `SHA256SUMS`.
+
+Control:
+
+- `flock` chặn hai job đồng thời;
+- minimum free disk threshold;
+- directory 0700, file 0600;
+- `pg_restore --list`, tar listing và checksum validation;
+- Storage luôn được start lại trong cleanup trap và phải healthy;
+- retention production hiện 7 bản.
+
+Systemd timer chạy hằng ngày lúc 02:30 UTC, có randomized delay 10 phút.
+
+## Restore rehearsal
+
+Script: `scripts/supabase/rehearse_backup_restore.sh BACKUP_DIR`.
+
+Script xác minh checksum/catalog, tạo database tạm ngẫu nhiên trong PostgreSQL
+cluster, full restore với `--no-owner --no-privileges`, probe:
+
+- `auth.users` tồn tại;
+- `public.encrypted_vault_snapshots` tồn tại;
+- table có RLS + FORCE RLS;
+- hai table đọc được ở database tạm.
+
+Trap luôn force-drop database tạm. Script không restore đè production database.
+Nếu process bị kill cứng, kiểm tra và drop database tên `ha_restore_rehearsal_*`
+sau khi xác nhận không có session cần giữ.
+
+Baseline 18-07-2026: full restore rehearsal pass với scheduled backup đã checksum.
+
+## Encrypted off-host copy
+
+Script: `scripts/supabase/pull_encrypted_backup.sh`.
+
+Yêu cầu:
+
+- protected operator env có SSH host/port/user/key path;
+- `age` recipient file;
+- optional identity file để decrypt-stream verify;
+- destination ngoài repository.
+
+Remote tar stream được pipe trực tiếp vào `age`; máy nhận không tạo plaintext tar.
+Sau đó tạo SHA-256 sidecar, decrypt-stream tar listing nếu identity được cung cấp,
+và giữ 14 encrypted archives.
+
+LaunchAgent template:
+
+`supabase/launchd/com.hyperz.hyper-authenticator.supabase-backup.plist.example`.
+
+Baseline Mac chạy daily 10:15 local + RunAtLoad, last exit code 0. Không dùng Mac
+cá nhân làm backup SLA duy nhất; mục tiêu tiếp theo là backup host/object storage độc lập.
+
+## Contract sau deploy/upgrade
+
+Chạy theo thứ tự:
+
+    scripts/supabase/test_remote_encrypted_vault_contract.sh \
+      /path/to/server.env https://api.example.com
+
+    scripts/supabase/test_remote_recovery_contract.sh \
+      /path/to/server.env https://api.example.com \
+      https://auth.example.com/reset-password/
+
+    scripts/supabase/test_remote_studio_proxy.sh https://studio.example.com
+
+Sau test xác nhận isolated user được dọn. Không chạy plaintext RLS contract trên
+production mới nếu compatibility table đã được freeze/drop.
+
+## Upgrade Supabase
+
+1. Đọc official self-hosted Docker update guide/changelog.
+2. Chọn exact commit/release pin; không dùng floating `latest`.
+3. Diff compose, `.env.example`, image tag, migration và breaking change.
+4. Full backup + encrypted off-host copy + restore rehearsal.
+5. Rehearse trên staging/clone.
+6. Chốt maintenance/rollback window.
+7. Apply upgrade, chờ 11 service healthy.
+8. Chạy health + remote contracts + low-concurrency smoke.
+9. Update `supabase/UPSTREAM_PIN` và `PROJECT_STATUS.md` cùng commit.
+
+Rollback phải khôi phục cả compose/image pin, database và Storage/config tương ứng;
+không mix database mới với service cũ nếu upstream không bảo đảm compatibility.
+
+## Incident quick response
+
+- Disk/RAM/container: dừng rollout, giữ backup, đọc bounded journal và health output.
+- Auth/recovery failure: giữ local vault usable, không bật plaintext sync fallback.
+- Revision conflict tăng: không delete encrypted rows; kiểm tra client/server contract.
+- Suspected server secret leak: rotate server credential/JWT/SMTP/DB theo scope;
+  publishable key xử lý riêng, tuyệt đối không đưa service-role vào app.
+- Suspected recovery key/TOTP leak: đây là user credential incident; rotate TOTP tại
+  từng service, tạo vault/recovery plan mới sau threat review.
+
+## Khoảng trống
+
+- Chưa có external alert delivery.
+- Chưa có PITR/continuous WAL archive.
+- Off-host copy chưa ở dedicated backup system.
+- Chưa có scheduled automated restore drill; hiện rehearsal chạy thủ công sau thay đổi.

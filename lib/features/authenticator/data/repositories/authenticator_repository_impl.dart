@@ -136,4 +136,22 @@ class AuthenticatorRepositoryImpl implements AuthenticatorRepository {
       );
     }
   }
+
+  @override
+  Future<Either<Failure, Unit>> replaceAccounts(
+    List<AuthenticatorAccount> accounts,
+  ) async {
+    try {
+      await localDataSource.replaceAccounts(accounts);
+      return const Right(unit);
+    } on StorageWriteException {
+      return const Left(
+        StorageFailure('Không thể commit snapshot local đã khôi phục.'),
+      );
+    } catch (_) {
+      return const Left(
+        StorageFailure('Khôi phục snapshot local thất bại an toàn.'),
+      );
+    }
+  }
 }

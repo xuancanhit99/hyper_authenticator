@@ -1,4 +1,6 @@
-class EncryptedVaultEnvelope {
+import 'package:equatable/equatable.dart';
+
+class EncryptedVaultEnvelope extends Equatable {
   static const currentFormatVersion = 1;
   static const cipherName = 'AES-256-GCM';
 
@@ -17,6 +19,16 @@ class EncryptedVaultEnvelope {
     required this.ciphertext,
     required this.authTag,
   });
+
+  @override
+  List<Object?> get props => [
+    formatVersion,
+    revision,
+    cipher,
+    nonce,
+    ciphertext,
+    authTag,
+  ];
 
   Map<String, dynamic> toJson() => <String, dynamic>{
     'format_version': formatVersion,
@@ -54,7 +66,7 @@ class EncryptedVaultEnvelope {
   }
 }
 
-class WrappedVaultKey {
+class WrappedVaultKey extends Equatable {
   static const currentFormatVersion = 1;
 
   final int formatVersion;
@@ -70,6 +82,15 @@ class WrappedVaultKey {
     required this.ciphertext,
     required this.authTag,
   });
+
+  @override
+  List<Object?> get props => [
+    formatVersion,
+    cipher,
+    nonce,
+    ciphertext,
+    authTag,
+  ];
 
   Map<String, dynamic> toJson() => <String, dynamic>{
     'format_version': formatVersion,

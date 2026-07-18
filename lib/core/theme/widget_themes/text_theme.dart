@@ -11,7 +11,5 @@ class CTextTheme {
     headlineSmall: TextStyle(fontWeight: FontWeight.bold),
     headlineMedium: TextStyle(fontWeight: FontWeight.bold),
     headlineLarge: TextStyle(fontWeight: FontWeight.bold),
-    // labelLarge:
-    //     TextStyle(fontFamily: 'Averta', color: Colors.black),
   );
 }

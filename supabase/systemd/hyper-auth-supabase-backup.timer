@@ -1,0 +1,11 @@
+[Unit]
+Description=Daily Hyper Authenticator Supabase backup
+
+[Timer]
+OnCalendar=*-*-* 02:30:00 UTC
+Persistent=true
+RandomizedDelaySec=10m
+Unit=hyper-auth-supabase-backup.service
+
+[Install]
+WantedBy=timers.target

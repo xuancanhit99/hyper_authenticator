@@ -1,144 +1,106 @@
-# Mô hình bảo mật
-
-## Trạng thái
-
-Dự án là alpha. Local record dùng versioned secure-storage snapshot và remote
-table có force RLS đã test. Cloud sync plaintext hiện bị khóa mặc định, nhưng
-protocol chưa có E2EE/atomic publication nên chưa đủ an toàn cho production.
+# Bảo mật
 
 ## Asset cần bảo vệ
 
-| Asset | Tác động khi bị lộ |
-|---|---|
-| TOTP `secretKey` / URI `otpauth` | Có thể tạo yếu tố xác thực thứ hai |
-| Supabase session | Truy cập hoặc sửa cloud data của user |
-| Email, tên và nhãn account | Privacy/phishing |
-| Encryption key/recovery code tương lai | Giải mã hoặc khôi phục cloud secret |
+- TOTP `secretKey`, full `otpauth` URI và generated OTP.
+- E2EE DEK và recovery key.
+- Supabase session/refresh token.
+- Service-role key, database password, SMTP credential, SSH key và signing key.
+- Local vault, database/Storage backup và decrypted restore artifact.
+
+Publishable key không phải secret nhưng chỉ được dùng ở client; service-role key
+không bao giờ được đặt trong Flutter `.env`, asset, build log hoặc binary.
 
 ## Trust boundary
 
-- Flutter process với secure storage, SharedPreferences và local authentication.
-- Flutter process với Supabase qua network.
-- Supabase Auth/JWKS với PostgreSQL force RLS đã deploy.
-- Reverse proxy HTTPS với Kong/Supavisor bind loopback trên host self-hosted.
-- Browser recovery page với Supabase.
-- Build environment với public client configuration.
-
-Client-side filter `user_id` không phải authorization boundary; RLS đã deploy mới là boundary.
+- Native secure storage bảo vệ local vault/DEK khi OS profile chưa unlock.
+- Local authentication là UX/access gate; không chống thiết bị đã unlock và bị
+  compromise hoàn toàn.
+- Supabase Auth xác định identity; RLS xác định authorization.
+- AES-256-GCM làm backend-blind với TOTP payload nếu client/recovery key an toàn.
+- TLS bảo vệ transport, không thay thế E2EE.
+- Web/browser profile không được xem tương đương Keychain/Keystore; Web E2EE sync tắt.
 
 ## Control đã triển khai
 
-- TOTP JSON lưu qua FlutterSecureStorage.
-- App lock ủy quyền biometrics/device credential cho OS và fail closed khi đã bật nhưng plugin lỗi.
-- App relock khi rời foreground.
-- QR input được validate tập trung và không log raw URI/secret.
-- Logout giữ TOTP local; không gọi `deleteAll` trên shared secure storage.
-- Supabase client chỉ nhận publishable/anon key; không cần service-role key.
-- `.env` bị Git ignore, không đóng gói asset.
-- Production path không còn log email, token hoặc TOTP secret đã biết.
-- `synced_accounts` có grant CRUD tối thiểu, force RLS và bốn owner-only policy.
-- Cross-user RLS contract test pass cho anonymous cùng SELECT/INSERT/UPDATE/DELETE.
-- User session JWT dùng ES256; JWKS không công bố symmetric key. Legacy HS256 chỉ
-  được giữ cho backward verification trong transition.
-- Public API đi qua reverse proxy TLS; database, Kong và Supavisor không mở trực
-  tiếp ra mọi interface.
-- Plaintext cloud sync fail closed nếu build không truyền explicit dangerous flag.
-- Local vault v2 publish commit marker sau record/manifest, fallback generation
-  trước và không xóa legacy data trong migration.
-- Recovery web chạy read-only/non-root, tắt access log, dùng CSP/no-store và không
-  log recovery session/user/raw backend error.
-- Android release build dừng nếu thiếu signing thay vì fallback debug.
-- Local vault hoạt động không cần Supabase session; app lock vẫn fail closed và
-  logout không vô hiệu hóa lock.
-- E2EE primitive dùng AES-256-GCM, AAD bind user/revision, random DEK cùng random
-  recovery key; tamper/wrong-user/wrong-key regression test đều fail.
+### Local
 
-Các control này không biến plaintext cloud sync thành E2EE.
+- Versioned copy-on-write vault; commit marker ghi sau cùng; rollback generation.
+- Compaction giữ active và rollback generation.
+- TOTP validation tập trung; không log barcode payload/secret.
+- Logout không xóa vault.
+- App lock fail closed và relock theo lifecycle.
+- Platform capability chặn plugin không hỗ trợ thay vì gọi rồi fallback không an toàn.
 
-## Release blocker
+### Encrypted sync
 
-### Đồng bộ plaintext
+- DEK và recovery key ngẫu nhiên 256-bit; AES-256-GCM qua package `cryptography`.
+- Nonce random cho mỗi encryption; AAD bind user, revision, version và purpose.
+- Recovery key hiển thị một lần, cần user xác nhận trước setup.
+- DEK chỉ persist sau publish + read-after-write verification.
+- Remote decrypt/validate hoàn tất trước atomic local replace.
+- Optimistic revision + atomic RPC; conflict không delete cloud snapshot cũ.
+- User ID được kiểm tra lại tại datasource để chặn cross-session race.
+- Unknown format, tamper, sai user hoặc sai recovery key đều fail closed.
 
-`AuthenticatorAccount.toJson` chứa `secretKey`; dangerous migration/test flag có
-thể cho compatibility sync map trực tiếp vào Supabase. Production phải giữ
-`ALLOW_INSECURE_PLAINTEXT_SYNC=false`.
+### Backend và operations
 
-AES-256-GCM envelope, key wrapping, secure key store và additive schema/RPC v2 đã
-có. Còn thiếu onboarding/export/import recovery key, client remote orchestration,
-staging rollout và plaintext migration trước khi có thể bật sync release.
+- `FORCE RLS`; owner SELECT; write chỉ qua RPC dùng `auth.uid()`.
+- Public HTTPS; Studio có Basic Auth; database/Kong/Supavisor không expose trực tiếp.
+- Secret/key server đã rotate trong đợt rebuild; JWT mới dùng ES256/JWKS.
+- Health timer 5 phút; daily verified backup; encrypted off-host copy; full restore rehearsal.
+- SSH chỉ public key, log level INFO; journal có retention/size limit.
 
-### Upload phá hủy, không atomic
+## Recovery semantics
 
-Upload xóa mọi row rồi chèn snapshot. Lỗi sau delete có thể làm mất cloud copy. Cần transaction/versioned snapshot, optimistic concurrency, idempotent retry và interrupted-write recovery.
+Supabase password reset không decrypt E2EE vault. Người dùng cần recovery key hoặc
+một thiết bị còn DEK. Mất toàn bộ thiết bị và recovery key đồng nghĩa mất cloud
+vault về mặt mật mã; support/admin không thể khôi phục plaintext.
 
-### Authorization và operator boundary
+Recovery key không được tự động copy, log, gửi analytics hoặc lưu SharedPreferences.
+UI cho phép copy theo hành động rõ ràng; người dùng phải đưa key vào password manager
+hoặc offline backup riêng.
 
-Migration/RLS cùng cross-user test đã có, nhưng self-hosted operator và service
-role vẫn có thể đọc plaintext. RLS không bảo vệ trước database dump, backend
-compromise hoặc credential vận hành bị lộ. Cần secret rotation, encrypted backup,
-least-privilege operator access, monitoring và định kỳ chạy lại negative test.
+## Destructive operations
 
-### Identity và ownership
+- Cloud conflict phải hỏi rõ dùng cloud hay giữ local.
+- Dùng cloud chỉ replace sau re-download đúng revision và decrypt/validate.
+- Dọn Supabase data/volume yêu cầu full backup + checksum + restore note.
+- Drop plaintext compatibility table là migration riêng, không nằm trong client rollout.
+- Logout và disable sync không được xóa local vault hoặc remote snapshot.
 
-- Merge đã dùng stable ID và giữ local khi trùng ID, nhưng chưa xử lý revision,
-  secret rotation conflict, deletion hoặc concurrent device.
-- TOTP local thuộc installation/profile local và được chia sẻ giữa các Supabase
-  session trên cùng OS profile sau khi app unlock; đây là policy đã chấp nhận.
-- Local storage có versioned commit/recovery nhưng chưa compaction và chưa có device integration evidence.
+## Logging và fixture
 
-### Platform và recovery
+Không log/request fixture chứa:
 
-- Web secure storage không có cùng threat model với Keychain/Keystore.
-- Recovery web đã harden nhưng email template/token-hash redirect và E2E chưa rollout.
-- Release signing, entitlement, installer và device verification chưa đủ.
+- field `secretKey` với giá trị thật;
+- full URI bắt đầu bằng `otpauth://`;
+- recovery key `HA1-...`;
+- JWT, refresh token, service-role key hoặc password;
+- ciphertext kèm key material nếu không cần cho contract.
 
-### Backup và vận hành self-hosted
+Test dùng placeholder `TEST_ONLY_*`. Shell operator script không chạy với `set -x`.
+Không dùng command liệt kê toàn bộ process environment trong báo cáo.
 
-Backup legacy chứa password hash, token lịch sử và provider credential; file được
-giữ ngoài repository với mode `0700/0600`. Chưa có encrypted off-host copy, lịch
-backup định kỳ hoặc automated restore rehearsal cho instance mới. Disk headroom đã
-được khôi phục; RAM headroom cho Logs/Analytics vẫn chưa được load-test an toàn.
-SSH password và keyboard-interactive authentication đã tắt; server chỉ chấp nhận
-public key. Fail2ban/UFW chưa cấu hình nên connection-rate protection vẫn là
-defense-in-depth follow-up.
+## Dependency và asset supply chain
 
-## Kịch bản đe dọa
+- Lockfile được commit; CI pin Flutter.
+- Direct package được review bằng `flutter pub outdated`; advisory flag phải bằng false.
+- Averta thương mại và 1.047 logo dịch vụ không rõ provenance đã bị loại.
+- Release chỉ bundle branding do owner kiểm soát và icon Material/Cupertino từ Flutter.
+- Thêm asset bên thứ ba mới cần source URL, exact license, attribution/NOTICE và
+  trademark-purpose review trong cùng commit.
 
-| Kịch bản | Mức lộ hiện tại | Phản ứng bắt buộc |
-|---|---|---|
-| Supabase DB/backend operator bị lộ | Đọc bridge plaintext; v2 chỉ lộ ciphertext/metadata | Hoàn tất E2EE rollout và migration plaintext |
-| Mất recovery key và mọi trusted device | Không thể giải mã cloud vault | One-time export confirmation và recovery rehearsal |
-| Network gián đoạn khi upload | Có thể mất cloud snapshot | Atomic commit và idempotent retry |
-| Hai thiết bị sync đồng thời | Last writer làm mất dữ liệu | Revision/conflict protocol |
-| RLS regression sau migration/update | Cross-user access | Catalog audit và negative test mỗi rollout |
-| Secure storage index hỏng | Record orphan/mất tham chiếu | Recovery protocol |
-| Browser/XSS trên Web | Có thể tác động local data/session | Web threat model, CSP và giới hạn cam kết |
+## Khoảng trống đã biết
 
-Các regression đã xử lý: log QR secret, xóa TOTP khi logout, bypass lock do local-auth error và tiếp tục upload sau merge failure.
+1. Chưa có external alert channel/SIEM; systemd failure hiện chỉ vào journal.
+2. Chưa có independent cryptographic/security review.
+3. Device revocation và key rotation chưa có trong envelope v1.
+4. SMTP delivery tới mailbox thật và expired recovery link chưa được E2E test.
+5. Signing key/certificate chưa được owner cung cấp trên môi trường build.
+6. Browser local vault có trust model yếu hơn native dù cloud sync đã tắt.
 
-## Quy tắc secure coding
+## Báo cáo lỗ hổng
 
-- Xem `secretKey`, URI `otpauth`, token, password và recovery material là credential.
-- Không dùng credential thật trong example, test, screenshot, issue hoặc analytics.
-- Không đưa server secret vào Flutter/static Web.
-- Validate Base32, algorithm, digits, period và label trước persistence.
-- Dùng cryptographic library đã review; không tự viết primitive.
-- Gắn version cho encrypted/persisted format.
-- Destructive operation phải quan sát được, idempotent và có recovery.
-- Sanitize exception trước logging/telemetry.
-
-## Security release gate
-
-Production xử lý secret thật yêu cầu:
-
-- threat model và E2EE design được review;
-- plaintext sync blocker được loại bỏ;
-- RLS migration và cross-user test pass;
-- interrupted sync/concurrency/recovery test pass;
-- mobile lock lifecycle và storage test pass;
-- dependency/platform security review;
-- privacy policy, incident và key-compromise procedure hoàn chỉnh.
-
-## Báo cáo
-
-Không mở issue công khai chứa secret, token, email user hoặc production URL. Dùng kênh riêng do owner chỉ định và reproduction đã sanitize.
+Không mở public issue chứa credential hoặc `otpauth` URI. Trước public release,
+owner phải công bố một private security contact trong store metadata và privacy URL.

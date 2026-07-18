@@ -146,6 +146,74 @@ void main() {
     expect(storage.values[legacy.id], jsonEncode(legacy.toJson()));
     expect(storage.values['authenticator_account_index'], isNotNull);
   });
+
+  test(
+    'replaceAccounts publish toàn bộ snapshot bằng một generation',
+    () async {
+      await dataSource.saveAccount(_account(id: '', issuer: 'Old'));
+      final replacement = <AuthenticatorAccount>[
+        _account(id: '00000000-0000-4000-8000-000000000010', issuer: 'Cloud A'),
+        _account(id: '00000000-0000-4000-8000-000000000011', issuer: 'Cloud B'),
+      ];
+
+      await dataSource.replaceAccounts(replacement);
+
+      expect(await dataSource.getAccounts(), replacement);
+    },
+  );
+
+  test('replaceAccounts lỗi commit giữ snapshot active trước đó', () async {
+    final existing = await dataSource.saveAccount(
+      _account(id: '', issuer: 'Existing'),
+    );
+    storage.failNextWriteWithPrefix = 'ha:v2:commit:';
+
+    await expectLater(
+      dataSource.replaceAccounts(<AuthenticatorAccount>[
+        _account(
+          id: '00000000-0000-4000-8000-000000000012',
+          issuer: 'Uncommitted cloud',
+        ),
+      ]),
+      throwsA(isA<StorageWriteException>()),
+    );
+
+    final afterRestart = AuthenticatorLocalDataSourceImpl(
+      secureStorage: storage,
+      uuid: const Uuid(),
+    );
+    expect(await afterRestart.getAccounts(), [existing]);
+  });
+
+  test('compaction giữ hai generation hợp lệ gần nhất để rollback', () async {
+    await dataSource.saveAccount(_account(id: '', issuer: 'One'));
+    await dataSource.saveAccount(_account(id: '', issuer: 'Two'));
+    await dataSource.saveAccount(_account(id: '', issuer: 'Three'));
+    await dataSource.saveAccount(_account(id: '', issuer: 'Four'));
+
+    final commitKeys = storage.values.keys
+        .where((key) => key.startsWith('ha:v2:commit:'))
+        .toList();
+    final manifestKeys = storage.values.keys
+        .where((key) => key.startsWith('ha:v2:manifest:'))
+        .toList();
+    expect(commitKeys, hasLength(2));
+    expect(manifestKeys, hasLength(2));
+
+    final latestCommitKey = commitKeys.reduce(
+      (left, right) => left.compareTo(right) > 0 ? left : right,
+    );
+    final latestCommit =
+        jsonDecode(storage.values[latestCommitKey]!) as Map<String, dynamic>;
+    storage.values[latestCommit['manifestKey'] as String] = '{invalid-json';
+
+    final afterRestart = AuthenticatorLocalDataSourceImpl(
+      secureStorage: storage,
+      uuid: const Uuid(),
+    );
+    final recovered = await afterRestart.getAccounts();
+    expect(recovered.map((account) => account.issuer), ['One', 'Two', 'Three']);
+  });
 }
 
 AuthenticatorAccount _account({required String id, required String issuer}) {

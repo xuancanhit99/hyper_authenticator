@@ -55,3 +55,7 @@ class ValidationFailure extends Failure {
 class SyncOperationFailure extends Failure {
   const SyncOperationFailure(super.message);
 }
+
+class SyncRevisionConflictFailure extends Failure {
+  const SyncRevisionConflictFailure(super.message);
+}

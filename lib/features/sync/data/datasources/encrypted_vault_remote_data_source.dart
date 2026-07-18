@@ -11,6 +11,10 @@ bool isEncryptedVaultRevisionConflict({
   return code == 'PT409' || message.contains('revision_conflict');
 }
 
+class EncryptedVaultRevisionConflictException implements Exception {
+  const EncryptedVaultRevisionConflictException();
+}
+
 @lazySingleton
 class EncryptedVaultRemoteDataSource {
   static const tableName = 'encrypted_vault_snapshots';
@@ -19,8 +23,10 @@ class EncryptedVaultRemoteDataSource {
 
   EncryptedVaultRemoteDataSource(this._client);
 
-  Future<RemoteEncryptedVaultSnapshot?> download() async {
-    _requireAuthenticatedUser();
+  Future<RemoteEncryptedVaultSnapshot?> download({
+    required String userId,
+  }) async {
+    _requireAuthenticatedUser(userId);
     try {
       final row = await _client.from(tableName).select().maybeSingle();
       if (row == null) {
@@ -35,11 +41,12 @@ class EncryptedVaultRemoteDataSource {
   }
 
   Future<int> publish({
+    required String userId,
     required int expectedRevision,
     required EncryptedVaultEnvelope envelope,
     required WrappedVaultKey wrappedDataKey,
   }) async {
-    _requireAuthenticatedUser();
+    _requireAuthenticatedUser(userId);
     try {
       final response = await _client.rpc(
         publishFunctionName,
@@ -56,15 +63,18 @@ class EncryptedVaultRemoteDataSource {
       if (row is! Map || row['revision'] is! int) {
         throw const FormatException('Publish revision không hợp lệ.');
       }
-      return row['revision'] as int;
+      final publishedRevision = row['revision'] as int;
+      if (publishedRevision != envelope.revision ||
+          publishedRevision != expectedRevision + 1) {
+        throw const FormatException('Publish revision không khớp request.');
+      }
+      return publishedRevision;
     } on PostgrestException catch (error) {
       if (isEncryptedVaultRevisionConflict(
         code: error.code,
         message: error.message,
       )) {
-        throw const ServerException(
-          'Encrypted vault đã thay đổi trên thiết bị khác.',
-        );
+        throw const EncryptedVaultRevisionConflictException();
       }
       throw const ServerException(
         'Không thể publish encrypted vault snapshot.',
@@ -76,9 +86,13 @@ class EncryptedVaultRemoteDataSource {
     }
   }
 
-  void _requireAuthenticatedUser() {
-    if (_client.auth.currentUser == null) {
+  void _requireAuthenticatedUser(String expectedUserId) {
+    final currentUser = _client.auth.currentUser;
+    if (currentUser == null) {
       throw const AuthException('User not logged in');
+    }
+    if (currentUser.id != expectedUserId) {
+      throw const AuthException('Authenticated user changed during sync');
     }
   }
 }
