@@ -29,8 +29,8 @@ Roadmap ưu tiên theo rủi ro. Checkbox chỉ được đánh dấu khi có so
 - [x] Công bố private security reporting trên GitHub.
 - [x] Chốt app store và SMTP là milestone hoãn, không chặn GitHub Preview.
 - [ ] Phát hành preview tiếp theo từ tested tag khi có thay đổi đủ giá trị cho người dùng.
-- [ ] Thêm signed Android APK vào GitHub Releases sau khi có upload keystore và
-  runtime/upgrade gate; không cần chờ Play Store.
+- [ ] Chốt Android app-signing key dùng lâu dài, thêm signed APK vào GitHub
+  Releases sau runtime/upgrade gate; không cần chờ Play Store.
 - [ ] Thêm macOS package sau Developer ID/notarization/runtime gate; không phát
   hành unsigned compile artifact.
 
@@ -74,8 +74,9 @@ tag CI xanh, checksum tải lại khớp và release note nêu signing/SMTP/plat
 
 ## Ưu tiên P2 — Signed GitHub Release và app store (đang hoãn)
 
-- [ ] Owner cung cấp Android upload keystore; build signed APK cho GitHub trước,
-  AAB/internal track chỉ làm khi mở Play Store.
+- [ ] Owner cung cấp Android app-signing keystore; build signed APK cho GitHub
+  trước. Nếu mở Play Store, reuse app signing key để giữ cross-channel upgrade rồi
+  tách upload key cho AAB/internal track.
 - [ ] Owner cung cấp Apple certificate/profile; macOS GitHub package cần
   notarization, còn iOS TestFlight/App Store là milestone riêng.
 - [ ] Windows code-signing certificate và signed installer verification.

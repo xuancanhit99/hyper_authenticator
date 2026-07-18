@@ -47,7 +47,7 @@ store chưa nằm trên critical path. Mỗi platform vẫn phải vượt gate 
 |---|---|---|
 | Windows x64 | Unsigned pre-release | Đã đủ gate preview; code signing + device test trước stable |
 | Linux amd64 | Unsigned pre-release | Đã đủ gate preview; signed channel + physical desktop trước stable |
-| Android | Chưa phát hành | Upload keystore, signed APK, emulator/device và upgrade gate; không cần chờ Play Store |
+| Android | Chưa phát hành | App-signing keystore lâu dài, signed APK, emulator/device và upgrade gate; không cần chờ Play Store |
 | macOS | Chưa phát hành | Developer ID, hardened runtime, notarization, staple và runtime test |
 | iOS | Không phân phối public qua GitHub | Signing/provisioning và kênh Apple phù hợp |
 | Web | Production URL | Deploy image độc lập, không đóng gói vào GitHub Release |
@@ -101,16 +101,25 @@ mailbox thật; credential SMTP chỉ được đặt trên server, không đưa
 
 ## Android
 
-Yêu cầu file `android/key.properties` ignored và upload keystore do owner quản lý.
-Build script đã fail nếu release signing thiếu:
+Yêu cầu file `android/key.properties` ignored và keystore do owner quản lý. Source
+hiện gọi file này là `upload-keystore.jks`, nhưng trước public APK owner phải chốt
+key bên trong là Android **app signing key** lâu dài của kênh GitHub. Build script
+đã fail nếu release signing thiếu:
 
     flutter build appbundle --release \
       --dart-define-from-file=.env.production \
       --split-debug-info=build/symbols/android
 
-Gate cho signed APK trên GitHub: upload keystore, target SDK review,
-camera/biometric test, backup policy và upgrade test từ version trước. Play App
-Signing, data safety form và internal track chỉ trở thành gate khi mở Play Store.
+Gate cho signed APK trên GitHub: app-signing keystore, certificate fingerprint,
+target SDK review, camera/biometric test, backup policy và upgrade test từ version
+trước. Mọi GitHub APK update phải giữ cùng app signing key.
+
+Nếu sau này mở Play Store và muốn người dùng cập nhật chéo giữa GitHub/Play, cấu
+hình Play App Signing bằng chính app signing key đã dùng cho GitHub, sau đó mới tạo
+upload key riêng cho artifact gửi lên Play. Nếu để Play tự sinh app signing key
+khác, hai kênh sẽ có certificate khác và không còn upgrade-compatible. Data safety
+form và internal track chỉ trở thành gate khi mở Play Store. Xem contract key chính
+thức tại [Android app signing](https://developer.android.com/studio/publish/app-signing).
 
 ## iOS
 

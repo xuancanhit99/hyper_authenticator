@@ -27,8 +27,11 @@ nhãn rõ ràng là **unsigned preview** cho Windows x64 và Linux amd64 khi:
 
 Android debug APK, Apple compile build và Windows portable CI bundle không được
 đưa vào GitHub Release. Android signed APK có thể tham gia kênh này sau khi owner
-cung cấp upload keystore và runtime/upgrade gate pass; việc đó không phụ thuộc Play
-Store. macOS package tải từ GitHub vẫn cần Developer ID, hardened runtime,
+chốt app-signing key dùng lâu dài, cung cấp keystore và runtime/upgrade gate pass;
+việc đó không phụ thuộc Play Store. Nếu sau này mở Play Store và cần cập nhật chéo
+hai kênh, phải đưa chính app-signing key này vào Play App Signing rồi mới tách
+upload key; không để Play tự sinh app-signing key khác. macOS package tải từ GitHub
+vẫn cần Developer ID, hardened runtime,
 notarization và device test. iOS không phát hành public binary qua GitHub vì vẫn
 phụ thuộc cơ chế signing/provisioning và kênh phân phối của Apple.
 
