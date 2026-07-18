@@ -1,6 +1,6 @@
 # Task: Audit accessibility cho luồng cốt lõi
 
-- Trạng thái: Đang thực hiện
+- Trạng thái: Hoàn tất
 - Bắt đầu: 2026-07-19
 - Owner: Hyperz
 - Issue hoặc ADR liên quan: Không
@@ -47,7 +47,7 @@ nhỏ hơn baseline Flutter có thể kiểm tra tự động.
 - [x] Audit code và official Flutter accessibility guidance.
 - [x] Thêm regression test cho semantics, text scaling và tap target.
 - [x] Sửa Auth/Accounts/Add Account trong phạm vi test tái hiện.
-- [ ] Chạy quick/full gate và CI đa nền tảng.
+- [x] Chạy quick/full gate và CI đa nền tảng.
 
 ## Nhật ký xác minh
 
@@ -58,20 +58,25 @@ nhỏ hơn baseline Flutter có thể kiểm tra tự động.
 | Focused widget suite | Pass 13 test; ba surface pass labeled/48×48 guideline và text scale 200% | 2026-07-19 |
 | `scripts/agent/check.sh quick` | Pass docs/generated/format/analyze, 0 diagnostic | 2026-07-19 |
 | `scripts/agent/check.sh full` | Pass 52 docs, generated/format/analyze/platform/release/operations, 109 Flutter test và encrypted migration | 2026-07-19 |
+| CI `29661712630` tại `e36018b` | Pass 7/7: Quality, Secret, Android, Apple, Web, Linux và Windows | 2026-07-19 |
 
 ## Tác động tài liệu
 
 - [x] `PROJECT_STATUS.md`
 - [x] `NON_FUNCTIONAL_REQUIREMENTS.md`
 - [x] `TESTING_STRATEGY.md`
-- [ ] `SYSTEM_DESIGN.md` (không đổi runtime architecture)
-- [ ] `DATA_MODELS.md` (không đổi data model)
-- [ ] `SECURITY.md` (không đổi trust boundary)
-- [ ] `SUPABASE_INTEGRATION.md` (không đổi remote contract)
-- [ ] `DEPLOYMENT.md` (không đổi deployment)
-- [ ] ADR (không cần quyết định kiến trúc dài hạn)
+- [x] `SYSTEM_DESIGN.md` (đã review, không đổi runtime architecture)
+- [x] `DATA_MODELS.md` (đã review, không đổi data model)
+- [x] `SECURITY.md` (đã review, không đổi trust boundary)
+- [x] `SUPABASE_INTEGRATION.md` (đã review, không đổi remote contract)
+- [x] `DEPLOYMENT.md` (đã review, không đổi deployment)
+- [x] ADR (đã review, không cần quyết định kiến trúc dài hạn)
 
 ## Bàn giao
 
-Đang thực hiện. Bàn giao phải nêu test/guideline pass, giới hạn device audit và xác
-nhận không đổi data contract hoặc credential boundary.
+Core Auth/accounts/add-account đã có semantics tiếng Việt, layout responsive ở
+text scale 200% và automated labeled/48×48 tap-target gate. Semantics TOTP chỉ
+công bố code đang hiển thị cùng issuer/account/countdown; regression test xác nhận
+không chứa secret key hoặc URI `otpauth`. Không đổi local/cloud data contract hay
+credential boundary. TalkBack/VoiceOver, keyboard/focus, contrast và full
+Settings/dialog audit vẫn là gate riêng; không có thay đổi ngoài scope trong working tree.

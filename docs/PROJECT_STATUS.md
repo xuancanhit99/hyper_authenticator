@@ -184,6 +184,9 @@ Capability là hành vi source hiện tại, không thay thế device test và s
 - GitHub Actions run `29652820428` tại `ae1ab36` pass 7/7; locale fix được xác
   minh cùng Linux hosted historical/package/distro, Windows historical/runtime/
   installer, Apple, Android, Web, quality và secret history gate.
+- GitHub Actions run `29661712630` tại `e36018b` pass 7/7; core accessibility
+  regression được xác minh cùng Windows/Linux artifact runtime, Android, Apple,
+  Web, quality và secret history gate.
 - Tag CI run `29656402708` tại `v1.1.0-preview.1`/`6c3bd4b` pass 7/7. Release
   public có pre-release flag, không phải draft, đúng năm asset; Windows SHA-256
   `5bccb8f8…07a47`, Linux SHA-256 `2628ca05…46d33` đã được tải lại không auth và
