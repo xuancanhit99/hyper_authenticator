@@ -155,6 +155,34 @@ LaunchAgent template:
 Baseline Mac chạy daily 10:15 local + RunAtLoad, last exit code 0. Không dùng Mac
 cá nhân làm backup SLA duy nhất; mục tiêu tiếp theo là backup host/object storage độc lập.
 
+## Nginx Proxy Manager
+
+Non-secret timing overlay và exact production pin nằm tại
+`supabase/nginx-proxy-manager/`. Timing log chỉ nhận exact Auth health endpoint và
+tám field allowlist; không ghi URI, IP, header, User-Agent, payload hoặc credential.
+File `_access.log` dùng logrotate mặc định weekly, giữ bốn bản nén.
+
+Trước mọi recreate/upgrade NPM, chạy:
+
+    scripts/supabase/backup_nginx_proxy_manager.sh \
+      /opt/stacks/nginx-proxy-manager-app \
+      /home/xuancanhit/backups/hyper-authenticator/nginx-proxy-manager \
+      --allow-nginx-proxy-manager-backup
+
+    scripts/supabase/rehearse_nginx_proxy_manager_backup.sh \
+      /path/to/npm-YYYYMMDDTHHMMSSZ \
+      --allow-isolated-nginx-proxy-manager-restore
+
+Backup dùng least-privilege transactional dump, loại raw MariaDB volume/log, lưu
+compose/app/Let’s Encrypt cùng exact image và database name metadata, rồi checksum
+trước/sau atomic move. Rehearsal chạy exact MariaDB image với `--network none`,
+authenticated readiness và bốn core-table probe. Directory/file phải 0700/0600;
+không copy artifact này vào repository hoặc CI.
+
+Baseline 19-07-2026: NPM `2.14.0` và MariaDB `10.5.29` pin exact digest;
+`npm-20260719T184130Z` pass backup và isolated restore. NPM `2.15.1` vẫn cần owner
+duyệt maintenance/canary vì thay base image, OpenResty và Certbot cho mọi domain.
+
 ## Contract sau deploy/upgrade
 
 Chạy theo thứ tự:
@@ -195,11 +223,12 @@ SLA. Soak bảo thủ có thể đặt `LOAD_BATCH_INTERVAL_MS=1000` cùng concu
 tránh burst; contract test bắt buộc xác minh pacing và input sai phải fail closed.
 Soak public health vẫn không thay production-scale workload.
 
-Lượt bounded soak 19-07-2026 đạt 900/900 HTTP 200 trong 1.134 giây, p95 292 ms
-nhưng fail strict max vì một request 3.648 ms; baseline chạy lại pass p95 402/max
-406 ms. Khi lặp lại, phải giữ threshold, thu request/upstream timing để correlation
-và kiểm tra health journal/container trong cùng cửa sổ; không kết luận từ baseline
-pass rằng tail spike đã biến mất.
+Lượt bounded soak đầu ngày 19-07-2026 đạt 900/900 HTTP 200 trong 1.134 giây,
+p95 292 ms nhưng fail strict max vì một request 3.648 ms. Sau khi deploy NPM timing
+allowlist, lượt lặp cùng pacing pass 900/900 trong 1.135 giây, p95 289/max 590 ms;
+NPM request/upstream p95 28/25 ms, max 244/244 ms và không có non-200. Request
+chậm nhất có DNS 3/TCP 88/TLS 200/TTFB 589 ms trong khi NPM/upstream chỉ 70/67 ms.
+Giữ timing correlation khi lặp dài hơn; kết quả này chưa thay workload test.
 9. Update `supabase/UPSTREAM_PIN` và `PROJECT_STATUS.md` cùng commit.
 
 Rollback phải khôi phục cả compose/image pin, database và Storage/config tương ứng;

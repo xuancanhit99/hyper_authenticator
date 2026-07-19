@@ -266,7 +266,20 @@ post-probe current image/health/hash và 5/5 public SPA route pass.
 - `scripts/supabase/test_auth_load_budget.sh` chỉ dùng public publishable key,
   không tạo user/payload và fail khi HTTP hoặc latency vượt budget.
   `test_auth_load_budget_contract.sh` giả lập network/sleep để khóa pacing trước
-  khi dùng `LOAD_BATCH_INTERVAL_MS` trên production.
+  khi dùng `LOAD_BATCH_INTERVAL_MS` trên production; slowest request chỉ báo UTC,
+  DNS/TCP/TLS/TTFB/total timing, không báo URL/header/IP.
+- `test_nginx_proxy_manager_timing_contract.sh` khóa exact health route, exact
+  image digest pin, logrotate-compatible filename và tám timing field; cấm đưa
+  request/client variable vào NPM timing log.
+- `backup_nginx_proxy_manager.sh` tạo transactional least-privilege NPM database dump cùng
+  config/app/Let’s Encrypt archive, checksum và retention 0700/0600; raw DB volume
+  và access log không đi vào archive.
+- `rehearse_nginx_proxy_manager_backup.sh` xác minh checksum/archive rồi restore
+  vào exact pinned MariaDB image với network tắt; yêu cầu đủ user/proxy/certificate/
+  setting table và cleanup container/sandbox.
+- `test_nginx_proxy_manager_backup_contract.sh` khóa transactional/exclusion,
+  exact image/database metadata, authenticated readiness và network isolation;
+  ngăn quay lại `mariadb-admin ping` vốn có thể nhận nhầm temporary init server.
 - `test_scheduled_restore_drill_contract.sh` dùng backup/rehearsal fixture tạm,
   không đọc Docker hoặc backup thật; full gate chạy contract này trên mọi platform.
 - `windows_integration.ps1` và `windows_installer_smoke.ps1` chỉ nhận GitHub-hosted
@@ -289,10 +302,11 @@ post-probe current image/health/hash và 5/5 public SPA route pass.
    replacement + rotation; Android/iOS còn pass two-session survivor auto-unwrap.
    Chúng không thay physical-device hoặc independent cryptographic review.
 3. Chưa có mailbox SMTP/expired-link E2E.
-4. Low-concurrency Auth budget đã enforce. Bounded production soak gần 19 phút
-   đạt 900/900 HTTP 200 và p95 292 ms nhưng strict gate fail vì một request
-   3.648 ms; baseline 100 request ngay sau đó pass p95 402/max 406 ms. Proxy log
-   chưa có request/upstream timing để correlation; chưa có production-scale test.
+4. Low-concurrency Auth budget đã enforce. Soak đầu gần 19 phút đạt 900/900 và
+   p95 292 ms nhưng fail do max 3.648 ms. Sau khi deploy NPM timing allowlist,
+   correlated soak pass 900/900, p95 289/max 590 ms; NPM/upstream p95 28/25 ms,
+   max 244/244 ms và 0 non-200. Slowest client request có NPM/upstream 70/67 ms,
+   cho thấy phần lớn tail ở trước backend. Chưa có production-scale test.
 5. Windows/Linux unsigned package đủ điều kiện GitHub Preview nhưng chưa phải stable.
    Windows còn code signing và physical-device/Windows Hello. Linux còn KDE
    login-unlock/physical desktop và signed package E2EE runtime.

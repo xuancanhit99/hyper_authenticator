@@ -12,6 +12,7 @@ Secret, URL thật, database volume và backup thật không được commit.
 - `systemd/`: daily backup, scheduled restore drill và 5-minute health
   service/timer templates.
 - `launchd/`: encrypted off-host pull LaunchAgent template.
+- `nginx-proxy-manager/`: non-secret production overlay cho Auth timing observability.
 - `../scripts/supabase/`: migration, remote contract, backup, health và restore harness.
 
 ## Dựng stack mới

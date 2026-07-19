@@ -189,6 +189,15 @@ sở hữu certificate/redirect TLS cho `authenticator.hyperz.xyz`. Sau rollout 
 test `/`, `/settings`, `/privacy` nếu legal page đã publish, header bảo mật và
 browser console trên public HTTPS origin.
 
+NPM production không được dùng floating image. Exact current pin và non-secret
+timing overlay nằm trong `supabase/nginx-proxy-manager/`; compose/`.env`/application
+key chứa credential phải mode `0600`. Trước NPM upgrade phải chạy dedicated
+transactional DB + app/Let’s Encrypt backup, checksum, config test và route matrix.
+NPM `2.15.1` là major base-image/OpenResty/Certbot transition so với runtime
+`2.14.0`; không recreate production chỉ dựa vào tag `latest`. Backup production
+phải ghi exact image/database name metadata và restore rehearsal bốn core table
+trong MariaDB cô lập phải pass trước maintenance window.
+
 ## Windows
 
     flutter build windows --release --dart-define-from-file=.env.production

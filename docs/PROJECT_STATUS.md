@@ -142,8 +142,15 @@ verification phải inject `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY` và
   gate không tạo user/payload. Bounded soak 900 request tuần tự trong 1.134 giây
   đạt 900/900 HTTP 200 và p95 292 ms nhưng fail strict gate vì một outlier
   3.648 ms; release baseline chạy lại ngay sau đó pass 100/100, p95 402 ms,
-  max 406 ms. Cùng cửa sổ đó 11 container và timer healthy, RAM available khoảng
-  3,5 GiB, swap 0; log proxy hiện chưa có request/upstream duration để quy nguồn spike.
+  max 406 ms. Sau khi thêm NPM timing allowlist, lượt correlated soak cùng pacing
+  pass 900/900, p95 289 ms và max 590 ms. Request chậm nhất có DNS 3/TCP 88/
+  TLS 200/TTFB 589 ms trong khi NPM request/upstream chỉ 70/67 ms; toàn cửa sổ
+  proxy có p95 28/25 ms, max 244/244 ms và 0 non-200. Lượt baseline cuối tiếp tục
+  pass 100/100, p95 424 ms, max 436 ms.
+- NPM `2.14.0` và MariaDB `10.5.29` đã pin exact digest; compose, `.env` và
+  application key mode `0600`. Dedicated backup `npm-20260719T184130Z` pass
+  checksum/archive, sau đó restore pass bốn core table trong exact MariaDB image
+  cô lập không network; production database/container không bị mutate.
 - Health timer chạy mỗi 5 phút. Backup timer chạy hằng ngày, giữ 7 bản local.
 - Backup gồm logical database, globals, quiesced Storage và sensitive config;
   có SHA-256, permission 0700/0600 và validation catalog/tar.
@@ -179,10 +186,10 @@ Capability là hành vi source hiện tại, không thay thế device test và s
 3. Monitoring mới ghi journal/exit status; chưa có alert channel ngoài host.
 4. Off-host backup hiện phụ thuộc máy Mac/LaunchAgent đang hoạt động; cần đích
    object storage hoặc backup host độc lập nếu yêu cầu SLA cao.
-5. Low-concurrency Auth budget đã enforce. Bounded soak gần 19 phút không có HTTP
-   failure nhưng phát hiện một tail spike 3.648 ms nên strict max gate fail; baseline
-   kế tiếp pass. Cần thêm timing observability/correlation rồi lặp soak dài hơn;
-   chưa có production-scale workload test.
+5. Low-concurrency Auth budget đã enforce. Lượt correlated soak gần 19 phút đã
+   pass strict gate 900/900, p95 289 ms, max 590 ms; timing cho thấy request chậm
+   nhất chủ yếu nằm trước reverse proxy/Auth backend. Đây chỉ đóng outlier của lần
+   lặp có kiểm soát, chưa phải production-scale workload test hoặc SLA dài hạn.
 6. E2EE v1 đã có DEK rotation, bulk revoke và targeted revoke cho registered auth
    session với server-side enforcement. Device-specific HPKE wrap đã có ADR được
    duyệt và đã deploy server; Linux client runtime pass cả mất device private key,

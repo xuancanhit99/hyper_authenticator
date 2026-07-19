@@ -20,7 +20,7 @@ EOF
 cat >"$SANDBOX/bin/curl" <<'EOF'
 #!/usr/bin/env bash
 set -euo pipefail
-printf '%s\n' '200 0.050000'
+printf '%s\n' '200 0.050000 0.001000 0.010000 0.020000 0.040000'
 EOF
 
 cat >"$SANDBOX/bin/sleep" <<'EOF'
@@ -39,6 +39,9 @@ output=$(PATH="$SANDBOX/bin:$PATH" \
 
 grep -Fq \
   'Auth load result: 5/5 HTTP 200, concurrency 2, p95 50ms, max 50ms.' \
+  <<<"$output"
+grep -Eq \
+  'Auth load slowest: request #[1-5] started [0-9TZ:-]+; DNS 1ms, connect 10ms, TLS 20ms, TTFB 40ms, total 50ms.' \
   <<<"$output"
 grep -Fq \
   'Auth load pacing: 250ms giữa 3 batch, tối thiểu 500ms;' \

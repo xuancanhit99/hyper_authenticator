@@ -60,7 +60,11 @@ run_operations_harness() {
   bash -n \
     scripts/agent/linux_e2ee_operator.sh \
     scripts/agent/mobile_e2ee_integration.sh \
-    scripts/agent/mobile_e2ee_operator.sh
+    scripts/agent/mobile_e2ee_operator.sh \
+    scripts/supabase/backup_nginx_proxy_manager.sh \
+    scripts/supabase/rehearse_nginx_proxy_manager_backup.sh
+  scripts/supabase/test_nginx_proxy_manager_timing_contract.sh
+  scripts/supabase/test_nginx_proxy_manager_backup_contract.sh
   scripts/supabase/test_auth_load_budget_contract.sh
   scripts/supabase/test_scheduled_restore_drill_contract.sh
 }

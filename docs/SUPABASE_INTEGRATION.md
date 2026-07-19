@@ -169,6 +169,10 @@ cuối xác nhận không còn matching test user hoặc encrypted row.
 
 - Exact upstream pin: `supabase/UPSTREAM_PIN`.
 - Overlay proxy/recovery: `supabase/docker-compose.*.yml`.
+- Reverse proxy overlay/pin: `supabase/nginx-proxy-manager/`; production NPM
+  `2.14.0` và MariaDB `10.5.29` đã pin exact current digest, không còn `latest`/
+  floating patch tag. Target `2.15.1` cần backup/canary vì đổi Debian/OpenResty/
+  Certbot và tác động mọi public domain.
 - 11 core container phải healthy trước migration/test.
 
 Release regression cho public Auth health dùng publishable key, không tạo user:
@@ -186,7 +190,16 @@ Bounded production soak ngày 19-07-2026 chạy 900 request/concurrency 1, inter
 1 giây sau mỗi batch trong 1.134 giây: 900/900 HTTP 200, p95 292 ms nhưng strict
 gate fail vì một max 3.648 ms. Baseline 100 request/concurrency 10 ngay sau đó pass
 p95 402/max 406 ms. Health/timer/container cùng cửa sổ đều xanh; Nginx Proxy
-Manager/Kong access log chưa có duration nên chưa đủ bằng chứng quy nguồn spike.
+Manager/Kong access log cũ chưa có duration nên lần đầu chưa đủ bằng chứng quy nguồn.
+
+Timing overlay sau đó đã deploy bằng official NPM `http_top.conf` và
+`server_proxy.conf` extension point. Exact Auth health request chỉ ghi status,
+request/upstream timing cùng request ID; field allowlist contract và `nginx -t`
+pass. Log dùng suffix `_access.log` để vào default weekly rotation/4 bản nén.
+Lượt correlated soak sau deploy pass 900/900 trong 1.135 giây, p95 289/max 590 ms;
+NPM request/upstream p95 28/25 ms và max 244/244 ms, không có non-200. Request
+chậm nhất phía client có DNS 3/TCP 88/TLS 200/TTFB 589 ms nhưng NPM/upstream tại
+thời điểm hoàn tất chỉ 70/67 ms, nên phần lớn tail này nằm trước backend Auth.
 - Studio public route phải trả 401 khi thiếu Basic Auth.
 - Kong/Supavisor bind loopback; reverse proxy nối qua `proxy-network`.
 

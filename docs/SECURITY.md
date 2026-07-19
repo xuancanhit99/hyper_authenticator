@@ -256,8 +256,16 @@ Test dùng placeholder `TEST_ONLY_*`. Shell operator script không chạy với 
 Không dùng command liệt kê toàn bộ process environment trong báo cáo.
 
 Auth load gate chỉ gọi health endpoint bằng public publishable key; không tạo user,
-session hoặc request payload, không in key và chỉ lưu status/duration trong temp
-directory mode 0700 rồi cleanup bằng trap.
+session hoặc request payload, không in key và chỉ lưu status/timing breakdown cùng
+UTC timestamp trong temp directory mode 0700 rồi cleanup bằng trap. NPM timing log
+chỉ nhận exact Auth health route và allowlist tám field status/request/upstream
+timing; không ghi client IP, URI, header, User-Agent, payload hoặc credential.
+
+NPM production compose hiện còn giữ DB password literal nên compose và `.env`
+bắt buộc mode 0600; application `keys.json` cũng mode 0600. Runtime NPM/MariaDB
+được pin exact digest thay vì floating tag. Backup NPM chứa database/config/
+certificate là sensitive artifact, phải giữ directory/file 0700/0600 và không
+đưa vào repository hoặc CI.
 
 ## Dependency và asset supply chain
 
