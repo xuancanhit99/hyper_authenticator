@@ -52,7 +52,8 @@ tag CI xanh, checksum tải lại khớp và release note nêu signing/SMTP/plat
 
 ## Ưu tiên P1 — Product/security
 
-- [ ] Device registry/revocation và key rotation protocol.
+- [x] Device registry bind server-side và targeted auth-session revocation.
+- [ ] Device-specific key wrap/revocation và key rotation protocol hoàn chỉnh.
 - [ ] Trusted-device hoặc QR recovery transfer.
 - [ ] Export/delete account/data UX và retention policy.
 - [ ] Localization đa ngôn ngữ.

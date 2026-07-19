@@ -80,10 +80,45 @@ session_guard_ready=$(docker exec "$DB_CONTAINER" psql \
      ) > 0")
 [[ "$session_guard_ready" == t ]]
 
+device_registry_ready=$(docker exec "$DB_CONTAINER" psql \
+  -X -v ON_ERROR_STOP=1 -U supabase_admin -d "$database_name" -Atqc \
+  "select
+     to_regclass('public.authenticator_device_sessions') is not null
+     and (
+       select relrowsecurity and relforcerowsecurity
+       from pg_class
+       where oid = 'public.authenticator_device_sessions'::regclass
+     )
+     and not has_table_privilege(
+       'authenticated', 'public.authenticator_device_sessions', 'select'
+     )
+     and exists (
+       select 1 from pg_proc
+       where oid = 'public.register_current_authenticator_device(uuid,text,text)'::regprocedure
+         and prosecdef
+     )
+     and exists (
+       select 1 from pg_proc
+       where oid = 'public.list_authenticator_device_sessions()'::regprocedure
+         and prosecdef
+     )
+     and exists (
+       select 1 from pg_proc
+       where oid = 'public.revoke_authenticator_device_session(uuid)'::regprocedure
+         and prosecdef
+     )
+     and position(
+       'delete from auth.sessions'
+       in lower(pg_get_functiondef(
+         'public.revoke_authenticator_device_session(uuid)'::regprocedure
+       ))
+     ) > 0")
+[[ "$device_registry_ready" == t ]]
+
 data_probe=$(docker exec "$DB_CONTAINER" psql \
   -X -v ON_ERROR_STOP=1 -U supabase_admin -d "$database_name" -Atqc \
   "select count(*) >= 0 from auth.users; select count(*) >= 0 from public.encrypted_vault_snapshots")
 [[ $(printf '%s\n' "$data_probe" | grep -c '^t$') -eq 2 ]]
 
 printf '%s\n' \
-  'Supabase restore rehearsal pass: checksum, catalog, full restore, schema, force-RLS và active-session guard.'
+  'Supabase restore rehearsal pass: checksum, catalog, full restore, schema, force-RLS, active-session và device-registry guard.'

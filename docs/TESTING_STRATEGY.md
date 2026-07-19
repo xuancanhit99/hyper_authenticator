@@ -22,13 +22,16 @@ PostgreSQL migration contract. Nó không tự boot emulator/simulator.
 
 ## Coverage hiện tại
 
-136 Flutter tests bao phủ:
+152 Flutter tests bao phủ:
 
 - router/auth/logout/offline-local-vault boundary;
 - post-login navigation trực tiếp hoặc return an toàn về Settings, stale null auth
   event không ghi đè session hiện tại và auth log redaction;
 - repository/BLoC/widget flow revoke session khác: typed failure, confirmation,
   loading chống submit lại và không làm mất authenticated state;
+- device registry model/identity-store/BLoC/widget: installation UUID round-trip,
+  current marker, targeted confirmation, self-revoke/double-submit guard, failure
+  giữ list và identifier redaction;
 - main-navigation URL/tab mapping và deep-link return qua app-lock bootstrap;
 - TOTP URI/validator, countdown nhiều period và lifecycle resume;
 - local vault migration, concurrent mutation, corruption rollback, atomic replace
@@ -89,6 +92,9 @@ Production/staging test dùng isolated user và tự cleanup:
 - encrypted RLS/RPC contract: 20 checks, gồm atomic ciphertext/wrapped-key rotation,
   hai session cùng user, revoke session cũ, RLS/RPC chặn JWT cũ ngay và session
   hiện tại tiếp tục hoạt động;
+- device registry contract: 25 checks, gồm no-direct-table/anonymous, two-user/
+  two-session isolation, server current marker, self/cross-tenant reject, targeted
+  refresh/JWT revoke, current survival và cleanup 0 orphan;
 - password recovery token contract: 8 checks;
 - Studio network/upstream/Basic Auth contract;
 - backup checksum/catalog/tar validation;
@@ -152,8 +158,10 @@ không trong untrusted fork CI.
 
 Production scheduled drill ngày 19-07-2026 restore backup
 `supabase-20260718T100222Z`, pass checksum/catalog/full restore cùng schema/FORCE
-RLS/active-session guard. Evidence 0600 khớp manifest; probe sau drill xác nhận 0
-database `ha_restore_rehearsal_*`. Health và timer systemd đều pass.
+RLS/active-session guard. Sau device-registry rollout, manual rehearsal từ backup
+`supabase-20260719T060755Z` pass thêm registry table/privilege/RPC guard; probe sau
+drill xác nhận 0 database `ha_restore_rehearsal_*`. Health systemd pass và cả
+backup trước/sau migration có encrypted off-host copy.
 
 ## Build matrix
 

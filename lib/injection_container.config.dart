@@ -36,6 +36,15 @@ import 'features/authenticator/domain/usecases/get_accounts.dart' as _i572;
 import 'features/authenticator/domain/usecases/update_account.dart' as _i827;
 import 'features/authenticator/presentation/bloc/accounts_bloc.dart' as _i467;
 import 'features/authenticator/presentation/bloc/local_auth_bloc.dart' as _i534;
+import 'features/settings/data/datasources/authenticator_device_session_remote_data_source.dart'
+    as _i506;
+import 'features/settings/data/datasources/authenticator_installation_identity_store.dart'
+    as _i116;
+import 'features/settings/data/repositories/authenticator_device_session_repository_impl.dart'
+    as _i207;
+import 'features/settings/domain/repositories/authenticator_device_session_repository.dart'
+    as _i357;
+import 'features/settings/presentation/bloc/device_session_bloc.dart' as _i904;
 import 'features/settings/presentation/bloc/session_security_bloc.dart'
     as _i469;
 import 'features/settings/presentation/bloc/settings_bloc.dart' as _i421;
@@ -106,6 +115,12 @@ extension GetItInjectableX on _i174.GetIt {
         sharedPreferences: gh<_i460.SharedPreferences>(),
       ),
     );
+    gh.lazySingleton<_i116.AuthenticatorInstallationIdentityStore>(
+      () => _i116.AuthenticatorInstallationIdentityStore(
+        gh<_i460.SharedPreferences>(),
+        gh<_i706.Uuid>(),
+      ),
+    );
     gh.lazySingleton<_i126.EncryptedSyncMetadataRepository>(
       () => _i961.EncryptedSyncMetadataRepositoryImpl(
         gh<_i460.SharedPreferences>(),
@@ -115,6 +130,11 @@ extension GetItInjectableX on _i174.GetIt {
       () => _i767.AuthRemoteDataSourceImpl(
         gh<_i454.SupabaseClient>(),
         gh<_i828.AppConfig>(),
+      ),
+    );
+    gh.lazySingleton<_i506.AuthenticatorDeviceSessionRemoteDataSource>(
+      () => _i506.AuthenticatorDeviceSessionRemoteDataSource(
+        gh<_i454.SupabaseClient>(),
       ),
     );
     gh.lazySingleton<_i667.EncryptedVaultRemoteDataSource>(
@@ -148,6 +168,17 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i1015.AuthRepository>(
       () => _i111.AuthRepositoryImpl(
         remoteDataSource: gh<_i767.AuthRemoteDataSource>(),
+      ),
+    );
+    gh.lazySingleton<_i357.AuthenticatorDeviceSessionRepository>(
+      () => _i207.AuthenticatorDeviceSessionRepositoryImpl(
+        gh<_i506.AuthenticatorDeviceSessionRemoteDataSource>(),
+        gh<_i116.AuthenticatorInstallationIdentityStore>(),
+      ),
+    );
+    gh.factory<_i904.DeviceSessionBloc>(
+      () => _i904.DeviceSessionBloc(
+        gh<_i357.AuthenticatorDeviceSessionRepository>(),
       ),
     );
     gh.factory<_i469.SessionSecurityBloc>(

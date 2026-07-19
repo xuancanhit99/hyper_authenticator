@@ -88,10 +88,11 @@ secure storage và cập nhật last-seen revision.
   lại nếu inspect yêu cầu.
 - Rotation không đổi local account snapshot. Local mutation chưa sync vẫn còn và
   được xử lý bởi conflict/sync flow ở lần tiếp theo.
-- Đây chưa phải revoke riêng từng thiết bị. Sau rotation, một phiên tin cậy có thể
+- Sau rotation, một phiên tin cậy có thể targeted revoke phiên đã đăng ký hoặc
   bulk revoke mọi Supabase session khác; RLS/RPC active-session guard chặn session
-  đã revoke. Trong khoảng trước revoke, client bị kiểm soát vẫn có thể gửi
-  ciphertext tùy ý qua RPC.
+  đã revoke. Device registry không phải device-specific key wrap/permanent ban.
+  Trong khoảng trước revoke, client bị kiểm soát vẫn có thể gửi ciphertext tùy ý
+  qua RPC.
 - Backup lịch sử vẫn có ciphertext/wrapped DEK cũ. Xoay key không crypto-erase
   backup đã tạo và không làm thiết bị cũ quên DEK plaintext đã giữ.
 
@@ -133,6 +134,8 @@ cho rollback/audit; runtime client không inject bridge. Nếu môi trường kh
 - Use-case tests: setup/cancel/recovery/conflict/publish conflict/read-after-write.
 - Remote contract: 20 checks cho anonymous/RLS/two-user/revision/RPC, atomic thay
   ciphertext + wrapped key và hai-session revoke enforcement.
+- Device registry remote contract dùng isolated users để khóa server-derived
+  current marker, no-direct-access, cross-tenant reject và targeted revoke.
 - Android Pixel AVD E2E: Supabase login, setup vault rỗng revision 1, xoay recovery
   key tới revision 2, xoay DEK + recovery key tới revision 3, xóa app data để mô
   phỏng thiết bị mới rồi recovery thành công về revision 3; authenticated RLS read

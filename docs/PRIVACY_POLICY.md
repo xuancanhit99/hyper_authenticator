@@ -1,6 +1,6 @@
 # Chính sách quyền riêng tư — bản dự thảo phát hành
 
-Cập nhật: 18 tháng 7 năm 2026.
+Cập nhật: 19 tháng 7 năm 2026.
 
 Tài liệu này phản ánh behavior đã triển khai. Trước store submission, owner phải
 điền tên pháp nhân/nhà phát hành, kênh support và host nội dung tại URL HTTPS công khai.
@@ -10,6 +10,9 @@ Tài liệu này phản ánh behavior đã triển khai. Trước store submissi
 Hyper Authenticator xử lý tên nhà cung cấp, tên tài khoản, TOTP secret và tham số
 TOTP để tạo mã xác thực trên thiết bị. Nếu người dùng đăng nhập, Supabase Auth xử
 lý email, password verifier/session và audit/security metadata cần cho xác thực.
+Phiên chạy client mới còn đăng ký một installation UUID ngẫu nhiên, platform,
+display label và timestamp để người dùng nhận diện/đăng xuất riêng phiên. API
+không trả raw session ID, IP hoặc user agent qua device registry.
 
 ## Lưu trữ local
 
@@ -49,6 +52,10 @@ Local data tồn tại tới khi người dùng xóa account/app data theo platf
 encrypted snapshot gắn với Supabase user và được xóa khi backend account bị xóa.
 Backup vận hành có retention giới hạn; bản production hiện giữ 7 local backup và
 14 encrypted off-host copy, sau đó được rotation tự động.
+
+Device registry chỉ list phiên auth còn active. Metadata của phiên inactive quá
+30 ngày được prune khi một phiên hợp lệ đăng ký; xóa Supabase user cascade toàn bộ
+registry row của user đó.
 
 Ứng dụng chưa có self-service account deletion UI. Trước store submission, owner
 phải cung cấp support channel/quy trình xác minh yêu cầu truy cập hoặc xóa account.

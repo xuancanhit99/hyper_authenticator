@@ -43,6 +43,7 @@ Migration theo thứ tự:
 
     supabase/migrations/20260718190000_create_encrypted_vault_snapshots.sql
     supabase/migrations/20260718230000_enforce_active_vault_sessions.sql
+    supabase/migrations/20260719070000_create_authenticator_device_registry.sql
 
 `encrypted_vault_snapshots` có một row/user, `FORCE RLS`, chỉ grant SELECT cho
 authenticated. Insert/update không được grant trực tiếp; client gọi
@@ -72,6 +73,22 @@ client chứng minh DEK cũ không decrypt được revision mới.
 
 Encrypted columns có constraint format/cipher/length. RLS là authorization control;
 AES-GCM mới là confidentiality control đối với TOTP secret.
+
+## Device registry contract
+
+`authenticator_device_sessions` không cấp direct SELECT/INSERT/UPDATE/DELETE cho
+client dù đã bật + force RLS. API chỉ gồm:
+
+- `register_current_authenticator_device`: lấy owner/session từ JWT, nhận
+  installation UUID + display name + platform và upsert đúng current session;
+- `list_authenticator_device_sessions`: chỉ trả active registered row của current
+  user cùng server-derived `is_current`, không trả `session_id`, IP hoặc user agent;
+- `revoke_authenticator_device_session`: nhận opaque registration ID, cấm current
+  session/cross-tenant target, soft-mark row rồi xóa đúng `auth.sessions` target.
+
+Installation UUID không phải credential và không dùng để group/revoke theo
+authorization. Re-login được phép. Session cũ chưa từng register không hiện trong
+list và vẫn cần `SignOutScope.others` khi incident response.
 
 ## Client runtime flow
 
@@ -114,6 +131,15 @@ Contract tạo hai isolated user, hai session cho User A và tự dọn:
   `session_revoked` dù access JWT cũ chưa hết hạn;
 - session hiện tại vẫn SELECT/publish bình thường sau revoke;
 - user B không update row user A qua RPC.
+
+Targeted registry contract:
+
+    scripts/supabase/test_remote_device_registry_contract.sh \
+      /path/to/supabase/.env https://api.example.com
+
+Contract tạo hai user/ba session, kiểm tra no-direct-table/anonymous/cross-tenant,
+current marker, self-revoke reject, targeted refresh/JWT revoke và current session
+survival rồi xóa cả test user.
 
 Recovery và Studio:
 
@@ -177,3 +203,5 @@ và cleanup không còn database rehearsal.
 - SMTP mailbox delivery/expired-token E2E chưa có.
 - External alert channel chưa cấu hình.
 - `synced_accounts` chưa drop để giữ rollback path.
+- Device registry mới thu hồi auth session; chưa có device-specific wrapped DEK,
+  permanent ban hoặc remote wipe local vault.

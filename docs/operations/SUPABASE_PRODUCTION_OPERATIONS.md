@@ -14,6 +14,8 @@ Kiểm tra:
 - encrypted table bật + force RLS;
 - active-session helper là `SECURITY DEFINER`; owner SELECT policy và publish RPC
   còn tham chiếu helper/`session_revoked`;
+- device registry có FORCE RLS/no direct SELECT, ba RPC security-definer và revoke
+  function còn active-session guard + delete đúng `auth.sessions`;
 - public Auth và Recovery HTTP boundary;
 - verified backup gần nhất chưa quá hạn.
 
@@ -64,7 +66,8 @@ cluster, full restore với `--no-owner --no-privileges`, probe:
 - `public.encrypted_vault_snapshots` tồn tại;
 - table có RLS + FORCE RLS;
 - active-session helper/policy/RPC được restore và còn đúng security boundary;
-- hai table đọc được ở database tạm.
+- device-registry table/privilege/RPC được restore đúng security boundary;
+- encrypted và registry table đọc được bằng owner ở database tạm.
 
 Trap luôn force-drop database tạm. Script không restore đè production database.
 Nếu process bị kill cứng, kiểm tra và drop database tên `ha_restore_rehearsal_*`
@@ -121,6 +124,10 @@ Baseline production 19-07-2026: scheduled runner restore backup
 active-session guard; database tạm được drop, evidence/manifest checksum khớp,
 timer và health service đều `success`.
 
+Sau device-registry migration, backup `supabase-20260719T060755Z` và encrypted
+off-host copy được tạo; manual full rehearsal pass thêm registry FORCE RLS/no
+direct SELECT/three-RPC guard, database tạm được drop và health service vẫn pass.
+
 ## Encrypted off-host copy
 
 Script: `scripts/supabase/pull_encrypted_backup.sh`.
@@ -148,6 +155,9 @@ cá nhân làm backup SLA duy nhất; mục tiêu tiếp theo là backup host/ob
 Chạy theo thứ tự:
 
     scripts/supabase/test_remote_encrypted_vault_contract.sh \
+      /path/to/server.env https://api.example.com
+
+    scripts/supabase/test_remote_device_registry_contract.sh \
       /path/to/server.env https://api.example.com
 
     scripts/supabase/test_remote_recovery_contract.sh \
@@ -188,8 +198,9 @@ không mix database mới với service cũ nếu upstream không bảo đảm c
 - Auth/recovery failure: giữ local vault usable, không bật plaintext sync fallback.
 - Revision conflict tăng: không delete encrypted rows; kiểm tra client/server contract.
 - Thiết bị/session nghi bị lộ: từ thiết bị tin cậy xoay vault key, sau đó dùng
-  “Đăng xuất các phiên khác”; xác minh remote session contract. Đây là bulk revoke,
-  chưa có UI chọn riêng từng thiết bị.
+  “Thiết bị đã đăng nhập” để thu hồi target đã register hoặc “Đăng xuất các phiên
+  khác” cho phiên cũ/không nhận diện; xác minh remote device/session contract.
+  Targeted revoke không remote-wipe local vault và không phải permanent ban.
 - Suspected server secret leak: rotate server credential/JWT/SMTP/DB theo scope;
   publishable key xử lý riêng, tuyệt đối không đưa service-role vào app.
 - Suspected recovery key/TOTP leak: đây là user credential incident; rotate TOTP tại

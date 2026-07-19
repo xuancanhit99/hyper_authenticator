@@ -5,10 +5,12 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:hyper_authenticator/core/platform/platform_capabilities.dart';
 import 'package:hyper_authenticator/features/auth/domain/entities/user_entity.dart';
 import 'package:hyper_authenticator/features/auth/presentation/bloc/auth_bloc.dart';
+import 'package:hyper_authenticator/features/settings/presentation/bloc/device_session_bloc.dart';
 import 'package:hyper_authenticator/features/settings/presentation/bloc/settings_bloc.dart';
 import 'package:hyper_authenticator/features/settings/presentation/bloc/session_security_bloc.dart';
-import 'package:hyper_authenticator/features/settings/presentation/widgets/encrypted_sync_unavailable_tile.dart';
+import 'package:hyper_authenticator/features/settings/presentation/widgets/authenticated_devices_tile.dart';
 import 'package:hyper_authenticator/features/settings/presentation/widgets/authentication_session_tile.dart';
+import 'package:hyper_authenticator/features/settings/presentation/widgets/encrypted_sync_unavailable_tile.dart';
 import 'package:hyper_authenticator/features/settings/presentation/widgets/recovery_import_dialog.dart';
 import 'package:hyper_authenticator/features/settings/presentation/widgets/recovery_key_confirmation_dialog.dart';
 import 'package:hyper_authenticator/features/settings/presentation/widgets/sync_conflict_resolution_dialog.dart';
@@ -26,6 +28,7 @@ class SettingsPage extends StatelessWidget {
         BlocProvider(create: (_) => sl<SettingsBloc>()..add(LoadSettings())),
         BlocProvider(create: (_) => sl<SyncBloc>()),
         BlocProvider(create: (_) => sl<SessionSecurityBloc>()),
+        BlocProvider(create: (_) => sl<DeviceSessionBloc>()),
       ],
       child: const _SettingsView(),
     );
@@ -42,20 +45,32 @@ class _SettingsView extends StatelessWidget {
     final encryptedSyncSupported =
         PlatformCapabilities.supportsEncryptedCloudSync;
 
-    return BlocListener<SessionSecurityBloc, SessionSecurityState>(
-      listener: (context, state) {
-        final message = switch (state) {
-          SessionSecuritySuccess() =>
-            'Đã đăng xuất tất cả phiên khác. Thiết bị này vẫn đăng nhập.',
-          SessionSecurityFailure(:final message) => message,
-          _ => null,
-        };
-        if (message != null) {
-          ScaffoldMessenger.of(context)
-            ..hideCurrentSnackBar()
-            ..showSnackBar(SnackBar(content: Text(message)));
-        }
-      },
+    return MultiBlocListener(
+      listeners: [
+        BlocListener<SessionSecurityBloc, SessionSecurityState>(
+          listener: (context, state) {
+            final message = switch (state) {
+              SessionSecuritySuccess() =>
+                'Đã đăng xuất tất cả phiên khác. Thiết bị này vẫn đăng nhập.',
+              SessionSecurityFailure(:final message) => message,
+              _ => null,
+            };
+            if (message != null) _showMessage(context, message);
+          },
+        ),
+        BlocListener<DeviceSessionBloc, DeviceSessionState>(
+          listener: (context, state) {
+            final message = switch (state) {
+              DeviceSessionRevocationSuccess(:final displayName) =>
+                'Đã đăng xuất $displayName.',
+              DeviceSessionLoadFailure(:final message) => message,
+              DeviceSessionActionFailure(:final message) => message,
+              _ => null,
+            };
+            if (message != null) _showMessage(context, message);
+          },
+        ),
+      ],
       child: Scaffold(
         appBar: AppBar(title: const Text('Cài đặt')),
         body: BlocBuilder<SettingsBloc, SettingsState>(
@@ -98,6 +113,10 @@ class _SettingsView extends StatelessWidget {
                       ),
                       if (currentUser != null || encryptedSyncSupported) ...[
                         const Divider(height: 1),
+                        if (currentUser != null) ...[
+                          AuthenticatedDevicesTile(currentUser: currentUser),
+                          const Divider(height: 1),
+                        ],
                         BlocBuilder<SessionSecurityBloc, SessionSecurityState>(
                           builder: (context, sessionSecurityState) =>
                               AuthenticationSessionTile(
@@ -115,6 +134,12 @@ class _SettingsView extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  void _showMessage(BuildContext context, String message) {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(message)));
   }
 }
 

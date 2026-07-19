@@ -70,6 +70,10 @@ không bao giờ được đặt trong Flutter `.env`, asset, build log hoặc b
   last-seen revision cũ và hướng user giữ recovery key mới thay vì retry mù.
 - Settings cho phép một phiên tin cậy gọi Supabase `SignOutScope.others`: phiên
   hiện tại và local vault/DEK được giữ, refresh token của mọi phiên khác bị thu hồi.
+- Device registry bind server-side với JWT current session. Client không gửi
+  `user_id`/`session_id`; list không trả session ID, IP hoặc user agent. Targeted
+  revoke cấm current session và xóa đúng owned `auth.sessions` row. Installation
+  UUID/label chỉ là pseudonymous display metadata, không phải authenticator.
 - RLS SELECT và RPC publish còn yêu cầu JWT `session_id` khớp row còn hiệu lực
   trong `auth.sessions` của `auth.uid()`. Vì vậy access JWT đã cấp cho session vừa
   revoke vẫn có thể còn hợp lệ về chữ ký/thời hạn nhưng không đọc hoặc ghi được
@@ -79,6 +83,8 @@ không bao giờ được đặt trong Flutter `.env`, asset, build log hoặc b
 
 - `FORCE RLS`; owner + active-session SELECT; write chỉ qua RPC kiểm tra
   `auth.uid()` và active `session_id`.
+- Device registry cũng bật + force RLS, không grant direct client table access;
+  register/list/revoke là `SECURITY DEFINER` RPC với active-session guard.
 - Public HTTPS; Studio có Basic Auth; database/Kong/Supavisor không expose trực tiếp.
 - Secret/key server đã rotate trong đợt rebuild; JWT mới dùng ES256/JWKS.
 - Health timer 5 phút; daily verified backup; encrypted off-host copy; scheduled
@@ -117,6 +123,12 @@ không bao giờ được đặt trong Flutter `.env`, asset, build log hoặc b
 Supabase password reset không decrypt E2EE vault. Người dùng cần recovery key hoặc
 một thiết bị còn DEK. Mất toàn bộ thiết bị và recovery key đồng nghĩa mất cloud
 vault về mặt mật mã; support/admin không thể khôi phục plaintext.
+
+Targeted device-session revoke chỉ cắt Supabase authorization và hủy refresh
+session. Nó không remote-wipe local TOTP, không làm thiết bị quên DEK đã giữ và
+không vô hiệu encrypted backup cũ. Khi thiết bị bị mất/compromise, xoay vault key
+trên thiết bị tin cậy trước khi targeted hoặc bulk revoke nếu cần thu hồi cả khả
+năng decrypt current snapshot của client tuân thủ.
 
 Recovery key không được tự động copy, log, gửi analytics hoặc lưu SharedPreferences.
 UI cho phép copy theo hành động rõ ràng; người dùng phải đưa key vào password manager
