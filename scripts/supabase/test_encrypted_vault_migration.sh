@@ -5,6 +5,7 @@ ROOT=$(cd "$(dirname "$0")/../.." && pwd)
 MIGRATIONS=(
   "$ROOT/supabase/migrations/20260718190000_create_encrypted_vault_snapshots.sql"
   "$ROOT/supabase/migrations/20260718230000_enforce_active_vault_sessions.sql"
+  "$ROOT/supabase/migrations/20260719070000_create_authenticator_device_registry.sql"
 )
 IMAGE=${POSTGRES_TEST_IMAGE:-postgres:17-alpine@sha256:979c4379dd698aba0b890599a6104e082035f98ef31d9b9291ec22f2b13059ca}
 CONTAINER="hyper-auth-e2ee-postgres-test-$$"
@@ -159,5 +160,125 @@ then
   exit 1
 fi
 
+register_device() {
+  local user_id=$1
+  local session_id=$2
+  local installation_id=$3
+  local name=$4
+  local platform=$5
+  docker exec -i "$CONTAINER" psql -X -A -t -v ON_ERROR_STOP=1 -U postgres <<SQL
+set role authenticated;
+set request.jwt.claims = '{"sub":"$user_id","session_id":"$session_id"}';
+select registration_id from public.register_current_authenticator_device(
+  '$installation_id'::uuid,
+  '$name',
+  '$platform'
+);
+SQL
+}
+
+docker exec -i "$CONTAINER" psql -X -v ON_ERROR_STOP=1 -U postgres <<'SQL'
+insert into auth.sessions (id, user_id) values (
+  'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
+  '11111111-1111-4111-8111-111111111111'
+);
+SQL
+
+current_registration=$(register_device \
+  11111111-1111-4111-8111-111111111111 \
+  cccccccc-cccc-4ccc-8ccc-cccccccccccc \
+  10000000-0000-4000-8000-000000000001 \
+  'Hyper Authenticator trên Linux' linux | tail -n 1)
+other_registration=$(register_device \
+  11111111-1111-4111-8111-111111111111 \
+  dddddddd-dddd-4ddd-8ddd-dddddddddddd \
+  10000000-0000-4000-8000-000000000002 \
+  'Hyper Authenticator trên Android' android | tail -n 1)
+[[ -n "$current_registration" && -n "$other_registration" ]]
+[[ "$current_registration" != "$other_registration" ]]
+
+device_list_shape=$(docker exec -i "$CONTAINER" psql -X -A -t -v ON_ERROR_STOP=1 -U postgres <<'SQL' | tail -n 1
+set role authenticated;
+set request.jwt.claims = '{"sub":"11111111-1111-4111-8111-111111111111","session_id":"cccccccc-cccc-4ccc-8ccc-cccccccccccc"}';
+select count(*) || ':' || count(*) filter (where is_current)
+from public.list_authenticator_device_sessions();
+SQL
+)
+[[ "$device_list_shape" == '2:1' ]]
+
+if docker exec -i "$CONTAINER" psql -X -v ON_ERROR_STOP=1 -U postgres <<'SQL' >/dev/null 2>&1
+set role authenticated;
+set request.jwt.claims = '{"sub":"11111111-1111-4111-8111-111111111111","session_id":"cccccccc-cccc-4ccc-8ccc-cccccccccccc"}';
+select * from public.authenticator_device_sessions;
+SQL
+then
+  printf '%s\n' 'Authenticated role đã SELECT trực tiếp device registry.' >&2
+  exit 1
+fi
+
+if docker exec -i "$CONTAINER" psql -X -v ON_ERROR_STOP=1 -U postgres <<SQL >/dev/null 2>&1
+set role authenticated;
+set request.jwt.claims = '{"sub":"11111111-1111-4111-8111-111111111111","session_id":"cccccccc-cccc-4ccc-8ccc-cccccccccccc"}';
+select public.revoke_authenticator_device_session('$current_registration'::uuid);
+SQL
+then
+  printf '%s\n' 'Current device session đã tự revoke qua device RPC.' >&2
+  exit 1
+fi
+
+revoked_result=$(docker exec -i "$CONTAINER" psql -X -A -t -v ON_ERROR_STOP=1 -U postgres <<SQL | tail -n 1
+set role authenticated;
+set request.jwt.claims = '{"sub":"11111111-1111-4111-8111-111111111111","session_id":"cccccccc-cccc-4ccc-8ccc-cccccccccccc"}';
+select public.revoke_authenticator_device_session('$other_registration'::uuid);
+SQL
+)
+[[ "$revoked_result" == t ]]
+
+remaining_devices=$(docker exec -i "$CONTAINER" psql -X -A -t -v ON_ERROR_STOP=1 -U postgres <<'SQL' | tail -n 1
+set role authenticated;
+set request.jwt.claims = '{"sub":"11111111-1111-4111-8111-111111111111","session_id":"cccccccc-cccc-4ccc-8ccc-cccccccccccc"}';
+select count(*) from public.list_authenticator_device_sessions();
+SQL
+)
+[[ "$remaining_devices" == 1 ]]
+
+if publish_sql 3 dddddddd-dddd-4ddd-8ddd-dddddddddddd >/dev/null 2>&1; then
+  printf '%s\n' 'Device session đã revoke vẫn publish được encrypted vault.' >&2
+  exit 1
+fi
+
+other_user_registration=$(register_device \
+  22222222-2222-4222-8222-222222222222 \
+  bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb \
+  20000000-0000-4000-8000-000000000001 \
+  'Hyper Authenticator trên Windows' windows | tail -n 1)
+[[ -n "$other_user_registration" ]]
+
+if docker exec -i "$CONTAINER" psql -X -v ON_ERROR_STOP=1 -U postgres <<SQL >/dev/null 2>&1
+set role authenticated;
+set request.jwt.claims = '{"sub":"11111111-1111-4111-8111-111111111111","session_id":"cccccccc-cccc-4ccc-8ccc-cccccccccccc"}';
+select public.revoke_authenticator_device_session('$other_user_registration'::uuid);
+SQL
+then
+  printf '%s\n' 'User A đã revoke được device session của User B.' >&2
+  exit 1
+fi
+
+other_user_devices=$(docker exec -i "$CONTAINER" psql -X -A -t -v ON_ERROR_STOP=1 -U postgres <<'SQL' | tail -n 1
+set role authenticated;
+set request.jwt.claims = '{"sub":"22222222-2222-4222-8222-222222222222","session_id":"bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"}';
+select count(*) from public.list_authenticator_device_sessions();
+SQL
+)
+[[ "$other_user_devices" == 1 ]]
+
+force_rls=$(docker exec -i "$CONTAINER" psql -X -A -t -v ON_ERROR_STOP=1 -U postgres <<'SQL' | tail -n 1
+select relrowsecurity and relforcerowsecurity
+from pg_class
+where oid = 'public.authenticator_device_sessions'::regclass;
+SQL
+)
+[[ "$force_rls" == t ]]
+
 printf '%s\n' \
-  'Encrypted vault migration pass: atomic revision, conflict, owner RLS và active-session enforcement.'
+  'Encrypted vault migration pass: atomic revision, conflict, owner RLS, active-session enforcement và device registry.'

@@ -30,6 +30,7 @@ Tài liệu này lập chỉ mục quyết định bền vững. Quyết định
 | A-022 | Encrypted vault chỉ cho auth session còn active; client bulk revoke session khác | Chấp nhận | [ADR-0008](adr/0008-enforce-active-session-for-encrypted-vault.md) |
 | A-023 | Đóng băng Windows storage identity tương thích release lịch sử | Chấp nhận | [ADR-0009](adr/0009-freeze-windows-storage-identity.md) |
 | A-024 | GitHub Releases là binary channel đầu tiên; Windows/Linux unsigned chỉ phát hành dưới dạng preview | Chấp nhận | [ADR-0010](adr/0010-github-preview-release-first.md) |
+| A-025 | Device registry bind server-side với auth session; targeted revoke không được mô tả là cryptographic device ban | Chấp nhận | [ADR-0011](adr/0011-bind-device-registry-to-auth-session.md) |
 
 Đã áp dụng không đồng nghĩa production-ready; defect/risk nằm trong `PROJECT_STATUS.md`.
 

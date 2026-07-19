@@ -72,6 +72,47 @@ session_guard_ready=$(docker exec supabase-db psql -X -v ON_ERROR_STOP=1 \
      ) > 0")
 [[ "$session_guard_ready" == t ]]
 
+device_registry_ready=$(docker exec supabase-db psql -X -v ON_ERROR_STOP=1 \
+  -U supabase_admin -d postgres -Atqc \
+  "select
+     to_regclass('public.authenticator_device_sessions') is not null
+     and (
+       select relrowsecurity and relforcerowsecurity
+       from pg_class
+       where oid = 'public.authenticator_device_sessions'::regclass
+     )
+     and not has_table_privilege(
+       'authenticated', 'public.authenticator_device_sessions', 'select'
+     )
+     and exists (
+       select 1 from pg_proc
+       where oid = 'public.register_current_authenticator_device(uuid,text,text)'::regprocedure
+         and prosecdef
+     )
+     and exists (
+       select 1 from pg_proc
+       where oid = 'public.list_authenticator_device_sessions()'::regprocedure
+         and prosecdef
+     )
+     and exists (
+       select 1 from pg_proc
+       where oid = 'public.revoke_authenticator_device_session(uuid)'::regprocedure
+         and prosecdef
+     )
+     and position(
+       'is_current_auth_session_active'
+       in pg_get_functiondef(
+         'public.revoke_authenticator_device_session(uuid)'::regprocedure
+       )
+     ) > 0
+     and position(
+       'delete from auth.sessions'
+       in lower(pg_get_functiondef(
+         'public.revoke_authenticator_device_session(uuid)'::regprocedure
+       ))
+     ) > 0")
+[[ "$device_registry_ready" == t ]]
+
 if [[ -f "$STACK_ENV" && -n "$API_ORIGIN" ]]; then
   public_key=''
   for key_name in SUPABASE_PUBLISHABLE_KEY PUBLISHABLE_KEY ANON_KEY; do
@@ -111,4 +152,4 @@ backup_age=$(( $(date +%s) - latest_epoch ))
   "$RESTORE_DRILL_STATE" "$MAX_RESTORE_DRILL_AGE_SECONDS" >/dev/null
 
 printf '%s\n' \
-  'Supabase production health pass: containers, capacity, active-session RLS, HTTPS, backup và restore-drill freshness.'
+  'Supabase production health pass: containers, capacity, active-session/device-registry guard, HTTPS, backup và restore-drill freshness.'

@@ -163,7 +163,29 @@ SharedPreferences giữ theo Supabase user ID:
 - sync enabled/disabled;
 - last-seen remote revision.
 
-Không lưu TOTP secret, DEK hoặc recovery key trong SharedPreferences.
+SharedPreferences còn giữ một installation UUID v4 không phải credential, dùng
+làm display metadata ổn định cho device registry. UUID này không xác thực request,
+không quyết định current session và có thể được tạo lại khi local preference hỏng.
+
+Table `public.authenticator_device_sessions` là metadata server-side:
+
+| Column | Contract |
+|---|---|
+| `registration_id uuid` | Opaque public identifier để targeted revoke |
+| `user_id uuid` | Owner lấy từ `auth.uid()` |
+| `session_id uuid` | Bind server-side từ JWT; không trả về client |
+| `installation_id uuid` | Pseudonymous display metadata do client cung cấp |
+| `display_name`, `platform` | Nhãn tối đa 80 ký tự và platform allowlist |
+| `registered_at`, `last_seen_at` | Registry timestamps |
+| `revoked_at` | Soft marker trước khi xóa target `auth.sessions` row |
+
+Table bật + force RLS và không grant direct client access. List RPC chỉ trả
+`registration_id`, display/platform/timestamp và server-derived `is_current`; nó
+không trả session ID, IP hoặc user agent. Record inactive quá 30 ngày được prune
+khi một active session đăng ký.
+
+Không lưu TOTP secret, DEK, recovery key hoặc auth token trong SharedPreferences
+hay device registry.
 
 ## Compatibility plaintext
 

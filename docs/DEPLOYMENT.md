@@ -13,8 +13,8 @@ stable, signed hoặc store release.
 - Version hiện tại: `1.1.0+10`.
 - Flutter: 3.44.6 stable.
 - Public config qua `--dart-define-from-file=<protected-file>`.
-- Supabase migration E2EE + active-session guard đã deploy và remote contract
-  20/20 pass.
+- Supabase migration E2EE + active-session/device-registry guard đã deploy;
+  encrypted contract 20/20 và targeted registry contract 25/25 pass.
 - `ALLOW_INSECURE_PLAINTEXT_SYNC=false` bắt buộc.
 - Service-role/SSH/SMTP/database credential không được đưa vào client define file.
 
@@ -258,14 +258,18 @@ Local authentication/scanner bị ẩn theo thiết kế.
 
 1. Full verified backup và off-host encrypted copy.
 2. Diff official upstream pin/compose/env; staging upgrade trước.
-3. Apply additive encrypted snapshot migration rồi active-session guard migration
-   theo thứ tự filename, bằng role owner `supabase_admin`.
-4. Chạy official smoke + project remote contracts; phải chứng minh JWT của session
-   vừa revoke bị RLS/RPC chặn nhưng session hiện tại vẫn hoạt động.
+3. Apply additive encrypted snapshot, active-session guard rồi device-registry
+   migration theo thứ tự filename, bằng role owner `supabase_admin`.
+4. Chạy official smoke + encrypted/device remote contracts; phải chứng minh JWT
+   của targeted session bị RLS/RPC chặn nhưng session hiện tại vẫn hoạt động.
 5. Deploy client chỉ ghi encrypted snapshot.
 6. Theo dõi health/journal/revision conflict; không xóa compatibility table.
 7. Rollback client bằng cách tắt sync capability/release, giữ local vault và
    encrypted row. Drop plaintext table chỉ qua migration riêng.
+
+Device-registry rollback: bỏ client UI trước, khôi phục health/restore probe rồi
+drop ba RPC/table bằng migration riêng. Apply/rollback schema không sửa encrypted
+snapshot; auth session đã thu hồi không thể phục hồi, người dùng đăng nhập lại.
 
 ## Backup/rollback
 

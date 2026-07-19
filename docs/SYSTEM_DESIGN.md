@@ -141,6 +141,13 @@ không đưa `AuthBloc` ra khỏi trạng thái authenticated. Action này giữ
 local vault và DEK của thiết bị hiện tại. Với thiết bị nghi bị lộ, UI hướng người
 dùng xoay vault key trước rồi revoke các session khác.
 
+`DeviceSessionBloc` đăng ký rồi list các phiên chạy client có device registry.
+Backend tự bind registry row với JWT `session_id`; client chỉ giữ installation UUID
+không phải credential. Targeted revoke cấm current row và xóa đúng target
+`auth.sessions`, vì vậy active-session guard chặn cloud access ngay. Local vault
+trên target không bị xóa, target có thể đăng nhập lại và session cũ chưa đăng ký
+vẫn chỉ xử lý được bằng bulk revoke.
+
 ## Encrypted sync
 
 ### Setup
@@ -221,6 +228,9 @@ snapshot, nhưng auth session và backup cũ không tự bị revoke.
 - Write chỉ qua `SECURITY DEFINER` RPC dùng cùng owner + active-session guard.
 - `SignOutScope.others` xóa các session khác; RLS trả 0 row và RPC trả
   `session_revoked` cho JWT cũ ngay cả trước khi JWT hết hạn.
+- Device registry chỉ qua security-definer RPC: register bind current JWT, list
+  active owned row không lộ session ID và targeted revoke xóa một non-current
+  `auth.sessions` row. Installation ID/label không được dùng làm authorization.
 - Expected revision sai trả SQLSTATE `PT409`/`revision_conflict`.
 - `synced_accounts` plaintext còn là compatibility schema, không nằm trong runtime DI.
 
@@ -254,7 +264,7 @@ Web chỉ có local TOTP + camera QR.
 ## Khoảng trống đã biết
 
 - E2EE v1 đã có recovery-key re-wrap, DEK rotation và bulk revoke mọi session
-  khác; chưa có device registry/revoke riêng từng thiết bị, device-specific key
-  wrap, tombstone/history hoặc Web support.
+  khác. Device registry + targeted auth-session revoke đã có; chưa có permanent
+  device ban, device-specific key wrap, tombstone/history hoặc Web E2EE support.
 - Device-level camera/biometric/secure-storage integration coverage chưa đầy đủ.
 - Alerting backend chưa có external notification channel.

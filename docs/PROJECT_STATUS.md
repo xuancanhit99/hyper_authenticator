@@ -38,7 +38,7 @@ mô tả preview là stable production release.
 |---|---|
 | `flutter doctor -v` | Pass, không có lỗi toolchain |
 | `flutter analyze` | Pass, 0 diagnostic |
-| `flutter test` | 136 test pass |
+| `flutter test` | 152 test pass |
 | Vietnamese UI contract | Primary auth/accounts/settings/add-edit surface đã dùng tiếng Việt; app khóa `Locale('vi')` cùng Material/Widgets/Cupertino localization delegate và widget test xác minh locale runtime, vẫn giữ thuật ngữ technical cần thiết |
 | Core accessibility automation | Auth/accounts/add-account và Settings recovery/conflict/session dialog pass labeled tap target + Android 48×48 + WCAG text-contrast guideline trên light/dark theme ở viewport 320×640/text scale 200%; keyboard regression bao phủ Auth forms, theme/add/search/copy, manual add-account và sensitive dialog Tab/Shift+Tab/Enter/Space/Escape; TOTP secret key/raw recovery key không vào semantics tree |
 | Lifecycle privacy shield | Widget regression che toàn bộ router ở `inactive/hidden/paused/detached`, bỏ focus, chặn interaction/ticker và loại nội dung bên dưới khỏi semantics; `resumed` khôi phục state hiện có. Đây không phải bằng chứng active screenshot prevention hoặc native app-switcher snapshot trên thiết bị thật |
@@ -55,6 +55,7 @@ mô tả preview là stable production release.
 | Linux authenticated E2EE runtime | Pass trên Ubuntu 24.04 arm64 container tạm: client thật đăng nhập production Supabase, setup revision 1, sync revision 2, fresh-device recovery, recovery-key rotation revision 3, reject key cũ, vault-key rotation revision 4 và recovery cuối; operator xóa user/row và admin probe xác nhận 404 |
 | Windows release + installer | Pass upgrade vault thật từ source `1.0.0+9`/plugin 3.1.2 sang current COW v2, configured x64 bundle, local-vault runtime và NSIS 3.12 unsigned candidate; install/launch/metadata-upgrade/uninstall giữ AppData pass, bundle + installer/checksum giữ 14 ngày |
 | GitHub Desktop Preview | `v1.1.0-preview.1` public pre-release tại commit `6c3bd4b`; Windows x64 NSIS và Linux amd64 `.deb` cùng individual checksum + `SHA256SUMS.txt`; public unauthenticated re-download khớp SHA-256 |
+| Device registry client | Model/identity store/repository/BLoC/widget regression pass: stable installation UUID, server-bound load, current-session protection, targeted confirmation, double-submit guard và identifier redaction |
 
 Build không có `--dart-define-from-file` chỉ chứng minh compile. Runtime/release
 verification phải inject `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY` và
@@ -89,6 +90,10 @@ verification phải inject `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY` và
 - Settings có bulk revoke mọi Supabase session khác; session hiện tại, local vault
   và DEK được giữ. Backend đối chiếu JWT `session_id` với `auth.sessions` trong cả
   RLS/RPC nên session đã revoke mất quyền encrypted vault ngay.
+- Settings có device registry cho phiên chạy client mới. Backend tự bind owner và
+  current `session_id`, không trả raw session/IP/user-agent; targeted revoke cấm
+  current/cross-tenant row và xóa đúng auth session. Local TOTP trên target vẫn
+  được giữ và re-login được phép; bulk revoke vẫn là fallback cho phiên chưa register.
 - Web Settings không mời đăng nhập để dùng cloud sync khi capability bị tắt.
 - Primary UI đã dùng tiếng Việt nhất quán cho auth, navigation, accounts,
   add/edit, settings và user-facing failure; Web document khai báo `lang="vi"`.
@@ -116,6 +121,10 @@ verification phải inject `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY` và
   `PT409` khi revision lệch hoặc `session_revoked` khi phiên đã bị thu hồi.
 - Remote encrypted contract: 20/20 pass; recovery contract: 8/8 pass; Studio
   proxy/DNS/upstream/Basic Auth contract pass.
+- Device registry migration đã deploy production. Remote isolated-user contract
+  25/25 pass: direct table/anonymous/cross-tenant bị chặn, current marker đúng,
+  self-revoke bị từ chối, targeted refresh/JWT mất quyền ngay và current session
+  tiếp tục hoạt động; cleanup còn 0 test user và 0 orphan registry row.
 - Auth load budget dùng public key: 100/100 HTTP 200 ở concurrency 10; p95 578 ms,
   max 862 ms, dưới ngưỡng 1.000/2.000 ms. Negative path 1 ms bị từ chối đúng;
   gate không tạo user/payload. Health trước đó xác nhận 11 container healthy,
@@ -124,7 +133,7 @@ verification phải inject `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY` và
 - Backup gồm logical database, globals, quiesced Storage và sensitive config;
   có SHA-256, permission 0700/0600 và validation catalog/tar.
 - Full restore rehearsal đã pass vào database tạm rồi tự động drop; xác minh
-  `auth.users`, encrypted table và `FORCE RLS`.
+  `auth.users`, encrypted/device-registry table, `FORCE RLS`, privilege và RPC guard.
 - Restore drill timer đã enable: trigger hằng ngày, thực thi tối đa mỗi 7 ngày và
   retry ngày sau khi fail. Lượt production 19-07-2026 restore backup
   `supabase-20260718T100222Z` pass; evidence 0600/checksum khớp, health kiểm tra
@@ -157,10 +166,10 @@ Capability là hành vi source hiện tại, không thay thế device test và s
    object storage hoặc backup host độc lập nếu yêu cầu SLA cao.
 5. Low-concurrency Auth budget đã enforce; chưa có long-duration soak hoặc
    production-scale workload test.
-6. E2EE v1 đã có DEK rotation và bulk revoke mọi auth session khác với server-side
-   enforcement. Chưa có device registry/revoke riêng từng thiết bị, device-specific
-   key wrap, tombstone/history hoặc Web trust model. Backup cũ vẫn dùng key
-   generation cũ.
+6. E2EE v1 đã có DEK rotation, bulk revoke và targeted revoke cho registered auth
+   session với server-side enforcement. Chưa có permanent device ban,
+   device-specific key wrap, tombstone/history hoặc Web E2EE trust model. Backup
+   cũ vẫn dùng key generation cũ; targeted revoke không remote-wipe local vault.
 7. Local-vault integration smoke đã pass Android emulator, iOS Simulator và
    GitHub-hosted Windows Server 2025; biometric/camera và secure-storage behavior
    trên thiết bị thật vẫn chưa được chứng minh. Mobile harness chủ động từ chối
@@ -208,6 +217,9 @@ Capability là hành vi source hiện tại, không thay thế device test và s
   default branch.
 - GitHub Actions run `29664983856` tại merge commit `900f9fc` pass 7/7; WCAG
   text-contrast light/dark regression được xác minh trên default branch.
+- GitHub Actions run `29675120583` tại merge commit `37619f7` pass 7/7; edit
+  operation-completion fix được xác minh cùng Windows/Linux artifact runtime,
+  Android, Apple, Web, quality và secret history gate.
 - Tag CI run `29656402708` tại `v1.1.0-preview.1`/`6c3bd4b` pass 7/7. Release
   public có pre-release flag, không phải draft, đúng năm asset; Windows SHA-256
   `5bccb8f8…07a47`, Linux SHA-256 `2628ca05…46d33` đã được tải lại không auth và
