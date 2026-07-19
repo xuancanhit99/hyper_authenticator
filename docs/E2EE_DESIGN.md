@@ -81,8 +81,10 @@ secure storage và cập nhật last-seen revision.
 
 - User phải xác nhận đã lưu recovery key mới trước publish.
 - Hủy hoặc revision conflict giữ nguyên DEK, recovery key và snapshot cũ.
-- Thiết bị chỉ giữ DEK cũ không decrypt được current snapshot và chuyển sang flow
-  recovery; đây là bulk cryptographic read revocation cho client tuân thủ.
+- Thiết bị active chỉ giữ DEK cũ không decrypt trực tiếp current snapshot; client
+  đọc exact HPKE wrap generation mới, verify membership proof, decrypt snapshot
+  rồi mới persist DEK. Thiết bị bị exclude/mất private key/wrap sai mới chuyển
+  sang HA1 recovery; đây là cryptographic read revocation theo device key.
 - Lỗi transport sau request, lỗi verify hoặc lỗi persist DEK là trạng thái mơ hồ:
   metadata không được nâng revision, UI bắt buộc giữ recovery key mới và recovery
   lại nếu inspect yêu cầu.
@@ -142,12 +144,20 @@ cho rollback/audit; runtime client không inject bridge. Nếu môi trường kh
   xác nhận remote và test user/row được xóa sau kiểm tra.
 - Android Pixel AVD session smoke: isolated user có hai auth session, client SDK
   bulk revoke xuống một session, current session vẫn authenticated; cleanup pass.
+- Device registry production cho phép list/targeted session revoke nhưng chưa đổi
+  key hierarchy. HPKE Base primitive, client coordinator và additive migration/RPC
+  production đã pass official vectors cùng PostgreSQL two-phase enrollment,
+  server-only DEK verifier, exact-set rotation và crypto-revoke contract. Schema
+  đã deploy production và pass Linux isolated client runtime tới revision 4.
+  Android AVD/iOS Simulator còn pass two-session exact rotation: secondary giữ
+  DEK cũ tự unwrap generation mới mà không dùng HA1.
 - Release plaintext guard và DI generation test path.
 
 ## Khoảng trống đã biết
 
-- Chưa có individual device registry, revoke riêng một thiết bị hoặc
-  device-specific key wrap; hiện chỉ có bulk revoke mọi session khác.
+- Device registry và targeted auth-session revoke đã deploy. Device-specific key
+  wrap có ADR được duyệt, server production và Linux/Android/iOS lost-device-key
+  recovery/rotation runtime; còn physical two-device và independent review.
 - Trusted-device/QR transfer.
 - Tombstone hoặc history ngoài một current snapshot.
 - Browser E2EE threat model.

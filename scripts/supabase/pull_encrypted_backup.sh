@@ -55,7 +55,7 @@ ssh_options=(
 remote_target="$REMOTE_USER@$REMOTE_HOST"
 
 latest_backup=$(ssh "${ssh_options[@]}" "$remote_target" \
-  "find '$REMOTE_BACKUP_ROOT' -mindepth 1 -maxdepth 1 -type d -name 'supabase-*' -printf '%f\\n' | sort | tail -1")
+  "sudo -n find '$REMOTE_BACKUP_ROOT' -mindepth 1 -maxdepth 1 -type d -name 'supabase-*' -printf '%f\\n' | sort | tail -1")
 [[ "$latest_backup" =~ ^supabase-[0-9]{8}T[0-9]{6}Z$ ]]
 
 output_name="$latest_backup.tar.gz.age"
@@ -63,7 +63,7 @@ final_output="$DESTINATION_ROOT/$output_name"
 if [[ ! -f "$final_output" ]]; then
   temporary_output=$(mktemp "$DESTINATION_ROOT/.${output_name}.XXXXXX")
   ssh "${ssh_options[@]}" "$remote_target" \
-    "tar -C '$REMOTE_BACKUP_ROOT' -czf - '$latest_backup'" \
+    "sudo -n tar -C '$REMOTE_BACKUP_ROOT' -czf - '$latest_backup'" \
     | age -r "$recipient" -o "$temporary_output"
   chmod 600 "$temporary_output"
   mv "$temporary_output" "$final_output"

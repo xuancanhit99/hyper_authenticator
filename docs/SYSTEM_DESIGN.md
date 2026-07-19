@@ -220,6 +220,13 @@ request được báo là trạng thái mơ hồ và last-seen revision không t
 mới là đường khôi phục. Thiết bị tuân thủ chỉ có DEK cũ không đọc được current
 snapshot, nhưng auth session và backup cũ không tự bị revoke.
 
+Surviving native device không thử decrypt mãi bằng DEK cũ rồi yêu cầu HA1. Khi
+current snapshot có `device_wrap_version=1`, client đọc exact current-device wrap,
+unwrap bằng private key local, verify membership proof và chỉ persist DEK mới sau
+khi current snapshot decrypt/validate thành công. Missing private key, excluded
+device, session binding sai hoặc wrap/proof lỗi đều fail closed; auth/server failure
+không bị mô tả sai thành recovery-key failure.
+
 ## Backend
 
 - Một row `encrypted_vault_snapshots` cho mỗi `auth.users.id`.
@@ -264,7 +271,10 @@ Web chỉ có local TOTP + camera QR.
 ## Khoảng trống đã biết
 
 - E2EE v1 đã có recovery-key re-wrap, DEK rotation và bulk revoke mọi session
-  khác. Device registry + targeted auth-session revoke đã có; chưa có permanent
-  device ban, device-specific key wrap, tombstone/history hoặc Web E2EE support.
+  khác. Device registry + targeted auth-session revoke đã deploy. ADR-0012 cùng
+  device-wrap client/migration/RPC đã deploy và pass focused, PostgreSQL, remote
+  regression cùng Linux/Android/iOS lost-key runtime và two-session survivor
+  auto-unwrap; physical two-device/independent review, tombstone/history và Web
+  E2EE vẫn chưa có.
 - Device-level camera/biometric/secure-storage integration coverage chưa đầy đủ.
 - Alerting backend chưa có external notification channel.

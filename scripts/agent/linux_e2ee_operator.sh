@@ -94,8 +94,11 @@ fi
 operator_tmp=$(mktemp -d \
   "${TMPDIR:-/tmp}/hyper-auth-e2ee-operator.XXXXXX")
 operator_headers="$operator_tmp/operator.headers"
+create_request="$operator_tmp/create-user-request.json"
 create_response="$operator_tmp/create-user.json"
 delete_response="$operator_tmp/delete-user.json"
+email_input="$operator_tmp/email"
+password_input="$operator_tmp/password"
 user_id=
 
 write_operator_headers() {
@@ -125,18 +128,22 @@ cleanup() {
 }
 trap cleanup EXIT
 chmod 0700 "$operator_tmp"
+umask 077
 
 suffix="$(date +%s)-$$"
 test_email="e2ee-linux-${suffix}@example.invalid"
 test_password="TEST_ONLY-$(openssl rand -hex 18)"
+printf '%s' "$test_email" >"$email_input"
+printf '%s' "$test_password" >"$password_input"
+jq -cn --rawfile email "$email_input" --rawfile password "$password_input" \
+  '{email: $email, password: $password, email_confirm: true}' >"$create_request"
+rm -f "$email_input" "$password_input"
 
 write_operator_headers
-jq -cn --arg email "$test_email" --arg password "$test_password" \
-  '{email: $email, password: $password, email_confirm: true}' |
-  curl --max-time 20 -fsS "$base_url/auth/v1/admin/users" -X POST \
+curl --max-time 20 -fsS "$base_url/auth/v1/admin/users" -X POST \
     -H "@$operator_headers" \
-    -H 'Content-Type: application/json' -d @- >"$create_response"
-find "$operator_headers" -maxdepth 0 -delete
+    -H 'Content-Type: application/json' -d @"$create_request" >"$create_response"
+rm -f "$operator_headers" "$create_request"
 
 user_id=$(jq -r '.id // empty' "$create_response")
 if [[ -z "$user_id" ]]; then

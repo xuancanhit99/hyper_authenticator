@@ -113,6 +113,46 @@ device_registry_ready=$(docker exec supabase-db psql -X -v ON_ERROR_STOP=1 \
      ) > 0")
 [[ "$device_registry_ready" == t ]]
 
+device_wrap_ready=$(docker exec supabase-db psql -X -v ON_ERROR_STOP=1 \
+  -U supabase_admin -d postgres -Atqc \
+  "select
+     to_regclass('public.authenticator_device_keys') is not null
+     and to_regclass('public.authenticator_device_key_wraps') is not null
+     and to_regclass('private.encrypted_vault_membership_verifiers') is not null
+     and not has_table_privilege(
+       'authenticated', 'public.authenticator_device_keys', 'select'
+     )
+     and not has_table_privilege(
+       'authenticated', 'public.authenticator_device_key_wraps', 'select'
+     )
+     and not has_table_privilege(
+       'authenticated', 'private.encrypted_vault_membership_verifiers', 'select'
+     )
+     and exists (
+       select 1 from pg_proc
+       where oid = 'public.publish_encrypted_vault_snapshot_v2(bigint,bigint,text,smallint,text,text,text,text,smallint,text,text,text)'::regprocedure
+         and prosecdef
+     )
+     and exists (
+       select 1 from pg_proc
+       where oid = 'public.begin_authenticator_device_key_enrollment(uuid,text,text,text)'::regprocedure
+         and prosecdef
+     )
+     and to_regprocedure(
+       'public.begin_authenticator_device_key_enrollment(uuid,text,text)'
+     ) is null
+     and exists (
+       select 1 from pg_proc
+       where oid = 'public.publish_authenticator_device_key_wrap(uuid,text,bigint,smallint,text,text,text,text,text,text,text,text)'::regprocedure
+         and prosecdef
+     )
+     and exists (
+       select 1 from pg_proc
+       where oid = 'public.rotate_encrypted_vault_device_keys(bigint,bigint,text,smallint,text,text,text,text,smallint,text,text,text,text,jsonb,uuid[])'::regprocedure
+         and prosecdef
+     )")
+[[ "$device_wrap_ready" == t ]]
+
 if [[ -f "$STACK_ENV" && -n "$API_ORIGIN" ]]; then
   public_key=''
   for key_name in SUPABASE_PUBLISHABLE_KEY PUBLISHABLE_KEY ANON_KEY; do
@@ -152,4 +192,4 @@ backup_age=$(( $(date +%s) - latest_epoch ))
   "$RESTORE_DRILL_STATE" "$MAX_RESTORE_DRILL_AGE_SECONDS" >/dev/null
 
 printf '%s\n' \
-  'Supabase production health pass: containers, capacity, active-session/device-registry guard, HTTPS, backup và restore-drill freshness.'
+  'Supabase production health pass: containers, capacity, active-session/device-registry/device-wrap guard, HTTPS, backup và restore-drill freshness.'

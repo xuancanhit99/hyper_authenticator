@@ -129,8 +129,9 @@ Không thêm secret thật vào fixture. Dùng `TEST_ONLY_*` và UUID/email isol
 
 ## Device integration smoke
 
-Suite local-vault kiểm tra bootstrap có config, thêm account qua UI, round-trip
-secure storage, lifecycle foreground/hidden, BLoC reload, navigation và cleanup:
+Suite local-vault kiểm tra bootstrap có config, direct secure-storage
+`write/read/readAll/delete`, thêm account qua UI, vault round-trip, lifecycle
+foreground/hidden, BLoC reload, navigation và cleanup:
 
     scripts/agent/device_integration.sh \
       emulator-5554 .env --allow-test-vault-reset
@@ -140,7 +141,8 @@ Tham số đầu cũng có thể là UUID của iOS Simulator đang boot. Harnes
 - chỉ chấp nhận Android emulator hoặc iOS Simulator mà host nhận diện được;
 - từ chối thiết bị thật và target macOS;
 - yêu cầu opt-in `--allow-test-vault-reset` vì suite thay toàn bộ local vault trên
-  target bằng fixture rồi xóa fixture trong `finally`;
+  target bằng fixture rồi xóa fixture, toàn bộ secure-storage test và preference
+  trong `finally`, kể cả khi preflight/seed fail;
 - không upload cloud snapshot, không dùng TOTP secret hoặc account thật.
 
 Không nới guard để chạy trên thiết bị người dùng. Device test cho biometric/camera
@@ -244,6 +246,34 @@ trước khi boot Flutter và xóa cùng container. Không chạy script với `
 
 Đây là authenticated debug runtime evidence theo kiến trúc host của Docker. Nó
 không thay signed `.deb`, historical-upgrade hoặc distro/desktop matrix.
+
+## Mobile authenticated E2EE runtime
+
+Preferred operator wrapper tự tạo/xóa isolated user và giữ service-role key ngoài
+Flutter process/repository:
+
+    scripts/agent/mobile_e2ee_operator.sh \
+      .env /secure/path/supabase-operator.env \
+      <emulator-or-simulator-id> \
+      --allow-isolated-user-and-emulator-vault-reset
+
+Operator env phải nằm ngoài repository, mode 0600. Wrapper dùng header/config tạm
+0600, không đặt credential trong argv/log, luôn thử xóa user trong trap và yêu cầu
+admin GET trả 404 sau cleanup.
+
+Khi user lifecycle được quản lý riêng, có thể chạy client-only harness:
+
+    E2EE_TEST_EMAIL=<isolated-user> \
+    E2EE_TEST_PASSWORD=<temporary-password> \
+    scripts/agent/mobile_e2ee_integration.sh \
+      .env <emulator-or-simulator-id> \
+      --allow-emulator-vault-reset
+
+Harness fail closed với thiết bị thật/macOS, service-role environment hoặc target
+không phải Android/iOS. Credential tạm chỉ vào config 0600 trong sandbox và bị xóa
+sau test. Suite reset local vault; tạo hai auth session/installation/device key;
+xóa DEK + primary private key rồi dùng HA1 thay key; xoay recovery key + DEK tới
+revision 4; bắt secondary và primary stale-DEK path tự unwrap generation mới.
 
 ## Dependency
 

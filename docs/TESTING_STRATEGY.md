@@ -18,11 +18,15 @@ build. Bỏ `<env-file>` chỉ chứng minh compile, không chứng minh bootstr
 
 `full` phải pass generated-code drift, format (gồm source `integration_test`),
 analyze, platform manifest/entitlement contract, Flutter test và encrypted
-PostgreSQL migration contract. Nó không tự boot emulator/simulator.
+PostgreSQL migration contract. Contract hiện gồm device-wrap two-phase enrollment,
+legacy cutoff, server-only DEK verifier chống fake self-wrap, active-device binding,
+exact-set rotation và atomic crypto revoke. Nó không tự boot emulator/simulator.
 
 ## Coverage hiện tại
 
-152 Flutter tests bao phủ:
+186 Flutter tests bao phủ cả focused regression cho device enrollment, local
+unwrap/proof trước confirm, generation-aware publish và exact-set rotation
+preparation, cùng các nhóm sau:
 
 - router/auth/logout/offline-local-vault boundary;
 - post-login navigation trực tiếp hoặc return an toàn về Settings, stale null auth
@@ -41,7 +45,8 @@ PostgreSQL migration contract. Nó không tự boot emulator/simulator.
 - secure key-store initialize/write/delete verification;
 - encrypted setup/cancel/recovery/wrong key/sync/conflict/use-cloud/keep-local;
 - recovery-key rotation success/cancel/concurrent conflict và ambiguous verify;
-- vault-key rotation success/cancel/conflict, stale-device recovery requirement,
+- vault-key rotation success/cancel/conflict, surviving-device automatic unwrap,
+  tampered wrap không persist DEK, revoked binding không giả thành recovery,
   post-commit transport/verify ambiguity và secure-storage write failure;
 - recovery dialog tự quản lý controller, đóng route an toàn khi submit hoặc hủy;
 - recovery key bị redact khỏi BLoC event/state transition string;
@@ -102,7 +107,9 @@ Production/staging test dùng isolated user và tự cleanup:
 - scheduled restore contract không Docker: due/skip, failure giữ evidence cũ,
   backup quá hạn, evidence mode/schema và systemd sandbox/timer;
 - public Auth health load budget: 100 request, concurrency 10, 100% HTTP 200,
-  p95 tối đa 1 giây và single-request tối đa 2 giây.
+  p95 tối đa 1 giây và single-request tối đa 2 giây;
+- Auth load pacing contract: sleep đúng giữa batch, không sleep sau batch cuối và
+  từ chối interval âm trước network; dùng cho soak bảo thủ không tạo user/payload.
 
 Android Pixel AVD còn xác minh SDK thật gọi bulk revoke: isolated user có hai
 session, UI xác nhận action, session count giảm 2→1, current session vẫn ở Settings
@@ -110,10 +117,19 @@ và test user/row/app data được cleanup.
 
 Device integration smoke dùng fixture isolated và explicit destructive opt-in đã
 pass trên Android Pixel AVD và iOS 26.5 Simulator. Suite kiểm tra bootstrap với
-public config, thêm account qua UI, secure-storage round-trip, lifecycle
-foreground/hidden, BLoC reload, chuyển Settings/Accounts và local-vault cleanup.
+public config, probe `write/read/readAll/delete` trực tiếp qua secure-storage,
+thêm account qua UI, vault round-trip, lifecycle foreground/hidden, BLoC reload,
+chuyển Settings/Accounts và cleanup vault/secure-storage/preferences trong
+`finally`, kể cả khi bootstrap hoặc seed fail.
 Runner chỉ chấp nhận Android emulator hoặc iOS Simulator; thiết bị thật và macOS
 bị từ chối để không chạm vault người dùng.
+
+Authenticated E2EE smoke trên Android AVD và iOS Simulator còn tạo hai Supabase
+session, installation UUID và X25519 key độc lập. Sau khi cả hai active ở generation
+1, primary session rotate exact wrap set; secondary giữ DEK cũ và phải tự unwrap
+generation 2 rồi decrypt revision 4 không dùng HA1. Suite cũng ghi đè primary bằng
+DEK cũ để khóa cùng regression, sau đó operator xóa isolated user và admin GET phải
+trả 404. Đây là two-session native-process evidence, chưa phải hai thiết bị vật lý.
 
 Linux CI dùng cùng behavioral suite nhưng chạy trong private D-Bus Secret Service,
 Xvfb và XDG sandbox mode 0700. Harness chỉ chạy khi `CI=true`, kiểm tra keyring
@@ -217,6 +233,11 @@ post-probe current image/health/hash và 5/5 public SPA route pass.
 - Remote schema change phải có migration test + isolated cross-user contract.
 - Field persist phải có round-trip test, không silently default.
 - UI conflict/destructive operation cần widget/integration coverage khi ổn định.
+- Cryptographic protocol mới phải khớp official/pinned vector trước round-trip và
+  tamper test. Device-wrap foundation hiện dùng RFC 9180/CFRG vector cho cả
+  AES-128-GCM reference suite và AES-256-GCM suite được chọn; regression còn khóa
+  delimiter-collision, exact canonical envelope, oversized input và X25519
+  low-order public key.
 
 ## Secret hygiene trong test
 
@@ -244,6 +265,37 @@ post-probe current image/health/hash và 5/5 public SPA route pass.
   service-role key không được lưu ở GitHub Actions secret hoặc truyền vào Flutter.
 - `scripts/supabase/test_auth_load_budget.sh` chỉ dùng public publishable key,
   không tạo user/payload và fail khi HTTP hoặc latency vượt budget.
+  `test_auth_load_budget_contract.sh` giả lập network/sleep để khóa pacing trước
+  khi dùng `LOAD_BATCH_INTERVAL_MS` trên production; slowest request chỉ báo UTC,
+  DNS/TCP/TLS/TTFB/total timing, không báo URL/header/IP.
+- `test_nginx_proxy_manager_timing_contract.sh` khóa exact health route, exact
+  image digest pin, logrotate-compatible filename và tám timing field; cấm đưa
+  request/client variable vào NPM timing log.
+- `backup_nginx_proxy_manager.sh` tạo transactional least-privilege NPM database dump cùng
+  config/app/Let’s Encrypt archive, checksum và retention 0700/0600; raw DB volume
+  và access log không đi vào archive.
+- `rehearse_nginx_proxy_manager_backup.sh` xác minh checksum/archive rồi restore
+  vào exact pinned MariaDB image với network tắt; yêu cầu đủ user/proxy/certificate/
+  setting table và cleanup container/sandbox.
+- `rehearse_nginx_proxy_manager_upgrade.sh` clone app/certificate/database vào
+  internal Docker network không host port, rồi khóa exact target version, API 200,
+  Nginx syntax và 4/4 core table trước khi cleanup container/volume/network/sandbox.
+- `test_nginx_proxy_manager_backup_contract.sh` khóa transactional/exclusion,
+  exact image/database metadata, authenticated readiness, no-port canary và network
+  isolation; ngăn quay lại `mariadb-admin ping` vốn có thể nhận nhầm temporary init server.
+- `test_nginx_proxy_manager_route_matrix.sh` khám phá mọi enabled HTTP domain,
+  fail khi có stream/wildcard chưa cover, khóa exact critical status và chỉ cho
+  pre-existing 5xx qua protected hash/status exception; output không lộ domain.
+- `prepare_nginx_proxy_manager_upgrade.sh` chạy route → fresh backup → restore →
+  canary → route, normalized-compare candidate Compose và tạo checksum bundle mà
+  không mutate production. Contract test cấm compose lifecycle command/file swap.
+- `deploy_nginx_proxy_manager_upgrade.sh` chỉ nhận checksum maintenance bundle đã
+  byte-match current Compose và exact current/target image. Nó recreate riêng app,
+  khóa runtime/API/Nginx/full route sau deploy và tự rollback exact Compose/image
+  nếu fail; contract cấm dừng/xóa MariaDB, network hoặc volume.
+- `hyper-auth-nginx-proxy-manager-routes.timer` chạy full redacted route matrix mỗi
+  giờ, persistent qua reboot; contract khóa manifest path, explicit mutation flag
+  và systemd sandbox không inject credential.
 - `test_scheduled_restore_drill_contract.sh` dùng backup/rehearsal fixture tạm,
   không đọc Docker hoặc backup thật; full gate chạy contract này trên mọi platform.
 - `windows_integration.ps1` và `windows_installer_smoke.ps1` chỉ nhận GitHub-hosted
@@ -258,12 +310,19 @@ post-probe current image/health/hash và 5/5 public SPA route pass.
 ## Khoảng trống đã biết
 
 1. Device integration bao phủ local vault/navigation/lifecycle trên Android
-   emulator, iOS Simulator và GitHub-hosted Windows Server 2025; biometric/camera
+   emulator, iOS Simulator và GitHub-hosted Windows Server 2025; Android/iOS còn
+   pass direct secure-storage preflight và fail-safe cleanup. Biometric/camera
    và secure-storage behavior trên thiết bị thật chưa được chứng minh.
 2. Chưa có two-device physical E2EE test.
+   Linux sandbox, Android AVD và iOS Simulator đã pass lost-device-key HA1
+   replacement + rotation; Android/iOS còn pass two-session survivor auto-unwrap.
+   Chúng không thay physical-device hoặc independent cryptographic review.
 3. Chưa có mailbox SMTP/expired-link E2E.
-4. Low-concurrency Auth budget đã enforce; chưa có long-duration soak hoặc
-   production-scale workload test.
+4. Low-concurrency Auth budget đã enforce. Soak đầu gần 19 phút đạt 900/900 và
+   p95 292 ms nhưng fail do max 3.648 ms. Sau khi deploy NPM timing allowlist,
+   correlated soak pass 900/900, p95 289/max 590 ms; NPM/upstream p95 28/25 ms,
+   max 244/244 ms và 0 non-200. Slowest client request có NPM/upstream 70/67 ms,
+   cho thấy phần lớn tail ở trước backend. Chưa có production-scale test.
 5. Windows/Linux unsigned package đủ điều kiện GitHub Preview nhưng chưa phải stable.
    Windows còn code signing và physical-device/Windows Hello. Linux còn KDE
    login-unlock/physical desktop và signed package E2EE runtime.

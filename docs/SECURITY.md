@@ -65,7 +65,8 @@ không bao giờ được đặt trong Flutter `.env`, asset, build log hoặc b
   và không vô hiệu key cũ đối với encrypted backup lịch sử.
 - Vault-key rotation sinh DEK + recovery key mới, re-encrypt current snapshot và
   atomic publish cả ciphertext/wrapped key. DEK local chỉ thay sau remote verify;
-  cancel/conflict giữ key cũ. Thiết bị chỉ có DEK cũ phải recovery lại.
+  cancel/conflict giữ key cũ. Surviving active device có private key sẽ verify
+  exact HPKE wrap/proof rồi tự thay DEK; excluded/mất private key mới cần HA1.
 - Publish/verify/secure-storage failure sau request được coi là mơ hồ; client giữ
   last-seen revision cũ và hướng user giữ recovery key mới thay vì retry mù.
 - Settings cho phép một phiên tin cậy gọi Supabase `SignOutScope.others`: phiên
@@ -175,6 +176,32 @@ representation thành `[REDACTED]`, phòng transition/crash logger vô tình ghi
 Các auth event/state chứa email, password hoặc user identity cũng redact string
 representation; equality vẫn hoạt động nhưng transition log không lộ credential/PII.
 
+## Device-specific key protocol — **Đã deploy server, client mới chưa phát hành**
+
+ADR-0012 đề xuất HPKE Base
+DHKEM(X25519, HKDF-SHA256)/HKDF-SHA256/AES-256-GCM cho per-device DEK wrap.
+Implementation đã có DI, enrollment/recovery/publish-v2/atomic-rotation call site
+và được khóa bằng official RFC vector, wrong-context/tamper/low-order-key test cùng
+secure-storage corrupt-record test. Context dùng length-prefix thay delimiter;
+envelope bắt buộc canonical exact
+length để từ chối payload oversized trước decrypt. Derived HPKE key object được
+destroy và buffer tạm được overwrite best-effort; Dart VM/GC không bảo đảm mọi
+bản sao trong process đã zeroize.
+
+Device private key và binding secret là credential. Chúng không được log, đưa vào
+SharedPreferences, analytics, fixture thật hoặc server response. Membership proof
+được domain-separate từ current DEK để session attacker không có DEK không khiến
+trusted client tự động cấp wrap. Server còn so khớp vault membership verifier
+HMAC dẫn xuất từ DEK; verifier nằm trong bảng `private`, không xuất hiện trong
+snapshot SELECT hoặc device RPC. Additive migration/RPC chỉ công khai public
+key, SHA-256 binding-secret hash và opaque per-device proof qua controlled RPC;
+direct table access bị revoke/force RLS. V2 publish yêu cầu active device binding;
+rotation thay snapshot + verifier + exact wrap set + revoke session trong một
+transaction. Lost local device key chỉ được thay bằng đúng DEK verifier dẫn xuất
+từ HA1; key/session cũ bị revoke atomically. Production cùng Linux, Android AVD và
+iOS Simulator runtime đã pass; two-session runtime còn xác minh survivor tự unwrap
+generation mới. Chưa qua independent security review hoặc physical two-device test.
+
 ## Destructive operations
 
 - Cloud conflict phải hỏi rõ dùng cloud hay giữ local.
@@ -229,8 +256,36 @@ Test dùng placeholder `TEST_ONLY_*`. Shell operator script không chạy với 
 Không dùng command liệt kê toàn bộ process environment trong báo cáo.
 
 Auth load gate chỉ gọi health endpoint bằng public publishable key; không tạo user,
-session hoặc request payload, không in key và chỉ lưu status/duration trong temp
-directory mode 0700 rồi cleanup bằng trap.
+session hoặc request payload, không in key và chỉ lưu status/timing breakdown cùng
+UTC timestamp trong temp directory mode 0700 rồi cleanup bằng trap. NPM timing log
+chỉ nhận exact Auth health route và allowlist tám field status/request/upstream
+timing; không ghi client IP, URI, header, User-Agent, payload hoặc credential.
+
+NPM production compose hiện còn giữ DB password literal nên compose và `.env`
+bắt buộc mode 0600; application `keys.json` cũng mode 0600. Runtime NPM/MariaDB
+được pin exact digest thay vì floating tag. Backup NPM chứa database/config/
+certificate là sensitive artifact, phải giữ directory/file 0700/0600 và không
+đưa vào repository hoặc CI.
+
+NPM upgrade rehearsal chỉ extract sensitive app/certificate vào sandbox 0700,
+dùng password ngẫu nhiên qua env file 0600 và Docker network `--internal` không
+publish port. Cleanup xóa container kèm anonymous volume, network và sandbox;
+target canary không được kết nối public hoặc mutate database production.
+
+NPM route matrix lấy hostname trực tiếp từ database nhưng chỉ log 12 ký tự SHA-256
+khi fail; critical/exception manifest production mode 0600 và nằm ngoài repository.
+Exception chỉ nhận exact 5xx + hash đã audit, không chứa URL và không cho phép 000/
+status khác. Maintenance bundle có original/candidate Compose chứa DB password
+literal nên bắt buộc directory/file 0700/0600; resolved Compose temp bị xóa trước
+khi publish bundle.
+
+Production deployment harness chỉ nhận checksum bundle đã byte-match Compose hiện
+tại, exact image ID/digest và explicit mutation confirmation. Nó chỉ recreate NPM
+app service; MariaDB/network/volume không bị dừng hoặc xóa. Post-gate khóa runtime
+version, image, internal API, Nginx syntax và full redacted route matrix; failure
+kích hoạt rollback exact Compose/image. Rollback Compose chứa credential nên giữ
+mode 0600. Hourly route service không inject credential, dùng `ProtectSystem`,
+`PrivateTmp`, `NoNewPrivileges` và chỉ journal status cùng hash domain.
 
 ## Dependency và asset supply chain
 
@@ -245,9 +300,11 @@ directory mode 0700 rồi cleanup bằng trap.
 
 1. Chưa có external alert channel/SIEM; systemd failure hiện chỉ vào journal.
 2. Chưa có independent cryptographic/security review.
-3. Đã có bulk revoke mọi auth session khác và server-side active-session guard cho
-   encrypted vault, nhưng chưa có device registry/list, revoke riêng từng thiết bị
-   hoặc device-specific wrapped key. Backup cũ vẫn decrypt được bằng key material cũ.
+3. Đã có device registry, bulk/targeted auth-session revoke và server-side
+   active-session guard. Device-specific wrapped key đã deploy nhưng chưa có
+   physical two-device/independent review;
+   chưa có schema/runtime/independent review. Backup cũ vẫn decrypt được bằng key
+   material cũ.
 4. SMTP delivery tới mailbox thật và expired recovery link chưa được E2E test.
 5. Signing key/certificate chưa được owner cung cấp trên môi trường build; GitHub
    Preview vì vậy có SmartScreen/package-signature risk đã công bố.

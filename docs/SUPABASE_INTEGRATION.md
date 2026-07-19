@@ -169,6 +169,15 @@ cuối xác nhận không còn matching test user hoặc encrypted row.
 
 - Exact upstream pin: `supabase/UPSTREAM_PIN`.
 - Overlay proxy/recovery: `supabase/docker-compose.*.yml`.
+- Reverse proxy overlay/pin: `supabase/nginx-proxy-manager/`; production NPM
+  `2.15.1` và MariaDB `10.5.29` đã pin exact current digest, không còn `latest`/
+  floating patch tag. Upgrade 2.14.0→2.15.1 đã pass fresh backup, isolated restore,
+  cloned app/database/certificate canary, auto-rollback deployment harness,
+  internal API/Nginx và public-route regression.
+- NPM route matrix hiện khám phá 26 HTTPS domain và 0 stream; sáu critical route
+  pass. 10 pre-existing 502 thuộc upstream stack khác đã dừng được khóa exact bằng
+  hash/status exception, không được mô tả là healthy. Hourly persistent systemd
+  gate đã enable và lượt production đầu pass 10/10 exception.
 - 11 core container phải healthy trước migration/test.
 
 Release regression cho public Auth health dùng publishable key, không tạo user:
@@ -177,8 +186,25 @@ Release regression cho public Auth health dùng publishable key, không tạo us
 
 Mặc định gate chạy 100 request/concurrency 10, yêu cầu toàn bộ HTTP 200,
 p95 ≤ 1.000 ms và max ≤ 2.000 ms. Có thể override `LOAD_TOTAL_REQUESTS`,
-`LOAD_CONCURRENCY`, `LOAD_MAX_P95_MS`, `LOAD_MAX_SINGLE_MS` cho protected soak;
-không nới budget mặc định chỉ để làm pipeline xanh.
+`LOAD_CONCURRENCY`, `LOAD_BATCH_INTERVAL_MS`, `LOAD_MAX_P95_MS` và
+`LOAD_MAX_SINGLE_MS` cho protected soak. Pacing chỉ sleep giữa batch, được contract
+test và mặc định bằng `0` để giữ release regression cũ; không nới budget chỉ để
+làm pipeline xanh.
+
+Bounded production soak ngày 19-07-2026 chạy 900 request/concurrency 1, interval
+1 giây sau mỗi batch trong 1.134 giây: 900/900 HTTP 200, p95 292 ms nhưng strict
+gate fail vì một max 3.648 ms. Baseline 100 request/concurrency 10 ngay sau đó pass
+p95 402/max 406 ms. Health/timer/container cùng cửa sổ đều xanh; Nginx Proxy
+Manager/Kong access log cũ chưa có duration nên lần đầu chưa đủ bằng chứng quy nguồn.
+
+Timing overlay sau đó đã deploy bằng official NPM `http_top.conf` và
+`server_proxy.conf` extension point. Exact Auth health request chỉ ghi status,
+request/upstream timing cùng request ID; field allowlist contract và `nginx -t`
+pass. Log dùng suffix `_access.log` để vào default weekly rotation/4 bản nén.
+Lượt correlated soak sau deploy pass 900/900 trong 1.135 giây, p95 289/max 590 ms;
+NPM request/upstream p95 28/25 ms và max 244/244 ms, không có non-200. Request
+chậm nhất phía client có DNS 3/TCP 88/TLS 200/TTFB 589 ms nhưng NPM/upstream tại
+thời điểm hoàn tất chỉ 70/67 ms, nên phần lớn tail này nằm trước backend Auth.
 - Studio public route phải trả 401 khi thiếu Basic Auth.
 - Kong/Supavisor bind loopback; reverse proxy nối qua `proxy-network`.
 
@@ -198,10 +224,43 @@ lock và chỉ ghi evidence 0600 sau checksum/catalog/schema/FORCE RLS/session-g
 probe pass. Health gate yêu cầu evidence chưa quá 9 ngày. Baseline 19-07-2026 pass
 và cleanup không còn database rehearsal.
 
+## Device-wrap migration — **Đã deploy production**
+
+`20260719150000_add_device_specific_vault_keys.sql` additive-only:
+
+- backfill snapshot `key_generation=1`, `device_wrap_version=0`;
+- thêm device public-key/binding-hash và current wrap table không cấp direct
+  access, bật + force RLS;
+- lưu vault membership verifier dẫn xuất từ DEK trong bảng `private` server-only;
+  verifier không nằm trong snapshot SELECT hoặc response RPC;
+- bind nullable device key vào registry session cùng installation;
+- two-phase `begin → publish wrap → target confirm`;
+- verifier-gated replacement khi HA1 recovery phát hiện device private key đã mất;
+- chặn legacy publish sau khi protocol version 1 được active;
+- v2 normal publish yêu cầu exact generation và active device binding;
+- rotation atomically thay snapshot, generation, exact survivor wrap set và xóa
+  auth session của device bị loại.
+
+Local PostgreSQL 17 contract chứng minh backward compatibility trước activation,
+web enrollment reject, wrong binding/cross-session fail, session không biết DEK
+verifier không thể self-wrap, target-only confirmation, incomplete wrap set
+rollback, surviving wrap generation mới và excluded session mất quyền. Backend
+so khớp vault-level verifier; client vẫn phải verify per-device membership proof
+và local unwrap bằng current DEK trước confirm/rotation.
+
+Android AVD và iOS Simulator authenticated runtime tạo hai auth session,
+installation UUID và X25519 key độc lập ở generation 1. Primary rotate snapshot +
+exact two-wrap set; secondary giữ DEK cũ, đọc current-only wrap, verify proof và
+tự persist generation 2 sau khi decrypt revision 4. Operator xóa isolated user và
+admin API xác minh 404; đây chưa phải physical two-device evidence.
+
 ## Khoảng trống đã biết
 
 - SMTP mailbox delivery/expired-token E2E chưa có.
 - External alert channel chưa cấu hình.
 - `synced_accounts` chưa drop để giữ rollback path.
-- Device registry mới thu hồi auth session; chưa có device-specific wrapped DEK,
-  permanent ban hoặc remote wipe local vault.
+- Device registry production mới thu hồi auth session. Device-specific wrapped
+  DEK client/migration/RPC đã deploy và pass focused + local PostgreSQL + remote
+  regression + Linux/Android/iOS runtime; còn physical two-device/independent
+  review. Remote
+  wipe local vault không nằm trong thiết kế.

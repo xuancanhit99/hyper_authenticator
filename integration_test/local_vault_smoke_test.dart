@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hyper_authenticator/features/authenticator/domain/entities/authenticator_account.dart';
 import 'package:hyper_authenticator/features/authenticator/domain/repositories/authenticator_repository.dart';
@@ -30,20 +32,30 @@ void main() {
       );
 
       final preferences = await SharedPreferences.getInstance();
-      await preferences.setBool('biometric_enabled', false);
-
-      await app.main();
-      await _pumpUntil(tester, find.byTooltip('Thêm tài khoản'));
-      _phase('bootstrap-ready');
-
-      final repository = di.sl<AuthenticatorRepository>();
-      final accountsBloc = di.sl<AccountsBloc>();
-      await _replaceVault(repository, const []);
-      accountsBloc.add(LoadAccounts());
-      await _pumpUntil(tester, find.text('Không tìm thấy tài khoản phù hợp.'));
-      _phase('empty-vault-ready');
+      FlutterSecureStorage? secureStorage;
+      AuthenticatorRepository? repository;
 
       try {
+        await preferences.setBool('biometric_enabled', false);
+
+        await app.main();
+        await _pumpUntil(tester, find.byTooltip('Thêm tài khoản'));
+        _phase('bootstrap-ready');
+
+        secureStorage = di.sl<FlutterSecureStorage>();
+        await _verifySecureStorageProbe(secureStorage);
+        _phase('secure-storage-probe-verified');
+
+        repository = di.sl<AuthenticatorRepository>();
+        final accountsBloc = di.sl<AccountsBloc>();
+        await _replaceVault(repository, const []);
+        accountsBloc.add(LoadAccounts());
+        await _pumpUntil(
+          tester,
+          find.text('Không tìm thấy tài khoản phù hợp.'),
+        );
+        _phase('empty-vault-ready');
+
         await tester.tap(find.byTooltip('Thêm tài khoản'));
         await _pumpUntil(tester, find.byKey(AddAccountPage.issuerFieldKey));
 
@@ -103,12 +115,48 @@ void main() {
         expect(await _readVault(repository), isEmpty);
         _phase('cleanup-verified');
       } finally {
-        await _replaceVault(repository, const []);
+        try {
+          if (repository != null) {
+            await _replaceVault(repository, const []);
+          }
+        } finally {
+          try {
+            await secureStorage?.deleteAll();
+          } finally {
+            await preferences.clear();
+          }
+        }
         _phase('finally-cleanup-complete');
       }
     },
     timeout: const Timeout(Duration(minutes: 5)),
   );
+}
+
+Future<void> _verifySecureStorageProbe(FlutterSecureStorage storage) async {
+  const key = 'TEST_ONLY:local-vault-smoke:probe';
+  const value = 'TEST_ONLY_OK';
+  try {
+    await storage.write(key: key, value: value);
+    expect(await storage.read(key: key), value);
+    expect((await storage.readAll())[key], value);
+    await storage.delete(key: key);
+    expect(await storage.read(key: key), isNull);
+  } catch (error) {
+    final errorCode = switch (error) {
+      PlatformException(:final code, :final message, :final details) =>
+        'PlatformException:$code:${message ?? 'no-message'}:'
+            '${details is int ? details : 'no-status'}',
+      _ => error.runtimeType.toString(),
+    };
+    throw TestFailure('Secure-storage preflight thất bại ($errorCode).');
+  } finally {
+    try {
+      await storage.delete(key: key);
+    } catch (_) {
+      // Destructive harness trap xóa exact test service nếu plugin cleanup fail.
+    }
+  }
 }
 
 void _phase(String name) {

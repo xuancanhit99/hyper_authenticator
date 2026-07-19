@@ -189,6 +189,38 @@ sở hữu certificate/redirect TLS cho `authenticator.hyperz.xyz`. Sau rollout 
 test `/`, `/settings`, `/privacy` nếu legal page đã publish, header bảo mật và
 browser console trên public HTTPS origin.
 
+NPM production không được dùng floating image. Exact current pin và non-secret
+timing overlay nằm trong `supabase/nginx-proxy-manager/`; compose/`.env`/application
+key chứa credential phải mode `0600`. Trước NPM upgrade phải chạy dedicated
+transactional DB + app/Let’s Encrypt backup, checksum, config test và route matrix.
+NPM `2.15.1` là major base-image/OpenResty/Certbot transition so với
+`2.14.0`; production hiện đã chạy `2.15.1` exact digest sau canary/deploy gate.
+Không recreate hoặc nâng tiếp chỉ dựa vào tag `latest`. Backup production
+phải ghi exact image/database name metadata và restore rehearsal bốn core table
+trong MariaDB cô lập phải pass trước maintenance window. Trước maintenance,
+`prepare_nginx_proxy_manager_upgrade.sh` phải tạo fresh backup và
+checksum maintenance bundle; candidate Compose phải normalized-compare để chỉ đổi
+exact NPM image. Route matrix phải bao phủ mọi enabled domain, exact critical route
+và pre-existing 5xx bằng hash/status exception; exception không được dùng để bỏ qua
+regression mới.
+
+Deploy production chỉ dùng bundle đã chuẩn bị và confirmation explicit:
+
+    scripts/supabase/deploy_nginx_proxy_manager_upgrade.sh \
+      /opt/stacks/nginx-proxy-manager-app \
+      /home/operator/backups/nginx-proxy-manager \
+      /path/to/maintenance-npm-YYYYMMDDTHHMMSSZ \
+      /etc/hyper-authenticator/nginx-proxy-manager-critical-routes.conf \
+      /etc/hyper-authenticator/nginx-proxy-manager-route-exceptions.conf \
+      --allow-production-nginx-proxy-manager-upgrade
+
+Harness yêu cầu production byte-match original bundle, exact current/target image,
+fresh rollback backup và pre-route pass; chỉ recreate app service. Sau deploy nó
+yêu cầu exact version/image, internal API 200, `nginx -t` và full route matrix.
+Nếu fail, harness khôi phục exact Compose/image cũ và chạy lại cùng gate; không
+dừng MariaDB, xóa network hoặc volume. Hourly systemd route gate phải active sau
+maintenance để phát hiện regression muộn.
+
 ## Windows
 
     flutter build windows --release --dart-define-from-file=.env.production
@@ -259,7 +291,10 @@ Local authentication/scanner bị ẩn theo thiết kế.
 1. Full verified backup và off-host encrypted copy.
 2. Diff official upstream pin/compose/env; staging upgrade trước.
 3. Apply additive encrypted snapshot, active-session guard rồi device-registry
-   migration theo thứ tự filename, bằng role owner `supabase_admin`.
+   migration theo thứ tự filename, bằng role owner `supabase_admin`. Device-wrap
+   migration chỉ apply sau khi client v2 artifact/local contract đã sẵn sàng;
+   server-only DEK verifier nằm trong schema `private`. Mặc định backfill protocol
+   0 nên chưa khóa legacy client cho tới target confirm.
 4. Chạy official smoke + encrypted/device remote contracts; phải chứng minh JWT
    của targeted session bị RLS/RPC chặn nhưng session hiện tại vẫn hoạt động.
 5. Deploy client chỉ ghi encrypted snapshot.
@@ -270,6 +305,12 @@ Local authentication/scanner bị ẩn theo thiết kế.
 Device-registry rollback: bỏ client UI trước, khôi phục health/restore probe rồi
 drop ba RPC/table bằng migration riêng. Apply/rollback schema không sửa encrypted
 snapshot; auth session đã thu hồi không thể phục hồi, người dùng đăng nhập lại.
+
+Device-wrap rollback trước activation: bỏ client v2 rồi drop RPC/table/nullable
+session FK bằng migration riêng; giữ hai snapshot column additive. Sau khi
+`device_wrap_version=1`, không downgrade về legacy RPC vì có thể làm lệch DEK và
+wrap set; rollback phải tắt sync, giữ local vault/remote row và dùng HA1 recovery
+trên client v2 đã biết generation. Auth session đã crypto-revoke không phục hồi.
 
 ## Backup/rollback
 

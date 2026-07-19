@@ -128,8 +128,10 @@ backup lịch sử vẫn có thể chứa wrapped key cũ.
 Xoay vault key cũng không đổi schema/key format nhưng sinh DEK và recovery key
 mới. Current snapshot được re-encrypt bằng DEK mới; ciphertext và wrapped DEK mới
 được publish trong cùng RPC/revision. Sau verify, secure storage thay DEK cũ bằng
-DEK mới. Thiết bị chỉ giữ DEK cũ không thể decrypt current envelope; backup lịch
-sử vẫn giữ envelope/key generation cũ.
+DEK mới. Thiết bị active chỉ giữ DEK generation cũ sẽ đọc exact HPKE wrap của
+installation/current session, verify membership proof, decrypt current envelope
+rồi mới persist DEK generation mới. Thiết bị bị exclude, mất private key hoặc có
+wrap/proof sai vẫn phải dùng recovery key; backup lịch sử giữ generation cũ.
 
 ## PostgreSQL encrypted contract
 
@@ -186,6 +188,52 @@ khi một active session đăng ký.
 
 Không lưu TOTP secret, DEK, recovery key hoặc auth token trong SharedPreferences
 hay device registry.
+
+## Device-specific wrapped DEK — **Đã triển khai server và client**
+
+ADR-0012 đã được duyệt. Migration production thêm `key_generation` monotonic,
+`device_wrap_version`, device public-key table và đúng một current-generation HPKE
+wrap cho mỗi device key active. Client model/repository/coordinator đã được inject;
+Linux isolated runtime và Android/iOS two-session runtime đã pass. GitHub Preview
+`v1.1.0-preview.3` chứa surviving-device auto-unwrap fix.
+
+~~~json
+{
+  "format_version": 1,
+  "key_generation": 2,
+  "kem": "DHKEM-X25519-HKDF-SHA256",
+  "kdf": "HKDF-SHA256",
+  "aead": "AES-256-GCM",
+  "encapsulated_key": "canonical padded base64url của 32 byte",
+  "ciphertext": "canonical padded base64url của 32 byte",
+  "auth_tag": "canonical padded base64url của 16 byte"
+}
+~~~
+
+- Device private key và random binding secret 256-bit nằm trong platform secure
+  storage theo user + installation; không vào SharedPreferences hoặc server response.
+- HPKE `info`/AAD bind user, installation, opaque device-key ID, generation và
+  recipient public key bằng encoding field có unsigned 32-bit length-prefix;
+  không dùng chuỗi delimiter có thể collision.
+- Parser fail closed với suite/version lạ, field oversized, base64url
+  non-canonical hoặc decoded length sai trước khi gọi AEAD.
+- Membership proof theo device dùng HMAC-SHA256 với key HKDF domain-separated từ
+  current DEK; client có DEK phải verify trước confirm và trước khi include device
+  trong generation mới. Một vault membership verifier riêng cũng dẫn xuất từ DEK,
+  bind user + generation và chỉ lưu trong bảng `private` không cấp client access;
+  RPC so khớp verifier để session không biết DEK không thể self-enroll bằng proof giả.
+- Binding secret chỉ dùng resume server record qua TLS; migration chỉ lưu SHA-256
+  của random secret 256-bit, không trả hash/raw secret qua RPC. Nó không wrap DEK
+  và không thay membership proof.
+- Device state đi `pending → wrapped → active`; chỉ target session được confirm
+  sau local unwrap. Rotation tăng generation đúng một, thay exact wrap set trong
+  cùng transaction và chuyển device bị loại sang `revoked` đồng thời xóa auth session.
+- Nếu secure storage mất device private key nhưng người dùng còn HA1, client dẫn
+  xuất đúng vault verifier để thay key trên cùng installation; server revoke key/
+  session cũ trước khi bind key mới. Verifier sai không được thay key.
+- `device_wrap_version=1` chặn legacy publish RPC; v2 normal publish bind exact
+  generation và active device binding để client cũ không làm lệch DEK/wrap set.
+- Recovery-key wrapped DEK v1 tiếp tục là break-glass path.
 
 ## Compatibility plaintext
 

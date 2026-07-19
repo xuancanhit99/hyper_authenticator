@@ -12,6 +12,7 @@ Secret, URL thật, database volume và backup thật không được commit.
 - `systemd/`: daily backup, scheduled restore drill và 5-minute health
   service/timer templates.
 - `launchd/`: encrypted off-host pull LaunchAgent template.
+- `nginx-proxy-manager/`: non-secret production overlay cho Auth timing observability.
 - `../scripts/supabase/`: migration, remote contract, backup, health và restore harness.
 
 ## Dựng stack mới
@@ -35,6 +36,21 @@ Apply E2EE migration:
     docker exec -i supabase-db \
       psql -X -v ON_ERROR_STOP=1 -U supabase_admin -d postgres \
       < supabase/migrations/20260718230000_enforce_active_vault_sessions.sql
+
+    docker exec -i supabase-db \
+      psql -X -v ON_ERROR_STOP=1 -U supabase_admin -d postgres \
+      < supabase/migrations/20260719070000_create_authenticator_device_registry.sql
+
+Device-wrap client-v2 và hai migration đã deploy production ngày 19-07-2026 sau
+full gate, backup/off-host copy và restore checkpoint. Command canonical:
+
+    docker exec -i supabase-db \
+      psql -X -v ON_ERROR_STOP=1 -U supabase_admin -d postgres \
+      < supabase/migrations/20260719150000_add_device_specific_vault_keys.sql
+
+    docker exec -i supabase-db \
+      psql -X -v ON_ERROR_STOP=1 -U supabase_admin -d postgres \
+      < supabase/migrations/20260719170000_allow_recovery_device_key_replacement.sql
 
 Test migration local:
 

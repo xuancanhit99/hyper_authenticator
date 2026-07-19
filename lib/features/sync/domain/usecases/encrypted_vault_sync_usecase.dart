@@ -10,6 +10,7 @@ import 'package:hyper_authenticator/features/sync/domain/repositories/encrypted_
 import 'package:hyper_authenticator/features/sync/domain/repositories/encrypted_vault_repository.dart';
 import 'package:hyper_authenticator/features/sync/domain/repositories/vault_key_repository.dart';
 import 'package:hyper_authenticator/features/sync/domain/services/vault_cipher.dart';
+import 'package:hyper_authenticator/features/sync/domain/usecases/device_key_enrollment_usecase.dart';
 import 'package:injectable/injectable.dart';
 
 @lazySingleton
@@ -20,6 +21,7 @@ class EncryptedVaultSyncUseCase {
   final VaultKeyRepository _keyRepository;
   final EncryptedSyncMetadataRepository _metadataRepository;
   final VaultCipher _cipher;
+  final DeviceKeyCoordinator _deviceKeyCoordinator;
 
   _PendingSetup? _pendingSetup;
   _PendingRecoveryKeyRotation? _pendingRecoveryKeyRotation;
@@ -33,6 +35,7 @@ class EncryptedVaultSyncUseCase {
     this._keyRepository,
     this._metadataRepository,
     this._cipher,
+    this._deviceKeyCoordinator,
   );
 
   Future<Either<Failure, EncryptedSyncResult>> inspect() => _run(() async {
@@ -43,22 +46,12 @@ class EncryptedVaultSyncUseCase {
       return const EncryptedSyncSetupRequired();
     }
 
-    final dataKey = _value(await _keyRepository.read(userId));
-    if (dataKey == null) {
+    final resolved = await _resolveRemoteVault(userId: userId, remote: remote);
+    if (resolved == null) {
       _pendingConflict = null;
       return EncryptedSyncRecoveryRequired(remote.updatedAt);
     }
-
-    List<AuthenticatorAccount> remoteAccounts;
-    try {
-      remoteAccounts = await _cipher.decryptAccounts(
-        envelope: remote.envelope,
-        dataKeyBytes: dataKey,
-        userId: userId,
-      );
-    } on VaultCryptoException {
-      return EncryptedSyncRecoveryRequired(remote.updatedAt);
-    }
+    final remoteAccounts = resolved.accounts;
 
     final localAccounts = _value(await _localRepository.getAccounts());
     final lastRevision = _metadataRepository.readLastRevision(userId);
@@ -142,6 +135,13 @@ class EncryptedVaultSyncUseCase {
       expectedWrappedDataKey: pending.bundle.wrappedDataKey,
     );
     _value(await _keyRepository.write(userId, pending.bundle.dataKeyBytes));
+    _value(
+      await _deviceKeyCoordinator.ensureCurrentDevice(
+        userId: userId,
+        dataKeyBytes: pending.bundle.dataKeyBytes,
+        keyGeneration: verified.keyGeneration,
+      ),
+    );
     await _metadataRepository.writeLastRevision(userId, publishedRevision);
     await _metadataRepository.writeEnabled(userId, true);
     _pendingSetup = null;
@@ -172,6 +172,13 @@ class EncryptedVaultSyncUseCase {
           userId: userId,
         );
         _value(await _keyRepository.write(userId, dataKey));
+        _value(
+          await _deviceKeyCoordinator.ensureCurrentDevice(
+            userId: userId,
+            dataKeyBytes: dataKey,
+            keyGeneration: remote.keyGeneration,
+          ),
+        );
 
         final localAccounts = _value(await _localRepository.getAccounts());
         if (localAccounts.isNotEmpty &&
@@ -208,22 +215,20 @@ class EncryptedVaultSyncUseCase {
             SyncOperationFailure('Chưa có cloud vault để xoay recovery key.'),
           );
         }
-        final dataKey = _value(await _keyRepository.read(userId));
-        if (dataKey == null) {
+        final resolved = await _resolveRemoteVault(
+          userId: userId,
+          remote: remote,
+          ensureStoredDevice: false,
+        );
+        if (resolved == null) {
           throw const _FailureSignal(
             SyncOperationFailure(
               'Thiết bị này cần recovery key hiện tại trước khi tạo key mới.',
             ),
           );
         }
-
-        await _cipher.decryptAccounts(
-          envelope: remote.envelope,
-          dataKeyBytes: dataKey,
-          userId: userId,
-        );
         final bundle = await _cipher.createRecoveryKeyBundle(
-          dataKeyBytes: dataKey,
+          dataKeyBytes: resolved.dataKey,
           userId: userId,
         );
         _pendingRecoveryKeyRotation = _PendingRecoveryKeyRotation(
@@ -255,19 +260,20 @@ class EncryptedVaultSyncUseCase {
         ),
       );
     }
-    final dataKey = _value(await _keyRepository.read(userId));
-    if (dataKey == null) {
+    final resolved = await _resolveRemoteVault(
+      userId: userId,
+      remote: remote,
+      ensureStoredDevice: false,
+    );
+    if (resolved == null) {
       throw const _FailureSignal(
         SyncOperationFailure(
           'Vault key trên thiết bị không còn khả dụng; chưa thay recovery key.',
         ),
       );
     }
-    final remoteAccounts = await _cipher.decryptAccounts(
-      envelope: remote.envelope,
-      dataKeyBytes: dataKey,
-      userId: userId,
-    );
+    final dataKey = resolved.dataKey;
+    final remoteAccounts = resolved.accounts;
     final nextRevision = remote.envelope.revision + 1;
     final envelope = await _cipher.encryptAccounts(
       accounts: remoteAccounts,
@@ -275,12 +281,21 @@ class EncryptedVaultSyncUseCase {
       userId: userId,
       revision: nextRevision,
     );
+    final authorization = _value(
+      await _deviceKeyCoordinator.ensureCurrentDevice(
+        userId: userId,
+        dataKeyBytes: dataKey,
+        keyGeneration: remote.keyGeneration,
+      ),
+    );
     late final int revision;
     try {
       revision = _value(
-        await _remoteRepository.publish(
+        await _remoteRepository.publishV2(
           userId: userId,
           expectedRevision: remote.envelope.revision,
+          expectedKeyGeneration: remote.keyGeneration,
+          bindingSecretBytes: authorization.bindingSecretBytes,
           envelope: envelope,
           wrappedDataKey: pending.wrappedDataKey,
         ),
@@ -327,20 +342,18 @@ class EncryptedVaultSyncUseCase {
         SyncOperationFailure('Chưa có cloud vault để xoay vault key.'),
       );
     }
-    final currentDataKey = _value(await _keyRepository.read(userId));
-    if (currentDataKey == null) {
+    final resolved = await _resolveRemoteVault(
+      userId: userId,
+      remote: remote,
+      ensureStoredDevice: false,
+    );
+    if (resolved == null) {
       throw const _FailureSignal(
         SyncOperationFailure(
           'Thiết bị này cần recovery key hiện tại trước khi xoay vault key.',
         ),
       );
     }
-
-    await _cipher.decryptAccounts(
-      envelope: remote.envelope,
-      dataKeyBytes: currentDataKey,
-      userId: userId,
-    );
     final bundle = await _cipher.createKeyBundle(userId: userId);
     _pendingVaultKeyRotation = _PendingVaultKeyRotation(
       userId: userId,
@@ -371,19 +384,20 @@ class EncryptedVaultSyncUseCase {
         ),
       );
     }
-    final currentDataKey = _value(await _keyRepository.read(userId));
-    if (currentDataKey == null) {
+    final resolved = await _resolveRemoteVault(
+      userId: userId,
+      remote: remote,
+      ensureStoredDevice: false,
+    );
+    if (resolved == null) {
       throw const _FailureSignal(
         SyncOperationFailure(
           'Vault key hiện tại không còn khả dụng; chưa xoay key.',
         ),
       );
     }
-    final remoteAccounts = await _cipher.decryptAccounts(
-      envelope: remote.envelope,
-      dataKeyBytes: currentDataKey,
-      userId: userId,
-    );
+    final currentDataKey = resolved.dataKey;
+    final remoteAccounts = resolved.accounts;
     final nextRevision = remote.envelope.revision + 1;
     final envelope = await _cipher.encryptAccounts(
       accounts: remoteAccounts,
@@ -392,14 +406,27 @@ class EncryptedVaultSyncUseCase {
       revision: nextRevision,
     );
 
+    final rotationPlan = _value(
+      await _deviceKeyCoordinator.prepareRotation(
+        userId: userId,
+        currentDataKeyBytes: currentDataKey,
+        nextDataKeyBytes: pending.bundle.dataKeyBytes,
+        currentKeyGeneration: remote.keyGeneration,
+      ),
+    );
     late final int revision;
     try {
       revision = _value(
-        await _remoteRepository.publish(
+        await _remoteRepository.rotateDeviceKeys(
           userId: userId,
           expectedRevision: remote.envelope.revision,
+          expectedKeyGeneration: remote.keyGeneration,
+          bindingSecretBytes: rotationPlan.bindingSecretBytes,
           envelope: envelope,
           wrappedDataKey: pending.bundle.wrappedDataKey,
+          nextVaultMembershipVerifier: rotationPlan.nextVaultMembershipVerifier,
+          deviceWraps: rotationPlan.wraps,
+          excludedDeviceKeyIds: const <String>[],
         ),
       );
     } on _FailureSignal catch (signal) {
@@ -419,6 +446,8 @@ class EncryptedVaultSyncUseCase {
         revision: revision,
         expectedEnvelope: envelope,
         expectedWrappedDataKey: pending.bundle.wrappedDataKey,
+        expectedKeyGeneration: remote.keyGeneration + 1,
+        expectedDeviceWrapVersion: 1,
       );
       _value(await _keyRepository.write(userId, pending.bundle.dataKeyBytes));
       await _metadataRepository.writeLastRevision(userId, revision);
@@ -456,15 +485,12 @@ class EncryptedVaultSyncUseCase {
     if (remote == null) {
       return const EncryptedSyncSetupRequired();
     }
-    final dataKey = _value(await _keyRepository.read(userId));
-    if (dataKey == null) {
+    final resolved = await _resolveRemoteVault(userId: userId, remote: remote);
+    if (resolved == null) {
       return EncryptedSyncRecoveryRequired(remote.updatedAt);
     }
-    final remoteAccounts = await _cipher.decryptAccounts(
-      envelope: remote.envelope,
-      dataKeyBytes: dataKey,
-      userId: userId,
-    );
+    final dataKey = resolved.dataKey;
+    final remoteAccounts = resolved.accounts;
     final localAccounts = _value(await _localRepository.getAccounts());
     final lastRevision = _metadataRepository.readLastRevision(userId);
     if (lastRevision != remote.envelope.revision) {
@@ -508,15 +534,11 @@ class EncryptedVaultSyncUseCase {
         ),
       );
     }
-    final dataKey = _value(await _keyRepository.read(userId));
-    if (dataKey == null) {
+    final resolved = await _resolveRemoteVault(userId: userId, remote: remote);
+    if (resolved == null) {
       return EncryptedSyncRecoveryRequired(remote.updatedAt);
     }
-    final remoteAccounts = await _cipher.decryptAccounts(
-      envelope: remote.envelope,
-      dataKeyBytes: dataKey,
-      userId: userId,
-    );
+    final remoteAccounts = resolved.accounts;
     _value(await _localRepository.replaceAccounts(remoteAccounts));
     await _metadataRepository.writeLastRevision(
       userId,
@@ -542,10 +564,15 @@ class EncryptedVaultSyncUseCase {
         ),
       );
     }
-    final dataKey = _value(await _keyRepository.read(userId));
-    if (dataKey == null) {
+    final resolved = await _resolveRemoteVault(
+      userId: userId,
+      remote: remote,
+      ensureStoredDevice: false,
+    );
+    if (resolved == null) {
       return EncryptedSyncRecoveryRequired(remote.updatedAt);
     }
+    final dataKey = resolved.dataKey;
     final localAccounts = _value(await _localRepository.getAccounts());
     final completed = await _publishLocal(
       userId: userId,
@@ -564,6 +591,64 @@ class EncryptedVaultSyncUseCase {
     _pendingConflict = null;
   }
 
+  Future<_ResolvedRemoteVault?> _resolveRemoteVault({
+    required String userId,
+    required EncryptedVaultSnapshot remote,
+    bool ensureStoredDevice = true,
+  }) async {
+    final storedDataKey = _value(await _keyRepository.read(userId));
+    if (storedDataKey != null) {
+      try {
+        final accounts = await _cipher.decryptAccounts(
+          envelope: remote.envelope,
+          dataKeyBytes: storedDataKey,
+          userId: userId,
+        );
+        if (ensureStoredDevice) {
+          _value(
+            await _deviceKeyCoordinator.ensureCurrentDevice(
+              userId: userId,
+              dataKeyBytes: storedDataKey,
+              keyGeneration: remote.keyGeneration,
+            ),
+          );
+        }
+        return _ResolvedRemoteVault(dataKey: storedDataKey, accounts: accounts);
+      } on VaultCryptoException {
+        // DEK local có thể thuộc generation cũ; thử exact device wrap hiện tại.
+      }
+    }
+    if (remote.deviceWrapVersion != 1) return null;
+
+    final unwrappedResult = await _deviceKeyCoordinator
+        .unwrapCurrentDeviceDataKey(
+          userId: userId,
+          keyGeneration: remote.keyGeneration,
+        );
+    final unwrappedDataKey = unwrappedResult.fold((failure) {
+      if (failure is StorageFailure || failure is SyncOperationFailure) {
+        return null;
+      }
+      throw _FailureSignal(failure);
+    }, (value) => value);
+    if (unwrappedDataKey == null) return null;
+
+    try {
+      final accounts = await _cipher.decryptAccounts(
+        envelope: remote.envelope,
+        dataKeyBytes: unwrappedDataKey,
+        userId: userId,
+      );
+      _value(await _keyRepository.write(userId, unwrappedDataKey));
+      return _ResolvedRemoteVault(
+        dataKey: unwrappedDataKey,
+        accounts: accounts,
+      );
+    } on VaultCryptoException {
+      return null;
+    }
+  }
+
   Future<EncryptedSyncResult> _publishLocal({
     required String userId,
     required List<AuthenticatorAccount> localAccounts,
@@ -577,10 +662,19 @@ class EncryptedVaultSyncUseCase {
       userId: userId,
       revision: nextRevision,
     );
+    final authorization = _value(
+      await _deviceKeyCoordinator.ensureCurrentDevice(
+        userId: userId,
+        dataKeyBytes: dataKey,
+        keyGeneration: remote.keyGeneration,
+      ),
+    );
     final revision = _value(
-      await _remoteRepository.publish(
+      await _remoteRepository.publishV2(
         userId: userId,
         expectedRevision: remote.envelope.revision,
+        expectedKeyGeneration: remote.keyGeneration,
+        bindingSecretBytes: authorization.bindingSecretBytes,
         envelope: envelope,
         wrappedDataKey: remote.wrappedDataKey,
       ),
@@ -603,12 +697,18 @@ class EncryptedVaultSyncUseCase {
     required int revision,
     required EncryptedVaultEnvelope expectedEnvelope,
     required WrappedVaultKey expectedWrappedDataKey,
+    int? expectedKeyGeneration,
+    int? expectedDeviceWrapVersion,
   }) async {
     final snapshot = _value(await _remoteRepository.download(userId: userId));
     if (snapshot == null ||
         snapshot.envelope.revision != revision ||
         snapshot.envelope != expectedEnvelope ||
-        snapshot.wrappedDataKey != expectedWrappedDataKey) {
+        snapshot.wrappedDataKey != expectedWrappedDataKey ||
+        (expectedKeyGeneration != null &&
+            snapshot.keyGeneration != expectedKeyGeneration) ||
+        (expectedDeviceWrapVersion != null &&
+            snapshot.deviceWrapVersion != expectedDeviceWrapVersion)) {
       throw const _FailureSignal(
         SyncOperationFailure(
           'Không thể verify encrypted snapshot vừa publish.',
@@ -678,6 +778,13 @@ class EncryptedVaultSyncUseCase {
       );
     }
   }
+}
+
+class _ResolvedRemoteVault {
+  final List<int> dataKey;
+  final List<AuthenticatorAccount> accounts;
+
+  const _ResolvedRemoteVault({required this.dataKey, required this.accounts});
 }
 
 class _PendingSetup {

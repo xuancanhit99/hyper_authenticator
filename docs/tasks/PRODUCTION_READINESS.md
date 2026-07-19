@@ -1,9 +1,9 @@
 # Task: Hoàn thiện production readiness
 
-- Trạng thái: Hoàn thành baseline kỹ thuật; còn external release gate
+- Trạng thái: Đã phát hành GitHub Preview; còn external stable/store gate
 - Bắt đầu/cập nhật: 2026-07-18
 - Owner: canhvx
-- ADR: 0002, 0003, 0004, 0005, 0007, 0009
+- ADR: 0002, 0003, 0004, 0005, 0007, 0009, 0010, 0012
 
 ## Mục tiêu
 
@@ -24,10 +24,10 @@ behavior an toàn, backend có backup/restore/health harness và release gate t�
 - [x] Device mới import key; decrypt failure không overwrite local.
 - [x] Conflict/network/retry không delete snapshot hợp lệ.
 - [x] Recovery-key rotation atomic; cancel/conflict giữ key cũ và lỗi verify cảnh báo trạng thái mơ hồ.
-- [x] DEK + recovery-key rotation atomic; thiết bị giữ DEK cũ cần recovery và
-  post-commit ambiguity không nâng metadata mù.
+- [x] DEK + recovery-key rotation atomic; surviving active device tự unwrap exact
+  wrap generation mới, excluded/mất private key dùng HA1 và ambiguity không nâng metadata mù.
 - [x] Không có secret thật trong log/fixture/remote plaintext request.
-- [x] 105 test + analyzer + platform/release-config gate pass.
+- [x] 186 test + analyzer + platform/release-config gate pass.
 - [x] Bulk revoke mọi session khác; RLS/RPC chặn JWT của session đã revoke ngay
   trong khi session hiện tại và local vault được giữ.
 - [x] Local-vault integration smoke pass trên Android emulator và iOS Simulator,
@@ -47,7 +47,10 @@ behavior an toàn, backend có backup/restore/health harness và release gate t�
 - [x] Daily backup, restore rehearsal, encrypted off-host copy và health timer pass.
 - [x] Public Auth load budget fail-closed: 100 request/concurrency 10, 100% HTTP
   200, p95 ≤ 1 giây và max ≤ 2 giây; không tạo user hoặc payload.
+- [x] Correlated Auth soak pass strict budget; NPM timing allowlist, exact image
+  pin và dedicated backup/isolated restore rehearsal đều pass.
 - [x] Asset/font không rõ license bị loại khỏi release.
+- [x] GitHub Preview unsigned cho Windows/Linux được publish và public verifier pass.
 - [ ] Signed store artifact/device test — phụ thuộc credential và thiết bị owner.
 - [ ] SMTP mailbox/expired link — phụ thuộc mailbox nhận.
 - [ ] External alert channel — cần owner chọn destination.
@@ -78,7 +81,7 @@ behavior an toàn, backend có backup/restore/health harness và release gate t�
 | Command/gate | Kết quả |
 |---|---|
 | `flutter analyze` | Pass, 0 diagnostic |
-| `flutter test` | 105 pass |
+| `flutter test` | 186 pass |
 | Scanner feedback widget test | 2 pass trên VM và Chrome platform; không gọi camera thật |
 | Platform/release config | Pass; Android network + Apple Keychain regression gate |
 | Gitleaks full history | Pass; chỉ allowlist exact public RFC test vector |
@@ -97,21 +100,24 @@ behavior an toàn, backend có backup/restore/health harness và release gate t�
 | GitHub Actions run `29648841164` | Pass 7/7 tại branch head `09c7024`; xác nhận toàn bộ Windows historical/runtime/installer gate cùng Linux, Apple, Android, Web, quality và secret history tiếp tục xanh sau khi cập nhật tài liệu bằng chứng |
 | GitHub Actions run `29652281356` | Pass 7/7 tại `12fce73`; Linux hosted amd64 historical `1.0.0+9` upgrade, private keyring, `.deb` transition, Ubuntu 22.04/24.04 + Debian 12/13 X11/Wayland và artifact đều pass; Windows/Apple/Android/Web/quality/secret tiếp tục xanh |
 | GitHub Actions run `29652820428` | Pass 7/7 tại `ae1ab36`; khóa runtime locale `vi` tiếp tục pass toàn bộ Linux/Windows/Apple/Android/Web/quality/secret gate |
+| Tag CI + public Preview 3 | `v1.1.0-preview.3`/`87d546c`: CI `29693607103` pass 7/7; release-event verifier `29693941594` pass exact 5 public asset/checksum/signature |
 | Windows artifact tại `3ba300d` | Current unsigned installer SHA-256 `c981974d…bd37f85`; release bundle và installer artifact upload thành công, hết hạn 01-08-2026 |
 | Android configured release | Fail closed vì thiếu upload keystore |
 | Android Pixel AVD E2E | Pass login return, setup revision 1, recovery-key rotation revision 2, vault-key rotation revision 3, fresh-device recovery revision 3 và SDK bulk revoke 2→1 session; cleanup user/row/app data |
-| Android Pixel AVD local-vault smoke | Pass UI add, storage round-trip, lifecycle, BLoC reload, navigation và cleanup |
-| iOS 26.5 local-vault smoke | Pass cùng contract trên Simulator; cleanup trong `finally` |
+| Android Pixel AVD local-vault smoke | Pass direct secure-storage probe, UI add, vault round-trip, lifecycle, BLoC reload, navigation và fail-safe cleanup; emulator chạy với hai camera `none` |
+| iOS 26.5 local-vault smoke | Pass direct Keychain probe cùng UI/vault/lifecycle/navigation contract; app data uninstall, cleanup `finally` và Simulator shutdown |
 | macOS configured release | Bị chặn vì thiếu certificate |
 | Remote encrypted contract | 20/20 pass, gồm atomic rotation và active-session revoke enforcement |
 | Remote recovery contract | 8/8 pass |
 | Studio proxy contract | Pass |
 | Backup restore rehearsal | Full restore DB tạm + schema/FORCE RLS/active-session guard pass |
 | Auth load budget | 100/100 HTTP 200, concurrency 10, p95 578 ms, max 862 ms dưới budget 1.000/2.000 ms; negative path 1 ms fail đúng |
+| Auth bounded soak | Lượt đầu 900/900, p95 292 ms nhưng max 3.648 ms fail; correlated repeat sau NPM timing pass 900/900, elapsed 1.135 giây, p95 289/max 590 ms. NPM/upstream p95 28/25 ms, max 244/244 ms, 0 non-200; slowest client request tương ứng NPM/upstream 70/67 ms |
+| NPM hardening/restore/deploy | NPM production `2.15.1` + MariaDB `10.5.29` pin exact digest; fresh backup `npm-20260719T200634Z`, isolated restore, exact no-port canary, checksum bundle và auto-rollback deploy harness pass. Runtime/API/Nginx/26-domain route pass; 10 exact pre-existing 502 exceptions, hourly persistent route timer active |
 | Web production rollout | Image `1.1.0-ae1ab36` `linux/amd64` healthy; local/public `main.dart.js` SHA-256 `1a0d63a6…f66ea6` khớp; `/`, `/settings`, `/privacy`, `/login`, `/reset-password` trả 200; TLS/HSTS/CSP/cache/Permissions-Policy pass; browser xác minh Flutter runtime `lang=vi`, render và console sạch |
 
 Full `scripts/agent/check.sh full` pass: docs, generated drift, format, analyzer,
-platform config, 106 test và encrypted migration/active-session contract.
+platform config, 186 test và encrypted migration/active-session/device-wrap contract.
 
 ## Rủi ro còn lại
 
@@ -123,12 +129,18 @@ platform config, 106 test và encrypted migration/active-session contract.
   metadata. Hosted amd64 historical upgrade + X11/Wayland distro matrix đã pass;
   authenticated E2EE vẫn là debug container, chưa phải signed amd64 package/public
   distribution smoke.
-- E2EE v1 đã có DEK rotation và bulk revoke session khác; device registry/revoke
-  riêng từng thiết bị, device-specific key wrap và Web trust model vẫn chưa có.
+- E2EE v1 đã có DEK rotation, bulk/targeted session revoke và device-specific HPKE
+  wrap. Còn physical two-device, independent cryptographic review, tombstone/history
+  và Web E2EE trust model.
 - `mobile_scanner` upstream còn Kotlin legacy warning.
 - Off-host backup đang phụ thuộc máy Mac thay vì dedicated backup host.
-- Low-concurrency Auth budget đã có; long-duration soak và production-scale
-  workload vẫn chưa có.
+- NPM có 10 enabled domain của stack khác đang dừng trả 502; exact hash exceptions
+  bảo vệ upgrade khỏi regression nhưng owner vẫn phải khôi phục hoặc disable route.
+- Bốn certificate Let’s Encrypt orphan không còn route reference đang renew fail do
+  NXDOMAIN; backup đã có, cần xóa qua NPM API/UI hoặc khôi phục DNS trước expiry.
+- Low-concurrency Auth budget và correlated soak đã pass; request chậm nhất của
+  lượt lặp chủ yếu nằm trước reverse proxy/Auth backend. Production-scale workload,
+  long-term SLO và external alerting vẫn chưa có.
 
 ## Tài liệu cập nhật
 

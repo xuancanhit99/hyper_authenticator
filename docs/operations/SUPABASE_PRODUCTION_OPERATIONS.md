@@ -16,6 +16,8 @@ Kiểm tra:
   còn tham chiếu helper/`session_revoked`;
 - device registry có FORCE RLS/no direct SELECT, ba RPC security-definer và revoke
   function còn active-session guard + delete đúng `auth.sessions`;
+- device key/wrap cùng server-only DEK verifier không cấp direct SELECT; publish-v2,
+  wrap và atomic rotation RPC còn `SECURITY DEFINER` đúng signature;
 - public Auth và Recovery HTTP boundary;
 - verified backup gần nhất chưa quá hạn.
 
@@ -67,6 +69,7 @@ cluster, full restore với `--no-owner --no-privileges`, probe:
 - table có RLS + FORCE RLS;
 - active-session helper/policy/RPC được restore và còn đúng security boundary;
 - device-registry table/privilege/RPC được restore đúng security boundary;
+- device-wrap table, private verifier và v2/rotation RPC được restore đúng boundary;
 - encrypted và registry table đọc được bằng owner ở database tạm.
 
 Trap luôn force-drop database tạm. Script không restore đè production database.
@@ -135,6 +138,8 @@ Script: `scripts/supabase/pull_encrypted_backup.sh`.
 Yêu cầu:
 
 - protected operator env có SSH host/port/user/key path;
+- remote operator có non-interactive sudo được giới hạn để `find`/`tar` backup
+  root 0700; không nới quyền backup directory cho user thường;
 - `age` recipient file;
 - optional identity file để decrypt-stream verify;
 - destination ngoài repository.
@@ -149,6 +154,102 @@ LaunchAgent template:
 
 Baseline Mac chạy daily 10:15 local + RunAtLoad, last exit code 0. Không dùng Mac
 cá nhân làm backup SLA duy nhất; mục tiêu tiếp theo là backup host/object storage độc lập.
+
+## Nginx Proxy Manager
+
+Non-secret timing overlay và exact production pin nằm tại
+`supabase/nginx-proxy-manager/`. Timing log chỉ nhận exact Auth health endpoint và
+tám field allowlist; không ghi URI, IP, header, User-Agent, payload hoặc credential.
+File `_access.log` dùng logrotate mặc định weekly, giữ bốn bản nén.
+
+Trước mọi recreate/upgrade NPM, chạy:
+
+    scripts/supabase/backup_nginx_proxy_manager.sh \
+      /opt/stacks/nginx-proxy-manager-app \
+      /home/xuancanhit/backups/hyper-authenticator/nginx-proxy-manager \
+      --allow-nginx-proxy-manager-backup
+
+    scripts/supabase/rehearse_nginx_proxy_manager_backup.sh \
+      /path/to/npm-YYYYMMDDTHHMMSSZ \
+      --allow-isolated-nginx-proxy-manager-restore
+
+    scripts/supabase/rehearse_nginx_proxy_manager_upgrade.sh \
+      /path/to/npm-YYYYMMDDTHHMMSSZ \
+      sha256:TARGET_IMAGE_ID \
+      TARGET_VERSION \
+      --allow-isolated-nginx-proxy-manager-upgrade
+
+    scripts/supabase/test_nginx_proxy_manager_route_matrix.sh \
+      /etc/hyper-authenticator/nginx-proxy-manager-critical-routes.conf \
+      /etc/hyper-authenticator/nginx-proxy-manager-route-exceptions.conf \
+      --allow-production-nginx-proxy-manager-route-probe
+
+Backup dùng least-privilege transactional dump, loại raw MariaDB volume/log, lưu
+compose/app/Let’s Encrypt cùng exact image và database name metadata, rồi checksum
+trước/sau atomic move. Rehearsal chạy exact MariaDB image với `--network none`,
+authenticated readiness và bốn core-table probe. Directory/file phải 0700/0600;
+không copy artifact này vào repository hoặc CI.
+
+Upgrade rehearsal clone app/certificate/database sang internal network, không
+publish port và bắt buộc exact version + API 200 + `nginx -t` + 4/4 core table.
+Nó xóa cả anonymous volume khi cleanup; image target có thể giữ lại để pin exact
+digest nhưng không được coi là production deployment.
+
+Route matrix tự khám phá enabled proxy/redirection/dead-host domain, bắt buộc 0
+stream và không log hostname/URL. Critical manifest khóa exact status. Exception
+manifest chỉ được chứa exact pre-existing 5xx + 12 ký tự SHA-256 hostname đã audit;
+status khác, route mới, domain bị xóa hoặc 000 đều fail. Exception không chứng minh
+upstream healthy và phải bị xóa khi route được khôi phục/disable.
+
+Sinh maintenance bundle mà không thay production:
+
+    scripts/supabase/prepare_nginx_proxy_manager_upgrade.sh \
+      /opt/stacks/nginx-proxy-manager-app \
+      /home/xuancanhit/backups/hyper-authenticator/nginx-proxy-manager \
+      /path/to/PRODUCTION_PIN \
+      /etc/hyper-authenticator/nginx-proxy-manager-critical-routes.conf \
+      /etc/hyper-authenticator/nginx-proxy-manager-route-exceptions.conf \
+      --allow-nginx-proxy-manager-upgrade-preparation
+
+Preparation lock route baseline, tạo fresh backup, chạy isolated restore/canary,
+probe route lại, rồi render original/candidate Compose. Resolved config được
+normalized-compare để chứng minh candidate chỉ đổi exact image. Script không chạy
+Compose lifecycle command hoặc thay `compose.yaml`; bundle sensitive giữ 0700/0600.
+
+Deploy bundle sau khi owner duyệt maintenance:
+
+    scripts/supabase/deploy_nginx_proxy_manager_upgrade.sh \
+      /opt/stacks/nginx-proxy-manager-app \
+      /home/xuancanhit/backups/hyper-authenticator/nginx-proxy-manager \
+      /path/to/maintenance-npm-YYYYMMDDTHHMMSSZ \
+      /etc/hyper-authenticator/nginx-proxy-manager-critical-routes.conf \
+      /etc/hyper-authenticator/nginx-proxy-manager-route-exceptions.conf \
+      --allow-production-nginx-proxy-manager-upgrade
+
+Sau rollout, cài script route matrix vào `/usr/local/lib/hyper-authenticator/`,
+cài service/timer cùng tên từ `supabase/systemd/`, chạy `systemd-analyze verify`,
+start service một lần rồi enable timer. Xác minh `Result=success`,
+`ExecMainStatus=0` và timer có `Trigger` kế tiếp; journal không được in hostname.
+
+Production rollout 20-07-2026: fresh backup `npm-20260719T200634Z`, isolated
+restore, exact `2.15.1` canary, route recheck và bundle
+`maintenance-npm-20260719T200758Z` checksum pass. Deploy harness nâng riêng NPM
+app 2.14.0→2.15.1; exact runtime/Compose digest, API 200, `nginx -t` và 26-domain
+route matrix đều pass, MariaDB vẫn `10.5.29`. Rollback Compose 2.14.0 giữ mode
+0600 trong stack directory.
+
+Lần deploy đầu tự rollback khi recreate làm lộ một upstream store không còn nối
+`proxy-network`; runtime 2.14.0 được khôi phục nhưng route gate vẫn fail đúng vì
+outage độc lập còn tồn tại. Network-only Compose override của upstream được
+normalized-compare, backup rồi deploy; route trở lại 200. Sau fresh preparation,
+lần deploy thứ hai pass. Một exception cũ phục hồi 200 nên baseline hiện còn 10
+exact 502 exception; hourly persistent route timer đã enable và lượt đầu pass
+26/26, sáu critical, 10/10 exception.
+
+Bốn certificate Let’s Encrypt orphan có 0 proxy/redirect/dead-host reference và
+domain NXDOMAIN vẫn renew fail khi NPM startup. Không xóa trực tiếp database hoặc
+certificate files. Operator phải dùng NPM API/UI để xóa sau backup nếu domain đã
+bỏ, hoặc khôi phục DNS rồi renew nếu còn dùng.
 
 ## Contract sau deploy/upgrade
 
@@ -186,7 +287,16 @@ Low-concurrency smoke phải dùng budget có exit code, không chỉ quan sát 
 
 Release baseline: 100 request, concurrency 10, 100% HTTP 200, p95 ≤ 1 giây,
 max ≤ 2 giây. Đây là regression threshold từ client tới public origin, không phải
-SLA và không thay long-duration soak/production-scale workload.
+SLA. Soak bảo thủ có thể đặt `LOAD_BATCH_INTERVAL_MS=1000` cùng concurrency 1 để
+tránh burst; contract test bắt buộc xác minh pacing và input sai phải fail closed.
+Soak public health vẫn không thay production-scale workload.
+
+Lượt bounded soak đầu ngày 19-07-2026 đạt 900/900 HTTP 200 trong 1.134 giây,
+p95 292 ms nhưng fail strict max vì một request 3.648 ms. Sau khi deploy NPM timing
+allowlist, lượt lặp cùng pacing pass 900/900 trong 1.135 giây, p95 289/max 590 ms;
+NPM request/upstream p95 28/25 ms, max 244/244 ms và không có non-200. Request
+chậm nhất có DNS 3/TCP 88/TLS 200/TTFB 589 ms trong khi NPM/upstream chỉ 70/67 ms.
+Giữ timing correlation khi lặp dài hơn; kết quả này chưa thay workload test.
 9. Update `supabase/UPSTREAM_PIN` và `PROJECT_STATUS.md` cùng commit.
 
 Rollback phải khôi phục cả compose/image pin, database và Storage/config tương ứng;
