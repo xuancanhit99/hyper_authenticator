@@ -7,6 +7,9 @@ CONFIRMATION=${3:-}
 RETENTION_COUNT=${NPM_BACKUP_RETENTION_COUNT:-7}
 APP_CONTAINER=${NPM_APP_CONTAINER:-nginx-proxy-manager-app}
 DB_CONTAINER=${NPM_DB_CONTAINER:-nginx-proxy-manager-db}
+SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
+# shellcheck source=nginx_proxy_manager_database.sh
+source "$SCRIPT_DIR/nginx_proxy_manager_database.sh"
 
 if [[ "$CONFIRMATION" != '--allow-nginx-proxy-manager-backup' ]]; then
   printf '%s\n' \
@@ -93,8 +96,8 @@ cleanup() {
 }
 trap cleanup EXIT
 
-docker exec "$DB_CONTAINER" sh -lc '
-  MYSQL_PWD="$MYSQL_PASSWORD" exec mariadb-dump \
+npm_database_exec "$DB_CONTAINER" sh -lc '
+  exec mariadb-dump \
     --user="$MYSQL_USER" \
     --databases "$MYSQL_DATABASE" \
     --single-transaction \

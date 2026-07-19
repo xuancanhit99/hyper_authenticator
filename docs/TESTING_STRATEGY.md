@@ -110,6 +110,10 @@ Production/staging test dùng isolated user và tự cleanup:
   p95 tối đa 1 giây và single-request tối đa 2 giây;
 - Auth load pacing contract: sleep đúng giữa batch, không sleep sau batch cuối và
   từ chối interval âm trước network; dùng cho soak bảo thủ không tạo user/payload.
+- NPM database credential contract chạy fake Docker boundary để khóa plaintext-env,
+  `MYSQL_PASSWORD_FILE`/`MARIADB_PASSWORD_FILE`, command exit propagation, missing
+  credential silent failure và symlink reject. Production read-only route matrix
+  còn phải pass trước/sau maintenance; static contract không thay file-secret canary.
 
 Android Pixel AVD còn xác minh SDK thật gọi bulk revoke: isolated user có hai
 session, UI xác nhận action, session count giảm 2→1, current session vẫn ở Settings

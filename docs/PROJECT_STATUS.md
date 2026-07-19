@@ -156,6 +156,13 @@ verification phải inject `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY` và
   rollback Compose 2.14.0 mode 0600. Runtime 2.15.1 sau deploy có restart count 0,
   internal API 200, `nginx -t` pass và exact image/Compose digest khớp. Auth load
   hậu kiểm đạt 100/100 HTTP 200, p95 337 ms, max 395 ms dưới budget 1.000/2.000 ms.
+- Repository backup/route harness đã hỗ trợ cả password env hiện tại và Docker
+  `*_PASSWORD_FILE`; helper resolve credential trong container, từ chối file
+  relative/symlink hoặc credential rỗng mà không log. Read-only production route
+  matrix bằng helper mới pass 26 domain, 6 critical, 10/10 exception. Fresh backup
+  `npm-20260719T211623Z`, isolated restore và exact NPM/MariaDB file-secret canary
+  còn pass DB root/app + NPM `__FILE`, API/Nginx/DB 4/4, internal/no-port và cleanup.
+  Đây là source prerequisite; production Compose vẫn còn literal cho tới maintenance riêng.
 - Full NPM matrix tự khám phá 26 HTTPS domain/0 stream: sáu route trọng yếu pass;
   10 route của stack khác trả pre-existing 502 và được khóa bằng hash/status
   exception. `radar.vnpay.dev` đã phục hồi 200 nên exception tương ứng bị xóa.

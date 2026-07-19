@@ -267,6 +267,19 @@ bắt buộc mode 0600; application `keys.json` cũng mode 0600. Runtime NPM/Mar
 certificate là sensitive artifact, phải giữ directory/file 0700/0600 và không
 đưa vào repository hoặc CI.
 
+**Đã triển khai trong source:** backup và route-matrix harness resolve database
+credential bên trong MariaDB container từ `MYSQL_PASSWORD`/`MARIADB_PASSWORD`
+hoặc biến `*_PASSWORD_FILE`. File path phải absolute, readable, là regular file
+không phải symlink; thiếu hoặc sai credential fail im lặng trước database command.
+Password không đi qua Docker CLI argument hoặc host process environment. Helper
+giữ tương thích Compose production hiện tại và là prerequisite cho migration.
+
+**Khoảng trống đã biết:** production chưa chuyển sang Docker file secrets. Không
+được xóa literal hoặc recreate database/app trước fresh backup + restore rehearsal,
+isolated file-secret canary, exact candidate/rollback và full public-route gate.
+Fresh backup/restore cùng exact NPM/MariaDB isolated canary đã pass file-secret cho
+DB root/app và NPM `__FILE`; candidate/rollback production vẫn chưa được triển khai.
+
 NPM upgrade rehearsal chỉ extract sensitive app/certificate vào sandbox 0700,
 dùng password ngẫu nhiên qua env file 0600 và Docker network `--internal` không
 publish port. Cleanup xóa container kèm anonymous volume, network và sandbox;

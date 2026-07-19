@@ -102,26 +102,30 @@ tar -xzf "$BACKUP_DIR/config-app-letsencrypt.tar.gz" -C "$sandbox" \
 mkdir -p "$sandbox/data/app/logs"
 chmod 0700 "$sandbox/data/app/logs"
 umask 077
-root_password=$(openssl rand -hex 24)
-app_password=$(openssl rand -hex 24)
+secrets_dir="$sandbox/secrets"
+mkdir -m 0700 "$secrets_dir"
+root_secret="$secrets_dir/npm_db_root_password"
+app_secret="$secrets_dir/npm_db_password"
+openssl rand -hex 24 >"$root_secret"
+openssl rand -hex 24 >"$app_secret"
+chmod 0400 "$root_secret" "$app_secret"
 db_env="$sandbox/mariadb.env"
 app_env="$sandbox/npm.env"
 cat >"$db_env" <<EOF
-MARIADB_ROOT_PASSWORD=$root_password
+MARIADB_ROOT_PASSWORD_FILE=/run/secrets/npm_db_root_password
 MARIADB_DATABASE=$db_name
 MARIADB_USER=npm_canary
-MARIADB_PASSWORD=$app_password
+MARIADB_PASSWORD_FILE=/run/secrets/npm_db_password
 EOF
 cat >"$app_env" <<EOF
 DB_MYSQL_HOST=$db_container
 DB_MYSQL_PORT=3306
 DB_MYSQL_USER=npm_canary
-DB_MYSQL_PASSWORD=$app_password
+DB_MYSQL_PASSWORD__FILE=/run/secrets/npm_db_password
 DB_MYSQL_NAME=$db_name
 DISABLE_IPV6=true
 EOF
 chmod 0600 "$db_env" "$app_env"
-unset root_password app_password
 
 docker network create --internal "$network" >/dev/null
 network_created=true
@@ -129,13 +133,15 @@ docker run --detach \
   --name "$db_container" \
   --network "$network" \
   --env-file "$db_env" \
+  --volume "$root_secret:/run/secrets/npm_db_root_password:ro" \
+  --volume "$app_secret:/run/secrets/npm_db_password:ro" \
   "$db_image_id" >/dev/null
 db_created=true
 
 db_ready=false
 for _ in $(seq 1 60); do
   if docker exec "$db_container" sh -lc \
-    'MYSQL_PWD="$MARIADB_ROOT_PASSWORD" mariadb --user=root \
+    'MYSQL_PWD=$(cat -- "$MARIADB_ROOT_PASSWORD_FILE") mariadb --user=root \
       --batch --skip-column-names -e "SELECT 1"' \
     >/dev/null 2>&1; then
     db_ready=true
@@ -148,13 +154,14 @@ if [[ "$db_ready" != true ]]; then
   exit 1
 fi
 docker exec --interactive "$db_container" sh -lc \
-  'MYSQL_PWD="$MARIADB_ROOT_PASSWORD" mariadb --user=root' \
+  'MYSQL_PWD=$(cat -- "$MARIADB_ROOT_PASSWORD_FILE") mariadb --user=root' \
   <"$BACKUP_DIR/database-npm.sql"
 
 docker run --detach \
   --name "$app_container" \
   --network "$network" \
   --env-file "$app_env" \
+  --volume "$app_secret:/run/secrets/npm_db_password:ro" \
   --volume "$sandbox/data/app:/data" \
   --volume "$sandbox/data/letsencrypt:/etc/letsencrypt" \
   "$TARGET_IMAGE_ID" >/dev/null
@@ -200,8 +207,28 @@ if [[ "$port_bindings" != null && "$port_bindings" != '{}' ]]; then
   printf '%s\n' 'NPM canary không được publish host port.' >&2
   exit 1
 fi
+for container in "$db_container" "$app_container"; do
+  if docker inspect "$container" --format '{{range .Config.Env}}{{println .}}{{end}}' |
+    grep -Eq '^(MYSQL|MARIADB|DB_MYSQL)_[A-Z_]*PASSWORD='; then
+    printf 'NPM canary còn plaintext password env: %s.\n' "$container" >&2
+    exit 1
+  fi
+done
+for mount_contract in \
+  "$db_container:/run/secrets/npm_db_root_password" \
+  "$db_container:/run/secrets/npm_db_password" \
+  "$app_container:/run/secrets/npm_db_password"; do
+  container=${mount_contract%%:*}
+  destination=${mount_contract#*:}
+  if ! docker inspect "$container" \
+    --format '{{range .Mounts}}{{println .Destination}}{{end}}' |
+    grep -Fxq "$destination"; then
+    printf 'NPM canary thiếu secret mount: %s.\n' "$destination" >&2
+    exit 1
+  fi
+done
 table_count=$(docker exec "$db_container" sh -lc '
-  MYSQL_PWD="$MARIADB_ROOT_PASSWORD" mariadb --user=root \
+  MYSQL_PWD=$(cat -- "$MARIADB_ROOT_PASSWORD_FILE") mariadb --user=root \
     --database="$1" --batch --skip-column-names -e \
     "SELECT COUNT(*) FROM information_schema.tables
      WHERE table_schema = DATABASE()
@@ -223,4 +250,5 @@ trap - EXIT
 
 printf 'NPM isolated upgrade rehearsal pass: version %s, API/Nginx/DB 4/4.\n' \
   "$actual_version"
-printf '%s\n' 'Internal network, no host port; canary container/volume/sandbox đã cleanup.'
+printf '%s\n' \
+  'Docker file secrets, internal network, no host port; canary container/volume/sandbox đã cleanup.'

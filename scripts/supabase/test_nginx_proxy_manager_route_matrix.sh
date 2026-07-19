@@ -5,6 +5,9 @@ CRITICAL_MANIFEST=${1:-}
 EXCEPTION_MANIFEST=${2:--}
 CONFIRMATION=${3:-}
 DB_CONTAINER=${NPM_DB_CONTAINER:-nginx-proxy-manager-db}
+SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
+# shellcheck source=nginx_proxy_manager_database.sh
+source "$SCRIPT_DIR/nginx_proxy_manager_database.sh"
 
 if [[ -z "$CRITICAL_MANIFEST" ||
   "$CONFIRMATION" != '--allow-production-nginx-proxy-manager-route-probe' ]]; then
@@ -59,8 +62,8 @@ domain_ids_file="$tmp_dir/domain-ids"
 exceptions_file="$tmp_dir/exceptions"
 : >"$exceptions_file"
 
-docker exec "$DB_CONTAINER" sh -lc '
-  MYSQL_PWD="$MYSQL_PASSWORD" mariadb \
+npm_database_exec "$DB_CONTAINER" sh -lc '
+  mariadb \
     --user="$MYSQL_USER" \
     --database="$MYSQL_DATABASE" \
     --batch --skip-column-names \
@@ -118,8 +121,8 @@ if [[ "$EXCEPTION_MANIFEST" != '-' ]]; then
   done <"$EXCEPTION_MANIFEST"
 fi
 
-stream_count=$(docker exec "$DB_CONTAINER" sh -lc '
-  MYSQL_PWD="$MYSQL_PASSWORD" mariadb \
+stream_count=$(npm_database_exec "$DB_CONTAINER" sh -lc '
+  mariadb \
     --user="$MYSQL_USER" \
     --database="$MYSQL_DATABASE" \
     --batch --skip-column-names \

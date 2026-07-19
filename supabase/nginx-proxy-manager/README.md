@@ -38,6 +38,13 @@ Compose phải pin exact digest đã xác minh trước mọi lần recreate. Ba
 hiện còn là literal trong compose production, vì vậy compose và `.env` bắt buộc
 mode `0600`; `data/app/keys.json` cũng bắt buộc `0600`.
 
+`backup_nginx_proxy_manager.sh` và `test_nginx_proxy_manager_route_matrix.sh`
+source `nginx_proxy_manager_database.sh`, rồi stream
+`npm_database_exec_container.sh` vào database container. Khi cài một trong hai
+operator script lên host, phải cài cả hai helper cùng directory và giữ executable
+chỉ cho operator/root. Helper hỗ trợ `MYSQL_PASSWORD`, `MARIADB_PASSWORD` và biến
+`*_PASSWORD_FILE` mà không chuyển password qua Docker CLI hoặc log.
+
 `PRODUCTION_PIN` ghi exact image/version đang chạy và target upstream đã review;
 file này không tự cho phép upgrade. Production Compose phải khớp hai digest runtime
 trước khi backup/recreate. Sau rollout, target có thể bằng current để biểu thị chưa
@@ -84,15 +91,21 @@ Rehearse target upgrade không publish port:
       2.15.1 \
       --allow-isolated-nginx-proxy-manager-upgrade
 
-Harness chỉ extract app/Let’s Encrypt vào sandbox 0700, restore DB vào anonymous
-volume tạm, nối hai container qua Docker network `--internal`, rồi yêu cầu API
-200, exact version, `nginx -t`, 4/4 core table và không có host port. Cleanup xóa
-container kèm volume, network và sandbox cả khi fail.
+Harness chỉ extract app/Let’s Encrypt vào sandbox 0700, tạo DB root/app secret
+file 0400, truyền `MARIADB_*_PASSWORD_FILE` và `DB_MYSQL_PASSWORD__FILE`, restore
+DB vào anonymous volume tạm rồi nối hai container qua Docker network `--internal`.
+Gate yêu cầu không còn plaintext password trong `Config.Env`, đủ secret mount,
+API 200, exact version, `nginx -t`, 4/4 core table và không có host port. Cleanup
+xóa container kèm volume, network và sandbox cả khi fail.
 
 Canary `2.15.1` image ID/digest `52b2c599…9858bb` đã pass ngày 19-07-2026; exact
 image này được deploy production ngày 20-07-2026 sau fresh backup/restore và
 public-route regression. Canary vẫn không thay public route hoặc rollback gate cho
 upgrade tương lai.
+
+File-secret canary chạy lại ngày 20-07-2026 từ fresh backup
+`npm-20260719T211623Z` đã pass exact NPM 2.15.1/MariaDB 10.5.29, API/Nginx/DB 4/4,
+internal/no-port và cleanup. Đây chưa phải production credential migration.
 
 ## Route matrix và maintenance bundle
 

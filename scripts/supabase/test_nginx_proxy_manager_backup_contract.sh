@@ -5,13 +5,22 @@ ROOT=$(cd "$(dirname "$0")/../.." && pwd)
 BACKUP="$ROOT/scripts/supabase/backup_nginx_proxy_manager.sh"
 RESTORE="$ROOT/scripts/supabase/rehearse_nginx_proxy_manager_backup.sh"
 UPGRADE="$ROOT/scripts/supabase/rehearse_nginx_proxy_manager_upgrade.sh"
+DATABASE_LIBRARY="$ROOT/scripts/supabase/nginx_proxy_manager_database.sh"
+DATABASE_PAYLOAD="$ROOT/scripts/supabase/npm_database_exec_container.sh"
 
-for path in "$BACKUP" "$RESTORE" "$UPGRADE"; do
+for path in "$BACKUP" "$RESTORE" "$UPGRADE" "$DATABASE_LIBRARY" \
+  "$DATABASE_PAYLOAD"; do
   if [[ ! -x "$path" ]]; then
     printf 'Thiếu executable NPM backup contract: %s\n' "$path" >&2
     exit 66
   fi
   bash -n "$path"
+done
+
+for pattern in \
+  'source "$SCRIPT_DIR/nginx_proxy_manager_database.sh"' \
+  'npm_database_exec "$DB_CONTAINER"'; do
+  grep -Fq -- "$pattern" "$BACKUP"
 done
 
 for pattern in \
@@ -47,6 +56,12 @@ for pattern in \
   '--volume "$sandbox/data/letsencrypt:/etc/letsencrypt"' \
   'http://127.0.0.1:81/api/' \
   'docker exec "$app_container" nginx -t' \
+  'DB_MYSQL_PASSWORD__FILE=/run/secrets/npm_db_password' \
+  'MARIADB_ROOT_PASSWORD_FILE=/run/secrets/npm_db_root_password' \
+  'MARIADB_PASSWORD_FILE=/run/secrets/npm_db_password' \
+  "grep -Eq '^(MYSQL|MARIADB|DB_MYSQL)_[A-Z_]*PASSWORD='" \
+  '/run/secrets/npm_db_root_password' \
+  '/run/secrets/npm_db_password' \
   "'{{json .HostConfig.PortBindings}}'" \
   'container rm --force --volumes'; do
   grep -Fq -- "$pattern" "$UPGRADE"

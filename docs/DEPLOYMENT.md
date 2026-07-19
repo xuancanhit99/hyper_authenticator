@@ -204,6 +204,14 @@ exact NPM image. Route matrix phải bao phủ mọi enabled domain, exact criti
 và pre-existing 5xx bằng hash/status exception; exception không được dùng để bỏ qua
 regression mới.
 
+Backup và route-matrix script phải được deploy cùng thư viện
+`nginx_proxy_manager_database.sh` và payload
+`npm_database_exec_container.sh` trong cùng directory. Helper giữ tương thích cả
+plaintext env hiện tại và `MYSQL_PASSWORD_FILE`/`MARIADB_PASSWORD_FILE`, resolve
+credential hoàn toàn trong database container và không log giá trị. Production
+vẫn dùng literal cho tới khi task file-secret có canary, rollback và maintenance
+approval riêng; source compatibility không phải bằng chứng migration đã deploy.
+
 Deploy production chỉ dùng bundle đã chuẩn bị và confirmation explicit:
 
     scripts/supabase/deploy_nginx_proxy_manager_upgrade.sh \
