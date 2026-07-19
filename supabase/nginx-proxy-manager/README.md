@@ -90,3 +90,42 @@ container kèm volume, network và sandbox cả khi fail.
 Canary `2.15.1` image ID/digest `52b2c599…9858bb` đã pass ngày 19-07-2026 và
 production vẫn ở `2.14.0`. Canary giảm rủi ro compatibility nhưng không thay public
 route regression, rollback window hoặc owner approval cho production recreate.
+
+## Route matrix và maintenance bundle
+
+`test_nginx_proxy_manager_route_matrix.sh` tự đọc mọi enabled proxy/redirection/
+dead-host domain từ NPM database, từ chối stream/wildcard chưa có coverage và probe
+HTTPS. Critical manifest khóa exact status; exception manifest chỉ chứa exact 5xx
+cùng 12 ký tự SHA-256 hostname cho route đã degraded từ trước. Script không in
+hostname/URL khi fail. Dùng hai file `.example` trong thư mục này làm schema, nhưng
+file production phải nằm ngoài repository và mode `0600`:
+
+    scripts/supabase/test_nginx_proxy_manager_route_matrix.sh \
+      /etc/hyper-authenticator/nginx-proxy-manager-critical-routes.conf \
+      /etc/hyper-authenticator/nginx-proxy-manager-route-exceptions.conf \
+      --allow-production-nginx-proxy-manager-route-probe
+
+Exception không biến 5xx thành healthy; nó chỉ khóa baseline để NPM upgrade không
+tạo regression mới. Xóa exception khi upstream đã khôi phục hoặc route đã disable.
+
+Chuẩn bị maintenance mà không thay Compose/container production:
+
+    scripts/supabase/prepare_nginx_proxy_manager_upgrade.sh \
+      /opt/stacks/nginx-proxy-manager-app \
+      /home/operator/backups/nginx-proxy-manager \
+      supabase/nginx-proxy-manager/PRODUCTION_PIN \
+      /etc/hyper-authenticator/nginx-proxy-manager-critical-routes.conf \
+      /etc/hyper-authenticator/nginx-proxy-manager-route-exceptions.conf \
+      --allow-nginx-proxy-manager-upgrade-preparation
+
+Preparation chạy route matrix, fresh backup, isolated restore và target canary,
+sau đó render original/candidate Compose đã checksum. Resolved Compose temp chứa
+credential chỉ ở file 0600 rồi bị xóa; maintenance bundle 0700/0600 vẫn là
+sensitive artifact. Contract cấm preparation chạy `compose up/stop/restart` hoặc
+thay file Compose production.
+
+Baseline 20-07-2026: 26 discovered HTTPS domain, sáu critical route pass, 0 stream;
+11 route của stack khác đang dừng trả exact 502 và được khóa bằng hash exception.
+Fresh backup `npm-20260719T192955Z`, restore/canary/route recheck và bundle
+`maintenance-npm-20260719T193145Z` đều pass; candidate chỉ đổi exact NPM image,
+production vẫn `2.14.0`.

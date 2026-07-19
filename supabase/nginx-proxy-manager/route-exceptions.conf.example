@@ -1,0 +1,3 @@
+# Chỉ dùng cho route đã audit là degraded trước maintenance.
+# Format: EXACT_5XX_STATUS FIRST_12_HEX_OF_SHA256_HOSTNAME
+502 0123456789ab

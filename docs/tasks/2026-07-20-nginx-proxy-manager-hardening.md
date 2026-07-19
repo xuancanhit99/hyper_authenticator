@@ -25,6 +25,8 @@ Loại floating update và world-readable credential khỏi reverse proxy produc
 - [x] Soak lặp lại có request/upstream timing để correlation outlier.
 - [x] Dedicated NPM backup và isolated restore rehearsal pass.
 - [x] Exact NPM `2.15.1` isolated no-port canary pass.
+- [x] Full discovered-domain + critical route matrix và redacted exception contract pass.
+- [x] Non-mutating maintenance preparation bundle pass.
 - [x] Full repository gate pass.
 - [ ] Branch-head CI pass.
 
@@ -42,6 +44,10 @@ Loại floating update và world-readable credential khỏi reverse proxy produc
   table trong exact MariaDB image cô lập không network.
 - Exact NPM `2.15.1` digest canary pass API 200, `nginx -t` và 4/4 core table;
   internal network không host port, temp container/volume/network/sandbox đã cleanup.
+- NPM có 26 enabled HTTPS domain, 0 stream. Sáu critical route pass; 11 route 502
+  đều trỏ upstream stack khác đã dừng, được khóa exact status/hash chứ không coi healthy.
+- Fresh rollback backup `npm-20260719T192955Z` và maintenance bundle
+  `maintenance-npm-20260719T193145Z` pass checksum; normalized candidate chỉ đổi image.
 
 ## Đánh giá rủi ro
 
@@ -59,6 +65,7 @@ Loại floating update và world-readable credential khỏi reverse proxy produc
 - [x] Hoàn tất correlated soak sau khi deploy timing config.
 - [x] Chuẩn bị backup/restore harness và canary prerequisite cho NPM 2.15.1.
 - [x] Chạy isolated clone canary bằng exact NPM 2.15.1 image.
+- [x] Khóa all-domain/critical route regression và sinh maintenance bundle không mutate production.
 - [ ] Chuyển DB password sang Docker file secrets trong maintenance window.
 - [x] Cập nhật canonical docs và full gate.
 - [ ] Commit/push và branch-head CI.
@@ -76,8 +83,10 @@ Loại floating update và world-readable credential khỏi reverse proxy produc
 | Dedicated backup | `npm-20260719T184130Z`; checksum/archive pass trước và sau atomic move | 2026-07-20 |
 | Isolated restore | Exact MariaDB image, network tắt, authenticated readiness và 4/4 core table pass; 0 temp container còn lại | 2026-07-20 |
 | NPM 2.15.1 canary | Exact digest `52b2c599…9858bb`; API 200, Nginx syntax, 4/4 core table; internal/no-port và cleanup pass | 2026-07-20 |
+| NPM route matrix | 26 discovered HTTPS domain, 6 critical pass, 11/11 exact pre-existing 502 exception, 0 stream; output redacted | 2026-07-20 |
+| Maintenance preparation | Fresh backup `npm-20260719T192955Z`; restore/canary/route recheck pass; bundle `maintenance-npm-20260719T193145Z` 0700/0600 và checksum pass; production unchanged | 2026-07-20 |
 | Post-canary public smoke | Auth 100/100 p95 365/max 374 ms; Studio 401; Flutter Web 200; production vẫn NPM 2.14.0, Nginx syntax/container/timer pass | 2026-07-20 |
-| `scripts/agent/check.sh full` + secret scan | Pass 186 test, analyzer, docs, operations/platform/migration contract và 150-commit history scan | 2026-07-20 |
+| `scripts/agent/check.sh full` + secret scan | Pass 186 test, analyzer, docs, route/preparation + operations/platform/migration contract và 152-commit history scan | 2026-07-20 |
 
 ## Tác động tài liệu
 

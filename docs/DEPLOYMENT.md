@@ -198,7 +198,12 @@ NPM `2.15.1` là major base-image/OpenResty/Certbot transition so với runtime
 phải ghi exact image/database name metadata và restore rehearsal bốn core table
 trong MariaDB cô lập phải pass trước maintenance window. Exact `2.15.1` canary đã
 pass API/Nginx/database trên internal network không publish port; production
-recreate vẫn cần owner duyệt public-route regression và rollback window.
+recreate vẫn cần owner duyệt public-route regression và rollback window. Trước
+maintenance, `prepare_nginx_proxy_manager_upgrade.sh` phải tạo fresh backup và
+checksum maintenance bundle; candidate Compose phải normalized-compare để chỉ đổi
+exact NPM image. Route matrix phải bao phủ mọi enabled domain, exact critical route
+và pre-existing 5xx bằng hash/status exception; exception không được dùng để bỏ qua
+regression mới.
 
 ## Windows
 

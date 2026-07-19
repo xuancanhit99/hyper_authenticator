@@ -272,6 +272,13 @@ dùng password ngẫu nhiên qua env file 0600 và Docker network `--internal` k
 publish port. Cleanup xóa container kèm anonymous volume, network và sandbox;
 target canary không được kết nối public hoặc mutate database production.
 
+NPM route matrix lấy hostname trực tiếp từ database nhưng chỉ log 12 ký tự SHA-256
+khi fail; critical/exception manifest production mode 0600 và nằm ngoài repository.
+Exception chỉ nhận exact 5xx + hash đã audit, không chứa URL và không cho phép 000/
+status khác. Maintenance bundle có original/candidate Compose chứa DB password
+literal nên bắt buộc directory/file 0700/0600; resolved Compose temp bị xóa trước
+khi publish bundle.
+
 ## Dependency và asset supply chain
 
 - Lockfile được commit; CI pin Flutter và secret scanner checksum.

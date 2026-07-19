@@ -113,7 +113,7 @@ behavior an toàn, backend có backup/restore/health harness và release gate t�
 | Backup restore rehearsal | Full restore DB tạm + schema/FORCE RLS/active-session guard pass |
 | Auth load budget | 100/100 HTTP 200, concurrency 10, p95 578 ms, max 862 ms dưới budget 1.000/2.000 ms; negative path 1 ms fail đúng |
 | Auth bounded soak | Lượt đầu 900/900, p95 292 ms nhưng max 3.648 ms fail; correlated repeat sau NPM timing pass 900/900, elapsed 1.135 giây, p95 289/max 590 ms. NPM/upstream p95 28/25 ms, max 244/244 ms, 0 non-200; slowest client request tương ứng NPM/upstream 70/67 ms |
-| NPM hardening/restore/canary | NPM `2.14.0` + MariaDB `10.5.29` pin exact digest, secret-bearing file 0600; backup `npm-20260719T184130Z` pass checksum/restore; exact `2.15.1` clone pass API/Nginx/4 core table trên internal no-port network rồi cleanup |
+| NPM hardening/restore/canary | NPM `2.14.0` + MariaDB `10.5.29` pin exact digest, secret-bearing file 0600; 26-domain/6-critical route matrix pass với 11 exact pre-existing 502 exceptions; fresh backup `npm-20260719T192955Z`, restore, exact `2.15.1` no-port canary và checksum maintenance bundle pass; production unchanged |
 | Web production rollout | Image `1.1.0-ae1ab36` `linux/amd64` healthy; local/public `main.dart.js` SHA-256 `1a0d63a6…f66ea6` khớp; `/`, `/settings`, `/privacy`, `/login`, `/reset-password` trả 200; TLS/HSTS/CSP/cache/Permissions-Policy pass; browser xác minh Flutter runtime `lang=vi`, render và console sạch |
 
 Full `scripts/agent/check.sh full` pass: docs, generated drift, format, analyzer,
@@ -134,6 +134,8 @@ platform config, 186 test và encrypted migration/active-session/device-wrap con
   và Web E2EE trust model.
 - `mobile_scanner` upstream còn Kotlin legacy warning.
 - Off-host backup đang phụ thuộc máy Mac thay vì dedicated backup host.
+- NPM có 11 enabled domain của stack khác đang dừng trả 502; exact hash exceptions
+  bảo vệ upgrade khỏi regression nhưng owner vẫn phải khôi phục hoặc disable route.
 - Low-concurrency Auth budget và correlated soak đã pass; request chậm nhất của
   lượt lặp chủ yếu nằm trước reverse proxy/Auth backend. Production-scale workload,
   long-term SLO và external alerting vẫn chưa có.

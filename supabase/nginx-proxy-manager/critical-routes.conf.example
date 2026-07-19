@@ -1,0 +1,4 @@
+# File production phải mode 0600 và nằm ngoài repository.
+# Format: EXACT_HTTP_STATUS HTTPS_URL_WITHOUT_QUERY_OR_FRAGMENT
+200 https://app.example.com/
+401 https://api.example.com/auth/v1/health

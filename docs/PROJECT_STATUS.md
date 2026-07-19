@@ -146,13 +146,18 @@ verification phải inject `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY` và
   pass 900/900, p95 289 ms và max 590 ms. Request chậm nhất có DNS 3/TCP 88/
   TLS 200/TTFB 589 ms trong khi NPM request/upstream chỉ 70/67 ms; toàn cửa sổ
   proxy có p95 28/25 ms, max 244/244 ms và 0 non-200. Lượt baseline cuối tiếp tục
-  pass 100/100, p95 424 ms, max 436 ms.
+  pass 100/100 sau canary, p95 365 ms, max 374 ms.
 - NPM `2.14.0` và MariaDB `10.5.29` đã pin exact digest; compose, `.env` và
   application key mode `0600`. Dedicated backup `npm-20260719T184130Z` pass
   checksum/archive, sau đó restore pass bốn core table trong exact MariaDB image
   cô lập không network. NPM `2.15.1` exact digest còn pass cloned app/database/
   certificate canary: API 200, Nginx syntax và 4/4 core table trên internal network
-  không host port; temp resource đã cleanup, production vẫn ở `2.14.0`.
+  không host port; temp resource đã cleanup, production vẫn ở `2.14.0`. Full NPM
+  matrix tự khám phá 26 HTTPS domain/0 stream: sáu route trọng yếu pass exact;
+  11 route của stack khác đã dừng trả pre-existing 502 và được khóa bằng hash/status
+  exception để upgrade không tạo regression mới. Fresh backup/restore/canary/
+  route recheck cùng non-mutating maintenance bundle đã pass checksum; candidate
+  Compose chỉ đổi exact NPM image.
 - Health timer chạy mỗi 5 phút. Backup timer chạy hằng ngày, giữ 7 bản local.
 - Backup gồm logical database, globals, quiesced Storage và sensitive config;
   có SHA-256, permission 0700/0600 và validation catalog/tar.
@@ -223,6 +228,10 @@ Capability là hành vi source hiện tại, không thay thế device test và s
     widget regression; chưa có TalkBack/VoiceOver runtime, keyboard audit toàn bộ
     Settings/main navigation, active screenshot/recording control, native app-switcher
     snapshot test hoặc audit focus visualization trên từng OS đại diện.
+12. NPM còn 11 enabled proxy domain trả 502 vì upstream/container của ứng dụng
+    khác đã dừng hoặc không còn TCP/DNS. Chúng không thuộc sáu route trọng yếu của
+    Hyper Authenticator/Supabase và không bị thay đổi; hash exception chỉ khóa
+    baseline, không sửa outage. Owner cần chọn khôi phục stack hoặc disable route.
 
 ## Automation
 

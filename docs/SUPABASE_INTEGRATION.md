@@ -175,6 +175,10 @@ cuối xác nhận không còn matching test user hoặc encrypted row.
   Certbot và tác động mọi public domain. Exact target digest đã pass isolated
   cloned app/database/certificate canary nhưng production vẫn ở `2.14.0` chờ
   owner duyệt maintenance/public-route regression.
+- NPM route matrix hiện khám phá 26 HTTPS domain và 0 stream; sáu critical route
+  pass. 11 pre-existing 502 thuộc upstream stack khác đã dừng được khóa exact bằng
+  hash/status exception, không được mô tả là healthy. Fresh backup/restore/canary/
+  route recheck và non-mutating candidate bundle đều pass trước maintenance.
 - 11 core container phải healthy trước migration/test.
 
 Release regression cho public Auth health dùng publishable key, không tạo user:

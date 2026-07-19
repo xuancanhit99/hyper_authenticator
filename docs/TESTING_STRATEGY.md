@@ -283,6 +283,12 @@ post-probe current image/health/hash và 5/5 public SPA route pass.
 - `test_nginx_proxy_manager_backup_contract.sh` khóa transactional/exclusion,
   exact image/database metadata, authenticated readiness, no-port canary và network
   isolation; ngăn quay lại `mariadb-admin ping` vốn có thể nhận nhầm temporary init server.
+- `test_nginx_proxy_manager_route_matrix.sh` khám phá mọi enabled HTTP domain,
+  fail khi có stream/wildcard chưa cover, khóa exact critical status và chỉ cho
+  pre-existing 5xx qua protected hash/status exception; output không lộ domain.
+- `prepare_nginx_proxy_manager_upgrade.sh` chạy route → fresh backup → restore →
+  canary → route, normalized-compare candidate Compose và tạo checksum bundle mà
+  không mutate production. Contract test cấm compose lifecycle command/file swap.
 - `test_scheduled_restore_drill_contract.sh` dùng backup/rehearsal fixture tạm,
   không đọc Docker hoặc backup thật; full gate chạy contract này trên mọi platform.
 - `windows_integration.ps1` và `windows_installer_smoke.ps1` chỉ nhận GitHub-hosted

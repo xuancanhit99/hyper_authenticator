@@ -179,6 +179,11 @@ Trước mọi recreate/upgrade NPM, chạy:
       TARGET_VERSION \
       --allow-isolated-nginx-proxy-manager-upgrade
 
+    scripts/supabase/test_nginx_proxy_manager_route_matrix.sh \
+      /etc/hyper-authenticator/nginx-proxy-manager-critical-routes.conf \
+      /etc/hyper-authenticator/nginx-proxy-manager-route-exceptions.conf \
+      --allow-production-nginx-proxy-manager-route-probe
+
 Backup dùng least-privilege transactional dump, loại raw MariaDB volume/log, lưu
 compose/app/Let’s Encrypt cùng exact image và database name metadata, rồi checksum
 trước/sau atomic move. Rehearsal chạy exact MariaDB image với `--network none`,
@@ -190,10 +195,37 @@ publish port và bắt buộc exact version + API 200 + `nginx -t` + 4/4 core ta
 Nó xóa cả anonymous volume khi cleanup; image target có thể giữ lại để pin exact
 digest nhưng không được coi là production deployment.
 
+Route matrix tự khám phá enabled proxy/redirection/dead-host domain, bắt buộc 0
+stream và không log hostname/URL. Critical manifest khóa exact status. Exception
+manifest chỉ được chứa exact pre-existing 5xx + 12 ký tự SHA-256 hostname đã audit;
+status khác, route mới, domain bị xóa hoặc 000 đều fail. Exception không chứng minh
+upstream healthy và phải bị xóa khi route được khôi phục/disable.
+
+Sinh maintenance bundle mà không thay production:
+
+    scripts/supabase/prepare_nginx_proxy_manager_upgrade.sh \
+      /opt/stacks/nginx-proxy-manager-app \
+      /home/xuancanhit/backups/hyper-authenticator/nginx-proxy-manager \
+      /path/to/PRODUCTION_PIN \
+      /etc/hyper-authenticator/nginx-proxy-manager-critical-routes.conf \
+      /etc/hyper-authenticator/nginx-proxy-manager-route-exceptions.conf \
+      --allow-nginx-proxy-manager-upgrade-preparation
+
+Preparation lock route baseline, tạo fresh backup, chạy isolated restore/canary,
+probe route lại, rồi render original/candidate Compose. Resolved config được
+normalized-compare để chứng minh candidate chỉ đổi exact image. Script không chạy
+Compose lifecycle command hoặc thay `compose.yaml`; bundle sensitive giữ 0700/0600.
+
 Baseline 19-07-2026: NPM `2.14.0` và MariaDB `10.5.29` pin exact digest;
 `npm-20260719T184130Z` pass backup và isolated restore. Exact NPM `2.15.1` canary
 pass API/Nginx/DB trên internal network; production vẫn cần owner duyệt maintenance,
 public route matrix và rollback vì thay base image/OpenResty/Certbot cho mọi domain.
+
+Preparation cuối 20-07-2026: 26 discovered HTTPS domain, sáu critical route pass,
+0 stream; 11 route của stack khác đang dừng trả exact 502 và được khóa bằng redacted
+exception. Fresh backup `npm-20260719T192955Z`, restore, `2.15.1` canary, route
+recheck và bundle `maintenance-npm-20260719T193145Z` checksum pass. Production
+Compose byte-match original, NPM vẫn `2.14.0`, không còn canary resource.
 
 ## Contract sau deploy/upgrade
 
