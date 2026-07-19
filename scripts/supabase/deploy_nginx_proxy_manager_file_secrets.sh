@@ -177,9 +177,6 @@ compose_uid=$(stat -c '%u' compose.yaml)
 compose_gid=$(stat -c '%g' compose.yaml)
 rollback_route=$(mktemp -d "$BACKUP_ROOT/.file-secret-route-rollback.XXXXXX")
 chmod 0700 "$rollback_route"
-route_installed=false
-secrets_installed=false
-config_installed=false
 cleanup_tmp() {
   find "$COMPOSE_DIR/.compose.file-secrets.$$" "$COMPOSE_DIR/.env.file-secrets.$$" \
     -maxdepth 0 -type f -delete 2>/dev/null || true
@@ -189,6 +186,8 @@ cleanup_tmp() {
 }
 trap cleanup_tmp EXIT
 
+# Snapshot route harness before any production mutation. Failures above the
+# transaction only leave private staging files and do not alter active config.
 for name in test_nginx_proxy_manager_route_matrix.sh \
   nginx_proxy_manager_database.sh npm_database_exec_container.sh; do
   if [[ -e "$ROUTE_INSTALL_DIR/$name" ]]; then
@@ -197,31 +196,20 @@ for name in test_nginx_proxy_manager_route_matrix.sh \
     : >"$rollback_route/$name.absent"
   fi
 done
-install -d -m 0755 "$ROUTE_INSTALL_DIR"
-for name in test_nginx_proxy_manager_route_matrix.sh \
-  nginx_proxy_manager_database.sh npm_database_exec_container.sh; do
-  install -m 0755 "$BUNDLE/route-harness/$name" "$ROUTE_INSTALL_DIR/$name"
-done
-route_installed=true
 install -d -m 0700 "$COMPOSE_DIR/.secrets.file-secrets.$$"
 install -m 0400 "$BUNDLE/secrets/npm_db_password" \
   "$COMPOSE_DIR/.secrets.file-secrets.$$/npm_db_password"
 install -m 0400 "$BUNDLE/secrets/npm_db_root_password" \
   "$COMPOSE_DIR/.secrets.file-secrets.$$/npm_db_root_password"
 chown -R "$compose_uid:$compose_gid" "$COMPOSE_DIR/.secrets.file-secrets.$$"
-mv "$COMPOSE_DIR/.secrets.file-secrets.$$" "$COMPOSE_DIR/secrets"
-secrets_installed=true
 install -m 0600 "$BUNDLE/compose.candidate.yaml" \
   "$COMPOSE_DIR/.compose.file-secrets.$$"
 install -m 0600 "$BUNDLE/env.candidate" "$COMPOSE_DIR/.env.file-secrets.$$"
 chown "$compose_uid:$compose_gid" "$COMPOSE_DIR/.compose.file-secrets.$$" \
   "$COMPOSE_DIR/.env.file-secrets.$$"
-mv "$COMPOSE_DIR/.env.file-secrets.$$" .env
-mv "$COMPOSE_DIR/.compose.file-secrets.$$" compose.yaml
-config_installed=true
 
 # shellcheck source=nginx_proxy_manager_database.sh
-source "$ROUTE_INSTALL_DIR/nginx_proxy_manager_database.sh"
+source "$BUNDLE/route-harness/nginx_proxy_manager_database.sh"
 wait_database() {
   local attempt
   for attempt in $(seq 1 90); do
@@ -268,7 +256,7 @@ runtime_gate() {
          AND table_name IN (\"user\",\"proxy_host\",\"certificate\",\"setting\");"
   ')
   [[ "$table_count" == 4 ]]
-  "$ROUTE_INSTALL_DIR/test_nginx_proxy_manager_route_matrix.sh" \
+  bash "$BUNDLE/route-harness/test_nginx_proxy_manager_route_matrix.sh" \
     "$CRITICAL_MANIFEST" "$EXCEPTION_MANIFEST" \
     --allow-production-nginx-proxy-manager-route-probe
 }
@@ -292,6 +280,14 @@ file_secret_gate() {
 set +e
 (
   set -e
+  install -d -m 0755 "$ROUTE_INSTALL_DIR"
+  for name in test_nginx_proxy_manager_route_matrix.sh \
+    nginx_proxy_manager_database.sh npm_database_exec_container.sh; do
+    install -m 0755 "$BUNDLE/route-harness/$name" "$ROUTE_INSTALL_DIR/$name"
+  done
+  mv "$COMPOSE_DIR/.secrets.file-secrets.$$" "$COMPOSE_DIR/secrets"
+  mv "$COMPOSE_DIR/.env.file-secrets.$$" .env
+  mv "$COMPOSE_DIR/.compose.file-secrets.$$" compose.yaml
   docker compose config --quiet
   docker compose up -d --no-deps --force-recreate "$DB_SERVICE"
   wait_database
@@ -308,24 +304,22 @@ set -e
 if ((deploy_status != 0)); then
   printf '%s\n' 'NPM file-secret gate fail; bắt đầu automatic rollback.' >&2
   rollback_status=0
-  if [[ "$config_installed" == true ]]; then
-    install -m 0600 "$BUNDLE/env.original" "$COMPOSE_DIR/.env.file-secrets.$$" || rollback_status=$?
-    install -m 0600 "$BUNDLE/compose.original.yaml" \
+  install -m 0600 "$BUNDLE/env.original" \
+    "$COMPOSE_DIR/.env.file-secrets.$$" || rollback_status=$?
+  install -m 0600 "$BUNDLE/compose.original.yaml" \
+    "$COMPOSE_DIR/.compose.file-secrets.$$" || rollback_status=$?
+  if ((rollback_status == 0)); then
+    chown "$compose_uid:$compose_gid" "$COMPOSE_DIR/.env.file-secrets.$$" \
       "$COMPOSE_DIR/.compose.file-secrets.$$" || rollback_status=$?
-    if ((rollback_status == 0)); then
-      chown "$compose_uid:$compose_gid" "$COMPOSE_DIR/.env.file-secrets.$$" \
-        "$COMPOSE_DIR/.compose.file-secrets.$$" || rollback_status=$?
-    fi
-    if ((rollback_status == 0)); then
-      mv "$COMPOSE_DIR/.env.file-secrets.$$" .env || rollback_status=$?
-      mv "$COMPOSE_DIR/.compose.file-secrets.$$" compose.yaml || rollback_status=$?
-    fi
+  fi
+  if ((rollback_status == 0)); then
+    mv "$COMPOSE_DIR/.env.file-secrets.$$" .env || rollback_status=$?
+    mv "$COMPOSE_DIR/.compose.file-secrets.$$" compose.yaml || rollback_status=$?
   fi
   if ((rollback_status == 0)); then
     set +e
     (
       set -e
-      source "$ROUTE_INSTALL_DIR/nginx_proxy_manager_database.sh"
       docker compose config --quiet
       docker compose up -d --no-deps --force-recreate "$DB_SERVICE"
       wait_database
@@ -335,7 +329,7 @@ if ((deploy_status != 0)); then
     rollback_status=$?
     set -e
   fi
-  if ((rollback_status == 0)) && [[ "$route_installed" == true ]]; then
+  if ((rollback_status == 0)); then
     for name in test_nginx_proxy_manager_route_matrix.sh \
       nginx_proxy_manager_database.sh npm_database_exec_container.sh; do
       if [[ -f "$rollback_route/$name" ]]; then
@@ -350,14 +344,15 @@ if ((deploy_status != 0)); then
     [[ $(systemctl show "$ROUTE_SERVICE" -p Result --value) == success ]] || rollback_status=$?
     systemctl is-active --quiet "$ROUTE_TIMER" || rollback_status=$?
   fi
-  if ((rollback_status == 0 && secrets_installed == true)); then
+  if ((rollback_status == 0)) && [[ -d "$COMPOSE_DIR/secrets" ]]; then
     find "$COMPOSE_DIR/secrets" -depth -delete || rollback_status=$?
   fi
-  find "$rollback_route" -depth -delete
   if ((rollback_status != 0)); then
-    printf '%s\n' 'CRITICAL: NPM automatic rollback không vượt runtime/route gate.' >&2
+    printf 'CRITICAL: NPM automatic rollback không vượt runtime/route gate; giữ route snapshot tại %s.\n' \
+      "$rollback_route" >&2
     exit 70
   fi
+  find "$rollback_route" -depth -delete
   printf '%s\n' 'NPM rollback pass: exact Compose/env/runtime và route baseline đã khôi phục.' >&2
   exit "$deploy_status"
 fi

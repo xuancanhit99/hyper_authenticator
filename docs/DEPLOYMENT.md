@@ -239,8 +239,10 @@ Sau khi owner duyệt downtime ngắn, deploy chỉ nhận exact bundle đã byt
 
 Harness recreate DB trước rồi app, khóa exact image/version, authenticated DB 4/4,
 API, Nginx, không còn plaintext `Config.Env`, exact secret mount, full route matrix
-và systemd timer. Failure khôi phục exact Compose/`.env`, recreate DB/app và chỉ
-xóa secret files sau khi rollback gate pass; không xóa network, volume hoặc data.
+và systemd timer. Cài route helper, chuyển secret directory và swap config đều nằm
+trong cùng failure boundary. Failure khôi phục exact Compose/`.env`, recreate DB/app
+và chỉ xóa secret files sau khi rollback gate pass; nếu rollback fail thì giữ route
+snapshot để operator recovery. Harness không xóa network, volume hoặc data.
 
 Deploy production chỉ dùng bundle đã chuẩn bị và confirmation explicit:
 

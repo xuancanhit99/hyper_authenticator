@@ -304,8 +304,9 @@ post-probe current image/health/hash và 5/5 public SPA route pass.
   lifecycle mutation.
 - `deploy_nginx_proxy_manager_file_secrets.sh` byte-match Compose + `.env`, khóa
   backup/image/manifest checksum, recreate DB trước app và yêu cầu API/Nginx/DB 4/4,
-  secret mounts, no-plaintext-env, route/timer. Contract khóa exact rollback DB/app
-  và cấm xóa network/volume/data.
+  secret mounts, no-plaintext-env, route/timer. Contract buộc mọi route/secret/config
+  mutation nằm sau transaction boundary, khóa exact rollback DB/app, giữ route
+  snapshot khi rollback fail và cấm xóa network/volume/data.
 - `hyper-auth-nginx-proxy-manager-routes.timer` chạy full redacted route matrix mỗi
   giờ, persistent qua reboot; contract khóa manifest path, explicit mutation flag
   và systemd sandbox không inject credential.

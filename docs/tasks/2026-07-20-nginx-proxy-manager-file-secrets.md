@@ -72,6 +72,8 @@ và rollback mất khả năng xác thực.
 | `scripts/agent/check.sh full` + secret scan | Pass docs 62 file, generated/format/analyzer/platform, 186 test, operations/release/migration contract; 157-commit history + working diff không leak | 2026-07-20 |
 | Branch CI commit `4993a24` | Push run `29704969252` pass 7/7: secret/quality/Android/Web/Linux/Windows/Apple | 2026-07-20 |
 | Production preparation | Fresh backup `npm-20260719T215745Z`; restore 4/4; exact canary cleanup; bundle `file-secrets-npm-20260719T215906Z`; checksum/mode/candidate/26 routes pass; production restart count 0 | 2026-07-20 |
+| Post-preparation deploy audit | Route/secret/config mutation được đưa vào cùng transaction; mọi failure rollback exact original và giữ route snapshot nếu recovery fail | 2026-07-20 |
+| Production candidate semantic diff | Sau khi reverse đúng ba password env và secret mounts/top-level entries, candidate normalized byte-semantically bằng current resolved Compose | 2026-07-20 |
 
 ## Tác động tài liệu
 
