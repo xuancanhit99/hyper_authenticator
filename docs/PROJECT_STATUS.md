@@ -164,8 +164,10 @@ verification phải inject `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY` và
   còn pass DB root/app + NPM `__FILE`, API/Nginx/DB 4/4, internal/no-port và cleanup.
   Renderer/preparation/deploy source hiện có contract cho private candidate,
   checksum/drift guard, DB-first recreate, post-gate và automatic rollback.
-  Production Compose vẫn còn literal cho tới khi preparation bundle pass trên host
-  và owner duyệt maintenance riêng.
+  Production preparation đã tạo fresh backup `npm-20260719T215745Z` và private
+  bundle `file-secrets-npm-20260719T215906Z`; restore/canary/checksum/candidate/
+  route hậu kiểm đều pass, app/DB restart count vẫn 0. Production Compose vẫn còn
+  literal cho tới khi owner duyệt maintenance recreate DB/app riêng.
 - Full NPM matrix tự khám phá 26 HTTPS domain/0 stream: sáu route trọng yếu pass;
   10 route của stack khác trả pre-existing 502 và được khóa bằng hash/status
   exception. `radar.vnpay.dev` đã phục hồi 200 nên exception tương ứng bị xóa.

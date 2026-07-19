@@ -122,6 +122,12 @@ Sau khi review bundle/evidence và duyệt maintenance, deploy bằng
 app và tự rollback exact Compose/`.env`/runtime/routes nếu post-gate fail. Bundle,
 secret và rollback đều sensitive; không đưa path hoặc nội dung vào issue/CI log.
 
+Preparation production ngày 20-07-2026 đã tạo fresh backup
+`npm-20260719T215745Z` và bundle `file-secrets-npm-20260719T215906Z`. Restore 4/4,
+exact file-secret canary, checksum/mode/candidate Compose và route matrix 26/26
+đều pass; production app/DB vẫn restart count 0. Đây là deploy input đã chuẩn bị,
+không phải bằng chứng credential migration đã chạy.
+
 ## Route matrix và maintenance bundle
 
 `test_nginx_proxy_manager_route_matrix.sh` tự đọc mọi enabled proxy/redirection/

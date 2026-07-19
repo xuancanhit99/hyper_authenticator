@@ -1,6 +1,6 @@
 # Task: Chuyển NPM database credential sang Docker file secrets
 
-- Trạng thái: Harness source hoàn tất; chờ production preparation evidence
+- Trạng thái: Production preparation pass; chờ owner duyệt maintenance mutation
 - Bắt đầu: 2026-07-20
 - Owner: Hyperz
 - Issue hoặc ADR liên quan: production operations hardening
@@ -56,8 +56,9 @@ và rollback mất khả năng xác thực.
 - [x] Chuyển isolated canary sang exact file-secret contract.
 - [x] Viết production preparation/deploy/rollback harness.
 - [x] Chạy full repository gate.
-- [ ] Commit/push và branch CI.
-- [ ] Sau merge, chạy preparation rồi xin owner chốt maintenance mutation.
+- [x] Commit/push và branch CI.
+- [x] Chạy production preparation không mutate runtime.
+- [ ] Owner chốt maintenance mutation recreate DB/app.
 
 ## Nhật ký xác minh
 
@@ -69,6 +70,8 @@ và rollback mất khả năng xác thực.
 | Exact file-secret canary | NPM 2.15.1/MariaDB 10.5.29; DB root/app + NPM `__FILE`, API/Nginx/DB 4/4, internal/no-port và cleanup pass | 2026-07-20 |
 | Renderer + preparation/deploy contract | Exact transform/mode/redaction; preparation cấm runtime mutation; deploy khóa drift, DB-first/post-gate/rollback | 2026-07-20 |
 | `scripts/agent/check.sh full` + secret scan | Pass docs 62 file, generated/format/analyzer/platform, 186 test, operations/release/migration contract; 157-commit history + working diff không leak | 2026-07-20 |
+| Branch CI commit `4993a24` | Push run `29704969252` pass 7/7: secret/quality/Android/Web/Linux/Windows/Apple | 2026-07-20 |
+| Production preparation | Fresh backup `npm-20260719T215745Z`; restore 4/4; exact canary cleanup; bundle `file-secrets-npm-20260719T215906Z`; checksum/mode/candidate/26 routes pass; production restart count 0 | 2026-07-20 |
 
 ## Tác động tài liệu
 
@@ -82,7 +85,7 @@ và rollback mất khả năng xác thực.
 
 ## Bàn giao
 
-Source renderer/preparation/deploy/rollback đã có, backward-compatible với
-production hiện tại và exact isolated canary đã pass. Chưa migrate production;
-bước tiếp theo là chạy full gate, tạo preparation bundle trên host không mutate
-runtime, review evidence rồi chỉ recreate app/database trong maintenance được duyệt.
+Source renderer/preparation/deploy/rollback, full local gate, branch CI và
+production preparation đều pass. Production chưa migrate; bước tiếp theo chỉ là
+recreate database trước rồi app bằng exact private bundle trong maintenance được
+owner duyệt. Nếu post-gate fail, harness khôi phục exact Compose/`.env` và runtime.
