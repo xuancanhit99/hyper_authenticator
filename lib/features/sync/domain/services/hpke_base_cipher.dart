@@ -75,13 +75,17 @@ class HpkeBaseCipher {
     required List<int> aad,
   }) async {
     final ephemeralKeyPair = await _kem.newKeyPair();
-    return sealWithEphemeralKeyPair(
-      recipientPublicKey: recipientPublicKey,
-      plaintext: plaintext,
-      info: info,
-      aad: aad,
-      ephemeralKeyPair: ephemeralKeyPair,
-    );
+    try {
+      return await sealWithEphemeralKeyPair(
+        recipientPublicKey: recipientPublicKey,
+        plaintext: plaintext,
+        info: info,
+        aad: aad,
+        ephemeralKeyPair: ephemeralKeyPair,
+      );
+    } finally {
+      ephemeralKeyPair.destroy();
+    }
   }
 
   Future<HpkeCiphertext> sealWithEphemeralKeyPair({
@@ -137,10 +141,9 @@ class HpkeBaseCipher {
     _requireLength(recipientPrivateKey, 32, 'Recipient private key');
     _requireLength(sealed.encapsulatedKey, 32, 'Encapsulated key');
     _requireLength(sealed.authTag, _tagLength, 'Authentication tag');
+    SimpleKeyPair? recipientKeyPair;
     try {
-      final recipientKeyPair = await _kem.newKeyPairFromSeed(
-        recipientPrivateKey,
-      );
+      recipientKeyPair = await _kem.newKeyPairFromSeed(recipientPrivateKey);
       final recipientPublicKey = await recipientKeyPair.extractPublicKey();
       final sharedSecret = await _decap(
         recipientKeyPair: recipientKeyPair,
@@ -165,6 +168,8 @@ class HpkeBaseCipher {
       rethrow;
     } catch (_) {
       throw const HpkeException('Không thể mở HPKE ciphertext.');
+    } finally {
+      recipientKeyPair?.destroy();
     }
   }
 
@@ -177,10 +182,14 @@ class HpkeBaseCipher {
       keyPair: senderKeyPair,
       remotePublicKey: recipientPublicKey,
     );
-    return _extractAndExpand(
-      dh: await dh.extractBytes(),
-      kemContext: <int>[...encapsulatedKey, ...recipientPublicKey.bytes],
-    );
+    try {
+      return await _extractAndExpand(
+        dh: await dh.extractBytes(),
+        kemContext: <int>[...encapsulatedKey, ...recipientPublicKey.bytes],
+      );
+    } finally {
+      dh.destroy();
+    }
   }
 
   Future<List<int>> _decap({
@@ -195,10 +204,14 @@ class HpkeBaseCipher {
         type: KeyPairType.x25519,
       ),
     );
-    return _extractAndExpand(
-      dh: await dh.extractBytes(),
-      kemContext: <int>[...encapsulatedKey, ...recipientPublicKey],
-    );
+    try {
+      return await _extractAndExpand(
+        dh: await dh.extractBytes(),
+        kemContext: <int>[...encapsulatedKey, ...recipientPublicKey],
+      );
+    } finally {
+      dh.destroy();
+    }
   }
 
   Future<List<int>> _extractAndExpand({

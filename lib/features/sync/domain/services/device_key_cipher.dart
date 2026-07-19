@@ -29,12 +29,14 @@ class DeviceKeyCipher {
       _randomKeySource = AesGcm.with256bits();
 
   Future<DeviceKeyMaterial> createKeyMaterial() async {
+    SimpleKeyPair? keyPair;
+    SecretKey? bindingSecretKey;
     try {
-      final keyPair = await _keyExchange.newKeyPair();
+      keyPair = await _keyExchange.newKeyPair();
       final keyPairData = await keyPair.extract();
       final publicKey = await keyPair.extractPublicKey();
-      final bindingSecret = await (await _randomKeySource.newSecretKey())
-          .extractBytes();
+      bindingSecretKey = await _randomKeySource.newSecretKey();
+      final bindingSecret = await bindingSecretKey.extractBytes();
       return DeviceKeyMaterial(
         privateKeyBytes: keyPairData.bytes,
         publicKeyBytes: publicKey.bytes,
@@ -44,16 +46,22 @@ class DeviceKeyCipher {
       throw const DeviceKeyCryptoException(
         'Không thể tạo device key material.',
       );
+    } finally {
+      keyPair?.destroy();
+      bindingSecretKey?.destroy();
     }
   }
 
   Future<List<int>> publicKeyForPrivateKey(List<int> privateKeyBytes) async {
     _requireKey(privateKeyBytes, 'Device private key');
+    SimpleKeyPair? keyPair;
     try {
-      final keyPair = await _keyExchange.newKeyPairFromSeed(privateKeyBytes);
+      keyPair = await _keyExchange.newKeyPairFromSeed(privateKeyBytes);
       return List<int>.unmodifiable((await keyPair.extractPublicKey()).bytes);
     } catch (_) {
       throw const DeviceKeyCryptoException('Device private key không hợp lệ.');
+    } finally {
+      keyPair?.destroy();
     }
   }
 
@@ -203,11 +211,15 @@ class DeviceKeyCipher {
       ),
       info: context,
     );
-    final proof = await _membershipMac.calculateMac(
-      context,
-      secretKey: proofKey,
-    );
-    return base64UrlEncode(proof.bytes);
+    try {
+      final proof = await _membershipMac.calculateMac(
+        context,
+        secretKey: proofKey,
+      );
+      return base64UrlEncode(proof.bytes);
+    } finally {
+      proofKey.destroy();
+    }
   }
 
   Future<bool> verifyMembershipProof({
