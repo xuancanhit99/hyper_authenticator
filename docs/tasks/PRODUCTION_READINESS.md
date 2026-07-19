@@ -102,8 +102,8 @@ behavior an toàn, backend có backup/restore/health harness và release gate t�
 | Windows artifact tại `3ba300d` | Current unsigned installer SHA-256 `c981974d…bd37f85`; release bundle và installer artifact upload thành công, hết hạn 01-08-2026 |
 | Android configured release | Fail closed vì thiếu upload keystore |
 | Android Pixel AVD E2E | Pass login return, setup revision 1, recovery-key rotation revision 2, vault-key rotation revision 3, fresh-device recovery revision 3 và SDK bulk revoke 2→1 session; cleanup user/row/app data |
-| Android Pixel AVD local-vault smoke | Pass UI add, storage round-trip, lifecycle, BLoC reload, navigation và cleanup |
-| iOS 26.5 local-vault smoke | Pass cùng contract trên Simulator; cleanup trong `finally` |
+| Android Pixel AVD local-vault smoke | Pass direct secure-storage probe, UI add, vault round-trip, lifecycle, BLoC reload, navigation và fail-safe cleanup; emulator chạy với hai camera `none` |
+| iOS 26.5 local-vault smoke | Pass direct Keychain probe cùng UI/vault/lifecycle/navigation contract; app data uninstall, cleanup `finally` và Simulator shutdown |
 | macOS configured release | Bị chặn vì thiếu certificate |
 | Remote encrypted contract | 20/20 pass, gồm atomic rotation và active-session revoke enforcement |
 | Remote recovery contract | 8/8 pass |

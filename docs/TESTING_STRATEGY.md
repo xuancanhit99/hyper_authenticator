@@ -115,8 +115,10 @@ và test user/row/app data được cleanup.
 
 Device integration smoke dùng fixture isolated và explicit destructive opt-in đã
 pass trên Android Pixel AVD và iOS 26.5 Simulator. Suite kiểm tra bootstrap với
-public config, thêm account qua UI, secure-storage round-trip, lifecycle
-foreground/hidden, BLoC reload, chuyển Settings/Accounts và local-vault cleanup.
+public config, probe `write/read/readAll/delete` trực tiếp qua secure-storage,
+thêm account qua UI, vault round-trip, lifecycle foreground/hidden, BLoC reload,
+chuyển Settings/Accounts và cleanup vault/secure-storage/preferences trong
+`finally`, kể cả khi bootstrap hoặc seed fail.
 Runner chỉ chấp nhận Android emulator hoặc iOS Simulator; thiết bị thật và macOS
 bị từ chối để không chạm vault người dùng.
 
@@ -275,7 +277,8 @@ post-probe current image/health/hash và 5/5 public SPA route pass.
 ## Khoảng trống đã biết
 
 1. Device integration bao phủ local vault/navigation/lifecycle trên Android
-   emulator, iOS Simulator và GitHub-hosted Windows Server 2025; biometric/camera
+   emulator, iOS Simulator và GitHub-hosted Windows Server 2025; Android/iOS còn
+   pass direct secure-storage preflight và fail-safe cleanup. Biometric/camera
    và secure-storage behavior trên thiết bị thật chưa được chứng minh.
 2. Chưa có two-device physical E2EE test.
    Linux sandbox, Android AVD và iOS Simulator đã pass lost-device-key HA1

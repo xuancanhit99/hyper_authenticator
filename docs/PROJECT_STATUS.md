@@ -45,10 +45,10 @@ mô tả preview là stable production release.
 | Platform configuration gate | Pass network/backup/signing/Keychain/ID |
 | Release config validator | Pass với `.env` public hiện tại, không in key |
 | Gitleaks full history | Pass sau exact allowlist RFC 6238 test vector |
-| Android debug + Pixel AVD runtime | Pass build/install, Supabase auth, hai session/device key active, xóa primary private key rồi HA1 replacement, exact wrap rotation và secondary stale-DEK auto-unwrap generation 2, revision 1→4 + cleanup 404; bulk revoke 2→1 và local-vault smoke cũng pass |
+| Android debug + Pixel AVD runtime | Pass build/install, Supabase auth, hai session/device key active, xóa primary private key rồi HA1 replacement, exact wrap rotation và secondary stale-DEK auto-unwrap generation 2, revision 1→4 + cleanup 404; bulk revoke 2→1 và local-vault smoke với direct secure-storage preflight/fail-safe cleanup cũng pass |
 | Web release + hardened Nginx image | `1.1.0-ae1ab36` `linux/amd64` đang healthy trên production; local/public `main.dart.js` SHA-256 `1a0d63a6…f66ea6` khớp, 5 SPA route và TLS/HSTS/CSP/cache/Permissions-Policy pass; browser xác minh runtime `lang=vi`, Flutter render và console sạch; live rollback về `1.1.0-12fce73` rồi forward lại current pass exact image/hash/route |
 | macOS debug compile unsigned | Pass; không phải runtime/signing evidence |
-| iOS 26.5 simulator debug | Pass Supabase init; hai session/device key active, lost-primary-key HA1 replacement, exact wrap rotation và secondary stale-DEK auto-unwrap generation 2, revision 1→4 + cleanup 404; local-vault smoke cũng pass |
+| iOS 26.5 simulator debug | Pass Supabase init; hai session/device key active, lost-primary-key HA1 replacement, exact wrap rotation và secondary stale-DEK auto-unwrap generation 2, revision 1→4 + cleanup 404; local-vault smoke với direct Keychain preflight/fail-safe cleanup cũng pass |
 | Android release | Fail closed đúng thiết kế vì chưa có upload keystore |
 | macOS release | Bị chặn vì chưa có development/distribution certificate |
 | Linux release + Debian artifact | Pass configured `linux/x64`, historical `1.0.0+9` vault upgrade, private-keyring UI smoke và `.deb` `1.1.0+10` amd64; hosted amd64 pass clean transition/retention + X11/Wayland trên Ubuntu 22.04/24.04 và Debian 12/13 |
@@ -186,10 +186,11 @@ Capability là hành vi source hiện tại, không thay thế device test và s
    trust model. Backup cũ vẫn
    dùng key generation cũ; targeted revoke không remote-wipe local vault.
 7. Local-vault integration smoke đã pass Android emulator, iOS Simulator và
-   GitHub-hosted Windows Server 2025; biometric/camera và secure-storage behavior
-   trên thiết bị thật vẫn chưa được chứng minh. Mobile harness chủ động từ chối
-   target thật/macOS vì nó reset toàn bộ local vault; Windows harness chỉ nhận
-   hosted runner tạm.
+   GitHub-hosted Windows Server 2025; Android/iOS còn pass direct secure-storage
+   preflight cùng cleanup vault/storage/preferences trong mọi failure path.
+   Biometric/camera và secure-storage behavior trên thiết bị thật vẫn chưa được
+   chứng minh. Mobile harness chủ động từ chối target thật/macOS vì nó reset toàn
+   bộ local vault; Windows harness chỉ nhận hosted runner tạm.
 8. Windows đã có unsigned NSIS candidate, hosted-runner package transition và
    upgrade thật từ source `1.0.0+9`; còn code signing và physical-device/Windows Hello.
    Linux đã có `.deb` candidate, hosted amd64 historical upgrade, clean-container

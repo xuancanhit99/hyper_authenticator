@@ -129,8 +129,9 @@ Không thêm secret thật vào fixture. Dùng `TEST_ONLY_*` và UUID/email isol
 
 ## Device integration smoke
 
-Suite local-vault kiểm tra bootstrap có config, thêm account qua UI, round-trip
-secure storage, lifecycle foreground/hidden, BLoC reload, navigation và cleanup:
+Suite local-vault kiểm tra bootstrap có config, direct secure-storage
+`write/read/readAll/delete`, thêm account qua UI, vault round-trip, lifecycle
+foreground/hidden, BLoC reload, navigation và cleanup:
 
     scripts/agent/device_integration.sh \
       emulator-5554 .env --allow-test-vault-reset
@@ -140,7 +141,8 @@ Tham số đầu cũng có thể là UUID của iOS Simulator đang boot. Harnes
 - chỉ chấp nhận Android emulator hoặc iOS Simulator mà host nhận diện được;
 - từ chối thiết bị thật và target macOS;
 - yêu cầu opt-in `--allow-test-vault-reset` vì suite thay toàn bộ local vault trên
-  target bằng fixture rồi xóa fixture trong `finally`;
+  target bằng fixture rồi xóa fixture, toàn bộ secure-storage test và preference
+  trong `finally`, kể cả khi preflight/seed fail;
 - không upload cloud snapshot, không dùng TOTP secret hoặc account thật.
 
 Không nới guard để chạy trên thiết bị người dùng. Device test cho biometric/camera
