@@ -170,15 +170,14 @@ cuối xác nhận không còn matching test user hoặc encrypted row.
 - Exact upstream pin: `supabase/UPSTREAM_PIN`.
 - Overlay proxy/recovery: `supabase/docker-compose.*.yml`.
 - Reverse proxy overlay/pin: `supabase/nginx-proxy-manager/`; production NPM
-  `2.14.0` và MariaDB `10.5.29` đã pin exact current digest, không còn `latest`/
-  floating patch tag. Target `2.15.1` cần backup/canary vì đổi Debian/OpenResty/
-  Certbot và tác động mọi public domain. Exact target digest đã pass isolated
-  cloned app/database/certificate canary nhưng production vẫn ở `2.14.0` chờ
-  owner duyệt maintenance/public-route regression.
+  `2.15.1` và MariaDB `10.5.29` đã pin exact current digest, không còn `latest`/
+  floating patch tag. Upgrade 2.14.0→2.15.1 đã pass fresh backup, isolated restore,
+  cloned app/database/certificate canary, auto-rollback deployment harness,
+  internal API/Nginx và public-route regression.
 - NPM route matrix hiện khám phá 26 HTTPS domain và 0 stream; sáu critical route
-  pass. 11 pre-existing 502 thuộc upstream stack khác đã dừng được khóa exact bằng
-  hash/status exception, không được mô tả là healthy. Fresh backup/restore/canary/
-  route recheck và non-mutating candidate bundle đều pass trước maintenance.
+  pass. 10 pre-existing 502 thuộc upstream stack khác đã dừng được khóa exact bằng
+  hash/status exception, không được mô tả là healthy. Hourly persistent systemd
+  gate đã enable và lượt production đầu pass 10/10 exception.
 - 11 core container phải healthy trước migration/test.
 
 Release regression cho public Auth health dùng publishable key, không tạo user:

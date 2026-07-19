@@ -27,12 +27,15 @@ Loại floating update và world-readable credential khỏi reverse proxy produc
 - [x] Exact NPM `2.15.1` isolated no-port canary pass.
 - [x] Full discovered-domain + critical route matrix và redacted exception contract pass.
 - [x] Non-mutating maintenance preparation bundle pass.
+- [x] Production deploy 2.15.1 và automatic rollback rehearsal pass.
+- [x] Hourly persistent route monitor enable và service run đầu pass.
 - [x] Full repository gate pass.
 - [ ] Branch-head CI pass.
 
 ## Bằng chứng hiện tại
 
-- Runtime NPM: `2.14.0`, Certbot `5.3.1`, image từng được khai báo bằng `latest`.
+- Runtime NPM hiện tại: `2.15.1` exact digest; baseline trước upgrade là `2.14.0`
+  với Certbot `5.3.1` và image từng được khai báo bằng `latest`.
 - Official stable: `2.15.1`; `2.15.0` đổi Debian Trixie/OpenResty/Certbot và sửa
   security issue, nên đây là upgrade cần canary thay vì recreate trực tiếp.
 - `compose.yaml` chứa ba DB password literal và từng mode `0644`; `keys.json`
@@ -44,16 +47,22 @@ Loại floating update và world-readable credential khỏi reverse proxy produc
   table trong exact MariaDB image cô lập không network.
 - Exact NPM `2.15.1` digest canary pass API 200, `nginx -t` và 4/4 core table;
   internal network không host port, temp container/volume/network/sandbox đã cleanup.
-- NPM có 26 enabled HTTPS domain, 0 stream. Sáu critical route pass; 11 route 502
+- NPM có 26 enabled HTTPS domain, 0 stream. Sáu critical route pass; 10 route 502
   đều trỏ upstream stack khác đã dừng, được khóa exact status/hash chứ không coi healthy.
-- Fresh rollback backup `npm-20260719T192955Z` và maintenance bundle
-  `maintenance-npm-20260719T193145Z` pass checksum; normalized candidate chỉ đổi image.
+- Fresh rollback backup `npm-20260719T200634Z` và maintenance bundle
+  `maintenance-npm-20260719T200758Z` pass checksum; normalized candidate chỉ đổi image.
+- Lần deploy đầu auto-rollback khi NPM recreate làm lộ upstream store thiếu
+  `proxy-network`. Network-only override đã khôi phục route 200; fresh preparation
+  và lần deploy thứ hai pass. Runtime image/Compose khớp, API 200, `nginx -t`,
+  26-domain route gate và hourly systemd monitor đều pass.
+- Bốn certificate orphan không còn route reference renew fail vì NXDOMAIN; current
+  public route không bị ảnh hưởng, cleanup qua NPM API/UI còn mở.
 
 ## Đánh giá rủi ro
 
 - Lộ credential: timing log không chứa header/IP/payload; file secret mode `0600`.
 - Mất dữ liệu local/cloud: không tác động Flutter vault hoặc Supabase database.
-- Migration: NPM 2.15.x có base-image/toolchain update; chưa thực hiện.
+- Migration: NPM 2.15.1 đã deploy sau canary; runtime và public-route gate pass.
 - Rollback: exact compose/config backup, `nginx -t` trước reload, không xóa certificate.
 - Tác động platform: mọi public domain dùng NPM; vì vậy major upgrade cần chốt riêng.
 
@@ -66,6 +75,8 @@ Loại floating update và world-readable credential khỏi reverse proxy produc
 - [x] Chuẩn bị backup/restore harness và canary prerequisite cho NPM 2.15.1.
 - [x] Chạy isolated clone canary bằng exact NPM 2.15.1 image.
 - [x] Khóa all-domain/critical route regression và sinh maintenance bundle không mutate production.
+- [x] Deploy production bằng exact bundle với post-gate và auto-rollback.
+- [x] Enable hourly persistent route monitor.
 - [ ] Chuyển DB password sang Docker file secrets trong maintenance window.
 - [x] Cập nhật canonical docs và full gate.
 - [ ] Commit/push và branch-head CI.
@@ -86,6 +97,11 @@ Loại floating update và world-readable credential khỏi reverse proxy produc
 | NPM route matrix | 26 discovered HTTPS domain, 6 critical pass, 11/11 exact pre-existing 502 exception, 0 stream; output redacted | 2026-07-20 |
 | Maintenance preparation | Fresh backup `npm-20260719T192955Z`; restore/canary/route recheck pass; bundle `maintenance-npm-20260719T193145Z` 0700/0600 và checksum pass; production unchanged | 2026-07-20 |
 | Post-canary public smoke | Auth 100/100 p95 365/max 374 ms; Studio 401; Flutter Web 200; production vẫn NPM 2.14.0, Nginx syntax/container/timer pass | 2026-07-20 |
+| Auto-rollback deployment | Lần đầu target pass API/Nginx nhưng route mới 502; exact Compose/image 2.14.0 được khôi phục. Outage còn lại chứng minh upstream network drift độc lập | 2026-07-20 |
+| Upstream network repair | Network-only override normalized-compare, backup và deploy; store upstream/public route trở lại 200 | 2026-07-20 |
+| Fresh production deployment | Backup `npm-20260719T200634Z`, restore/canary/bundle `maintenance-npm-20260719T200758Z`; production 2.15.1 exact digest, API/Nginx/26-domain route pass | 2026-07-20 |
+| Hourly route timer | Enabled/active/persistent; service run đầu pass 26 domain, 6 critical, 10/10 exception | 2026-07-20 |
+| Post-upgrade Auth load | 100/100 HTTP 200, concurrency 10, p95 337 ms, max 395 ms dưới budget 1.000/2.000 ms | 2026-07-20 |
 | `scripts/agent/check.sh full` + secret scan | Pass 186 test, analyzer, docs, route/preparation + operations/platform/migration contract và 152-commit history scan | 2026-07-20 |
 
 ## Tác động tài liệu
@@ -98,6 +114,6 @@ Loại floating update và world-readable credential khỏi reverse proxy produc
 
 ## Bàn giao
 
-Hardening trước upgrade và local full gate đã hoàn tất; còn branch-head CI.
-NPM major target đã pass isolated canary; production upgrade và chuyển Docker file
-secrets vẫn cần owner chốt maintenance window.
+NPM 2.15.1 production upgrade, auto-rollback rehearsal và hourly route monitoring
+đã hoàn tất; còn branch-head CI. Chuyển DB password sang Docker file secrets và
+cleanup bốn orphan certificate qua NPM API/UI vẫn là follow-up riêng.

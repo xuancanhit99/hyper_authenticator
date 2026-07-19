@@ -279,6 +279,14 @@ status khác. Maintenance bundle có original/candidate Compose chứa DB passwo
 literal nên bắt buộc directory/file 0700/0600; resolved Compose temp bị xóa trước
 khi publish bundle.
 
+Production deployment harness chỉ nhận checksum bundle đã byte-match Compose hiện
+tại, exact image ID/digest và explicit mutation confirmation. Nó chỉ recreate NPM
+app service; MariaDB/network/volume không bị dừng hoặc xóa. Post-gate khóa runtime
+version, image, internal API, Nginx syntax và full redacted route matrix; failure
+kích hoạt rollback exact Compose/image. Rollback Compose chứa credential nên giữ
+mode 0600. Hourly route service không inject credential, dùng `ProtectSystem`,
+`PrivateTmp`, `NoNewPrivileges` và chỉ journal status cùng hash domain.
+
 ## Dependency và asset supply chain
 
 - Lockfile được commit; CI pin Flutter và secret scanner checksum.

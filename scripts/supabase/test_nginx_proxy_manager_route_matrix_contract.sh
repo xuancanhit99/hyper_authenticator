@@ -19,6 +19,7 @@ for pattern in \
   'expected_status' \
   'exception_status' \
   'matched_exceptions' \
+  'matched_exceptions != exception_count' \
   'manifest_mode'; do
   grep -Fq -- "$pattern" "$SCRIPT"
 done

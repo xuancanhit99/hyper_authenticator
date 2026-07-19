@@ -67,7 +67,9 @@ run_operations_harness() {
   scripts/supabase/test_nginx_proxy_manager_timing_contract.sh
   scripts/supabase/test_nginx_proxy_manager_backup_contract.sh
   scripts/supabase/test_nginx_proxy_manager_route_matrix_contract.sh
+  scripts/supabase/test_nginx_proxy_manager_route_timer_contract.sh
   scripts/supabase/test_prepare_nginx_proxy_manager_upgrade_contract.sh
+  scripts/supabase/test_deploy_nginx_proxy_manager_upgrade_contract.sh
   scripts/supabase/test_auth_load_budget_contract.sh
   scripts/supabase/test_scheduled_restore_drill_contract.sh
 }

@@ -1,0 +1,13 @@
+[Unit]
+Description=Hourly Hyper Authenticator Nginx Proxy Manager route matrix gate
+
+[Timer]
+OnBootSec=10m
+OnUnitActiveSec=1h
+RandomizedDelaySec=5m
+AccuracySec=1m
+Persistent=true
+Unit=hyper-auth-nginx-proxy-manager-routes.service
+
+[Install]
+WantedBy=timers.target

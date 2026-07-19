@@ -289,6 +289,13 @@ post-probe current image/health/hash và 5/5 public SPA route pass.
 - `prepare_nginx_proxy_manager_upgrade.sh` chạy route → fresh backup → restore →
   canary → route, normalized-compare candidate Compose và tạo checksum bundle mà
   không mutate production. Contract test cấm compose lifecycle command/file swap.
+- `deploy_nginx_proxy_manager_upgrade.sh` chỉ nhận checksum maintenance bundle đã
+  byte-match current Compose và exact current/target image. Nó recreate riêng app,
+  khóa runtime/API/Nginx/full route sau deploy và tự rollback exact Compose/image
+  nếu fail; contract cấm dừng/xóa MariaDB, network hoặc volume.
+- `hyper-auth-nginx-proxy-manager-routes.timer` chạy full redacted route matrix mỗi
+  giờ, persistent qua reboot; contract khóa manifest path, explicit mutation flag
+  và systemd sandbox không inject credential.
 - `test_scheduled_restore_drill_contract.sh` dùng backup/rehearsal fixture tạm,
   không đọc Docker hoặc backup thật; full gate chạy contract này trên mọi platform.
 - `windows_integration.ps1` và `windows_installer_smoke.ps1` chỉ nhận GitHub-hosted

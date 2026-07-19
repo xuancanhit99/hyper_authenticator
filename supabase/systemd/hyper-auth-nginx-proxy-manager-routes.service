@@ -1,0 +1,34 @@
+[Unit]
+Description=Hyper Authenticator Nginx Proxy Manager route matrix gate
+Requires=docker.service network-online.target
+After=docker.service network-online.target
+ConditionFileIsExecutable=/usr/local/lib/hyper-authenticator/test_nginx_proxy_manager_route_matrix.sh
+ConditionPathExists=/etc/hyper-authenticator/nginx-proxy-manager-critical-routes.conf
+ConditionPathExists=/etc/hyper-authenticator/nginx-proxy-manager-route-exceptions.conf
+
+[Service]
+Type=oneshot
+User=root
+Group=root
+ExecStart=/usr/local/lib/hyper-authenticator/test_nginx_proxy_manager_route_matrix.sh /etc/hyper-authenticator/nginx-proxy-manager-critical-routes.conf /etc/hyper-authenticator/nginx-proxy-manager-route-exceptions.conf --allow-production-nginx-proxy-manager-route-probe
+TimeoutStartSec=10m
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=7
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+ProtectClock=true
+ProtectHostname=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+RestrictNamespaces=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+SystemCallArchitectures=native

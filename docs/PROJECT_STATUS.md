@@ -147,17 +147,26 @@ verification phải inject `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY` và
   TLS 200/TTFB 589 ms trong khi NPM request/upstream chỉ 70/67 ms; toàn cửa sổ
   proxy có p95 28/25 ms, max 244/244 ms và 0 non-200. Lượt baseline cuối tiếp tục
   pass 100/100 sau canary, p95 365 ms, max 374 ms.
-- NPM `2.14.0` và MariaDB `10.5.29` đã pin exact digest; compose, `.env` và
-  application key mode `0600`. Dedicated backup `npm-20260719T184130Z` pass
-  checksum/archive, sau đó restore pass bốn core table trong exact MariaDB image
-  cô lập không network. NPM `2.15.1` exact digest còn pass cloned app/database/
-  certificate canary: API 200, Nginx syntax và 4/4 core table trên internal network
-  không host port; temp resource đã cleanup, production vẫn ở `2.14.0`. Full NPM
-  matrix tự khám phá 26 HTTPS domain/0 stream: sáu route trọng yếu pass exact;
-  11 route của stack khác đã dừng trả pre-existing 502 và được khóa bằng hash/status
-  exception để upgrade không tạo regression mới. Fresh backup/restore/canary/
-  route recheck cùng non-mutating maintenance bundle đã pass checksum; candidate
-  Compose chỉ đổi exact NPM image.
+- NPM production đã nâng từ `2.14.0` lên stable `2.15.1`; MariaDB giữ `10.5.29`,
+  cả hai pin exact digest. Compose, `.env` và application key giữ mode `0600`.
+  Fresh backup `npm-20260719T200634Z`, isolated restore, no-port cloned
+  app/database/certificate canary và maintenance bundle
+  `maintenance-npm-20260719T200758Z` đều pass trước deploy. Deploy harness chỉ
+  recreate app service, tự rollback exact Compose/image khi post-gate fail và giữ
+  rollback Compose 2.14.0 mode 0600. Runtime 2.15.1 sau deploy có restart count 0,
+  internal API 200, `nginx -t` pass và exact image/Compose digest khớp. Auth load
+  hậu kiểm đạt 100/100 HTTP 200, p95 337 ms, max 395 ms dưới budget 1.000/2.000 ms.
+- Full NPM matrix tự khám phá 26 HTTPS domain/0 stream: sáu route trọng yếu pass;
+  10 route của stack khác trả pre-existing 502 và được khóa bằng hash/status
+  exception. `radar.vnpay.dev` đã phục hồi 200 nên exception tương ứng bị xóa.
+  `store.hyperz.xyz` từng lộ lỗi DNS nội bộ sau recreate vì upstream thiếu
+  `proxy-network`; network-only Compose override đã thêm lại kết nối và route
+  trở về 200 trước lần deploy thành công.
+- Hourly persistent NPM route timer đã enable; systemd service chạy trong sandbox,
+  output chỉ chứa hash domain và lượt production đầu pass 26/26, 6 critical,
+  10/10 exception. Bốn certificate Let’s Encrypt orphan không còn route reference
+  và domain đang NXDOMAIN vẫn renew fail; current route/certificate đang phục vụ
+  không bị ảnh hưởng, nhưng cần xóa qua NPM API/UI hoặc khôi phục DNS trước expiry.
 - Health timer chạy mỗi 5 phút. Backup timer chạy hằng ngày, giữ 7 bản local.
 - Backup gồm logical database, globals, quiesced Storage và sensitive config;
   có SHA-256, permission 0700/0600 và validation catalog/tar.
@@ -228,10 +237,12 @@ Capability là hành vi source hiện tại, không thay thế device test và s
     widget regression; chưa có TalkBack/VoiceOver runtime, keyboard audit toàn bộ
     Settings/main navigation, active screenshot/recording control, native app-switcher
     snapshot test hoặc audit focus visualization trên từng OS đại diện.
-12. NPM còn 11 enabled proxy domain trả 502 vì upstream/container của ứng dụng
+12. NPM còn 10 enabled proxy domain trả 502 vì upstream/container của ứng dụng
     khác đã dừng hoặc không còn TCP/DNS. Chúng không thuộc sáu route trọng yếu của
     Hyper Authenticator/Supabase và không bị thay đổi; hash exception chỉ khóa
     baseline, không sửa outage. Owner cần chọn khôi phục stack hoặc disable route.
+    Ngoài ra bốn certificate orphan không còn route reference đang renew fail vì
+    NXDOMAIN; chúng phải được cleanup bằng API/UI hoặc phục hồi DNS trước expiry.
 
 ## Automation
 

@@ -216,16 +216,40 @@ probe route lại, rồi render original/candidate Compose. Resolved config đư
 normalized-compare để chứng minh candidate chỉ đổi exact image. Script không chạy
 Compose lifecycle command hoặc thay `compose.yaml`; bundle sensitive giữ 0700/0600.
 
-Baseline 19-07-2026: NPM `2.14.0` và MariaDB `10.5.29` pin exact digest;
-`npm-20260719T184130Z` pass backup và isolated restore. Exact NPM `2.15.1` canary
-pass API/Nginx/DB trên internal network; production vẫn cần owner duyệt maintenance,
-public route matrix và rollback vì thay base image/OpenResty/Certbot cho mọi domain.
+Deploy bundle sau khi owner duyệt maintenance:
 
-Preparation cuối 20-07-2026: 26 discovered HTTPS domain, sáu critical route pass,
-0 stream; 11 route của stack khác đang dừng trả exact 502 và được khóa bằng redacted
-exception. Fresh backup `npm-20260719T192955Z`, restore, `2.15.1` canary, route
-recheck và bundle `maintenance-npm-20260719T193145Z` checksum pass. Production
-Compose byte-match original, NPM vẫn `2.14.0`, không còn canary resource.
+    scripts/supabase/deploy_nginx_proxy_manager_upgrade.sh \
+      /opt/stacks/nginx-proxy-manager-app \
+      /home/xuancanhit/backups/hyper-authenticator/nginx-proxy-manager \
+      /path/to/maintenance-npm-YYYYMMDDTHHMMSSZ \
+      /etc/hyper-authenticator/nginx-proxy-manager-critical-routes.conf \
+      /etc/hyper-authenticator/nginx-proxy-manager-route-exceptions.conf \
+      --allow-production-nginx-proxy-manager-upgrade
+
+Sau rollout, cài script route matrix vào `/usr/local/lib/hyper-authenticator/`,
+cài service/timer cùng tên từ `supabase/systemd/`, chạy `systemd-analyze verify`,
+start service một lần rồi enable timer. Xác minh `Result=success`,
+`ExecMainStatus=0` và timer có `Trigger` kế tiếp; journal không được in hostname.
+
+Production rollout 20-07-2026: fresh backup `npm-20260719T200634Z`, isolated
+restore, exact `2.15.1` canary, route recheck và bundle
+`maintenance-npm-20260719T200758Z` checksum pass. Deploy harness nâng riêng NPM
+app 2.14.0→2.15.1; exact runtime/Compose digest, API 200, `nginx -t` và 26-domain
+route matrix đều pass, MariaDB vẫn `10.5.29`. Rollback Compose 2.14.0 giữ mode
+0600 trong stack directory.
+
+Lần deploy đầu tự rollback khi recreate làm lộ một upstream store không còn nối
+`proxy-network`; runtime 2.14.0 được khôi phục nhưng route gate vẫn fail đúng vì
+outage độc lập còn tồn tại. Network-only Compose override của upstream được
+normalized-compare, backup rồi deploy; route trở lại 200. Sau fresh preparation,
+lần deploy thứ hai pass. Một exception cũ phục hồi 200 nên baseline hiện còn 10
+exact 502 exception; hourly persistent route timer đã enable và lượt đầu pass
+26/26, sáu critical, 10/10 exception.
+
+Bốn certificate Let’s Encrypt orphan có 0 proxy/redirect/dead-host reference và
+domain NXDOMAIN vẫn renew fail khi NPM startup. Không xóa trực tiếp database hoặc
+certificate files. Operator phải dùng NPM API/UI để xóa sau backup nếu domain đã
+bỏ, hoặc khôi phục DNS rồi renew nếu còn dùng.
 
 ## Contract sau deploy/upgrade
 

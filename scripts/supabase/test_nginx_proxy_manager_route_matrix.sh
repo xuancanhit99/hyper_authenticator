@@ -188,6 +188,11 @@ if ((generic_failures != 0)); then
     "$generic_failures" "$domain_count" >&2
   exit 1
 fi
+if ((matched_exceptions != exception_count)); then
+  printf 'NPM route matrix fail: %s/%s exception còn khớp; baseline đã stale.\n' \
+    "$matched_exceptions" "$exception_count" >&2
+  exit 1
+fi
 
 printf 'NPM route matrix pass: %s discovered HTTPS domain, %s critical route, %s/%s matched exception, 0 stream.\n' \
   "$domain_count" "$critical_count" "$matched_exceptions" "$exception_count"

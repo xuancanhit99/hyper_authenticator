@@ -193,17 +193,33 @@ NPM production không được dùng floating image. Exact current pin và non-s
 timing overlay nằm trong `supabase/nginx-proxy-manager/`; compose/`.env`/application
 key chứa credential phải mode `0600`. Trước NPM upgrade phải chạy dedicated
 transactional DB + app/Let’s Encrypt backup, checksum, config test và route matrix.
-NPM `2.15.1` là major base-image/OpenResty/Certbot transition so với runtime
-`2.14.0`; không recreate production chỉ dựa vào tag `latest`. Backup production
+NPM `2.15.1` là major base-image/OpenResty/Certbot transition so với
+`2.14.0`; production hiện đã chạy `2.15.1` exact digest sau canary/deploy gate.
+Không recreate hoặc nâng tiếp chỉ dựa vào tag `latest`. Backup production
 phải ghi exact image/database name metadata và restore rehearsal bốn core table
-trong MariaDB cô lập phải pass trước maintenance window. Exact `2.15.1` canary đã
-pass API/Nginx/database trên internal network không publish port; production
-recreate vẫn cần owner duyệt public-route regression và rollback window. Trước
-maintenance, `prepare_nginx_proxy_manager_upgrade.sh` phải tạo fresh backup và
+trong MariaDB cô lập phải pass trước maintenance window. Trước maintenance,
+`prepare_nginx_proxy_manager_upgrade.sh` phải tạo fresh backup và
 checksum maintenance bundle; candidate Compose phải normalized-compare để chỉ đổi
 exact NPM image. Route matrix phải bao phủ mọi enabled domain, exact critical route
 và pre-existing 5xx bằng hash/status exception; exception không được dùng để bỏ qua
 regression mới.
+
+Deploy production chỉ dùng bundle đã chuẩn bị và confirmation explicit:
+
+    scripts/supabase/deploy_nginx_proxy_manager_upgrade.sh \
+      /opt/stacks/nginx-proxy-manager-app \
+      /home/operator/backups/nginx-proxy-manager \
+      /path/to/maintenance-npm-YYYYMMDDTHHMMSSZ \
+      /etc/hyper-authenticator/nginx-proxy-manager-critical-routes.conf \
+      /etc/hyper-authenticator/nginx-proxy-manager-route-exceptions.conf \
+      --allow-production-nginx-proxy-manager-upgrade
+
+Harness yêu cầu production byte-match original bundle, exact current/target image,
+fresh rollback backup và pre-route pass; chỉ recreate app service. Sau deploy nó
+yêu cầu exact version/image, internal API 200, `nginx -t` và full route matrix.
+Nếu fail, harness khôi phục exact Compose/image cũ và chạy lại cùng gate; không
+dừng MariaDB, xóa network hoặc volume. Hourly systemd route gate phải active sau
+maintenance để phát hiện regression muộn.
 
 ## Windows
 
