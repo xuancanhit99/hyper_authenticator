@@ -131,6 +131,12 @@ device_wrap_ready=$(docker exec "$DB_CONTAINER" psql \
        'authenticated', 'private.encrypted_vault_membership_verifiers', 'select'
      )
      and to_regprocedure(
+       'public.begin_authenticator_device_key_enrollment(uuid,text,text,text)'
+     ) is not null
+     and to_regprocedure(
+       'public.begin_authenticator_device_key_enrollment(uuid,text,text)'
+     ) is null
+     and to_regprocedure(
        'public.publish_encrypted_vault_snapshot_v2(bigint,bigint,text,smallint,text,text,text,text,smallint,text,text,text)'
      ) is not null
      and to_regprocedure(

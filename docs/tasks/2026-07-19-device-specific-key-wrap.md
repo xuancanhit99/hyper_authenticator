@@ -1,6 +1,6 @@
 # Task: Device-specific wrapped DEK
 
-- Trạng thái: Đang triển khai; client đã inject, chưa deploy production
+- Trạng thái: Đang xác minh phát hành; server production và Linux runtime đã pass
 - Bắt đầu: 2026-07-19
 - Owner: canhvx
 - ADR liên quan: `docs/adr/0012-device-specific-hpke-key-wrap.md`
@@ -28,8 +28,8 @@ nhập recovery key.
 - [x] Migration additive có `key_generation`, device key và wrap table/RPC.
 - [x] Enrollment chỉ active sau local wrap + read-back unwrap/proof verification.
 - [x] Rotation publish snapshot/recovery wrap/device wrap set atomically.
-- [ ] Surviving device tự unwrap generation mới; excluded device fail closed.
-- [ ] Recovery key `HA1` tiếp tục recovery khi device key mất.
+- [x] Surviving device tự unwrap generation mới; excluded device fail closed.
+- [x] Recovery key `HA1` tiếp tục recovery khi device key mất.
 - [ ] Remote contract, backup/restore, native two-device runtime và full gate pass.
 - [x] Owner chấp nhận ADR trước khi inject/deploy.
 
@@ -48,8 +48,8 @@ nhập recovery key.
 
 - Lộ credential: private key/binding secret là credential; cấm log, preference,
   fixture thật hoặc server response.
-- Mất dữ liệu local: staged primitive chưa mutate vault; runtime sau này chỉ thay
-  DEK sau read-back decrypt/validate.
+- Mất dữ liệu local: runtime chỉ thay DEK sau read-back decrypt/validate; lost-key
+  recovery revoke server key cũ nhưng không xóa local TOTP vault.
 - Mất dữ liệu cloud: rotation phải compare-and-swap + atomic device wrap set.
 - Migration: additive; current snapshot backfill generation 1.
 - Rollback: recovery-key v1 path giữ nguyên; không drop v2 data sớm.
@@ -62,7 +62,8 @@ nhập recovery key.
 - [x] Review ADR với owner.
 - [x] Thiết kế migration/RPC + PostgreSQL contract trước khi apply production.
 - [x] Tích hợp repository/use case vào existing SyncBloc flow và ambiguity behavior.
-- [ ] Chạy runtime multi-device, rollout backup-first và CI.
+- [x] Rollout production backup-first + restore/remote/Linux runtime.
+- [ ] Chạy physical multi-device và CI sau push commit cuối.
 
 ## Nhật ký xác minh
 
@@ -71,7 +72,9 @@ nhập recovery key.
 | Focused analyze | 0 diagnostic | 2026-07-19 |
 | HPKE/device-key + sync focused suite | 43 pass | 2026-07-19 |
 | PostgreSQL device-wrap/verifier migration contract | Pass | 2026-07-19 |
-| `scripts/agent/check.sh full` | 181 Flutter test + mọi gate pass | 2026-07-19 |
+| `scripts/agent/check.sh full` | 182 Flutter test + mọi gate pass | 2026-07-19 |
+| Production backup/off-host/full restore + 53 remote checks | Pass | 2026-07-19 |
+| Linux lost-device-key HA1 recovery + rotation runtime | Revision 1→4 pass, cleanup 0 | 2026-07-19 |
 
 ## Tác động tài liệu
 
@@ -85,6 +88,6 @@ nhập recovery key.
 
 ## Bàn giao
 
-ADR đã được owner chấp nhận và client đã inject. Schema vẫn chưa deploy; cần full
-gate, production backup, remote contract, rollback rehearsal và native runtime
-trước khi mô tả cryptographic revoke là production capability.
+ADR đã được owner chấp nhận; client/server, backup/restore, remote regression và
+Linux lost-key runtime đã pass. Còn physical two-device/representative native
+runtime, independent review và phát hành binary mới.

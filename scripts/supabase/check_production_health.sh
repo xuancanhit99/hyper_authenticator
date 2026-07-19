@@ -135,6 +135,14 @@ device_wrap_ready=$(docker exec supabase-db psql -X -v ON_ERROR_STOP=1 \
      )
      and exists (
        select 1 from pg_proc
+       where oid = 'public.begin_authenticator_device_key_enrollment(uuid,text,text,text)'::regprocedure
+         and prosecdef
+     )
+     and to_regprocedure(
+       'public.begin_authenticator_device_key_enrollment(uuid,text,text)'
+     ) is null
+     and exists (
+       select 1 from pg_proc
        where oid = 'public.publish_authenticator_device_key_wrap(uuid,text,bigint,smallint,text,text,text,text,text,text,text,text)'::regprocedure
          and prosecdef
      )

@@ -162,6 +162,12 @@ class _MaterialStore implements DeviceKeyMaterialStore {
     required String userId,
     required String installationId,
   }) async => material;
+
+  @override
+  Future<void> delete({
+    required String userId,
+    required String installationId,
+  }) async {}
 }
 
 class _SessionRepository implements AuthenticatorDeviceSessionRepository {
@@ -202,6 +208,7 @@ class _MemoryDeviceKeyRepository implements DeviceKeyRepository {
     required String installationId,
     required List<int> publicKeyBytes,
     required List<int> bindingSecretBytes,
+    required String vaultMembershipVerifier,
   }) async => Right(
     DeviceKeyEnrollment(
       deviceKeyId: deviceKeyId,

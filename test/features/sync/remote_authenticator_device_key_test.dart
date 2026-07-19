@@ -145,6 +145,7 @@ void main() {
       installationId: installationId,
       publicKeyBytes: publicBytes,
       bindingSecretBytes: bindingBytes,
+      vaultMembershipVerifier: proof,
     );
     final wrap = deviceKeyWrapParameters(
       targetDeviceKeyId: deviceKeyId,
@@ -158,6 +159,7 @@ void main() {
       'p_installation_id',
       'p_public_key',
       'p_binding_secret',
+      'p_vault_membership_verifier',
     });
     expect(enrollment['p_public_key'], base64UrlEncode(publicBytes));
     expect(enrollment['p_binding_secret'], base64UrlEncode(bindingBytes));

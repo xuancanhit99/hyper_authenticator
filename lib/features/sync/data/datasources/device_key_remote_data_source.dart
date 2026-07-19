@@ -19,10 +19,12 @@ Map<String, dynamic> deviceKeyEnrollmentParameters({
   required String installationId,
   required List<int> publicKeyBytes,
   required List<int> bindingSecretBytes,
+  required String vaultMembershipVerifier,
 }) => <String, dynamic>{
   'p_installation_id': installationId,
   'p_public_key': base64UrlEncode(publicKeyBytes),
   'p_binding_secret': base64UrlEncode(bindingSecretBytes),
+  'p_vault_membership_verifier': vaultMembershipVerifier,
 };
 
 Map<String, dynamic> deviceKeyWrapParameters({
@@ -63,6 +65,7 @@ class DeviceKeyRemoteDataSource {
     required String installationId,
     required List<int> publicKeyBytes,
     required List<int> bindingSecretBytes,
+    required String vaultMembershipVerifier,
   }) async {
     _requireAuthenticatedUser(userId);
     try {
@@ -72,6 +75,7 @@ class DeviceKeyRemoteDataSource {
           installationId: installationId,
           publicKeyBytes: publicKeyBytes,
           bindingSecretBytes: bindingSecretBytes,
+          vaultMembershipVerifier: vaultMembershipVerifier,
         ),
       );
       final row = _singleRow(response, 'Device key enrollment response lỗi.');
@@ -183,6 +187,7 @@ class DeviceKeyRemoteDataSource {
     if (error.message.contains('binding_required') ||
         error.message.contains('trusted_source_device_required') ||
         error.message.contains('vault_membership_verifier') ||
+        error.message.contains('device_key_recovery_proof_invalid') ||
         error.message.contains('verified_current_device_wrap_required') ||
         error.message.contains('session_revoked')) {
       throw const DeviceKeyBindingException();

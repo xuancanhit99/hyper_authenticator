@@ -96,6 +96,20 @@ void main() {
       );
       expect(storage.values.values.single, 'not-base64');
     });
+
+    test('delete device key verify secure storage đã xóa', () async {
+      await keyStore.getOrCreate(
+        userId: 'TEST_ONLY_USER_A',
+        installationId: 'TEST_ONLY_INSTALLATION_A',
+      );
+
+      await keyStore.delete(
+        userId: 'TEST_ONLY_USER_A',
+        installationId: 'TEST_ONLY_INSTALLATION_A',
+      );
+
+      expect(storage.values, isEmpty);
+    });
   });
 }
 
@@ -129,5 +143,18 @@ class _MemorySecureStorage extends FlutterSecureStorage {
     } else {
       values[key] = value;
     }
+  }
+
+  @override
+  Future<void> delete({
+    required String key,
+    AndroidOptions? aOptions,
+    AppleOptions? iOptions,
+    LinuxOptions? lOptions,
+    WebOptions? webOptions,
+    AppleOptions? mOptions,
+    WindowsOptions? wOptions,
+  }) async {
+    values.remove(key);
   }
 }

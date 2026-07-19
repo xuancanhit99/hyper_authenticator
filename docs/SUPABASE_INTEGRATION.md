@@ -198,17 +198,18 @@ lock và chỉ ghi evidence 0600 sau checksum/catalog/schema/FORCE RLS/session-g
 probe pass. Health gate yêu cầu evidence chưa quá 9 ngày. Baseline 19-07-2026 pass
 và cleanup không còn database rehearsal.
 
-## Device-wrap migration — **Đã triển khai trong source, chưa deploy**
+## Device-wrap migration — **Đã deploy production**
 
 `20260719150000_add_device_specific_vault_keys.sql` additive-only:
 
 - backfill snapshot `key_generation=1`, `device_wrap_version=0`;
-- thêm private device public-key/binding-hash và current wrap table, force RLS,
-  không grant direct table access;
+- thêm device public-key/binding-hash và current wrap table không cấp direct
+  access, bật + force RLS;
 - lưu vault membership verifier dẫn xuất từ DEK trong bảng `private` server-only;
   verifier không nằm trong snapshot SELECT hoặc response RPC;
 - bind nullable device key vào registry session cùng installation;
 - two-phase `begin → publish wrap → target confirm`;
+- verifier-gated replacement khi HA1 recovery phát hiện device private key đã mất;
 - chặn legacy publish sau khi protocol version 1 được active;
 - v2 normal publish yêu cầu exact generation và active device binding;
 - rotation atomically thay snapshot, generation, exact survivor wrap set và xóa
@@ -227,6 +228,6 @@ và local unwrap bằng current DEK trước confirm/rotation.
 - External alert channel chưa cấu hình.
 - `synced_accounts` chưa drop để giữ rollback path.
 - Device registry production mới thu hồi auth session. Device-specific wrapped
-  DEK client/migration/RPC đã staged và pass focused + local PostgreSQL contract
-  nhưng chưa deploy hoặc có remote/native runtime evidence; remote wipe local vault
-  không nằm trong thiết kế.
+  DEK client/migration/RPC đã deploy và pass focused + local PostgreSQL + remote
+  regression + Linux runtime; còn physical two-device/independent review. Remote
+  wipe local vault không nằm trong thiết kế.

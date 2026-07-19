@@ -7,6 +7,7 @@ MIGRATIONS=(
   "$ROOT/supabase/migrations/20260718230000_enforce_active_vault_sessions.sql"
   "$ROOT/supabase/migrations/20260719070000_create_authenticator_device_registry.sql"
   "$ROOT/supabase/migrations/20260719150000_add_device_specific_vault_keys.sql"
+  "$ROOT/supabase/migrations/20260719170000_allow_recovery_device_key_replacement.sql"
 )
 IMAGE=${POSTGRES_TEST_IMAGE:-postgres:17-alpine@sha256:979c4379dd698aba0b890599a6104e082035f98ef31d9b9291ec22f2b13059ca}
 CONTAINER="hyper-auth-e2ee-postgres-test-$$"
@@ -333,6 +334,7 @@ begin_device_key() {
   local installation_id=$3
   local public_key=$4
   local binding_secret=$5
+  local vault_membership_verifier=$6
   docker exec -i "$CONTAINER" psql -X -A -t -v ON_ERROR_STOP=1 -U postgres <<SQL
 set role authenticated;
 set request.jwt.claims = '{"sub":"$user_id","session_id":"$session_id"}';
@@ -340,7 +342,8 @@ select device_key_id || '|' || device_state || '|' || key_generation
 from public.begin_authenticator_device_key_enrollment(
   '$installation_id'::uuid,
   '$public_key',
-  '$binding_secret'
+  '$binding_secret',
+  '$vault_membership_verifier'
 );
 SQL
 }
@@ -397,7 +400,7 @@ current_key_record=$(begin_device_key \
   11111111-1111-4111-8111-111111111111 \
   cccccccc-cccc-4ccc-8ccc-cccccccccccc \
   10000000-0000-4000-8000-000000000001 \
-  "$ZERO_32" "$ONE_32" | tail -n 1)
+  "$ZERO_32" "$ONE_32" "$THREE_32" | tail -n 1)
 IFS='|' read -r current_device_key current_key_state current_key_generation \
   <<<"$current_key_record"
 [[ -n "$current_device_key" ]]
@@ -408,14 +411,14 @@ current_key_again=$(begin_device_key \
   11111111-1111-4111-8111-111111111111 \
   cccccccc-cccc-4ccc-8ccc-cccccccccccc \
   10000000-0000-4000-8000-000000000001 \
-  "$ZERO_32" "$ONE_32" | tail -n 1)
+  "$ZERO_32" "$ONE_32" "$THREE_32" | tail -n 1)
 [[ "$current_key_again" == "$current_key_record" ]]
 
 if begin_device_key \
   11111111-1111-4111-8111-111111111111 \
   cccccccc-cccc-4ccc-8ccc-cccccccccccc \
   10000000-0000-4000-8000-000000000001 \
-  "$ZERO_32" "$TWO_32" >/dev/null 2>&1; then
+  "$ZERO_32" "$TWO_32" "$THREE_32" >/dev/null 2>&1; then
   printf '%s\n' 'Enrollment đã thay binding secret của device key hiện có.' >&2
   exit 1
 fi
@@ -543,7 +546,7 @@ if begin_device_key \
   11111111-1111-4111-8111-111111111111 \
   99999999-9999-4999-8999-999999999999 \
   10000000-0000-4000-8000-000000000005 \
-  "$THREE_32" "$ZERO_32" >/dev/null 2>&1; then
+  "$THREE_32" "$ZERO_32" "$THREE_32" >/dev/null 2>&1; then
   printf '%s\n' 'Web session đã enroll device key native.' >&2
   exit 1
 fi
@@ -552,7 +555,7 @@ second_key_record=$(begin_device_key \
   11111111-1111-4111-8111-111111111111 \
   eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee \
   10000000-0000-4000-8000-000000000003 \
-  "$ONE_32" "$TWO_32" | tail -n 1)
+  "$ONE_32" "$TWO_32" "$THREE_32" | tail -n 1)
 IFS='|' read -r second_device_key second_key_state second_key_generation \
   <<<"$second_key_record"
 [[ "$second_key_state:$second_key_generation" == 'pending:1' ]]
@@ -604,7 +607,7 @@ third_key_record=$(begin_device_key \
   11111111-1111-4111-8111-111111111111 \
   ffffffff-ffff-4fff-8fff-ffffffffffff \
   10000000-0000-4000-8000-000000000004 \
-  "$TWO_32" "$THREE_32" | tail -n 1)
+  "$TWO_32" "$THREE_32" "$THREE_32" | tail -n 1)
 IFS='|' read -r third_device_key third_key_state third_key_generation \
   <<<"$third_key_record"
 [[ "$third_key_state:$third_key_generation" == 'pending:1' ]]
@@ -721,6 +724,48 @@ post_rotation_publish=$(publish_v2_sql \
   5 2 cccccccc-cccc-4ccc-8ccc-cccccccccccc | tail -n 1)
 [[ "$post_rotation_publish" == '6:2:1' ]]
 
+if begin_device_key \
+  11111111-1111-4111-8111-111111111111 \
+  cccccccc-cccc-4ccc-8ccc-cccccccccccc \
+  10000000-0000-4000-8000-000000000001 \
+  "$ONE_32" "$TWO_32" "$ZERO_32" >/dev/null 2>&1; then
+  printf '%s\n' 'Lost-key replacement đã chấp nhận DEK verifier sai.' >&2
+  exit 1
+fi
+
+replacement_record=$(begin_device_key \
+  11111111-1111-4111-8111-111111111111 \
+  cccccccc-cccc-4ccc-8ccc-cccccccccccc \
+  10000000-0000-4000-8000-000000000001 \
+  "$ONE_32" "$TWO_32" "$TWO_32" | tail -n 1)
+IFS='|' read -r replacement_device_key replacement_state replacement_generation \
+  <<<"$replacement_record"
+[[ "$replacement_state:$replacement_generation" == 'pending:2' ]]
+[[ "$replacement_device_key" != "$current_device_key" ]]
+
+replacement_wrap=$(publish_device_wrap \
+  11111111-1111-4111-8111-111111111111 \
+  cccccccc-cccc-4ccc-8ccc-cccccccccccc \
+  "$replacement_device_key" "$TWO_32" 2 \
+  "$ONE_32" "$TWO_32" "$ZERO_16" "$TWO_32" "$THREE_32" | tail -n 1)
+[[ "$replacement_wrap" == t ]]
+replacement_confirm=$(confirm_device_key \
+  11111111-1111-4111-8111-111111111111 \
+  cccccccc-cccc-4ccc-8ccc-cccccccccccc \
+  "$replacement_device_key" "$TWO_32" 2 | tail -n 1)
+[[ "$replacement_confirm" == t ]]
+
+replacement_state_shape=$(docker exec -i "$CONTAINER" \
+  psql -X -A -t -v ON_ERROR_STOP=1 -U postgres <<SQL | tail -n 1
+select
+  (select state from public.authenticator_device_keys where device_key_id = '$current_device_key'::uuid) || ':' ||
+  (select state from public.authenticator_device_keys where device_key_id = '$replacement_device_key'::uuid) || ':' ||
+  (select device_key_id = '$replacement_device_key'::uuid from public.authenticator_device_sessions where session_id = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc') || ':' ||
+  (select key_generation from public.authenticator_device_key_wraps where device_key_id = '$replacement_device_key'::uuid);
+SQL
+)
+[[ "$replacement_state_shape" == 'revoked:active:true:2' ]]
+
 other_user_device_keys=$(docker exec -i "$CONTAINER" \
   psql -X -A -t -v ON_ERROR_STOP=1 -U postgres <<'SQL' | tail -n 1
 set role authenticated;
@@ -743,4 +788,4 @@ SQL
 [[ "$device_key_force_rls" == t ]]
 
 printf '%s\n' \
-  'Encrypted vault migration pass: atomic revision, active-session/device binding, two-phase enrollment, exact wrap rotation và crypto revoke.'
+  'Encrypted vault migration pass: verifier-gated lost-key recovery, active-device binding, exact wrap rotation và crypto revoke.'

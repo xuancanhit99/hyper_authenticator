@@ -4,6 +4,8 @@ import 'package:hyper_authenticator/core/error/failures.dart';
 import 'package:hyper_authenticator/features/auth/domain/repositories/auth_repository.dart';
 import 'package:hyper_authenticator/features/authenticator/domain/entities/authenticator_account.dart';
 import 'package:hyper_authenticator/features/authenticator/domain/repositories/authenticator_repository.dart';
+import 'package:hyper_authenticator/features/settings/data/datasources/authenticator_installation_identity_store.dart';
+import 'package:hyper_authenticator/features/sync/data/datasources/device_key_store.dart';
 import 'package:hyper_authenticator/features/sync/domain/entities/encrypted_sync_result.dart';
 import 'package:hyper_authenticator/features/sync/domain/repositories/vault_key_repository.dart';
 import 'package:hyper_authenticator/features/sync/domain/usecases/encrypted_vault_sync_usecase.dart';
@@ -64,6 +66,9 @@ void main() {
       final localRepository = di.sl<AuthenticatorRepository>();
       final keyRepository = di.sl<VaultKeyRepository>();
       final sync = di.sl<EncryptedVaultSyncUseCase>();
+      final installationIdentity = di
+          .sl<AuthenticatorInstallationIdentityStore>();
+      final deviceKeyStore = di.sl<DeviceKeyMaterialStore>();
       String? userId;
 
       try {
@@ -111,6 +116,11 @@ void main() {
         _phase('sync-revision-2');
 
         _right(await keyRepository.delete(userId), 'drop-device-key-v1');
+        final identity = await installationIdentity.readOrCreate();
+        await deviceKeyStore.delete(
+          userId: userId,
+          installationId: identity.installationId,
+        );
         _right(
           await localRepository.replaceAccounts(const []),
           'clear-device-vault-v1',
@@ -124,7 +134,7 @@ void main() {
           2,
         );
         await _expectVault(localRepository, 2);
-        _phase('fresh-device-recovery-revision-2');
+        _phase('lost-device-key-ha1-recovery-revision-2');
 
         final recoveryRotation = _right(
           await sync.prepareRecoveryKeyRotation(),

@@ -175,7 +175,7 @@ representation thành `[REDACTED]`, phòng transition/crash logger vô tình ghi
 Các auth event/state chứa email, password hoặc user identity cũng redact string
 representation; equality vẫn hoạt động nhưng transition log không lộ credential/PII.
 
-## Device-specific key foundation — **ADR đã duyệt, chưa production**
+## Device-specific key protocol — **Đã deploy server, client mới chưa phát hành**
 
 ADR-0012 đề xuất HPKE Base
 DHKEM(X25519, HKDF-SHA256)/HKDF-SHA256/AES-256-GCM cho per-device DEK wrap.
@@ -192,11 +192,13 @@ SharedPreferences, analytics, fixture thật hoặc server response. Membership 
 được domain-separate từ current DEK để session attacker không có DEK không khiến
 trusted client tự động cấp wrap. Server còn so khớp vault membership verifier
 HMAC dẫn xuất từ DEK; verifier nằm trong bảng `private`, không xuất hiện trong
-snapshot SELECT hoặc device RPC. Additive migration/RPC staged chỉ công khai public
+snapshot SELECT hoặc device RPC. Additive migration/RPC chỉ công khai public
 key, SHA-256 binding-secret hash và opaque per-device proof qua controlled RPC;
 direct table access bị revoke/force RLS. V2 publish yêu cầu active device binding;
 rotation thay snapshot + verifier + exact wrap set + revoke session trong một
-transaction. Schema chưa deploy và chưa qua independent security review.
+transaction. Lost local device key chỉ được thay bằng đúng DEK verifier dẫn xuất
+từ HA1; key/session cũ bị revoke atomically. Server production và Linux isolated
+runtime đã pass; chưa qua independent security review hoặc physical two-device test.
 
 ## Destructive operations
 
@@ -269,7 +271,8 @@ directory mode 0700 rồi cleanup bằng trap.
 1. Chưa có external alert channel/SIEM; systemd failure hiện chỉ vào journal.
 2. Chưa có independent cryptographic/security review.
 3. Đã có device registry, bulk/targeted auth-session revoke và server-side
-   active-session guard. Device-specific wrapped key mới ở mức primitive staged;
+   active-session guard. Device-specific wrapped key đã deploy nhưng chưa có
+   physical two-device/independent review;
    chưa có schema/runtime/independent review. Backup cũ vẫn decrypt được bằng key
    material cũ.
 4. SMTP delivery tới mailbox thật và expired recovery link chưa được E2E test.

@@ -138,6 +138,8 @@ Script: `scripts/supabase/pull_encrypted_backup.sh`.
 Yêu cầu:
 
 - protected operator env có SSH host/port/user/key path;
+- remote operator có non-interactive sudo được giới hạn để `find`/`tar` backup
+  root 0700; không nới quyền backup directory cho user thường;
 - `age` recipient file;
 - optional identity file để decrypt-stream verify;
 - destination ngoài repository.

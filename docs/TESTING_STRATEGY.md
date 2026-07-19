@@ -24,7 +24,7 @@ exact-set rotation và atomic crypto revoke. Nó không tự boot emulator/simul
 
 ## Coverage hiện tại
 
-181 Flutter tests bao phủ cả focused regression cho device enrollment, local
+182 Flutter tests bao phủ cả focused regression cho device enrollment, local
 unwrap/proof trước confirm, generation-aware publish và exact-set rotation
 preparation, cùng các nhóm sau:
 

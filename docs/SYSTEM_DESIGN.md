@@ -265,8 +265,8 @@ Web chỉ có local TOTP + camera QR.
 
 - E2EE v1 đã có recovery-key re-wrap, DEK rotation và bulk revoke mọi session
   khác. Device registry + targeted auth-session revoke đã deploy. ADR-0012 cùng
-  device-wrap client/migration/RPC đã staged và pass focused + PostgreSQL contract
-  nhưng chưa deploy production hoặc pass remote/native runtime; tombstone/history
-  và Web E2EE vẫn chưa có.
+  device-wrap client/migration/RPC đã deploy và pass focused, PostgreSQL, remote
+  regression cùng Linux lost-key runtime; physical two-device/independent review,
+  tombstone/history và Web E2EE vẫn chưa có.
 - Device-level camera/biometric/secure-storage integration coverage chưa đầy đủ.
 - Alerting backend chưa có external notification channel.

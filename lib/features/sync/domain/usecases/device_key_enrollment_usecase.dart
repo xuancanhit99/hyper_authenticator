@@ -61,12 +61,18 @@ class DeviceKeyEnrollmentUseCase implements DeviceKeyCoordinator {
         userId: userId,
         installationId: identity.installationId,
       );
+      final verifier = await _cipher.createVaultMembershipVerifier(
+        dataKeyBytes: dataKeyBytes,
+        userId: userId,
+        keyGeneration: keyGeneration,
+      );
       final enrollment = _value(
         await _deviceKeyRepository.beginEnrollment(
           userId: userId,
           installationId: identity.installationId,
           publicKeyBytes: material.publicKeyBytes,
           bindingSecretBytes: material.bindingSecretBytes,
+          vaultMembershipVerifier: verifier,
         ),
       );
       if (enrollment.keyGeneration != keyGeneration) {
@@ -98,11 +104,6 @@ class DeviceKeyEnrollmentUseCase implements DeviceKeyCoordinator {
           userId: userId,
           installationId: current.installationId,
           deviceKeyId: current.deviceKeyId,
-          keyGeneration: keyGeneration,
-        );
-        final verifier = await _cipher.createVaultMembershipVerifier(
-          dataKeyBytes: dataKeyBytes,
-          userId: userId,
           keyGeneration: keyGeneration,
         );
         _value(

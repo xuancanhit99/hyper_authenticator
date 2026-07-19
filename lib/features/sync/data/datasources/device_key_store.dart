@@ -23,6 +23,8 @@ abstract class DeviceKeyMaterialStore {
     required String userId,
     required String installationId,
   });
+
+  Future<void> delete({required String userId, required String installationId});
 }
 
 @LazySingleton(as: DeviceKeyMaterialStore)
@@ -95,6 +97,22 @@ class DeviceKeyStore implements DeviceKeyMaterialStore {
       if (identical(_initializations[storageKey], operation)) {
         _initializations.remove(storageKey);
       }
+    }
+  }
+
+  @override
+  Future<void> delete({
+    required String userId,
+    required String installationId,
+  }) async {
+    final storageKey = _storageKey(userId, installationId);
+    try {
+      await _secureStorage.delete(key: storageKey);
+      if (await _secureStorage.read(key: storageKey) != null) {
+        throw const DeviceKeyStoreException();
+      }
+    } catch (_) {
+      throw const DeviceKeyStoreException();
     }
   }
 

@@ -144,16 +144,16 @@ cho rollback/audit; runtime client không inject bridge. Nếu môi trường kh
   bulk revoke xuống một session, current session vẫn authenticated; cleanup pass.
 - Device registry production cho phép list/targeted session revoke nhưng chưa đổi
   key hierarchy. HPKE Base primitive, client coordinator và additive migration/RPC
-  staged đã pass official vectors cùng PostgreSQL two-phase enrollment,
+  production đã pass official vectors cùng PostgreSQL two-phase enrollment,
   server-only DEK verifier, exact-set rotation và crypto-revoke contract. Schema
-  chưa deploy production nên chưa phải runtime capability trên server thật.
+  đã deploy production và pass Linux isolated client runtime tới revision 4.
 - Release plaintext guard và DI generation test path.
 
 ## Khoảng trống đã biết
 
 - Device registry và targeted auth-session revoke đã deploy. Device-specific key
-  wrap có ADR được duyệt + client/migration contract staged; chưa deploy
-  production schema hoặc chạy runtime recovery/two-device rotation.
+  wrap có ADR được duyệt, server production và Linux lost-device-key recovery/
+  rotation runtime; còn physical two-device và independent cryptographic review.
 - Trusted-device/QR transfer.
 - Tombstone hoặc history ngoài một current snapshot.
 - Browser E2EE threat model.

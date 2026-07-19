@@ -9,6 +9,7 @@ abstract class DeviceKeyRepository {
     required String installationId,
     required List<int> publicKeyBytes,
     required List<int> bindingSecretBytes,
+    required String vaultMembershipVerifier,
   });
 
   Future<Either<Failure, List<AuthenticatorDeviceKey>>> list({

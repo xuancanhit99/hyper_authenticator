@@ -20,12 +20,14 @@ class DeviceKeyRepositoryImpl implements DeviceKeyRepository {
     required String installationId,
     required List<int> publicKeyBytes,
     required List<int> bindingSecretBytes,
+    required String vaultMembershipVerifier,
   }) => _run(
     () => _remote.beginEnrollment(
       userId: userId,
       installationId: installationId,
       publicKeyBytes: publicKeyBytes,
       bindingSecretBytes: bindingSecretBytes,
+      vaultMembershipVerifier: vaultMembershipVerifier,
     ),
   );
 
