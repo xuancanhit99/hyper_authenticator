@@ -1,6 +1,6 @@
 # Task: Device-specific wrapped DEK
 
-- Trạng thái: Đang xác minh phát hành; server production và Linux runtime đã pass
+- Trạng thái: Đã phát hành GitHub Preview unsigned; còn assurance trên thiết bị thật
 - Bắt đầu: 2026-07-19
 - Owner: canhvx
 - ADR liên quan: `docs/adr/0012-device-specific-hpke-key-wrap.md`
@@ -76,6 +76,7 @@ nhập recovery key.
 | Production backup/off-host/full restore + 53 remote checks | Pass | 2026-07-19 |
 | Linux lost-device-key HA1 recovery + rotation runtime | Revision 1→4 pass, cleanup 0 | 2026-07-19 |
 | Android AVD + iOS Simulator lost-key runtime | Mỗi target revision 1→4 pass, cleanup 0 | 2026-07-19 |
+| Tag CI + public Preview verification | `v1.1.0-preview.2`/`fd787d0`, CI 7/7 và 5 asset pass | 2026-07-19 |
 
 ## Tác động tài liệu
 
@@ -91,4 +92,4 @@ nhập recovery key.
 
 ADR đã được owner chấp nhận; client/server, backup/restore, remote regression và
 Linux, Android AVD và iOS Simulator lost-key runtime đã pass. Còn physical
-two-device, independent review và phát hành binary mới.
+two-device và independent review; client mới đã có trong GitHub Preview unsigned.

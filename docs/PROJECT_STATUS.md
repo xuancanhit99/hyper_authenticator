@@ -54,9 +54,9 @@ mô tả preview là stable production release.
 | Linux release + Debian artifact | Pass configured `linux/x64`, historical `1.0.0+9` vault upgrade, private-keyring UI smoke và `.deb` `1.1.0+10` amd64; hosted amd64 pass clean transition/retention + X11/Wayland trên Ubuntu 22.04/24.04 và Debian 12/13 |
 | Linux authenticated E2EE runtime | Pass trên Ubuntu 24.04 arm64 container tạm: client thật đăng nhập production Supabase, setup revision 1, sync revision 2, fresh-device recovery, recovery-key rotation revision 3, reject key cũ, vault-key rotation revision 4 và recovery cuối; operator xóa user/row và admin probe xác nhận 404 |
 | Windows release + installer | Pass upgrade vault thật từ source `1.0.0+9`/plugin 3.1.2 sang current COW v2, configured x64 bundle, local-vault runtime và NSIS 3.12 unsigned candidate; install/launch/metadata-upgrade/uninstall giữ AppData pass, bundle + installer/checksum giữ 14 ngày |
-| GitHub Desktop Preview | `v1.1.0-preview.1` public pre-release tại commit `6c3bd4b`; Windows x64 NSIS và Linux amd64 `.deb` cùng individual checksum + `SHA256SUMS.txt`; public unauthenticated re-download khớp SHA-256 |
+| GitHub Desktop Preview | `v1.1.0-preview.2` public pre-release tại commit `fd787d0`; Windows x64 NSIS và Linux amd64 `.deb` chứa device-wrap client, cùng individual checksum + `SHA256SUMS.txt`; public unauthenticated re-download khớp SHA-256 |
 | Device registry client | Model/identity store/repository/BLoC/widget regression pass: stable installation UUID, server-bound load, current-session protection, targeted confirmation, double-submit guard và identifier redaction |
-| Device-wrap cryptographic revoke | **Server production + client runtime đã xác minh:** HPKE Base X25519/HKDF-SHA256/AES-256-GCM; server-only DEK verifier; enrollment, lost-device-key HA1 recovery, publish-v2 và exact wrap-set rotation pass trên Linux, Android AVD và iOS Simulator. Client mới chưa nằm trong GitHub Preview binary và chưa có physical two-device review |
+| Device-wrap cryptographic revoke | **Server production + client runtime đã xác minh:** HPKE Base X25519/HKDF-SHA256/AES-256-GCM; server-only DEK verifier; enrollment, lost-device-key HA1 recovery, publish-v2 và exact wrap-set rotation pass trên Linux, Android AVD và iOS Simulator. Client đã có trong `v1.1.0-preview.2`; chưa có physical two-device review |
 
 Build không có `--dart-define-from-file` chỉ chứng minh compile. Runtime/release
 verification phải inject `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY` và
@@ -98,8 +98,9 @@ verification phải inject `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY` và
 - HPKE/device-key client đã inject; hai migration additive đã deploy production.
   Generation/protocol guard, server-only DEK membership verifier, two-phase
   enrollment, lost-key replacement và atomic exact wrap-set rotation pass focused,
-  PostgreSQL 17, backup/restore, remote regression và Linux client runtime. Chưa
-  có physical two-device/independent review hoặc binary Preview chứa client mới.
+  PostgreSQL 17, backup/restore, remote regression và Linux client runtime. Client
+  đã phát hành trong GitHub Preview unsigned; chưa có physical two-device hoặc
+  independent review.
 - Web Settings không mời đăng nhập để dùng cloud sync khi capability bị tắt.
 - Primary UI đã dùng tiếng Việt nhất quán cho auth, navigation, accounts,
   add/edit, settings và user-facing failure; Web document khai báo `lang="vi"`.
@@ -191,7 +192,7 @@ Capability là hành vi source hiện tại, không thay thế device test và s
    upgrade thật từ source `1.0.0+9`; còn code signing và physical-device/Windows Hello.
    Linux đã có `.deb` candidate, hosted amd64 historical upgrade, clean-container
    package transition, X11/Wayland distro matrix và authenticated E2EE client runtime;
-   hai package đã public trong `v1.1.0-preview.1` với nhãn unsigned. Trước stable còn KDE
+   hai package đã public trong `v1.1.0-preview.2` với nhãn unsigned. Trước stable còn KDE
    login/unlock/physical desktop, release signing và maintainer/support metadata.
    E2EE evidence hiện là
    debug arm64 container, không phải signed amd64 package runtime.
@@ -232,9 +233,9 @@ Capability là hành vi source hiện tại, không thay thế device test và s
 - GitHub Actions run `29675120583` tại merge commit `37619f7` pass 7/7; edit
   operation-completion fix được xác minh cùng Windows/Linux artifact runtime,
   Android, Apple, Web, quality và secret history gate.
-- Tag CI run `29656402708` tại `v1.1.0-preview.1`/`6c3bd4b` pass 7/7. Release
+- Tag CI run `29691574125` tại `v1.1.0-preview.2`/`fd787d0` pass 7/7. Release
   public có pre-release flag, không phải draft, đúng năm asset; Windows SHA-256
-  `5bccb8f8…07a47`, Linux SHA-256 `2628ca05…46d33` đã được tải lại không auth và
+  `be4f4881…fe0e3`, Linux SHA-256 `0b79399f…e8672` đã được tải lại không auth và
   xác minh bằng manifest công khai.
 - `.github/dependabot.yml` kiểm tra Pub và GitHub Actions hằng tuần.
 - `release-preview.yml` cùng `github_preview_release.sh` fail closed theo
@@ -242,9 +243,8 @@ Capability là hành vi source hiện tại, không thay thế device test và s
   Workflow đã có trên default branch từ merge commit `893b5be`.
 - `verify-release.yml` và `verify_github_preview_release.sh` đóng gate sau upload
   bằng public API/download không Authorization. Lượt hiện tại xác minh lại
-  `v1.1.0-preview.1`, exact commit/run/năm asset, API digest, checksum/manifest và
-  Debian/PE32 signature; sai expected commit/tag fail closed. Manual run
-  `29660968360` từ default branch đã pass sau merge.
+  `v1.1.0-preview.2`, exact commit/run/năm asset, API digest, checksum/manifest và
+  Debian/PE32 signature; sai expected commit/tag fail closed.
 - GitHub Private Vulnerability Reporting đã bật; `.github/SECURITY.md` hướng dẫn
   gửi báo cáo riêng tư và cấm đưa credential vào public issue.
 - `scripts/agent/check.sh full` là quality gate canonical; baseline hiện có 182 test,
