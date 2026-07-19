@@ -75,6 +75,7 @@ và rollback mất khả năng xác thực.
 | Post-preparation deploy audit | Route/secret/config mutation được đưa vào cùng transaction; mọi failure rollback exact original và giữ route snapshot nếu recovery fail | 2026-07-20 |
 | Production candidate semantic diff | Sau khi reverse đúng ba password env và secret mounts/top-level entries, candidate normalized byte-semantically bằng current resolved Compose | 2026-07-20 |
 | Rollback freshness audit | Deploy từ chối bundle quá 7.200 giây trước mutation và yêu cầu preparation mới để rollback DB không stale | 2026-07-20 |
+| Production stale negative gate | Exact deploy với giới hạn cố ý 1 giây fail trước mutation; checksum pass, secrets target vẫn vắng, plaintext count 1/2 và app/DB restart count 0 | 2026-07-20 |
 
 ## Tác động tài liệu
 
