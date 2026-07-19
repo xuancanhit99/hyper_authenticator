@@ -69,16 +69,21 @@ Baseline automated đã triển khai cho Auth, danh sách TOTP và form thêm ac
 - viewport 320×640 ở system text scale 200% không overflow;
 - semantics của account copy chỉ công bố issuer, account, TOTP đang hiển thị và
   countdown; không công bố secret key hoặc URI `otpauth`.
+- WCAG text contrast pass trên light/dark theme cho core surface và sensitive
+  Settings dialog;
+- keyboard regression bao phủ Auth forms, account theme/add/search/copy, manual
+  add-account và sensitive dialog bằng Tab/Shift+Tab/Enter/Space/Escape.
 
 Mục tiêu còn lại:
 
-- chạy TalkBack/VoiceOver và keyboard/focus audit trên runtime đại diện;
+- chạy TalkBack/VoiceOver, full Settings/main-navigation keyboard/focus audit và
+  focus visualization trên runtime đại diện;
 - mở rộng text scaling/guideline test sang Settings, recovery/conflict dialog và
   mọi trạng thái lỗi;
 - action không phụ thuộc riêng vào màu;
 - destructive action giải thích chính xác tác động dữ liệu;
 - feedback copy không làm lộ secret đã sao chép;
-- contrast, reduced motion và screenshot/privacy review.
+- reduced motion và screenshot/privacy review.
 
 ## Khả năng bảo trì
 

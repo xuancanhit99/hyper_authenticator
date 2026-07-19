@@ -10,6 +10,8 @@ import 'package:hyper_authenticator/features/auth/domain/repositories/auth_repos
 import 'package:hyper_authenticator/features/settings/presentation/bloc/session_security_bloc.dart';
 import 'package:hyper_authenticator/features/settings/presentation/widgets/authentication_session_tile.dart';
 
+import '../../support/focus_test_utils.dart';
+
 void main() {
   const user = UserEntity(
     id: 'test-user',
@@ -127,9 +129,31 @@ void main() {
         await expectLater(tester, meetsGuideline(androidTapTargetGuideline));
         await expectLater(tester, meetsGuideline(textContrastGuideline));
 
-        await tester.tap(find.text('Đăng xuất các phiên khác'));
-        await tester.pumpAndSettle();
+        final revoke = find.widgetWithText(
+          ListTile,
+          'Đăng xuất các phiên khác',
+        );
+        final logout = find.widgetWithText(ListTile, 'Đăng xuất');
+        await pressTab(tester);
+        expectPrimaryFocusWithin(revoke);
+        await pressTab(tester);
+        expectPrimaryFocusWithin(logout);
+        await pressTab(tester, reverse: true);
+        expectPrimaryFocusWithin(revoke);
         await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+        await tester.pumpAndSettle();
+
+        final cancel = find.widgetWithText(TextButton, 'Hủy');
+        final destructive = find.widgetWithText(
+          FilledButton,
+          'Đăng xuất phiên khác',
+        );
+        expectPrimaryFocusWithin(cancel);
+        await pressTab(tester);
+        expectPrimaryFocusWithin(destructive);
+        await pressTab(tester, reverse: true);
+        expectPrimaryFocusWithin(cancel);
+        await tester.sendKeyEvent(LogicalKeyboardKey.escape);
         await tester.pumpAndSettle();
 
         expect(repository.revokeCalls, 0);

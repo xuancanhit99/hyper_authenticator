@@ -22,7 +22,7 @@ PostgreSQL migration contract. Nó không tự boot emulator/simulator.
 
 ## Coverage hiện tại
 
-122 Flutter tests bao phủ:
+127 Flutter tests bao phủ:
 
 - router/auth/logout/offline-local-vault boundary;
 - post-login navigation trực tiếp hoặc return an toàn về Settings, stale null auth
@@ -61,6 +61,10 @@ PostgreSQL migration contract. Nó không tự boot emulator/simulator.
   tree, copy action có accessible name, import field obscured/autofocus/keyboard
   submit và destructive dialog mặc định Enter vào **Hủy**. Dialog content scroll
   được thay vì overflow ở text scale lớn.
+- Keyboard regression phát Tab/Shift+Tab/Enter/Space/Escape: bao phủ login,
+  register, update/recovery Auth form; theme/add/search/copy TOTP; manual
+  add-account; recovery import/key confirmation, conflict và session dialog.
+  Recovery-key confirmation chỉ tới action sau checkbox đã lưu và Escape trả hủy.
 
 ## Remote contract
 
@@ -241,5 +245,6 @@ post-probe current image/health/hash và 5/5 public SPA route pass.
    login-unlock/physical desktop và signed package E2EE runtime.
 6. Accessibility automation đã bao phủ Auth, account list, form thêm account và
    sensitive Settings recovery/conflict/session dialog với WCAG text-contrast
-   gate trên light/dark theme. Chưa thay TalkBack/VoiceOver runtime, full keyboard
-   traversal, screenshot/privacy hoặc audit toàn bộ Settings page.
+   gate light/dark cùng core keyboard traversal. Chưa thay TalkBack/VoiceOver
+   runtime, keyboard audit toàn bộ Settings/main navigation, screenshot/privacy
+   hoặc audit focus visualization trên từng OS.

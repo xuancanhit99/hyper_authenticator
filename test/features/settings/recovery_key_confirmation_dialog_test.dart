@@ -4,6 +4,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:hyper_authenticator/core/theme/app_theme.dart';
 import 'package:hyper_authenticator/features/settings/presentation/widgets/recovery_key_confirmation_dialog.dart';
 
+import '../../support/focus_test_utils.dart';
+
 const _recoveryCode = 'HA1-TEST_ONLY_RECOVERY_CREDENTIAL';
 
 void main() {
@@ -95,13 +97,44 @@ void main() {
     expect(accepted, isTrue);
   });
 
-  testWidgets('keyboard mặc định focus Hủy để fail-safe', (tester) async {
+  testWidgets('keyboard traversal chỉ tới confirm sau khi xác nhận lưu', (
+    tester,
+  ) async {
     bool? accepted;
     await _pumpLauncher(tester, onResult: (value) => accepted = value);
     await tester.tap(find.text('Mở dialog'));
     await tester.pumpAndSettle();
 
+    final cancel = find.widgetWithText(TextButton, 'Hủy');
+    final confirmation = find.byType(CheckboxListTile);
+    final submit = find.widgetWithText(FilledButton, 'Bật encrypted sync');
+    expectPrimaryFocusWithin(cancel);
+
+    await pressTab(tester, reverse: true);
+    expectPrimaryFocusWithin(confirmation);
+    await tester.sendKeyEvent(LogicalKeyboardKey.space);
+    await tester.pump();
+    expect(tester.widget<CheckboxListTile>(confirmation).value, isTrue);
+
+    await pressTab(tester);
+    expectPrimaryFocusWithin(cancel);
+    await pressTab(tester);
+    expectPrimaryFocusWithin(submit);
     await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pumpAndSettle();
+
+    expect(accepted, isTrue);
+    expect(find.byType(RecoveryKeyConfirmationDialog), findsNothing);
+  });
+
+  testWidgets('Escape hủy recovery-key confirmation fail-safe', (tester) async {
+    bool? accepted;
+    await _pumpLauncher(tester, onResult: (value) => accepted = value);
+    await tester.tap(find.text('Mở dialog'));
+    await tester.pumpAndSettle();
+
+    expectPrimaryFocusWithin(find.widgetWithText(TextButton, 'Hủy'));
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
     await tester.pumpAndSettle();
 
     expect(accepted, isFalse);

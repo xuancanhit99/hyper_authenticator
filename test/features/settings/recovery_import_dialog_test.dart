@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hyper_authenticator/core/theme/app_theme.dart';
 import 'package:hyper_authenticator/features/settings/presentation/widgets/recovery_import_dialog.dart';
+
+import '../../support/focus_test_utils.dart';
 
 void main() {
   testWidgets('đóng dialog an toàn sau khi trả recovery key', (tester) async {
@@ -131,4 +134,44 @@ void main() {
       semantics.dispose();
     });
   }
+
+  testWidgets('recovery import Tab order và Escape không trả credential', (
+    tester,
+  ) async {
+    String? submitted = 'unchanged';
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Builder(
+          builder: (context) => Scaffold(
+            body: FilledButton(
+              onPressed: () async {
+                submitted = await showRecoveryImportDialog(context);
+              },
+              child: const Text('Mở dialog'),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('Mở dialog'));
+    await tester.pumpAndSettle();
+    final field = find.byType(TextField);
+    final cancel = find.widgetWithText(TextButton, 'Hủy');
+    final restore = find.widgetWithText(FilledButton, 'Khôi phục');
+    expectPrimaryFocusWithin(field);
+
+    await tester.enterText(field, 'HA1-TEST_ONLY_RECOVERY_CREDENTIAL');
+    await pressTab(tester);
+    expectPrimaryFocusWithin(cancel);
+    await pressTab(tester);
+    expectPrimaryFocusWithin(restore);
+    await pressTab(tester, reverse: true);
+    expectPrimaryFocusWithin(cancel);
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await tester.pumpAndSettle();
+
+    expect(submitted, isNull);
+    expect(find.byType(RecoveryImportDialog), findsNothing);
+  });
 }

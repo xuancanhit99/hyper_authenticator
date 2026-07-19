@@ -4,6 +4,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:hyper_authenticator/core/theme/app_theme.dart';
 import 'package:hyper_authenticator/features/settings/presentation/widgets/sync_conflict_resolution_dialog.dart';
 
+import '../../support/focus_test_utils.dart';
+
 void main() {
   for (final themeMode in [ThemeMode.light, ThemeMode.dark]) {
     testWidgets('conflict dialog pass accessibility/contrast ${themeMode.name}', (
@@ -60,7 +62,14 @@ void main() {
       await expectLater(tester, meetsGuideline(androidTapTargetGuideline));
       await expectLater(tester, meetsGuideline(textContrastGuideline));
 
-      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      final cancel = find.widgetWithText(TextButton, 'Hủy');
+      final destructive = find.widgetWithText(FilledButton, 'Dùng cloud');
+      expectPrimaryFocusWithin(cancel);
+      await pressTab(tester);
+      expectPrimaryFocusWithin(destructive);
+      await pressTab(tester, reverse: true);
+      expectPrimaryFocusWithin(cancel);
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
       await tester.pumpAndSettle();
 
       expect(accepted, isFalse);
