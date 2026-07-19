@@ -25,7 +25,7 @@ CI, GitHub digest, individual checksum, manifest tổng cùng file signature.
 - [x] Exact năm asset được tải public và khớp API digest/checksum/manifest.
 - [x] Publisher chuyển release lỗi về draft thay vì để public trạng thái mơ hồ.
 - [x] Release workflow có post-publish/manual verification gate.
-- [x] Verifier pass trên `v1.1.0-preview.1` hiện tại.
+- [x] Verifier pass trên public release hiện tại `v1.1.0-preview.3`.
 
 ## Bằng chứng hiện tại
 
@@ -63,6 +63,7 @@ CI, GitHub digest, individual checksum, manifest tổng cùng file signature.
 | `scripts/agent/check.sh full` | Pass docs/generated/format/analyze/platform/offline release contract, 106 Flutter test và encrypted migration | 2026-07-19 |
 | CI `29657661620` Quality lần đầu | Fail sau app test/migration: Ubuntu runner không có `rg`; thêm deterministic `grep` fallback | 2026-07-19 |
 | CI `29657820675` tại `7791487ee72529ade3301a7bee03736e3393ae27` | Pass 7/7: Quality, Secret, Android, Apple, Web, Linux và Windows | 2026-07-19 |
+| Release-event verifier `29693941594` tại `v1.1.0-preview.3`/`87d546c` | Pass public provenance, exact 5 asset, API digest, checksum/manifest và Debian/PE32 signature | 2026-07-19 |
 
 ## Tác động tài liệu
 
@@ -74,8 +75,8 @@ CI, GitHub digest, individual checksum, manifest tổng cùng file signature.
 
 ## Bàn giao
 
-Public release verifier đã được live-test với `v1.1.0-preview.1`; implementation
+Public release verifier đã được live-test với `v1.1.0-preview.3`; implementation
 và fallback không phụ thuộc `rg` đã pass CI 7/7. Không đổi app hoặc data contract.
-Workflow post-publish chỉ bắt đầu tự chạy sau khi được merge vào default branch.
+Workflow post-publish đã tự chạy và pass sau release event.
 Signing, SMTP, device thật, alert destination và backup host độc lập vẫn là
 follow-up.

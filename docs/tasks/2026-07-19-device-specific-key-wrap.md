@@ -65,7 +65,7 @@ nhập recovery key.
 - [x] Tích hợp repository/use case vào existing SyncBloc flow và ambiguity behavior.
 - [x] Rollout production backup-first + restore/remote/Linux runtime.
 - [ ] Chạy physical multi-device.
-- [ ] Push commit cuối và xác minh CI.
+- [x] Push commit cuối và xác minh CI.
 
 ## Nhật ký xác minh
 
@@ -80,7 +80,7 @@ nhập recovery key.
 | Android AVD + iOS Simulator lost-key runtime | Mỗi target revision 1→4 pass, cleanup 0 | 2026-07-19 |
 | Android AVD + iOS Simulator two-session runtime | 2 active key, exact rotation, secondary auto-unwrap generation 2, cleanup 404 | 2026-07-19 |
 | Production health sau mobile runtime | Container/capacity/session/device-wrap/HTTPS/backup/restore freshness pass | 2026-07-19 |
-| Tag CI + public Preview verification | `v1.1.0-preview.2`/`fd787d0`, CI 7/7 và 5 asset pass | 2026-07-19 |
+| Tag CI + public Preview verification | `v1.1.0-preview.3`/`87d546c`, CI `29693607103` pass 7/7; release-event verifier `29693941594` và 5 asset pass | 2026-07-19 |
 
 ## Tác động tài liệu
 

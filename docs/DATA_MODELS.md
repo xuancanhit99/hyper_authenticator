@@ -194,7 +194,8 @@ hay device registry.
 ADR-0012 đã được duyệt. Migration production thêm `key_generation` monotonic,
 `device_wrap_version`, device public-key table và đúng một current-generation HPKE
 wrap cho mỗi device key active. Client model/repository/coordinator đã được inject;
-Linux isolated runtime đã pass. GitHub Preview hiện tại vẫn là binary cũ.
+Linux isolated runtime và Android/iOS two-session runtime đã pass. GitHub Preview
+`v1.1.0-preview.3` chứa surviving-device auto-unwrap fix.
 
 ~~~json
 {
