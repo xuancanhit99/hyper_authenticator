@@ -122,11 +122,12 @@ thiết bị nếu clipboard history/sync đang bật.
 ## Screenshot và screen capture
 
 **Đã triển khai:** lifecycle privacy shield giảm rò rỉ TOTP, recovery key và
-identity qua app switcher/background snapshot trên toàn bộ Flutter target. Shield
-fail closed khi lifecycle ban đầu chưa phải `resumed`; trạng thái `inactive`,
-`hidden`, `paused` và `detached` đều che nội dung. Widget regression xác minh
-overlay opaque, bỏ focus, chặn interaction và không để nội dung bên dưới xuất hiện
-trong semantics tree.
+identity qua app switcher/background snapshot trên toàn bộ Flutter target. Sau
+bootstrap, mọi lifecycle signal `inactive`, `hidden`, `paused` và `detached` đều
+che nội dung; `resumed` mới gỡ shield. Widget regression xác minh overlay opaque,
+bỏ focus, chặn interaction và không để nội dung bên dưới xuất hiện trong semantics
+tree. Initial `detached` trước lifecycle signal không tự che vì Linux headless và
+một số desktop runtime không phát `resumed`; CI runtime khóa compatibility này.
 
 **Khoảng trống đã biết:** shield không ngăn active screenshot, screen recording,
 screen sharing khi app vẫn `resumed`, camera ngoài chụp màn hình hoặc phần mềm đã

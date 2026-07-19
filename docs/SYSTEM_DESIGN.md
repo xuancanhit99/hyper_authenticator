@@ -110,12 +110,14 @@ Khi lock đã bật, plugin error là locked state. App relock khi rời foregro
 Logout chỉ kết thúc Supabase session hiện tại, giữ local vault và lock preference.
 
 `PrivacyShield` được đặt trong `MaterialApp.router.builder`, bao toàn bộ router.
-Nó bắt đầu fail closed nếu binding chưa ở `resumed`; mọi lifecycle khác `resumed`
-đều render một surface opaque không chứa account/user data, bỏ keyboard focus,
-chặn pointer, dừng ticker và loại semantics của router. Khi resume, shield chỉ gỡ
-overlay; state/vault không bị tạo lại hoặc mutate. Control này bổ sung cho
-`LocalAuthBloc`: privacy shield che ngay ở `inactive`, còn app-lock vẫn quyết định
-challenge theo policy hiện tại. Nó không phải active screenshot-prevention API.
+Sau bootstrap, mọi lifecycle signal khác `resumed` đều render một surface opaque
+không chứa account/user data, bỏ keyboard focus, chặn pointer, dừng ticker và loại
+semantics của router. Initial `detached` trước lifecycle signal được xem là trạng
+thái bootstrap, vì Linux headless/desktop có thể không phát `resumed`; runtime CI
+khóa contract này để app không tự che vĩnh viễn. Khi resume, shield chỉ gỡ overlay;
+state/vault không bị tạo lại hoặc mutate. Control này bổ sung cho `LocalAuthBloc`:
+privacy shield che ngay ở `inactive`, còn app-lock vẫn quyết định challenge theo
+policy hiện tại. Nó không phải active screenshot-prevention API.
 
 Settings có `SessionSecurityBloc` riêng để revoke mọi Supabase session khác mà
 không đưa `AuthBloc` ra khỏi trạng thái authenticated. Action này giữ session,

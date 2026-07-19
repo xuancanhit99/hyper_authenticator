@@ -25,8 +25,10 @@ class _PrivacyShieldState extends State<PrivacyShield>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _isObscured =
-        WidgetsBinding.instance.lifecycleState != AppLifecycleState.resumed;
+    // Linux headless và một số desktop runner khởi tạo binding ở `detached`
+    // nhưng không phát `resumed`. Chỉ che sau một lifecycle signal thực tế để
+    // không khóa UI ngay khi bootstrap.
+    _isObscured = false;
   }
 
   @override

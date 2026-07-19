@@ -18,7 +18,8 @@ làm mất state hoặc thay đổi local/cloud vault.
 
 ## Acceptance criteria
 
-- [x] Toàn bộ router bị che ở `inactive`, `hidden`, `paused` và `detached`.
+- [x] Sau bootstrap, toàn bộ router bị che khi nhận `inactive`, `hidden`, `paused`
+  hoặc `detached`.
 - [x] Nội dung bên dưới không nhận pointer, không giữ focus, không chạy ticker và
   không xuất hiện trong semantics tree khi shield đang bật.
 - [x] `resumed` khôi phục UI hiện có mà không dispose hoặc mutate data.
@@ -59,7 +60,8 @@ làm mất state hoặc thay đổi local/cloud vault.
 
 ## Kế hoạch
 
-- [x] Thêm root privacy shield fail closed.
+- [x] Thêm root privacy shield theo lifecycle; initial `detached` vẫn bootstrap
+  được trên desktop/headless không phát `resumed`.
 - [x] Thêm lifecycle/focus/pointer/semantics regression.
 - [x] Cập nhật security, system design, NFR, testing, roadmap và project status.
 - [x] Chạy full gate và review diff.
@@ -69,7 +71,7 @@ làm mất state hoặc thay đổi local/cloud vault.
 | Command hoặc test | Kết quả | Ngày |
 |---|---|---|
 | `flutter test test/core/security/privacy_shield_test.dart test/app_localization_test.dart` | Pass 2 test | 2026-07-19 |
-| `scripts/agent/check.sh full` | Pass 54 docs, generated/format/analyze 0 diagnostic, platform/release/operations, 128 Flutter tests và encrypted migration | 2026-07-19 |
+| `scripts/agent/check.sh full` | Pass 54 docs, generated/format/analyze 0 diagnostic, platform/release/operations, 129 Flutter tests và encrypted migration | 2026-07-19 |
 
 ## Tác động tài liệu
 

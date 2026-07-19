@@ -84,4 +84,22 @@ void main() {
     expect(actionCount, 2);
     semantics.dispose();
   });
+
+  testWidgets('không khóa bootstrap trước lifecycle signal', (tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: PrivacyShield(
+          child: Scaffold(body: Text('TEST_ONLY bootstrap ready')),
+        ),
+      ),
+    );
+
+    expect(find.byKey(privacyShieldOverlayKey), findsNothing);
+    expect(find.text('TEST_ONLY bootstrap ready'), findsOneWidget);
+
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+    await tester.pump();
+
+    expect(find.byKey(privacyShieldOverlayKey), findsOneWidget);
+  });
 }

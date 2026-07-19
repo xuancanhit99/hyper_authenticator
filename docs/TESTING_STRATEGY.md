@@ -22,7 +22,7 @@ PostgreSQL migration contract. Nó không tự boot emulator/simulator.
 
 ## Coverage hiện tại
 
-128 Flutter tests bao phủ:
+129 Flutter tests bao phủ:
 
 - router/auth/logout/offline-local-vault boundary;
 - post-login navigation trực tiếp hoặc return an toàn về Settings, stale null auth
@@ -68,7 +68,9 @@ PostgreSQL migration contract. Nó không tự boot emulator/simulator.
 - Root privacy shield regression điều khiển lifecycle qua `inactive`, `hidden`,
   `paused`, `detached` và `resumed`; xác minh overlay che, bỏ focus, chặn pointer,
   loại sensitive label khỏi semantics tree và khôi phục state/interaction khi resume.
-  Test này chưa chứng minh native app-switcher snapshot hoặc active screenshot block.
+  Test bootstrap riêng giữ UI khả dụng khi desktop/headless có initial `detached`
+  nhưng không phát `resumed`. Các test này chưa chứng minh native app-switcher
+  snapshot hoặc active screenshot block.
 
 ## Remote contract
 
