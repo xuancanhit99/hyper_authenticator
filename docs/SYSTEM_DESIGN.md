@@ -109,6 +109,14 @@ Local-auth preference nằm trong SharedPreferences; OS challenge do `local_auth
 Khi lock đã bật, plugin error là locked state. App relock khi rời foreground.
 Logout chỉ kết thúc Supabase session hiện tại, giữ local vault và lock preference.
 
+`PrivacyShield` được đặt trong `MaterialApp.router.builder`, bao toàn bộ router.
+Nó bắt đầu fail closed nếu binding chưa ở `resumed`; mọi lifecycle khác `resumed`
+đều render một surface opaque không chứa account/user data, bỏ keyboard focus,
+chặn pointer, dừng ticker và loại semantics của router. Khi resume, shield chỉ gỡ
+overlay; state/vault không bị tạo lại hoặc mutate. Control này bổ sung cho
+`LocalAuthBloc`: privacy shield che ngay ở `inactive`, còn app-lock vẫn quyết định
+challenge theo policy hiện tại. Nó không phải active screenshot-prevention API.
+
 Settings có `SessionSecurityBloc` riêng để revoke mọi Supabase session khác mà
 không đưa `AuthBloc` ra khỏi trạng thái authenticated. Action này giữ session,
 local vault và DEK của thiết bị hiện tại. Với thiết bị nghi bị lộ, UI hướng người

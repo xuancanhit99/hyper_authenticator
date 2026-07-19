@@ -61,8 +61,11 @@ tag CI xanh, checksum tải lại khớp và release note nêu signing/SMTP/plat
   semantics tree.
 - [x] Automated WCAG text contrast light/dark và core keyboard traversal cho
   Auth/accounts/add-account/sensitive Settings dialog.
+- [x] Lifecycle privacy shield che router ở mọi trạng thái khác `resumed`, có
+  regression cho focus, interaction và semantics.
 - [ ] TalkBack/VoiceOver runtime, full Settings/main-navigation keyboard audit,
-  reduced-motion và screenshot/privacy review trên platform đại diện.
+  reduced-motion, native app-switcher snapshot và active screenshot/recording
+  review trên platform đại diện.
 - [ ] Independent cryptographic/application security review.
 
 ## Ưu tiên P2 — Platform expansion

@@ -7,7 +7,10 @@ Mục tiêu có nhãn **Đề xuất** chưa được đo hoặc enforce.
 Bắt buộc:
 
 - Không TOTP secret dạng đọc được nào rời client khi sync production.
-- Không credential nào xuất hiện trong log, analytics, crash report, screenshot hoặc fixture.
+- Không credential nào xuất hiện trong log, analytics, crash report hoặc fixture.
+- Background/app-switcher snapshot phải được che khi app không ở `resumed`.
+- Active screenshot/recording khi foreground phải có platform threat model và
+  accepted risk rõ ràng; không được tuyên bố đã chặn nếu chưa có native runtime gate.
 - Cross-user Supabase test từ chối mọi operation.
 - App lock đã cấu hình fail closed khi plugin hoặc routing error.
 - Không production artifact nào chứa service-role hoặc server secret.
@@ -83,7 +86,8 @@ Mục tiêu còn lại:
 - action không phụ thuộc riêng vào màu;
 - destructive action giải thích chính xác tác động dữ liệu;
 - feedback copy không làm lộ secret đã sao chép;
-- reduced motion và screenshot/privacy review.
+- reduced motion và active screenshot/recording review trên platform đại diện;
+  lifecycle privacy shield đã có automated regression.
 
 ## Khả năng bảo trì
 
