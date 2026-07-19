@@ -20,6 +20,36 @@ class AccountAddSuccess extends AccountsState {
   const AccountAddSuccess();
 }
 
+/// Update operation đã persist thành công; không chứa account để tránh đưa secret
+/// vào state/log ngoài nhu cầu của UI.
+class AccountUpdateSuccess extends AccountsState {
+  final Object operationToken;
+
+  const AccountUpdateSuccess(this.operationToken);
+
+  @override
+  List<Object?> get props => [operationToken];
+
+  @override
+  String toString() => 'AccountUpdateSuccess(operationToken: [OPAQUE])';
+}
+
+/// Update operation thất bại; bind lỗi với đúng request mà không mang account.
+class AccountUpdateFailure extends AccountsState {
+  final Object operationToken;
+  final String message;
+
+  const AccountUpdateFailure(this.operationToken, this.message);
+
+  @override
+  List<Object?> get props => [operationToken, message];
+
+  @override
+  String toString() =>
+      'AccountUpdateFailure('
+      'operationToken: [OPAQUE], message: [REDACTED])';
+}
+
 /// State when accounts have been successfully loaded.
 class AccountsLoaded extends AccountsState {
   final List<AuthenticatorAccount> accounts;
@@ -40,7 +70,6 @@ class AccountsError extends AccountsState {
   List<Object?> get props => [message];
 }
 
-// Optional: Add specific states for Add/Delete success if needed for UI feedback,
-// but often just reloading the list (AccountsLoaded) is sufficient.
-// class AccountAddedSuccess extends AccountsState {}
+// Optional: Add a specific delete-success state if UI feedback needs to be bound
+// to that operation instead of the subsequent list reload.
 // class AccountDeletedSuccess extends AccountsState {}

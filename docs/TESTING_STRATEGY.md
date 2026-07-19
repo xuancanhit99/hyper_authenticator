@@ -22,7 +22,7 @@ PostgreSQL migration contract. Nó không tự boot emulator/simulator.
 
 ## Coverage hiện tại
 
-130 Flutter tests bao phủ:
+136 Flutter tests bao phủ:
 
 - router/auth/logout/offline-local-vault boundary;
 - post-login navigation trực tiếp hoặc return an toàn về Settings, stale null auth
@@ -74,6 +74,13 @@ PostgreSQL migration contract. Nó không tự boot emulator/simulator.
 - Add-account route regression chứng minh `AccountsLoaded` không tự đóng form;
   chỉ operation-specific success mới đóng route, không pop page cuối và state
   success không mang account/secret.
+- Edit-account route regression chứng minh reload không tự đóng form, submit đang
+  chạy không phát update lặp và chỉ `AccountUpdateSuccess` mới hoàn tất navigation.
+  Success không thuộc form hoặc sai opaque operation token bị bỏ qua. GoRouter
+  root trở về `/` thay vì pop page cuối; toàn bộ field TOTP không mặc định vẫn
+  round-trip qua update request. Failure đúng token giữ form, mở lại submit và
+  hiển thị lỗi. Mutation event/state string regression không để account identity
+  hoặc secret xuất hiện trong entity, use-case param hay BLoC log representation.
 
 ## Remote contract
 

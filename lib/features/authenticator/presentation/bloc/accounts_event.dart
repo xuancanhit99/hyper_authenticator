@@ -37,6 +37,14 @@ class AddAccountRequested extends AccountsEvent {
     digits,
     period,
   ];
+
+  @override
+  String toString() =>
+      'AddAccountRequested('
+      'issuer: [REDACTED], '
+      'accountName: [REDACTED], '
+      'secretKey: [REDACTED], '
+      'algorithm: $algorithm, digits: $digits, period: $period)';
 }
 
 /// Event to delete an existing account by its ID.
@@ -56,9 +64,18 @@ class DeleteAccountRequested extends AccountsEvent {
 /// Event to update an existing account.
 class UpdateAccountRequested extends AccountsEvent {
   final AuthenticatorAccount account;
+  final Object operationToken;
 
-  const UpdateAccountRequested({required this.account});
+  const UpdateAccountRequested({
+    required this.account,
+    required this.operationToken,
+  });
 
   @override
-  List<Object?> get props => [account];
+  List<Object?> get props => [account, operationToken];
+
+  @override
+  String toString() =>
+      'UpdateAccountRequested('
+      'account: [REDACTED], operationToken: [OPAQUE])';
 }

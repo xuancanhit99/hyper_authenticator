@@ -129,13 +129,16 @@ class AccountsBloc extends Bloc<AccountsEvent, AccountsState> {
     );
 
     await failureOrSuccess.fold(
-      (failure) async => emit(AccountsError(_mapFailureToMessage(failure))),
+      (failure) async => emit(
+        AccountUpdateFailure(
+          event.operationToken,
+          _mapFailureToMessage(failure),
+        ),
+      ),
       (_) async {
-        // After successfully updating, reload the list to show the changes
-        add(LoadAccounts()); // Trigger reload
-        // Consider emitting a specific success state if EditAccountPage needs it
-        // e.g., emit(AccountUpdateSuccess()); then EditAccountPage can pop.
-        // For now, reloading AccountsLoaded will be handled by AccountsPage.
+        emit(AccountUpdateSuccess(event.operationToken));
+        // Reload only after the UI has received the operation-specific success.
+        add(LoadAccounts());
       },
     );
   }

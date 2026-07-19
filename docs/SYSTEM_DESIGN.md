@@ -110,6 +110,16 @@ Form thêm account đánh dấu submit đang chạy để chặn request lặp. 
 không còn back stack, completion đi về `/` thay vì gọi `Navigator.pop` trên page
 cuối; regression khóa race này qua lifecycle integration Linux.
 
+Form chỉnh sửa dùng cùng contract với `AccountUpdateSuccess`: account đã update
+được persist trước khi phát success, state không mang account/secret, nút lưu bị
+khóa trong khi request đang chạy và lỗi generic chỉ được render khi form đang
+submit. Mỗi submit tạo opaque operation token chỉ tồn tại trong memory; BLoC trả
+đúng token trong success và form so sánh identity trước khi đóng, nên update khác
+chồng thời gian không thể hoàn tất nhầm route. Failure cũng mang opaque token; chỉ
+request tương ứng mới mở lại nút lưu và hiển thị lỗi. Reload danh sách không đóng
+form; update ở GoRouter root đi về `/` thay vì pop page cuối. `LoadAccounts` vẫn
+được queue sau success để account list nhận dữ liệu mới nhất.
+
 ## App lock và logout
 
 Local-auth preference nằm trong SharedPreferences; OS challenge do `local_auth`.
