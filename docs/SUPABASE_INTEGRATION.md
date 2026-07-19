@@ -172,7 +172,9 @@ cuối xác nhận không còn matching test user hoặc encrypted row.
 - Reverse proxy overlay/pin: `supabase/nginx-proxy-manager/`; production NPM
   `2.14.0` và MariaDB `10.5.29` đã pin exact current digest, không còn `latest`/
   floating patch tag. Target `2.15.1` cần backup/canary vì đổi Debian/OpenResty/
-  Certbot và tác động mọi public domain.
+  Certbot và tác động mọi public domain. Exact target digest đã pass isolated
+  cloned app/database/certificate canary nhưng production vẫn ở `2.14.0` chờ
+  owner duyệt maintenance/public-route regression.
 - 11 core container phải healthy trước migration/test.
 
 Release regression cho public Auth health dùng publishable key, không tạo user:

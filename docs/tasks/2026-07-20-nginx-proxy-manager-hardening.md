@@ -24,6 +24,7 @@ Loại floating update và world-readable credential khỏi reverse proxy produc
 - [x] Timing config pass `nginx -t`, reload và public health probe.
 - [x] Soak lặp lại có request/upstream timing để correlation outlier.
 - [x] Dedicated NPM backup và isolated restore rehearsal pass.
+- [x] Exact NPM `2.15.1` isolated no-port canary pass.
 - [x] Full repository gate pass.
 - [ ] Branch-head CI pass.
 
@@ -39,6 +40,8 @@ Loại floating update và world-readable credential khỏi reverse proxy produc
   max 244/244 ms, không có non-200. Slowest client request có NPM/upstream 70/67 ms.
 - Backup `npm-20260719T184130Z` pass checksum/archive và restore pass bốn core
   table trong exact MariaDB image cô lập không network.
+- Exact NPM `2.15.1` digest canary pass API 200, `nginx -t` và 4/4 core table;
+  internal network không host port, temp container/volume/network/sandbox đã cleanup.
 
 ## Đánh giá rủi ro
 
@@ -55,6 +58,7 @@ Loại floating update và world-readable credential khỏi reverse proxy produc
 - [x] Pin exact runtime digest trong compose production.
 - [x] Hoàn tất correlated soak sau khi deploy timing config.
 - [x] Chuẩn bị backup/restore harness và canary prerequisite cho NPM 2.15.1.
+- [x] Chạy isolated clone canary bằng exact NPM 2.15.1 image.
 - [ ] Chuyển DB password sang Docker file secrets trong maintenance window.
 - [x] Cập nhật canonical docs và full gate.
 - [ ] Commit/push và branch-head CI.
@@ -71,7 +75,8 @@ Loại floating update và world-readable credential khỏi reverse proxy produc
 | Correlated soak | 900/900 pass; p95 289/max 590 ms; NPM/upstream p95 28/25 ms và max 244/244 ms | 2026-07-20 |
 | Dedicated backup | `npm-20260719T184130Z`; checksum/archive pass trước và sau atomic move | 2026-07-20 |
 | Isolated restore | Exact MariaDB image, network tắt, authenticated readiness và 4/4 core table pass; 0 temp container còn lại | 2026-07-20 |
-| Final public smoke | Auth 100/100 p95 424/max 436 ms; Studio 401; Flutter Web 200; Nginx syntax/container/timer pass | 2026-07-20 |
+| NPM 2.15.1 canary | Exact digest `52b2c599…9858bb`; API 200, Nginx syntax, 4/4 core table; internal/no-port và cleanup pass | 2026-07-20 |
+| Post-canary public smoke | Auth 100/100 p95 365/max 374 ms; Studio 401; Flutter Web 200; production vẫn NPM 2.14.0, Nginx syntax/container/timer pass | 2026-07-20 |
 | `scripts/agent/check.sh full` + secret scan | Pass 186 test, analyzer, docs, operations/platform/migration contract và 150-commit history scan | 2026-07-20 |
 
 ## Tác động tài liệu
@@ -85,4 +90,5 @@ Loại floating update và world-readable credential khỏi reverse proxy produc
 ## Bàn giao
 
 Hardening trước upgrade và local full gate đã hoàn tất; còn branch-head CI.
-NPM major upgrade và chuyển Docker file secrets vẫn cần owner chốt maintenance window.
+NPM major target đã pass isolated canary; production upgrade và chuyển Docker file
+secrets vẫn cần owner chốt maintenance window.

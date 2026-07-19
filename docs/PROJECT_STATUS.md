@@ -150,7 +150,9 @@ verification phải inject `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY` và
 - NPM `2.14.0` và MariaDB `10.5.29` đã pin exact digest; compose, `.env` và
   application key mode `0600`. Dedicated backup `npm-20260719T184130Z` pass
   checksum/archive, sau đó restore pass bốn core table trong exact MariaDB image
-  cô lập không network; production database/container không bị mutate.
+  cô lập không network. NPM `2.15.1` exact digest còn pass cloned app/database/
+  certificate canary: API 200, Nginx syntax và 4/4 core table trên internal network
+  không host port; temp resource đã cleanup, production vẫn ở `2.14.0`.
 - Health timer chạy mỗi 5 phút. Backup timer chạy hằng ngày, giữ 7 bản local.
 - Backup gồm logical database, globals, quiesced Storage và sensitive config;
   có SHA-256, permission 0700/0600 và validation catalog/tar.

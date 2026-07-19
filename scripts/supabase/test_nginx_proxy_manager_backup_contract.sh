@@ -4,8 +4,9 @@ set -euo pipefail
 ROOT=$(cd "$(dirname "$0")/../.." && pwd)
 BACKUP="$ROOT/scripts/supabase/backup_nginx_proxy_manager.sh"
 RESTORE="$ROOT/scripts/supabase/rehearse_nginx_proxy_manager_backup.sh"
+UPGRADE="$ROOT/scripts/supabase/rehearse_nginx_proxy_manager_upgrade.sh"
 
-for path in "$BACKUP" "$RESTORE"; do
+for path in "$BACKUP" "$RESTORE" "$UPGRADE"; do
   if [[ ! -x "$path" ]]; then
     printf 'Thiếu executable NPM backup contract: %s\n' "$path" >&2
     exit 66
@@ -40,5 +41,20 @@ if grep -Fq 'mariadb-admin ping' "$RESTORE"; then
   exit 1
 fi
 
+for pattern in \
+  'docker network create --internal' \
+  '--volume "$sandbox/data/app:/data"' \
+  '--volume "$sandbox/data/letsencrypt:/etc/letsencrypt"' \
+  'http://127.0.0.1:81/api/' \
+  'docker exec "$app_container" nginx -t' \
+  "'{{json .HostConfig.PortBindings}}'" \
+  'container rm --force --volumes'; do
+  grep -Fq -- "$pattern" "$UPGRADE"
+done
+if grep -Fq 'mariadb-admin ping' "$UPGRADE"; then
+  printf '%s\n' 'NPM upgrade không được dùng unauthenticated readiness ping.' >&2
+  exit 1
+fi
+
 printf '%s\n' \
-  'NPM backup contract pass: private transactional backup và isolated authenticated restore.'
+  'NPM backup contract pass: private backup, isolated restore và no-port upgrade canary.'

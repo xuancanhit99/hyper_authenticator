@@ -73,3 +73,20 @@ Baseline production 19-07-2026: backup `npm-20260719T184130Z` pass checksum cả
 trước/sau atomic move; restore rehearsal pass `user`, `proxy_host`, `certificate`
 và `setting` trong MariaDB cô lập. Đây là rollback evidence, không tự cho phép
 nâng NPM `2.15.1`.
+
+Rehearse target upgrade không publish port:
+
+    scripts/supabase/rehearse_nginx_proxy_manager_upgrade.sh \
+      /path/to/npm-YYYYMMDDTHHMMSSZ \
+      sha256:TARGET_IMAGE_ID \
+      2.15.1 \
+      --allow-isolated-nginx-proxy-manager-upgrade
+
+Harness chỉ extract app/Let’s Encrypt vào sandbox 0700, restore DB vào anonymous
+volume tạm, nối hai container qua Docker network `--internal`, rồi yêu cầu API
+200, exact version, `nginx -t`, 4/4 core table và không có host port. Cleanup xóa
+container kèm volume, network và sandbox cả khi fail.
+
+Canary `2.15.1` image ID/digest `52b2c599…9858bb` đã pass ngày 19-07-2026 và
+production vẫn ở `2.14.0`. Canary giảm rủi ro compatibility nhưng không thay public
+route regression, rollback window hoặc owner approval cho production recreate.

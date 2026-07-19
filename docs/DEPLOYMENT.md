@@ -196,7 +196,9 @@ transactional DB + app/Let’s Encrypt backup, checksum, config test và route m
 NPM `2.15.1` là major base-image/OpenResty/Certbot transition so với runtime
 `2.14.0`; không recreate production chỉ dựa vào tag `latest`. Backup production
 phải ghi exact image/database name metadata và restore rehearsal bốn core table
-trong MariaDB cô lập phải pass trước maintenance window.
+trong MariaDB cô lập phải pass trước maintenance window. Exact `2.15.1` canary đã
+pass API/Nginx/database trên internal network không publish port; production
+recreate vẫn cần owner duyệt public-route regression và rollback window.
 
 ## Windows
 

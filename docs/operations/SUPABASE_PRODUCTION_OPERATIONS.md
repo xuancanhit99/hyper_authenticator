@@ -173,15 +173,27 @@ Trước mọi recreate/upgrade NPM, chạy:
       /path/to/npm-YYYYMMDDTHHMMSSZ \
       --allow-isolated-nginx-proxy-manager-restore
 
+    scripts/supabase/rehearse_nginx_proxy_manager_upgrade.sh \
+      /path/to/npm-YYYYMMDDTHHMMSSZ \
+      sha256:TARGET_IMAGE_ID \
+      TARGET_VERSION \
+      --allow-isolated-nginx-proxy-manager-upgrade
+
 Backup dùng least-privilege transactional dump, loại raw MariaDB volume/log, lưu
 compose/app/Let’s Encrypt cùng exact image và database name metadata, rồi checksum
 trước/sau atomic move. Rehearsal chạy exact MariaDB image với `--network none`,
 authenticated readiness và bốn core-table probe. Directory/file phải 0700/0600;
 không copy artifact này vào repository hoặc CI.
 
+Upgrade rehearsal clone app/certificate/database sang internal network, không
+publish port và bắt buộc exact version + API 200 + `nginx -t` + 4/4 core table.
+Nó xóa cả anonymous volume khi cleanup; image target có thể giữ lại để pin exact
+digest nhưng không được coi là production deployment.
+
 Baseline 19-07-2026: NPM `2.14.0` và MariaDB `10.5.29` pin exact digest;
-`npm-20260719T184130Z` pass backup và isolated restore. NPM `2.15.1` vẫn cần owner
-duyệt maintenance/canary vì thay base image, OpenResty và Certbot cho mọi domain.
+`npm-20260719T184130Z` pass backup và isolated restore. Exact NPM `2.15.1` canary
+pass API/Nginx/DB trên internal network; production vẫn cần owner duyệt maintenance,
+public route matrix và rollback vì thay base image/OpenResty/Certbot cho mọi domain.
 
 ## Contract sau deploy/upgrade
 

@@ -17,9 +17,9 @@ grep -Fq 'supabase-api.vnpay.dev/auth/v1/health 1;' "$HTTP_TOP"
 grep -Fq 'log_format hyper_auth_supabase_timing escape=json' "$HTTP_TOP"
 grep -Fq 'hyper-auth-supabase-timing_access.log' "$SERVER_PROXY"
 grep -Fq 'if=$hyper_auth_supabase_health_timing_enabled;' "$SERVER_PROXY"
-if [[ $(grep -Ec '^[A-Z_]+=[^[:space:]]+$' "$PRODUCTION_PIN") != 5 ]] ||
+if [[ $(grep -Ec '^[A-Z_]+=[^[:space:]]+$' "$PRODUCTION_PIN") != 6 ]] ||
   [[ $(grep -Ec '^[A-Z_]*IMAGE=[a-z0-9./-]+@sha256:[0-9a-f]{64}$' \
-    "$PRODUCTION_PIN") != 2 ]]; then
+    "$PRODUCTION_PIN") != 3 ]]; then
   printf '%s\n' 'NPM production pin không có exact version/image digest contract.' >&2
   exit 1
 fi

@@ -267,6 +267,11 @@ bắt buộc mode 0600; application `keys.json` cũng mode 0600. Runtime NPM/Mar
 certificate là sensitive artifact, phải giữ directory/file 0700/0600 và không
 đưa vào repository hoặc CI.
 
+NPM upgrade rehearsal chỉ extract sensitive app/certificate vào sandbox 0700,
+dùng password ngẫu nhiên qua env file 0600 và Docker network `--internal` không
+publish port. Cleanup xóa container kèm anonymous volume, network và sandbox;
+target canary không được kết nối public hoặc mutate database production.
+
 ## Dependency và asset supply chain
 
 - Lockfile được commit; CI pin Flutter và secret scanner checksum.

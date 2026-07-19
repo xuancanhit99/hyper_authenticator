@@ -277,9 +277,12 @@ post-probe current image/health/hash và 5/5 public SPA route pass.
 - `rehearse_nginx_proxy_manager_backup.sh` xác minh checksum/archive rồi restore
   vào exact pinned MariaDB image với network tắt; yêu cầu đủ user/proxy/certificate/
   setting table và cleanup container/sandbox.
+- `rehearse_nginx_proxy_manager_upgrade.sh` clone app/certificate/database vào
+  internal Docker network không host port, rồi khóa exact target version, API 200,
+  Nginx syntax và 4/4 core table trước khi cleanup container/volume/network/sandbox.
 - `test_nginx_proxy_manager_backup_contract.sh` khóa transactional/exclusion,
-  exact image/database metadata, authenticated readiness và network isolation;
-  ngăn quay lại `mariadb-admin ping` vốn có thể nhận nhầm temporary init server.
+  exact image/database metadata, authenticated readiness, no-port canary và network
+  isolation; ngăn quay lại `mariadb-admin ping` vốn có thể nhận nhầm temporary init server.
 - `test_scheduled_restore_drill_contract.sh` dùng backup/rehearsal fixture tạm,
   không đọc Docker hoặc backup thật; full gate chạy contract này trên mọi platform.
 - `windows_integration.ps1` và `windows_installer_smoke.ps1` chỉ nhận GitHub-hosted
