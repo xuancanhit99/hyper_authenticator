@@ -28,8 +28,16 @@ không bao giờ được đặt trong Flutter `.env`, asset, build log hoặc b
 - Versioned copy-on-write vault; commit marker ghi sau cùng; rollback generation.
 - Compaction giữ active và rollback generation.
 - TOTP validation tập trung; không log barcode payload/secret.
-- `AccountAddSuccess` không mang account/secret trong BLoC state; UI chỉ dùng tín
-  hiệu operation-specific này để hoàn tất navigation.
+- `AccountAddSuccess` và `AccountUpdateSuccess` không mang account/secret trong
+  BLoC state; UI chỉ dùng tín hiệu operation-specific tương ứng để hoàn tất
+  navigation, không suy diễn mutation thành công từ một lần reload danh sách.
+- Update success/failure mang opaque in-memory token để route chỉ nhận đúng request
+  đã phát. `AddAccountRequested`, `UpdateAccountRequested` và update result
+  override string representation, không đưa issuer, account identity, secret hoặc
+  token thật vào transition/crash log; equality semantics vẫn giữ nguyên.
+- `AuthenticatorAccount`, `AddAccountParams` và `UpdateAccountParams` cũng redact
+  string representation. `toJson` vẫn chứa secret theo persisted contract và chỉ
+  được gọi trong storage/encryption path, không dùng làm log payload.
 - Logout không xóa vault.
 - App lock fail closed và relock theo lifecycle.
 - Root `PrivacyShield` che toàn bộ router ở mọi lifecycle khác `resumed`, bỏ

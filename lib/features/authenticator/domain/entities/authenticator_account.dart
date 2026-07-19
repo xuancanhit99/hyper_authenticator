@@ -33,6 +33,13 @@ class AuthenticatorAccount extends Equatable {
     period,
   ];
 
+  @override
+  String toString() =>
+      'AuthenticatorAccount('
+      'id: [REDACTED], issuer: [REDACTED], '
+      'accountName: [REDACTED], secretKey: [REDACTED], '
+      'algorithm: $algorithm, digits: $digits, period: $period)';
+
   Map<String, dynamic> toJson() {
     return {
       'id': id,

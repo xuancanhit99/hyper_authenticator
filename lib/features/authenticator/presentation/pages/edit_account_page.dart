@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
+import 'package:hyper_authenticator/core/router/app_router.dart';
 import 'package:hyper_authenticator/features/authenticator/domain/entities/authenticator_account.dart';
 import 'package:hyper_authenticator/features/authenticator/presentation/bloc/accounts_bloc.dart';
 import 'package:hyper_authenticator/features/authenticator/presentation/widgets/account_avatar.dart';
 
 class EditAccountPage extends StatefulWidget {
+  static const submitButtonKey = Key('edit-account-submit');
+
   final AuthenticatorAccount account;
 
   const EditAccountPage({super.key, required this.account});
@@ -24,6 +28,8 @@ class _EditAccountPageState extends State<EditAccountPage> {
   late TextEditingController _algorithmController;
   late TextEditingController _digitsController;
   late TextEditingController _periodController;
+  bool _isSubmitting = false;
+  Object? _activeOperationToken;
 
   @override
   void initState() {
@@ -62,6 +68,9 @@ class _EditAccountPageState extends State<EditAccountPage> {
   }
 
   void _submitUpdate() {
+    if (_isSubmitting) {
+      return;
+    }
     if (_formKey.currentState!.validate()) {
       final updatedAccount = AuthenticatorAccount(
         id: widget.account.id, // Keep the original ID
@@ -78,17 +87,46 @@ class _EditAccountPageState extends State<EditAccountPage> {
             widget.account.period,
       );
 
+      final operationToken = Object();
+      setState(() {
+        _isSubmitting = true;
+        _activeOperationToken = operationToken;
+      });
       context.read<AccountsBloc>().add(
-        UpdateAccountRequested(account: updatedAccount),
+        UpdateAccountRequested(
+          account: updatedAccount,
+          operationToken: operationToken,
+        ),
       );
-
-      // Navigation and feedback will be handled by BlocListener
-      // No longer needed:
-      // Navigator.pop(context);
-      // ScaffoldMessenger.of(context).showSnackBar(
-      //   const SnackBar(content: Text('Update logic not fully implemented in BLoC yet.')),
-      // );
     }
+  }
+
+  void _finishSuccessfulUpdate() {
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _isSubmitting = false;
+      _activeOperationToken = null;
+    });
+    if (ModalRoute.of(context)?.isCurrent != true) {
+      return;
+    }
+
+    final messenger = ScaffoldMessenger.of(context);
+    final router = GoRouter.maybeOf(context);
+    if (router != null) {
+      if (router.canPop()) {
+        router.pop();
+      } else {
+        router.go(AppRoutes.main);
+      }
+    } else {
+      Navigator.of(context).maybePop();
+    }
+    messenger.showSnackBar(
+      const SnackBar(content: Text('Đã cập nhật tài khoản.')),
+    );
   }
 
   void _showError(String message) {
@@ -109,26 +147,18 @@ class _EditAccountPageState extends State<EditAccountPage> {
       ),
       body: BlocListener<AccountsBloc, AccountsState>(
         listener: (context, state) {
-          // Listen for AccountsLoaded, assuming BLoC reloads accounts after update
-          if (state is AccountsLoaded) {
-            // To prevent popping if EditAccountPage is pushed and BLoC is already in AccountsLoaded
-            // We need a more specific state like AccountUpdateSuccess or a flag.
-            // For now, this might pop immediately if not careful with BLoC state flow.
-            // A simple way is to check if the *current* state of the BLoC has just transitioned
-            // to AccountsLoaded AFTER an update operation.
-            // However, the BLoC now reloads by adding LoadAccounts(), so this listener
-            // should work similarly to AddAccountPage.
-            if (mounted && ModalRoute.of(context)?.isCurrent == true) {
-              // Check if page is current
-              // Check if the previous state was indicating an update was in progress or successful
-              // This logic might need refinement. For simplicity, pop if loaded.
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Đã cập nhật tài khoản.')),
-              );
-            }
-          } else if (state is AccountsError) {
+          if (state is AccountUpdateSuccess &&
+              _isSubmitting &&
+              identical(state.operationToken, _activeOperationToken)) {
+            _finishSuccessfulUpdate();
+          } else if (state is AccountUpdateFailure &&
+              _isSubmitting &&
+              identical(state.operationToken, _activeOperationToken)) {
             if (mounted) {
+              setState(() {
+                _isSubmitting = false;
+                _activeOperationToken = null;
+              });
               _showError('Không thể cập nhật tài khoản: ${state.message}');
             }
           }
@@ -245,8 +275,9 @@ class _EditAccountPageState extends State<EditAccountPage> {
                 ),
                 const SizedBox(height: 32),
                 ElevatedButton(
-                  onPressed: _submitUpdate,
-                  child: const Text('Lưu thay đổi'),
+                  key: EditAccountPage.submitButtonKey,
+                  onPressed: _isSubmitting ? null : _submitUpdate,
+                  child: Text(_isSubmitting ? 'Đang lưu…' : 'Lưu thay đổi'),
                 ),
               ],
             ),

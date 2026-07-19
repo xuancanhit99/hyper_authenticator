@@ -52,4 +52,7 @@ class UpdateAccountParams extends Equatable {
 
   @override
   List<Object?> get props => [account];
+
+  @override
+  String toString() => 'UpdateAccountParams(account: [REDACTED])';
 }

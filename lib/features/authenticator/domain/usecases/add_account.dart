@@ -75,6 +75,13 @@ class AddAccountParams extends Equatable {
     digits,
     period,
   ];
+
+  @override
+  String toString() =>
+      'AddAccountParams('
+      'issuer: [REDACTED], accountName: [REDACTED], '
+      'secretKey: [REDACTED], algorithm: $algorithm, '
+      'digits: $digits, period: $period)';
 }
 
 // ValidationFailure is now defined in core/error/failures.dart

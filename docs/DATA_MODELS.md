@@ -30,6 +30,11 @@ mô tả shape.
 Logo không phải persisted field. UI sinh avatar từ `issuer` nên việc loại icon
 asset không cần migration data.
 
+`AuthenticatorAccount.toString()` luôn redact ID, issuer, account name và secret;
+`AddAccountParams`/`UpdateAccountParams` cũng redact credential. Equality và
+`toJson` vẫn giữ đủ field cho domain/persistence, vì vậy control log này không đổi
+serialized shape hoặc round-trip contract.
+
 ## Local vault v2
 
 Secure storage chứa immutable generation:
