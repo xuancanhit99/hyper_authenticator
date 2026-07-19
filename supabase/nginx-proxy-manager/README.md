@@ -107,6 +107,21 @@ File-secret canary chạy lại ngày 20-07-2026 từ fresh backup
 `npm-20260719T211623Z` đã pass exact NPM 2.15.1/MariaDB 10.5.29, API/Nginx/DB 4/4,
 internal/no-port và cleanup. Đây chưa phải production credential migration.
 
+Chuẩn bị file-secret bundle mà không recreate production:
+
+    scripts/supabase/prepare_nginx_proxy_manager_file_secrets.sh \
+      /opt/stacks/nginx-proxy-manager-app \
+      /home/operator/backups/nginx-proxy-manager \
+      /etc/hyper-authenticator/nginx-proxy-manager-critical-routes.conf \
+      /etc/hyper-authenticator/nginx-proxy-manager-route-exceptions.conf \
+      --allow-nginx-proxy-manager-file-secret-preparation
+
+Sau khi review bundle/evidence và duyệt maintenance, deploy bằng
+`deploy_nginx_proxy_manager_file_secrets.sh` với confirmation
+`--allow-production-nginx-proxy-manager-file-secrets`. Deploy recreate DB trước
+app và tự rollback exact Compose/`.env`/runtime/routes nếu post-gate fail. Bundle,
+secret và rollback đều sensitive; không đưa path hoặc nội dung vào issue/CI log.
+
 ## Route matrix và maintenance bundle
 
 `test_nginx_proxy_manager_route_matrix.sh` tự đọc mọi enabled proxy/redirection/

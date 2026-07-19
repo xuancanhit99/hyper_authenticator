@@ -162,7 +162,10 @@ verification phải inject `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY` và
   matrix bằng helper mới pass 26 domain, 6 critical, 10/10 exception. Fresh backup
   `npm-20260719T211623Z`, isolated restore và exact NPM/MariaDB file-secret canary
   còn pass DB root/app + NPM `__FILE`, API/Nginx/DB 4/4, internal/no-port và cleanup.
-  Đây là source prerequisite; production Compose vẫn còn literal cho tới maintenance riêng.
+  Renderer/preparation/deploy source hiện có contract cho private candidate,
+  checksum/drift guard, DB-first recreate, post-gate và automatic rollback.
+  Production Compose vẫn còn literal cho tới khi preparation bundle pass trên host
+  và owner duyệt maintenance riêng.
 - Full NPM matrix tự khám phá 26 HTTPS domain/0 stream: sáu route trọng yếu pass;
   10 route của stack khác trả pre-existing 502 và được khóa bằng hash/status
   exception. `radar.vnpay.dev` đã phục hồi 200 nên exception tương ứng bị xóa.

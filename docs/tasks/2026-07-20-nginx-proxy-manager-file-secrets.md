@@ -1,6 +1,6 @@
 # Task: Chuyển NPM database credential sang Docker file secrets
 
-- Trạng thái: Prerequisite source và isolated canary đã hoàn tất; chờ deploy harness
+- Trạng thái: Harness source hoàn tất; chờ production preparation evidence
 - Bắt đầu: 2026-07-20
 - Owner: Hyperz
 - Issue hoặc ADR liên quan: production operations hardening
@@ -25,7 +25,7 @@ và rollback mất khả năng xác thực.
 - [x] Read-only production route matrix bằng helper mới pass.
 - [x] Isolated clone dùng exact production image + candidate secret contract pass.
 - [x] Fresh production backup và full isolated restore rehearsal pass.
-- [ ] Candidate/rollback không đổi ngoài environment/secrets và đã checksum.
+- [x] Candidate renderer chỉ đổi environment/secrets và tạo private checksum bundle.
 - [ ] Maintenance recreate đúng app + DB; runtime/API/Nginx/database/route gate pass.
 - [ ] Post-migration backup, restore rehearsal và hourly route service pass.
 - [ ] `docker inspect` không còn plaintext DB password trong app/DB Config.Env.
@@ -54,7 +54,7 @@ và rollback mất khả năng xác thực.
 - [x] Thêm dual-source database credential helper và contract test.
 - [x] Chạy helper qua production route matrix ở chế độ read-only.
 - [x] Chuyển isolated canary sang exact file-secret contract.
-- [ ] Viết production preparation/deploy/rollback harness.
+- [x] Viết production preparation/deploy/rollback harness.
 - [x] Chạy full repository gate.
 - [ ] Commit/push và branch CI.
 - [ ] Sau merge, chạy preparation rồi xin owner chốt maintenance mutation.
@@ -67,7 +67,8 @@ và rollback mất khả năng xác thực.
 | Production route matrix bằng helper mới | 26 domain, 6 critical, 10/10 exact exception, 0 stream; output redacted | 2026-07-20 |
 | Fresh backup + isolated restore | `npm-20260719T211623Z`; checksum/archive và 4/4 core table pass | 2026-07-20 |
 | Exact file-secret canary | NPM 2.15.1/MariaDB 10.5.29; DB root/app + NPM `__FILE`, API/Nginx/DB 4/4, internal/no-port và cleanup pass | 2026-07-20 |
-| `scripts/agent/check.sh full` + secret scan | Pass docs 62 file, generated/format/analyzer/platform, 186 test, operations/release/migration contract; 156-commit history + staged diff không leak | 2026-07-20 |
+| Renderer + preparation/deploy contract | Exact transform/mode/redaction; preparation cấm runtime mutation; deploy khóa drift, DB-first/post-gate/rollback | 2026-07-20 |
+| `scripts/agent/check.sh full` + secret scan | Pass docs 62 file, generated/format/analyzer/platform, 186 test, operations/release/migration contract; 157-commit history + working diff không leak | 2026-07-20 |
 
 ## Tác động tài liệu
 
@@ -81,7 +82,7 @@ và rollback mất khả năng xác thực.
 
 ## Bàn giao
 
-Source prerequisite hỗ trợ file secrets đã có, backward-compatible với production
-hiện tại và exact isolated canary đã pass. Chưa migrate production; bước tiếp theo
-phải bổ sung preparation/deploy rollback, chạy full gate và chỉ recreate app/database
-trong maintenance đã được owner duyệt.
+Source renderer/preparation/deploy/rollback đã có, backward-compatible với
+production hiện tại và exact isolated canary đã pass. Chưa migrate production;
+bước tiếp theo là chạy full gate, tạo preparation bundle trên host không mutate
+runtime, review evidence rồi chỉ recreate app/database trong maintenance được duyệt.

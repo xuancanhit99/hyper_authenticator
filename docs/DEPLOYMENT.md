@@ -209,8 +209,38 @@ Backup và route-matrix script phải được deploy cùng thư viện
 `npm_database_exec_container.sh` trong cùng directory. Helper giữ tương thích cả
 plaintext env hiện tại và `MYSQL_PASSWORD_FILE`/`MARIADB_PASSWORD_FILE`, resolve
 credential hoàn toàn trong database container và không log giá trị. Production
-vẫn dùng literal cho tới khi task file-secret có canary, rollback và maintenance
-approval riêng; source compatibility không phải bằng chứng migration đã deploy.
+vẫn dùng literal cho tới khi bundle file-secret mới được chuẩn bị và owner duyệt
+maintenance mutation; source/harness compatibility không phải bằng chứng migration
+đã deploy.
+
+Preparation file-secret là read-only đối với runtime:
+
+    scripts/supabase/prepare_nginx_proxy_manager_file_secrets.sh \
+      /opt/stacks/nginx-proxy-manager-app \
+      /home/operator/backups/nginx-proxy-manager \
+      /etc/hyper-authenticator/nginx-proxy-manager-critical-routes.conf \
+      /etc/hyper-authenticator/nginx-proxy-manager-route-exceptions.conf \
+      --allow-nginx-proxy-manager-file-secret-preparation
+
+Nó chạy route → fresh backup → isolated restore → exact current-image file-secret
+canary → route, rồi render candidate Compose JSON, `.env`, secret 0400, route
+harness và checksum vào bundle private. Candidate loại plaintext password và dùng
+`DB_MYSQL_PASSWORD__FILE`, `MYSQL_PASSWORD_FILE`, `MYSQL_ROOT_PASSWORD_FILE`.
+
+Sau khi owner duyệt downtime ngắn, deploy chỉ nhận exact bundle đã byte-match:
+
+    scripts/supabase/deploy_nginx_proxy_manager_file_secrets.sh \
+      /opt/stacks/nginx-proxy-manager-app \
+      /home/operator/backups/nginx-proxy-manager \
+      /path/to/file-secrets-npm-YYYYMMDDTHHMMSSZ \
+      /etc/hyper-authenticator/nginx-proxy-manager-critical-routes.conf \
+      /etc/hyper-authenticator/nginx-proxy-manager-route-exceptions.conf \
+      --allow-production-nginx-proxy-manager-file-secrets
+
+Harness recreate DB trước rồi app, khóa exact image/version, authenticated DB 4/4,
+API, Nginx, không còn plaintext `Config.Env`, exact secret mount, full route matrix
+và systemd timer. Failure khôi phục exact Compose/`.env`, recreate DB/app và chỉ
+xóa secret files sau khi rollback gate pass; không xóa network, volume hoặc data.
 
 Deploy production chỉ dùng bundle đã chuẩn bị và confirmation explicit:
 

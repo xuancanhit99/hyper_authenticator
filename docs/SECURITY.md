@@ -274,11 +274,18 @@ không phải symlink; thiếu hoặc sai credential fail im lặng trước dat
 Password không đi qua Docker CLI argument hoặc host process environment. Helper
 giữ tương thích Compose production hiện tại và là prerequisite cho migration.
 
-**Khoảng trống đã biết:** production chưa chuyển sang Docker file secrets. Không
-được xóa literal hoặc recreate database/app trước fresh backup + restore rehearsal,
-isolated file-secret canary, exact candidate/rollback và full public-route gate.
-Fresh backup/restore cùng exact NPM/MariaDB isolated canary đã pass file-secret cho
-DB root/app và NPM `__FILE`; candidate/rollback production vẫn chưa được triển khai.
+**Khoảng trống đã biết:** production chưa chuyển sang Docker file secrets. Source
+đã có renderer fail-closed, read-only preparation và deploy/rollback transaction;
+điều này chưa thay thế host evidence hoặc maintenance approval. Không được xóa
+literal hay recreate database/app trước khi fresh backup + restore, exact canary,
+checksum/drift guard và pre-route trong preparation đều pass.
+
+Bundle file-secret là sensitive: original/candidate, `.env`, resolved input và
+secret không được log/commit/copy sang CI. Renderer chỉ tạo output mới, giữ bundle
+0700, Compose/`.env` 0600 và secret 0400; mismatch hoặc partial file-secret config
+fail mà không in credential. Deploy recreate DB trước app, xác minh không còn
+plaintext password trong `Config.Env`, exact mounts và chỉ xóa secret sau khi exact
+rollback runtime/route đã pass.
 
 NPM upgrade rehearsal chỉ extract sensitive app/certificate vào sandbox 0700,
 dùng password ngẫu nhiên qua env file 0600 và Docker network `--internal` không

@@ -297,6 +297,15 @@ post-probe current image/health/hash và 5/5 public SPA route pass.
   byte-match current Compose và exact current/target image. Nó recreate riêng app,
   khóa runtime/API/Nginx/full route sau deploy và tự rollback exact Compose/image
   nếu fail; contract cấm dừng/xóa MariaDB, network hoặc volume.
+- `render_nginx_proxy_manager_file_secrets.py` có fixture khóa exact env transform,
+  candidate không chứa credential, mode 0700/0600/0400 và mismatch redaction.
+- `prepare_nginx_proxy_manager_file_secrets.sh` bắt buộc route/fresh backup/restore/
+  exact canary trước private checksum bundle; contract cấm production Compose
+  lifecycle mutation.
+- `deploy_nginx_proxy_manager_file_secrets.sh` byte-match Compose + `.env`, khóa
+  backup/image/manifest checksum, recreate DB trước app và yêu cầu API/Nginx/DB 4/4,
+  secret mounts, no-plaintext-env, route/timer. Contract khóa exact rollback DB/app
+  và cấm xóa network/volume/data.
 - `hyper-auth-nginx-proxy-manager-routes.timer` chạy full redacted route matrix mỗi
   giờ, persistent qua reboot; contract khóa manifest path, explicit mutation flag
   và systemd sandbox không inject credential.
