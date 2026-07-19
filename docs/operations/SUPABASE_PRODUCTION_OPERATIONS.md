@@ -191,7 +191,15 @@ Low-concurrency smoke phải dùng budget có exit code, không chỉ quan sát 
 
 Release baseline: 100 request, concurrency 10, 100% HTTP 200, p95 ≤ 1 giây,
 max ≤ 2 giây. Đây là regression threshold từ client tới public origin, không phải
-SLA và không thay long-duration soak/production-scale workload.
+SLA. Soak bảo thủ có thể đặt `LOAD_BATCH_INTERVAL_MS=1000` cùng concurrency 1 để
+tránh burst; contract test bắt buộc xác minh pacing và input sai phải fail closed.
+Soak public health vẫn không thay production-scale workload.
+
+Lượt bounded soak 19-07-2026 đạt 900/900 HTTP 200 trong 1.134 giây, p95 292 ms
+nhưng fail strict max vì một request 3.648 ms; baseline chạy lại pass p95 402/max
+406 ms. Khi lặp lại, phải giữ threshold, thu request/upstream timing để correlation
+và kiểm tra health journal/container trong cùng cửa sổ; không kết luận từ baseline
+pass rằng tail spike đã biến mất.
 9. Update `supabase/UPSTREAM_PIN` và `PROJECT_STATUS.md` cùng commit.
 
 Rollback phải khôi phục cả compose/image pin, database và Storage/config tương ứng;

@@ -107,7 +107,9 @@ Production/staging test dùng isolated user và tự cleanup:
 - scheduled restore contract không Docker: due/skip, failure giữ evidence cũ,
   backup quá hạn, evidence mode/schema và systemd sandbox/timer;
 - public Auth health load budget: 100 request, concurrency 10, 100% HTTP 200,
-  p95 tối đa 1 giây và single-request tối đa 2 giây.
+  p95 tối đa 1 giây và single-request tối đa 2 giây;
+- Auth load pacing contract: sleep đúng giữa batch, không sleep sau batch cuối và
+  từ chối interval âm trước network; dùng cho soak bảo thủ không tạo user/payload.
 
 Android Pixel AVD còn xác minh SDK thật gọi bulk revoke: isolated user có hai
 session, UI xác nhận action, session count giảm 2→1, current session vẫn ở Settings
@@ -263,6 +265,8 @@ post-probe current image/health/hash và 5/5 public SPA route pass.
   service-role key không được lưu ở GitHub Actions secret hoặc truyền vào Flutter.
 - `scripts/supabase/test_auth_load_budget.sh` chỉ dùng public publishable key,
   không tạo user/payload và fail khi HTTP hoặc latency vượt budget.
+  `test_auth_load_budget_contract.sh` giả lập network/sleep để khóa pacing trước
+  khi dùng `LOAD_BATCH_INTERVAL_MS` trên production.
 - `test_scheduled_restore_drill_contract.sh` dùng backup/rehearsal fixture tạm,
   không đọc Docker hoặc backup thật; full gate chạy contract này trên mọi platform.
 - `windows_integration.ps1` và `windows_installer_smoke.ps1` chỉ nhận GitHub-hosted
@@ -285,8 +289,10 @@ post-probe current image/health/hash và 5/5 public SPA route pass.
    replacement + rotation; Android/iOS còn pass two-session survivor auto-unwrap.
    Chúng không thay physical-device hoặc independent cryptographic review.
 3. Chưa có mailbox SMTP/expired-link E2E.
-4. Low-concurrency Auth budget đã enforce; chưa có long-duration soak hoặc
-   production-scale workload test.
+4. Low-concurrency Auth budget đã enforce. Bounded production soak gần 19 phút
+   đạt 900/900 HTTP 200 và p95 292 ms nhưng strict gate fail vì một request
+   3.648 ms; baseline 100 request ngay sau đó pass p95 402/max 406 ms. Proxy log
+   chưa có request/upstream timing để correlation; chưa có production-scale test.
 5. Windows/Linux unsigned package đủ điều kiện GitHub Preview nhưng chưa phải stable.
    Windows còn code signing và physical-device/Windows Hello. Linux còn KDE
    login-unlock/physical desktop và signed package E2EE runtime.

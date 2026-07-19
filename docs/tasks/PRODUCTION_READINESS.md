@@ -110,6 +110,7 @@ behavior an toàn, backend có backup/restore/health harness và release gate t�
 | Studio proxy contract | Pass |
 | Backup restore rehearsal | Full restore DB tạm + schema/FORCE RLS/active-session guard pass |
 | Auth load budget | 100/100 HTTP 200, concurrency 10, p95 578 ms, max 862 ms dưới budget 1.000/2.000 ms; negative path 1 ms fail đúng |
+| Auth bounded soak | 900/900 HTTP 200, concurrency 1, pacing 1 giây sau mỗi batch, elapsed 1.134 giây, p95 292 ms; strict gate fail do một max 3.648 ms. Baseline ngay sau pass 100/100, p95 402 ms, max 406 ms; server/timer healthy |
 | Web production rollout | Image `1.1.0-ae1ab36` `linux/amd64` healthy; local/public `main.dart.js` SHA-256 `1a0d63a6…f66ea6` khớp; `/`, `/settings`, `/privacy`, `/login`, `/reset-password` trả 200; TLS/HSTS/CSP/cache/Permissions-Policy pass; browser xác minh Flutter runtime `lang=vi`, render và console sạch |
 
 Full `scripts/agent/check.sh full` pass: docs, generated drift, format, analyzer,
@@ -130,7 +131,9 @@ platform config, 186 test và encrypted migration/active-session/device-wrap con
   và Web E2EE trust model.
 - `mobile_scanner` upstream còn Kotlin legacy warning.
 - Off-host backup đang phụ thuộc máy Mac thay vì dedicated backup host.
-- Low-concurrency Auth budget đã có; long-duration soak và production-scale
+- Low-concurrency Auth budget đã có. Bounded soak gần 19 phút phát hiện một tail
+  spike 3.648 ms dù 900/900 HTTP 200 và baseline kế tiếp pass; cần timing
+  observability/correlation trước khi đóng long-duration gate. Production-scale
   workload vẫn chưa có.
 
 ## Tài liệu cập nhật

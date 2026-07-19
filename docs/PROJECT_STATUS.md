@@ -139,8 +139,11 @@ verification phải inject `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY` và
   đều pass; cleanup còn 0 user/snapshot/device/verifier.
 - Auth load budget dùng public key: 100/100 HTTP 200 ở concurrency 10; p95 578 ms,
   max 862 ms, dưới ngưỡng 1.000/2.000 ms. Negative path 1 ms bị từ chối đúng;
-  gate không tạo user/payload. Health trước đó xác nhận 11 container healthy,
-  RAM available khoảng 3,4 GiB và swap used khoảng 610 MiB.
+  gate không tạo user/payload. Bounded soak 900 request tuần tự trong 1.134 giây
+  đạt 900/900 HTTP 200 và p95 292 ms nhưng fail strict gate vì một outlier
+  3.648 ms; release baseline chạy lại ngay sau đó pass 100/100, p95 402 ms,
+  max 406 ms. Cùng cửa sổ đó 11 container và timer healthy, RAM available khoảng
+  3,5 GiB, swap 0; log proxy hiện chưa có request/upstream duration để quy nguồn spike.
 - Health timer chạy mỗi 5 phút. Backup timer chạy hằng ngày, giữ 7 bản local.
 - Backup gồm logical database, globals, quiesced Storage và sensitive config;
   có SHA-256, permission 0700/0600 và validation catalog/tar.
@@ -176,8 +179,10 @@ Capability là hành vi source hiện tại, không thay thế device test và s
 3. Monitoring mới ghi journal/exit status; chưa có alert channel ngoài host.
 4. Off-host backup hiện phụ thuộc máy Mac/LaunchAgent đang hoạt động; cần đích
    object storage hoặc backup host độc lập nếu yêu cầu SLA cao.
-5. Low-concurrency Auth budget đã enforce; chưa có long-duration soak hoặc
-   production-scale workload test.
+5. Low-concurrency Auth budget đã enforce. Bounded soak gần 19 phút không có HTTP
+   failure nhưng phát hiện một tail spike 3.648 ms nên strict max gate fail; baseline
+   kế tiếp pass. Cần thêm timing observability/correlation rồi lặp soak dài hơn;
+   chưa có production-scale workload test.
 6. E2EE v1 đã có DEK rotation, bulk revoke và targeted revoke cho registered auth
    session với server-side enforcement. Device-specific HPKE wrap đã có ADR được
    duyệt và đã deploy server; Linux client runtime pass cả mất device private key,

@@ -61,6 +61,7 @@ run_operations_harness() {
     scripts/agent/linux_e2ee_operator.sh \
     scripts/agent/mobile_e2ee_integration.sh \
     scripts/agent/mobile_e2ee_operator.sh
+  scripts/supabase/test_auth_load_budget_contract.sh
   scripts/supabase/test_scheduled_restore_drill_contract.sh
 }
 

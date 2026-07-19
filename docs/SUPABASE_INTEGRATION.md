@@ -177,8 +177,16 @@ Release regression cho public Auth health dùng publishable key, không tạo us
 
 Mặc định gate chạy 100 request/concurrency 10, yêu cầu toàn bộ HTTP 200,
 p95 ≤ 1.000 ms và max ≤ 2.000 ms. Có thể override `LOAD_TOTAL_REQUESTS`,
-`LOAD_CONCURRENCY`, `LOAD_MAX_P95_MS`, `LOAD_MAX_SINGLE_MS` cho protected soak;
-không nới budget mặc định chỉ để làm pipeline xanh.
+`LOAD_CONCURRENCY`, `LOAD_BATCH_INTERVAL_MS`, `LOAD_MAX_P95_MS` và
+`LOAD_MAX_SINGLE_MS` cho protected soak. Pacing chỉ sleep giữa batch, được contract
+test và mặc định bằng `0` để giữ release regression cũ; không nới budget chỉ để
+làm pipeline xanh.
+
+Bounded production soak ngày 19-07-2026 chạy 900 request/concurrency 1, interval
+1 giây sau mỗi batch trong 1.134 giây: 900/900 HTTP 200, p95 292 ms nhưng strict
+gate fail vì một max 3.648 ms. Baseline 100 request/concurrency 10 ngay sau đó pass
+p95 402/max 406 ms. Health/timer/container cùng cửa sổ đều xanh; Nginx Proxy
+Manager/Kong access log chưa có duration nên chưa đủ bằng chứng quy nguồn spike.
 - Studio public route phải trả 401 khi thiếu Basic Auth.
 - Kong/Supavisor bind loopback; reverse proxy nối qua `proxy-network`.
 
