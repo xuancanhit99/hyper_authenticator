@@ -12,8 +12,8 @@ DB_SERVICE=${NPM_DB_SERVICE:-nginx-proxy-manager-db}
 APP_CONTAINER=${NPM_APP_CONTAINER:-nginx-proxy-manager-app}
 DB_CONTAINER=${NPM_DB_CONTAINER:-nginx-proxy-manager-db}
 ROUTE_INSTALL_DIR=${NPM_ROUTE_INSTALL_DIR:-/usr/local/lib/hyper-authenticator}
-ROUTE_SERVICE=${NPM_ROUTE_SERVICE:-hyper-authenticator-nginx-proxy-manager-routes.service}
-ROUTE_TIMER=${NPM_ROUTE_TIMER:-hyper-authenticator-nginx-proxy-manager-routes.timer}
+ROUTE_SERVICE=${NPM_ROUTE_SERVICE:-hyper-auth-nginx-proxy-manager-routes.service}
+ROUTE_TIMER=${NPM_ROUTE_TIMER:-hyper-auth-nginx-proxy-manager-routes.timer}
 
 if [[ -z "$BUNDLE" || -z "$CRITICAL_MANIFEST" ||
   "$CONFIRMATION" != '--allow-production-nginx-proxy-manager-file-secrets' ]]; then
