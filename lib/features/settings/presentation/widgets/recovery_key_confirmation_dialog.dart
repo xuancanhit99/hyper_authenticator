@@ -39,45 +39,51 @@ class _RecoveryKeyConfirmationDialogState
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      scrollable: true,
-      title: Text(
-        widget.operation == RecoveryKeyOperation.setup
-            ? 'Lưu recovery key'
-            : 'Lưu recovery key mới',
-      ),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(_warningFor(widget.operation)),
-          const SizedBox(height: 16),
-          _SensitiveRecoveryKeyPanel(recoveryCode: widget.recoveryCode),
-          const SizedBox(height: 12),
-          CheckboxListTile(
-            contentPadding: EdgeInsets.zero,
-            value: _confirmedSaved,
-            onChanged: (value) =>
-                setState(() => _confirmedSaved = value ?? false),
-            title: const Text(
-              'Tôi đã lưu key vào password manager hoặc nơi an toàn.',
+    return CallbackShortcuts(
+      bindings: {
+        const SingleActivator(LogicalKeyboardKey.escape): () =>
+            Navigator.pop(context, false),
+      },
+      child: AlertDialog(
+        scrollable: true,
+        title: Text(
+          widget.operation == RecoveryKeyOperation.setup
+              ? 'Lưu recovery key'
+              : 'Lưu recovery key mới',
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(_warningFor(widget.operation)),
+            const SizedBox(height: 16),
+            _SensitiveRecoveryKeyPanel(recoveryCode: widget.recoveryCode),
+            const SizedBox(height: 12),
+            CheckboxListTile(
+              contentPadding: EdgeInsets.zero,
+              value: _confirmedSaved,
+              onChanged: (value) =>
+                  setState(() => _confirmedSaved = value ?? false),
+              title: const Text(
+                'Tôi đã lưu key vào password manager hoặc nơi an toàn.',
+              ),
             ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            autofocus: true,
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Hủy'),
+          ),
+          FilledButton(
+            onPressed: _confirmedSaved
+                ? () => Navigator.pop(context, true)
+                : null,
+            child: Text(_actionFor(widget.operation)),
           ),
         ],
       ),
-      actions: [
-        TextButton(
-          autofocus: true,
-          onPressed: () => Navigator.pop(context, false),
-          child: const Text('Hủy'),
-        ),
-        FilledButton(
-          onPressed: _confirmedSaved
-              ? () => Navigator.pop(context, true)
-              : null,
-          child: Text(_actionFor(widget.operation)),
-        ),
-      ],
     );
   }
 

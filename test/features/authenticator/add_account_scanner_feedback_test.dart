@@ -15,6 +15,8 @@ import 'package:hyper_authenticator/features/authenticator/presentation/bloc/acc
 import 'package:hyper_authenticator/features/authenticator/presentation/pages/add_account_page.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 
+import '../../support/focus_test_utils.dart';
+
 void main() {
   testWidgets(
     'scanner pending hiển thị hướng dẫn cấp quyền thay vì màn hình đen',
@@ -105,6 +107,49 @@ void main() {
       },
     );
   }
+
+  testWidgets('manual entry keyboard traversal và submit không cần pointer', (
+    tester,
+  ) async {
+    final controller = _FakeScannerController();
+    final repository = _MemoryAuthenticatorRepository();
+    final accountsBloc = _accountsBloc(repository);
+    addTearDown(accountsBloc.close);
+
+    await _pumpPage(tester, accountsBloc, controller);
+
+    final issuerField = find.byKey(AddAccountPage.issuerFieldKey);
+    final accountNameField = find.byKey(AddAccountPage.accountNameFieldKey);
+    final secretField = find.byKey(AddAccountPage.secretFieldKey);
+    final submit = find.byKey(AddAccountPage.submitButtonKey);
+
+    await tester.tap(issuerField);
+    await tester.enterText(issuerField, 'TEST_ONLY Issuer');
+    expectPrimaryFocusWithin(issuerField);
+
+    await pressTab(tester);
+    expectPrimaryFocusWithin(accountNameField);
+    await tester.enterText(accountNameField, 'user@example.invalid');
+
+    await pressTab(tester);
+    expectPrimaryFocusWithin(secretField);
+    await tester.enterText(secretField, 'JBSWY3DPEHPK3PXP');
+
+    await pressTab(tester);
+    expectPrimaryFocusWithin(submit);
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pumpAndSettle();
+
+    expect(
+      repository.addedAccount,
+      const AuthenticatorAccount(
+        id: 'keyboard-account',
+        issuer: 'TEST_ONLY Issuer',
+        accountName: 'user@example.invalid',
+        secretKey: 'JBSWY3DPEHPK3PXP',
+      ),
+    );
+  });
 }
 
 Future<void> _pumpPage(
@@ -133,8 +178,8 @@ Future<void> _pumpPage(
   );
 }
 
-AccountsBloc _accountsBloc() {
-  final repository = _NoopAuthenticatorRepository();
+AccountsBloc _accountsBloc([AuthenticatorRepository? repository]) {
+  repository ??= _MemoryAuthenticatorRepository();
   return AccountsBloc(
     getAccounts: GetAccounts(repository),
     addAccount: AddAccount(repository),
@@ -188,10 +233,12 @@ class _FakeScannerController extends MobileScannerController {
   }
 }
 
-class _NoopAuthenticatorRepository implements AuthenticatorRepository {
+class _MemoryAuthenticatorRepository implements AuthenticatorRepository {
+  AuthenticatorAccount? addedAccount;
+
   @override
   Future<Either<Failure, List<AuthenticatorAccount>>> getAccounts() async =>
-      const Right([]);
+      Right(addedAccount == null ? const [] : [addedAccount!]);
 
   @override
   Future<Either<Failure, AuthenticatorAccount>> addAccount({
@@ -201,8 +248,17 @@ class _NoopAuthenticatorRepository implements AuthenticatorRepository {
     required String algorithm,
     required int digits,
     required int period,
-  }) {
-    throw UnimplementedError();
+  }) async {
+    addedAccount = AuthenticatorAccount(
+      id: 'keyboard-account',
+      issuer: issuer,
+      accountName: accountName,
+      secretKey: secretKey,
+      algorithm: algorithm,
+      digits: digits,
+      period: period,
+    );
+    return Right(addedAccount!);
   }
 
   @override

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fpdart/fpdart.dart';
@@ -8,10 +9,13 @@ import 'package:hyper_authenticator/core/theme/app_theme.dart';
 import 'package:hyper_authenticator/features/auth/domain/entities/user_entity.dart';
 import 'package:hyper_authenticator/features/auth/domain/repositories/auth_repository.dart';
 import 'package:hyper_authenticator/features/auth/presentation/bloc/auth_bloc.dart';
+import 'package:hyper_authenticator/features/auth/presentation/pages/forgot_password_page.dart';
 import 'package:hyper_authenticator/features/auth/presentation/pages/login_page.dart';
 import 'package:hyper_authenticator/features/auth/presentation/pages/register_page.dart';
 import 'package:hyper_authenticator/features/auth/presentation/pages/update_password_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+import '../../support/focus_test_utils.dart';
 
 void main() {
   const user = UserEntity(
@@ -53,6 +57,10 @@ void main() {
           builder: (_, _) => const Scaffold(body: Text('Settings host')),
         ),
         GoRoute(path: '/login', builder: (_, _) => const LoginPage()),
+        GoRoute(
+          path: '/forgot-password',
+          builder: (_, _) => const ForgotPasswordPage(),
+        ),
         GoRoute(path: '/register', builder: (_, _) => const RegisterPage()),
         GoRoute(
           path: '/update-password',
@@ -154,6 +162,104 @@ void main() {
       },
     );
   }
+
+  testWidgets('login keyboard traversal và submit không cần pointer', (
+    tester,
+  ) async {
+    await pumpApp(tester, initialLocation: '/login');
+
+    final emailField = find.widgetWithText(TextFormField, 'Email');
+    final passwordField = find.widgetWithText(TextFormField, 'Mật khẩu');
+    final passwordVisibility = find.byTooltip('Hiện mật khẩu');
+    final rememberMe = find.widgetWithText(
+      CheckboxListTile,
+      'Ghi nhớ đăng nhập',
+    );
+    final forgotPassword = find.widgetWithText(TextButton, 'Quên mật khẩu?');
+    final submit = find.widgetWithText(ElevatedButton, 'Đăng nhập');
+
+    await pressTab(tester);
+    expectPrimaryFocusWithin(emailField);
+    await tester.enterText(emailField, 'test-only@example.invalid');
+
+    await pressTab(tester);
+    expectPrimaryFocusWithin(passwordField);
+    await tester.enterText(passwordField, 'TEST_ONLY_PASSWORD');
+
+    await pressTab(tester);
+    expectPrimaryFocusWithin(passwordVisibility);
+    await tester.sendKeyEvent(LogicalKeyboardKey.space);
+    await tester.pump();
+    expect(find.byTooltip('Ẩn mật khẩu'), findsOneWidget);
+
+    await pressTab(tester);
+    expectPrimaryFocusWithin(rememberMe);
+    await tester.sendKeyEvent(LogicalKeyboardKey.space);
+    await tester.pump();
+    expect(tester.widget<CheckboxListTile>(rememberMe).value, isTrue);
+
+    await pressTab(tester);
+    expectPrimaryFocusWithin(forgotPassword);
+    await pressTab(tester);
+    expectPrimaryFocusWithin(submit);
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Accounts home'), findsOneWidget);
+  });
+
+  testWidgets('register/update/recovery auth forms có keyboard focus order', (
+    tester,
+  ) async {
+    await pumpApp(tester, initialLocation: '/register');
+
+    final registerFields = find.byType(TextFormField);
+    await pressTab(tester);
+    expectPrimaryFocusWithin(registerFields.at(0));
+    await pressTab(tester);
+    expectPrimaryFocusWithin(registerFields.at(1));
+    await pressTab(tester);
+    expectPrimaryFocusWithin(registerFields.at(2));
+    await pressTab(tester);
+    expectPrimaryFocusWithin(find.byTooltip('Hiện mật khẩu').first);
+    await pressTab(tester);
+    expectPrimaryFocusWithin(registerFields.at(3));
+    await pressTab(tester);
+    expectPrimaryFocusWithin(find.byTooltip('Hiện mật khẩu').last);
+    await pressTab(tester);
+    expectPrimaryFocusWithin(find.widgetWithText(ElevatedButton, 'Đăng ký'));
+    await pressTab(tester);
+    expectPrimaryFocusWithin(find.widgetWithText(TextButton, 'Đăng nhập'));
+
+    router.go('/update-password');
+    await tester.pumpAndSettle();
+    final updateFields = find.byType(TextFormField);
+    await pressTab(tester);
+    expectPrimaryFocusWithin(updateFields.at(0));
+    await pressTab(tester);
+    expectPrimaryFocusWithin(find.byTooltip('Hiện mật khẩu').first);
+    await pressTab(tester);
+    expectPrimaryFocusWithin(updateFields.at(1));
+    await pressTab(tester);
+    expectPrimaryFocusWithin(find.byTooltip('Hiện mật khẩu').last);
+    await pressTab(tester);
+    expectPrimaryFocusWithin(
+      find.widgetWithText(ElevatedButton, 'Cập nhật mật khẩu'),
+    );
+
+    router.go('/forgot-password');
+    await tester.pumpAndSettle();
+    await pressTab(tester);
+    expectPrimaryFocusWithin(find.widgetWithText(TextFormField, 'Email'));
+    await pressTab(tester);
+    expectPrimaryFocusWithin(
+      find.widgetWithText(ElevatedButton, 'Gửi liên kết đặt lại'),
+    );
+    await pressTab(tester);
+    expectPrimaryFocusWithin(
+      find.widgetWithText(TextButton, 'Quay lại đăng nhập'),
+    );
+  });
 
   test('auth event/state string redact password và user identity', () {
     const email = 'sensitive@example.invalid';

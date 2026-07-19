@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fpdart/fpdart.dart';
@@ -17,6 +18,8 @@ import 'package:hyper_authenticator/features/authenticator/presentation/pages/ac
 import 'package:hyper_authenticator/features/authenticator/presentation/widgets/circular_countdown_timer.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+import '../../support/focus_test_utils.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -198,6 +201,24 @@ void main() {
         await expectLater(tester, meetsGuideline(labeledTapTargetGuideline));
         await expectLater(tester, meetsGuideline(androidTapTargetGuideline));
         await expectLater(tester, meetsGuideline(textContrastGuideline));
+
+        if (themeMode == ThemeMode.light) {
+          FocusManager.instance.primaryFocus?.unfocus();
+          await tester.pump();
+
+          await pressTab(tester);
+          expectPrimaryFocusWithin(find.byTooltip('Đổi giao diện'));
+          await pressTab(tester);
+          expectPrimaryFocusWithin(find.byTooltip('Thêm tài khoản'));
+          await pressTab(tester);
+          expectPrimaryFocusWithin(find.byType(TextField));
+          await pressTab(tester);
+          expectPrimaryFocusWithin(copyAction);
+
+          await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+          await tester.pump();
+          expect(find.text('Đã sao chép mã TOTP.'), findsOneWidget);
+        }
 
         await tester.tap(copyAction);
         await tester.pump();

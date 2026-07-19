@@ -59,8 +59,10 @@ tag CI xanh, checksum tải lại khớp và release note nêu signing/SMTP/plat
 - [x] Automated accessibility baseline cho Auth/accounts/add-account và Settings
   recovery/conflict/session dialog; TOTP secret key/raw recovery key không vào
   semantics tree.
-- [ ] TalkBack/VoiceOver runtime, full keyboard traversal, contrast và
-  screenshot/privacy review trên platform đại diện.
+- [x] Automated WCAG text contrast light/dark và core keyboard traversal cho
+  Auth/accounts/add-account/sensitive Settings dialog.
+- [ ] TalkBack/VoiceOver runtime, full Settings/main-navigation keyboard audit,
+  reduced-motion và screenshot/privacy review trên platform đại diện.
 - [ ] Independent cryptographic/application security review.
 
 ## Ưu tiên P2 — Platform expansion

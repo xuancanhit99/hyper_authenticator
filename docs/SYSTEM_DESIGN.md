@@ -160,6 +160,12 @@ WCAG AA text contrast trên các core surface. Widget regression khóa contract 
 ở Auth, account list, form thêm account và sensitive Settings dialog; đây không
 thay cho TalkBack/VoiceOver hoặc audit toàn bộ UI trên thiết bị thật.
 
+Core keyboard contract dùng focus tree mặc định của Flutter nhưng khóa thứ tự và
+activation bằng Tab/Shift+Tab/Enter/Space. Sensitive dialog mặc định focus
+**Hủy**; recovery-key confirmation chỉ cho tới action sau xác nhận đã lưu key và
+bắt Escape để trả `false` kể cả khi barrier không dismissible. Contract này chưa
+thay full Settings/main-navigation runtime audit trên từng desktop/browser.
+
 ### Xoay recovery key
 
 Thiết bị đang giữ DEK có thể tạo KEK mới, re-wrap cùng DEK, re-encrypt current
