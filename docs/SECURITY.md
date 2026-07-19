@@ -28,8 +28,13 @@ không bao giờ được đặt trong Flutter `.env`, asset, build log hoặc b
 - Versioned copy-on-write vault; commit marker ghi sau cùng; rollback generation.
 - Compaction giữ active và rollback generation.
 - TOTP validation tập trung; không log barcode payload/secret.
+- `AccountAddSuccess` không mang account/secret trong BLoC state; UI chỉ dùng tín
+  hiệu operation-specific này để hoàn tất navigation.
 - Logout không xóa vault.
 - App lock fail closed và relock theo lifecycle.
+- Root `PrivacyShield` che toàn bộ router ở mọi lifecycle khác `resumed`, bỏ
+  keyboard focus, dừng ticker và loại cây nội dung khỏi semantics trong khi che.
+  Lớp che không dispose hoặc mutate vault/state bên dưới.
 - Platform capability chặn plugin không hỗ trợ thay vì gọi rồi fallback không an toàn.
 - Windows đóng băng AppData identity tương thích `1.0.0+9`. Layout migrator chạy
   trước DI, chỉ copy atomic allowlist, không theo symlink/không xóa nguồn và dừng
@@ -116,6 +121,35 @@ Copy là hành động chủ động đưa key vào clipboard do OS quản lý. 
 persist clipboard content; người dùng phải xóa clipboard theo threat model của
 thiết bị nếu clipboard history/sync đang bật.
 
+## Screenshot và screen capture
+
+**Đã triển khai:** lifecycle privacy shield giảm rò rỉ TOTP, recovery key và
+identity qua app switcher/background snapshot trên toàn bộ Flutter target. Sau
+bootstrap, mọi lifecycle signal `inactive`, `hidden`, `paused` và `detached` đều
+che nội dung; `resumed` mới gỡ shield. Widget regression xác minh overlay opaque,
+bỏ focus, chặn interaction và không để nội dung bên dưới xuất hiện trong semantics
+tree. Initial `detached` trước lifecycle signal không tự che vì Linux headless và
+một số desktop runtime không phát `resumed`; CI runtime khóa compatibility này.
+
+**Khoảng trống đã biết:** shield không ngăn active screenshot, screen recording,
+screen sharing khi app vẫn `resumed`, camera ngoài chụp màn hình hoặc phần mềm đã
+compromise OS profile. Project chưa bật native capture-blocking vì support và UX
+khác nhau theo platform:
+
+- Android có `FLAG_SECURE` để loại activity khỏi screenshot/non-secure display,
+  nhưng chưa bật và chưa có runtime gate trên thiết bị đại diện.
+- iOS API đã đối chiếu chỉ phát notification sau screenshot và báo trạng thái
+  screen capture; project chưa xác minh control chính thức có thể chặn screenshot.
+- Windows có `WDA_EXCLUDEFROMCAPTURE` từ Windows 10 version 2004 nhưng Microsoft
+  mô tả đây là best-effort window-content protection, không phải DRM; chưa bật.
+- `NSWindow.SharingType.none` là legacy constant macOS không còn dùng; Linux phụ
+  thuộc compositor và Web phụ thuộc browser/OS, nên chưa có control portable được
+  xác minh.
+
+Không tuyên bố screenshot prevention cho platform nào cho tới khi product chốt
+việc chặn capture/casting, native implementation có failure telemetry không chứa
+secret và runtime test pass trên platform đó.
+
 Event/state BLoC có recovery key vẫn giữ equality semantics nhưng override string
 representation thành `[REDACTED]`, phòng transition/crash logger vô tình ghi key.
 Các auth event/state chứa email, password hoặc user identity cũng redact string
@@ -198,6 +232,8 @@ directory mode 0700 rồi cleanup bằng trap.
 5. Signing key/certificate chưa được owner cung cấp trên môi trường build; GitHub
    Preview vì vậy có SmartScreen/package-signature risk đã công bố.
 6. Browser local vault có trust model yếu hơn native dù cloud sync đã tắt.
+7. Background/app-switcher đã có lifecycle shield; active screenshot/recording/
+   sharing khi app foreground vẫn là accepted risk chưa có platform runtime gate.
 
 ## Báo cáo lỗ hổng
 

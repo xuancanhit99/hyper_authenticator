@@ -5,6 +5,7 @@ import 'package:flutter_bloc/flutter_bloc.dart'; // Keep for other Blocs if need
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart'; // Import Provider
 import 'package:hyper_authenticator/core/router/app_router.dart';
+import 'package:hyper_authenticator/core/security/privacy_shield.dart';
 // Supabase Auth
 // Accounts Bloc
 import 'package:hyper_authenticator/features/authenticator/presentation/bloc/local_auth_bloc.dart'; // Local Auth Bloc
@@ -89,6 +90,8 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
       darkTheme: widget.darkTheme ?? sl<ThemeData>(instanceName: 'darkTheme'),
       themeMode: themeProvider.themeMode, // Use themeMode from ThemeProvider
       routerConfig: widget.routerConfig ?? sl<AppRouter>().config(),
+      builder: (context, child) =>
+          PrivacyShield(child: child ?? const SizedBox.shrink()),
       debugShowCheckedModeBanner: false,
     );
   }

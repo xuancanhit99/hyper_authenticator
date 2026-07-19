@@ -150,6 +150,59 @@ void main() {
       ),
     );
   });
+
+  testWidgets('chỉ đóng add route sau success đúng operation', (tester) async {
+    final controller = _FakeScannerController();
+    final repository = _MemoryAuthenticatorRepository();
+    final accountsBloc = _accountsBloc(repository);
+    addTearDown(accountsBloc.close);
+
+    await tester.pumpWidget(
+      BlocProvider.value(
+        value: accountsBloc,
+        child: MaterialApp(
+          home: Builder(
+            builder: (context) => Scaffold(
+              body: TextButton(
+                onPressed: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) =>
+                        AddAccountPage(scannerController: controller),
+                  ),
+                ),
+                child: const Text('Mở form test'),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('Mở form test'));
+    await tester.pumpAndSettle();
+
+    accountsBloc.add(LoadAccounts());
+    await tester.pumpAndSettle();
+    expect(find.byType(AddAccountPage), findsOneWidget);
+
+    await tester.enterText(
+      find.byKey(AddAccountPage.issuerFieldKey),
+      'TEST_ONLY Route',
+    );
+    await tester.enterText(
+      find.byKey(AddAccountPage.accountNameFieldKey),
+      'route@example.invalid',
+    );
+    await tester.enterText(
+      find.byKey(AddAccountPage.secretFieldKey),
+      'JBSWY3DPEHPK3PXP',
+    );
+    await tester.tap(find.byKey(AddAccountPage.submitButtonKey));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(AddAccountPage), findsNothing);
+    expect(find.text('Mở form test'), findsOneWidget);
+    expect(find.text('Đã thêm tài khoản.'), findsOneWidget);
+  });
 }
 
 Future<void> _pumpPage(

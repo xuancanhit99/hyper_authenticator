@@ -14,6 +14,12 @@ class AccountsInitial extends AccountsState {}
 /// State while accounts are being loaded from storage.
 class AccountsLoading extends AccountsState {}
 
+/// Add operation đã persist thành công; không chứa account để tránh đưa secret
+/// vào state/log ngoài nhu cầu của UI.
+class AccountAddSuccess extends AccountsState {
+  const AccountAddSuccess();
+}
+
 /// State when accounts have been successfully loaded.
 class AccountsLoaded extends AccountsState {
   final List<AuthenticatorAccount> accounts;

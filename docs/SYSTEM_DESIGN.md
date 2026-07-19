@@ -103,11 +103,28 @@ dừng trước DI để không tự chọn hoặc ghi đè dữ liệu.
   refresh khi app resume.
 - Full `otpauth` URI, `secretKey` và generated code không được log.
 
+Form thêm account đánh dấu submit đang chạy để chặn request lặp. Sau khi persist,
+`AccountsBloc` phát `AccountAddSuccess` không chứa account/secret rồi mới queue
+`LoadAccounts`; UI chỉ hoàn tất navigation trên signal operation-specific này.
+`AccountsLoaded` do reload/lifecycle không được phép tự đóng route. Khi GoRouter
+không còn back stack, completion đi về `/` thay vì gọi `Navigator.pop` trên page
+cuối; regression khóa race này qua lifecycle integration Linux.
+
 ## App lock và logout
 
 Local-auth preference nằm trong SharedPreferences; OS challenge do `local_auth`.
 Khi lock đã bật, plugin error là locked state. App relock khi rời foreground.
 Logout chỉ kết thúc Supabase session hiện tại, giữ local vault và lock preference.
+
+`PrivacyShield` được đặt trong `MaterialApp.router.builder`, bao toàn bộ router.
+Sau bootstrap, mọi lifecycle signal khác `resumed` đều render một surface opaque
+không chứa account/user data, bỏ keyboard focus, chặn pointer, dừng ticker và loại
+semantics của router. Initial `detached` trước lifecycle signal được xem là trạng
+thái bootstrap, vì Linux headless/desktop có thể không phát `resumed`; runtime CI
+khóa contract này để app không tự che vĩnh viễn. Khi resume, shield chỉ gỡ overlay;
+state/vault không bị tạo lại hoặc mutate. Control này bổ sung cho `LocalAuthBloc`:
+privacy shield che ngay ở `inactive`, còn app-lock vẫn quyết định challenge theo
+policy hiện tại. Nó không phải active screenshot-prevention API.
 
 Settings có `SessionSecurityBloc` riêng để revoke mọi Supabase session khác mà
 không đưa `AuthBloc` ra khỏi trạng thái authenticated. Action này giữ session,
