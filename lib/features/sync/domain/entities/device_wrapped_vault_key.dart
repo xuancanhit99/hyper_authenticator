@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:equatable/equatable.dart';
 
 class DeviceWrappedVaultKey extends Equatable {
@@ -43,7 +45,14 @@ class DeviceWrappedVaultKey extends Equatable {
         aead is! String ||
         encapsulatedKey is! String ||
         ciphertext is! String ||
-        authTag is! String) {
+        authTag is! String ||
+        formatVersion != currentFormatVersion ||
+        kem != kemName ||
+        kdf != kdfName ||
+        aead != aeadName ||
+        !_isCanonicalBase64Url(encapsulatedKey, 32) ||
+        !_isCanonicalBase64Url(ciphertext, 32) ||
+        !_isCanonicalBase64Url(authTag, 16)) {
       throw const FormatException('Device-wrapped vault key không hợp lệ.');
     }
     return DeviceWrappedVaultKey(
@@ -84,6 +93,18 @@ class DeviceWrappedVaultKey extends Equatable {
   @override
   String toString() =>
       'DeviceWrappedVaultKey(generation: $keyGeneration, <redacted>)';
+
+  static bool _isCanonicalBase64Url(String value, int decodedLength) {
+    final encodedLength = ((decodedLength + 2) ~/ 3) * 4;
+    if (value.length != encodedLength) return false;
+    try {
+      final decoded = base64Url.decode(value);
+      return decoded.length == decodedLength &&
+          base64UrlEncode(decoded) == value;
+    } catch (_) {
+      return false;
+    }
+  }
 }
 
 class DeviceKeyMaterial {

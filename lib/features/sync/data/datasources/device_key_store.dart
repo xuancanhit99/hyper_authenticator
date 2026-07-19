@@ -127,9 +127,15 @@ class DeviceKeyStore {
   }
 
   String _storageKey(String userId, String installationId) {
-    if (userId.trim().isEmpty || installationId.trim().isEmpty) {
+    final userBytes = utf8.encode(userId);
+    final installationBytes = utf8.encode(installationId);
+    if (userId.trim().isEmpty ||
+        installationId.trim().isEmpty ||
+        userBytes.length > 256 ||
+        installationBytes.length > 256) {
       throw const DeviceKeyStoreException();
     }
-    return '$_storagePrefix$userId:$installationId';
+    return '$_storagePrefix${base64UrlEncode(userBytes)}.'
+        '${base64UrlEncode(installationBytes)}';
   }
 }

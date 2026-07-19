@@ -30,15 +30,16 @@ class DeviceKeyCipher {
 
   Future<DeviceKeyMaterial> createKeyMaterial() async {
     SimpleKeyPair? keyPair;
+    SimpleKeyPairData? extractedKeyPair;
     SecretKey? bindingSecretKey;
     try {
       keyPair = await _keyExchange.newKeyPair();
-      final keyPairData = await keyPair.extract();
+      extractedKeyPair = await keyPair.extract();
       final publicKey = await keyPair.extractPublicKey();
       bindingSecretKey = await _randomKeySource.newSecretKey();
       final bindingSecret = await bindingSecretKey.extractBytes();
       return DeviceKeyMaterial(
-        privateKeyBytes: keyPairData.bytes,
+        privateKeyBytes: extractedKeyPair.bytes,
         publicKeyBytes: publicKey.bytes,
         bindingSecretBytes: bindingSecret,
       );
@@ -47,6 +48,7 @@ class DeviceKeyCipher {
         'Không thể tạo device key material.',
       );
     } finally {
+      extractedKeyPair?.destroy();
       keyPair?.destroy();
       bindingSecretKey?.destroy();
     }
@@ -147,12 +149,27 @@ class DeviceKeyCipher {
           'Device private/public key không khớp.',
         );
       }
+      final encapsulatedKey = _decodeExact(
+        wrappedKey.encapsulatedKey,
+        expectedLength: 32,
+        field: 'Encapsulated key',
+      );
+      final ciphertext = _decodeExact(
+        wrappedKey.ciphertext,
+        expectedLength: _keyLength,
+        field: 'Wrapped ciphertext',
+      );
+      final authTag = _decodeExact(
+        wrappedKey.authTag,
+        expectedLength: 16,
+        field: 'Authentication tag',
+      );
       final clearText = await _hpke.open(
         recipientPrivateKey: recipientPrivateKeyBytes,
         sealed: HpkeCiphertext(
-          encapsulatedKey: _decode(wrappedKey.encapsulatedKey),
-          ciphertext: _decode(wrappedKey.ciphertext),
-          authTag: _decode(wrappedKey.authTag),
+          encapsulatedKey: encapsulatedKey,
+          ciphertext: ciphertext,
+          authTag: authTag,
         ),
         info: _hpkeInfo(
           userId: userId,
@@ -204,21 +221,28 @@ class DeviceKeyCipher {
       keyGeneration: keyGeneration,
       publicKeyBytes: publicKeyBytes,
     );
-    final proofKey = await _membershipKdf.deriveKey(
-      secretKey: SecretKey(dataKeyBytes),
-      nonce: utf8.encode(
-        'hyper-authenticator:v1:device-membership-kdf:$userId:$keyGeneration',
-      ),
-      info: context,
-    );
+    final dataKey = SecretKey(dataKeyBytes);
+    SecretKey? proofKey;
     try {
+      proofKey = await _membershipKdf.deriveKey(
+        secretKey: dataKey,
+        nonce: _contextBytes(
+          label: 'hyper-authenticator:v1:device-membership-kdf',
+          fields: <List<int>>[
+            utf8.encode(userId),
+            utf8.encode(keyGeneration.toString()),
+          ],
+        ),
+        info: context,
+      );
       final proof = await _membershipMac.calculateMac(
         context,
         secretKey: proofKey,
       );
       return base64UrlEncode(proof.bytes);
     } finally {
-      proofKey.destroy();
+      proofKey?.destroy();
+      dataKey.destroy();
     }
   }
 
@@ -251,9 +275,14 @@ class DeviceKeyCipher {
     required String installationId,
     required String deviceKeyId,
     required int keyGeneration,
-  }) => utf8.encode(
-    'hyper-authenticator:v1:device-dek-wrap:'
-    '$userId:$installationId:$deviceKeyId:$keyGeneration',
+  }) => _contextBytes(
+    label: 'hyper-authenticator:v1:device-dek-wrap',
+    fields: <List<int>>[
+      utf8.encode(userId),
+      utf8.encode(installationId),
+      utf8.encode(deviceKeyId),
+      utf8.encode(keyGeneration.toString()),
+    ],
   );
 
   List<int> _hpkeAad({
@@ -262,10 +291,15 @@ class DeviceKeyCipher {
     required String deviceKeyId,
     required int keyGeneration,
     required List<int> publicKeyBytes,
-  }) => utf8.encode(
-    'hyper-authenticator:v1:device-dek-wrap-aad:'
-    '$userId:$installationId:$deviceKeyId:$keyGeneration:'
-    '${base64UrlEncode(publicKeyBytes)}',
+  }) => _contextBytes(
+    label: 'hyper-authenticator:v1:device-dek-wrap-aad',
+    fields: <List<int>>[
+      utf8.encode(userId),
+      utf8.encode(installationId),
+      utf8.encode(deviceKeyId),
+      utf8.encode(keyGeneration.toString()),
+      publicKeyBytes,
+    ],
   );
 
   List<int> _membershipContext({
@@ -274,10 +308,15 @@ class DeviceKeyCipher {
     required String deviceKeyId,
     required int keyGeneration,
     required List<int> publicKeyBytes,
-  }) => utf8.encode(
-    'hyper-authenticator:v1:device-membership:'
-    '$userId:$installationId:$deviceKeyId:$keyGeneration:'
-    '${base64UrlEncode(publicKeyBytes)}',
+  }) => _contextBytes(
+    label: 'hyper-authenticator:v1:device-membership',
+    fields: <List<int>>[
+      utf8.encode(userId),
+      utf8.encode(installationId),
+      utf8.encode(deviceKeyId),
+      utf8.encode(keyGeneration.toString()),
+      publicKeyBytes,
+    ],
   );
 
   void _validateContext({
@@ -290,9 +329,9 @@ class DeviceKeyCipher {
   }) {
     _requireKey(dataKeyBytes, 'Vault data key');
     _requireKey(publicKeyBytes, 'Device public key');
-    if (userId.trim().isEmpty ||
-        installationId.trim().isEmpty ||
-        deviceKeyId.trim().isEmpty ||
+    if (!_isValidIdentifier(userId) ||
+        !_isValidIdentifier(installationId) ||
+        !_isValidIdentifier(deviceKeyId) ||
         keyGeneration < 1) {
       throw const DeviceKeyCryptoException('Device key context không hợp lệ.');
     }
@@ -319,6 +358,44 @@ class DeviceKeyCipher {
         'Device-wrapped key encoding không hợp lệ.',
       );
     }
+  }
+
+  List<int> _decodeExact(
+    String value, {
+    required int expectedLength,
+    required String field,
+  }) {
+    final expectedEncodedLength = ((expectedLength + 2) ~/ 3) * 4;
+    if (value.length != expectedEncodedLength) {
+      throw DeviceKeyCryptoException('$field có độ dài không hợp lệ.');
+    }
+    final decoded = _decode(value);
+    if (decoded.length != expectedLength || base64UrlEncode(decoded) != value) {
+      throw DeviceKeyCryptoException('$field encoding không canonical.');
+    }
+    return decoded;
+  }
+
+  List<int> _contextBytes({
+    required String label,
+    required List<List<int>> fields,
+  }) {
+    final output = <int>[];
+    for (final field in <List<int>>[utf8.encode(label), ...fields]) {
+      output.addAll(<int>[
+        (field.length >> 24) & 0xff,
+        (field.length >> 16) & 0xff,
+        (field.length >> 8) & 0xff,
+        field.length & 0xff,
+      ]);
+      output.addAll(field);
+    }
+    return List<int>.unmodifiable(output);
+  }
+
+  bool _isValidIdentifier(String value) {
+    final encoded = utf8.encode(value);
+    return value.trim().isNotEmpty && encoded.length <= 256;
   }
 
   void _requireKey(List<int> bytes, String field) {

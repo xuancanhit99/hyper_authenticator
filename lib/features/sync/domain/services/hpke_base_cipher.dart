@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:cryptography/cryptography.dart';
 
@@ -110,21 +111,34 @@ class HpkeBaseCipher {
         recipientPublicKey: recipientKey,
         encapsulatedKey: encapsulatedKey.bytes,
       );
-      final context = await _keySchedule(
-        sharedSecret: sharedSecret,
-        info: info,
-      );
-      final box = await _aead.encrypt(
-        plaintext,
-        secretKey: SecretKey(context.key),
-        nonce: context.baseNonce,
-        aad: aad,
-      );
-      return HpkeCiphertext(
-        encapsulatedKey: encapsulatedKey.bytes,
-        ciphertext: box.cipherText,
-        authTag: box.mac.bytes,
-      );
+      try {
+        final context = await _keySchedule(
+          sharedSecret: sharedSecret,
+          info: info,
+        );
+        try {
+          final contextKey = SecretKey(context.key);
+          try {
+            final box = await _aead.encrypt(
+              plaintext,
+              secretKey: contextKey,
+              nonce: context.baseNonce,
+              aad: aad,
+            );
+            return HpkeCiphertext(
+              encapsulatedKey: encapsulatedKey.bytes,
+              ciphertext: box.cipherText,
+              authTag: box.mac.bytes,
+            );
+          } finally {
+            contextKey.destroy();
+          }
+        } finally {
+          context.destroy();
+        }
+      } finally {
+        _wipe(sharedSecret);
+      }
     } on HpkeException {
       rethrow;
     } catch (_) {
@@ -150,20 +164,33 @@ class HpkeBaseCipher {
         recipientPublicKey: recipientPublicKey.bytes,
         encapsulatedKey: sealed.encapsulatedKey,
       );
-      final context = await _keySchedule(
-        sharedSecret: sharedSecret,
-        info: info,
-      );
-      final clearText = await _aead.decrypt(
-        SecretBox(
-          sealed.ciphertext,
-          nonce: context.baseNonce,
-          mac: Mac(sealed.authTag),
-        ),
-        secretKey: SecretKey(context.key),
-        aad: aad,
-      );
-      return List<int>.unmodifiable(clearText);
+      try {
+        final context = await _keySchedule(
+          sharedSecret: sharedSecret,
+          info: info,
+        );
+        try {
+          final contextKey = SecretKey(context.key);
+          try {
+            final clearText = await _aead.decrypt(
+              SecretBox(
+                sealed.ciphertext,
+                nonce: context.baseNonce,
+                mac: Mac(sealed.authTag),
+              ),
+              secretKey: contextKey,
+              aad: aad,
+            );
+            return List<int>.unmodifiable(clearText);
+          } finally {
+            contextKey.destroy();
+          }
+        } finally {
+          context.destroy();
+        }
+      } finally {
+        _wipe(sharedSecret);
+      }
     } on HpkeException {
       rethrow;
     } catch (_) {
@@ -182,12 +209,15 @@ class HpkeBaseCipher {
       keyPair: senderKeyPair,
       remotePublicKey: recipientPublicKey,
     );
+    Uint8List? dhBytes;
     try {
+      dhBytes = Uint8List.fromList(await dh.extractBytes());
       return await _extractAndExpand(
-        dh: await dh.extractBytes(),
+        dh: dhBytes,
         kemContext: <int>[...encapsulatedKey, ...recipientPublicKey.bytes],
       );
     } finally {
+      _wipe(dhBytes);
       dh.destroy();
     }
   }
@@ -204,12 +234,15 @@ class HpkeBaseCipher {
         type: KeyPairType.x25519,
       ),
     );
+    Uint8List? dhBytes;
     try {
+      dhBytes = Uint8List.fromList(await dh.extractBytes());
       return await _extractAndExpand(
-        dh: await dh.extractBytes(),
+        dh: dhBytes,
         kemContext: <int>[...encapsulatedKey, ...recipientPublicKey],
       );
     } finally {
+      _wipe(dhBytes);
       dh.destroy();
     }
   }
@@ -227,13 +260,17 @@ class HpkeBaseCipher {
       label: 'eae_prk',
       inputKeyMaterial: dh,
     );
-    return _labeledExpand(
-      suiteId: _kemSuiteId,
-      prk: eaePrk,
-      label: 'shared_secret',
-      info: kemContext,
-      length: _hashLength,
-    );
+    try {
+      return await _labeledExpand(
+        suiteId: _kemSuiteId,
+        prk: eaePrk,
+        label: 'shared_secret',
+        info: kemContext,
+        length: _hashLength,
+      );
+    } finally {
+      _wipe(eaePrk);
+    }
   }
 
   Future<_HpkeContext> _keySchedule({
@@ -246,43 +283,65 @@ class HpkeBaseCipher {
       ..._i2osp(_kdfId, 2),
       ..._i2osp(aead.identifier, 2),
     ];
-    final pskIdHash = await _labeledExtract(
-      suiteId: suiteId,
-      salt: const <int>[],
-      label: 'psk_id_hash',
-      inputKeyMaterial: const <int>[],
-    );
-    final infoHash = await _labeledExtract(
-      suiteId: suiteId,
-      salt: const <int>[],
-      label: 'info_hash',
-      inputKeyMaterial: info,
-    );
-    final keyScheduleContext = <int>[_modeBase, ...pskIdHash, ...infoHash];
-    final secret = await _labeledExtract(
-      suiteId: suiteId,
-      salt: sharedSecret,
-      label: 'secret',
-      inputKeyMaterial: const <int>[],
-    );
-    final key = await _labeledExpand(
-      suiteId: suiteId,
-      prk: secret,
-      label: 'key',
-      info: keyScheduleContext,
-      length: aead.keyLength,
-    );
-    final baseNonce = await _labeledExpand(
-      suiteId: suiteId,
-      prk: secret,
-      label: 'base_nonce',
-      info: keyScheduleContext,
-      length: _nonceLength,
-    );
-    return _HpkeContext(key: key, baseNonce: baseNonce);
+    Uint8List? pskIdHash;
+    Uint8List? infoHash;
+    Uint8List? keyScheduleContext;
+    Uint8List? secret;
+    Uint8List? key;
+    Uint8List? baseNonce;
+    try {
+      pskIdHash = await _labeledExtract(
+        suiteId: suiteId,
+        salt: const <int>[],
+        label: 'psk_id_hash',
+        inputKeyMaterial: const <int>[],
+      );
+      infoHash = await _labeledExtract(
+        suiteId: suiteId,
+        salt: const <int>[],
+        label: 'info_hash',
+        inputKeyMaterial: info,
+      );
+      keyScheduleContext = Uint8List.fromList(<int>[
+        _modeBase,
+        ...pskIdHash,
+        ...infoHash,
+      ]);
+      secret = await _labeledExtract(
+        suiteId: suiteId,
+        salt: sharedSecret,
+        label: 'secret',
+        inputKeyMaterial: const <int>[],
+      );
+      key = await _labeledExpand(
+        suiteId: suiteId,
+        prk: secret,
+        label: 'key',
+        info: keyScheduleContext,
+        length: aead.keyLength,
+      );
+      baseNonce = await _labeledExpand(
+        suiteId: suiteId,
+        prk: secret,
+        label: 'base_nonce',
+        info: keyScheduleContext,
+        length: _nonceLength,
+      );
+      final context = _HpkeContext(key: key, baseNonce: baseNonce);
+      key = null;
+      baseNonce = null;
+      return context;
+    } finally {
+      _wipe(pskIdHash);
+      _wipe(infoHash);
+      _wipe(keyScheduleContext);
+      _wipe(secret);
+      _wipe(key);
+      _wipe(baseNonce);
+    }
   }
 
-  Future<List<int>> _labeledExtract({
+  Future<Uint8List> _labeledExtract({
     required List<int> suiteId,
     required List<int> salt,
     required String label,
@@ -291,16 +350,22 @@ class HpkeBaseCipher {
     final effectiveSalt = salt.isEmpty
         ? List<int>.filled(_hashLength, 0)
         : salt;
-    final mac = await _hmac.calculateMac(<int>[
-      ..._hpkeVersion,
-      ...suiteId,
-      ...ascii.encode(label),
-      ...inputKeyMaterial,
-    ], secretKey: SecretKey(effectiveSalt));
-    return mac.bytes;
+    final saltKey = SecretKey(effectiveSalt);
+    try {
+      final mac = await _hmac.calculateMac(<int>[
+        ..._hpkeVersion,
+        ...suiteId,
+        ...ascii.encode(label),
+        ...inputKeyMaterial,
+      ], secretKey: saltKey);
+      return Uint8List.fromList(mac.bytes);
+    } finally {
+      saltKey.destroy();
+      if (salt.isEmpty) _wipe(effectiveSalt);
+    }
   }
 
-  Future<List<int>> _labeledExpand({
+  Future<Uint8List> _labeledExpand({
     required List<int> suiteId,
     required List<int> prk,
     required String label,
@@ -318,17 +383,25 @@ class HpkeBaseCipher {
       ...info,
     ];
     final output = <int>[];
-    var previous = <int>[];
-    for (var counter = 1; output.length < length; counter++) {
-      final mac = await _hmac.calculateMac(<int>[
-        ...previous,
-        ...labeledInfo,
-        counter,
-      ], secretKey: SecretKey(prk));
-      previous = mac.bytes;
-      output.addAll(previous);
+    var previous = Uint8List(0);
+    final prkKey = SecretKey(prk);
+    try {
+      for (var counter = 1; output.length < length; counter++) {
+        final mac = await _hmac.calculateMac(<int>[
+          ...previous,
+          ...labeledInfo,
+          counter,
+        ], secretKey: prkKey);
+        _wipe(previous);
+        previous = Uint8List.fromList(mac.bytes);
+        output.addAll(previous);
+      }
+      return Uint8List.fromList(output.take(length).toList(growable: false));
+    } finally {
+      prkKey.destroy();
+      _wipe(previous);
+      _wipe(output);
     }
-    return List<int>.unmodifiable(output.take(length));
   }
 
   static List<int> _i2osp(int value, int length) {
@@ -346,11 +419,21 @@ class HpkeBaseCipher {
       throw HpkeException('$field có độ dài không hợp lệ.');
     }
   }
+
+  static void _wipe(List<int>? bytes) {
+    if (bytes == null) return;
+    bytes.fillRange(0, bytes.length, 0);
+  }
 }
 
 class _HpkeContext {
-  final List<int> key;
-  final List<int> baseNonce;
+  final Uint8List key;
+  final Uint8List baseNonce;
 
   const _HpkeContext({required this.key, required this.baseNonce});
+
+  void destroy() {
+    key.fillRange(0, key.length, 0);
+    baseNonce.fillRange(0, baseNonce.length, 0);
+  }
 }

@@ -180,7 +180,11 @@ representation; equality vẫn hoạt động nhưng transition log không lộ 
 ADR-0012 đề xuất HPKE Base
 DHKEM(X25519, HKDF-SHA256)/HKDF-SHA256/AES-256-GCM cho per-device DEK wrap.
 Implementation hiện không có DI annotation/call site và đã khóa bằng official RFC
-vector, wrong-context/tamper test cùng secure-storage corrupt-record test.
+vector, wrong-context/tamper/low-order-key test cùng secure-storage corrupt-record
+test. Context dùng length-prefix thay delimiter; envelope bắt buộc canonical exact
+length để từ chối payload oversized trước decrypt. Derived HPKE key object được
+destroy và buffer tạm được overwrite best-effort; Dart VM/GC không bảo đảm mọi
+bản sao trong process đã zeroize.
 
 Device private key và binding secret là credential. Chúng không được log, đưa vào
 SharedPreferences, analytics, fixture thật hoặc server response. Membership proof

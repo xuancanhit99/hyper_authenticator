@@ -22,7 +22,7 @@ PostgreSQL migration contract. Nó không tự boot emulator/simulator.
 
 ## Coverage hiện tại
 
-152 Flutter tests bao phủ:
+169 Flutter tests bao phủ:
 
 - router/auth/logout/offline-local-vault boundary;
 - post-login navigation trực tiếp hoặc return an toàn về Settings, stale null auth
@@ -219,7 +219,9 @@ post-probe current image/health/hash và 5/5 public SPA route pass.
 - UI conflict/destructive operation cần widget/integration coverage khi ổn định.
 - Cryptographic protocol mới phải khớp official/pinned vector trước round-trip và
   tamper test. Device-wrap foundation hiện dùng RFC 9180/CFRG vector cho cả
-  AES-128-GCM reference suite và AES-256-GCM suite được chọn.
+  AES-128-GCM reference suite và AES-256-GCM suite được chọn; regression còn khóa
+  delimiter-collision, exact canonical envelope, oversized input và X25519
+  low-order public key.
 
 ## Secret hygiene trong test
 

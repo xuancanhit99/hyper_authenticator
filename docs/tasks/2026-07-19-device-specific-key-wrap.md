@@ -23,6 +23,8 @@ nhập recovery key.
 - [x] HPKE Base X25519/HKDF-SHA256/AES-256-GCM khớp official vector.
 - [x] Device private key/binding secret có secure-storage fail-closed contract.
 - [x] Wrap và membership proof bind exact user/installation/device/generation.
+- [x] Context delimiter-collision, envelope oversized/non-canonical và X25519
+  low-order key fail closed.
 - [ ] Migration additive có `key_generation`, device key và wrap table/RPC.
 - [ ] Enrollment chỉ active sau local wrap + read-back unwrap verification.
 - [ ] Rotation publish snapshot/recovery wrap/device wrap set atomically.
@@ -37,8 +39,9 @@ nhập recovery key.
 - Official vector pin: CFRG commit
   `5f503c564da00b0687b3de75f1dfbdfc4079ad31`.
 - Primitive không có annotation DI và chưa được gọi từ runtime.
-- Focused test: 13 test pass gồm hai official vector, tamper/context/key failure,
-  membership proof và secure-storage record.
+- Focused test: 17 test pass gồm hai official vector, tamper/context/key failure,
+  delimiter collision, low-order key, canonical envelope, membership proof và
+  secure-storage record.
 
 ## Đánh giá rủi ro
 

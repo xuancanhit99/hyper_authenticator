@@ -200,16 +200,19 @@ HPKE wrap riêng cho mỗi device key đã có membership proof hợp lệ. Prim
   "kem": "DHKEM-X25519-HKDF-SHA256",
   "kdf": "HKDF-SHA256",
   "aead": "AES-256-GCM",
-  "encapsulated_key": "base64url",
-  "ciphertext": "base64url",
-  "auth_tag": "base64url"
+  "encapsulated_key": "canonical padded base64url của 32 byte",
+  "ciphertext": "canonical padded base64url của 32 byte",
+  "auth_tag": "canonical padded base64url của 16 byte"
 }
 ~~~
 
 - Device private key và random binding secret 256-bit nằm trong platform secure
   storage theo user + installation; không vào SharedPreferences hoặc server response.
 - HPKE `info`/AAD bind user, installation, opaque device-key ID, generation và
-  recipient public key.
+  recipient public key bằng encoding field có unsigned 32-bit length-prefix;
+  không dùng chuỗi delimiter có thể collision.
+- Parser fail closed với suite/version lạ, field oversized, base64url
+  non-canonical hoặc decoded length sai trước khi gọi AEAD.
 - Membership proof dùng HMAC-SHA256 với key HKDF domain-separated từ current DEK;
   backend không thể verify, client có DEK phải verify trước khi include device
   trong generation mới.

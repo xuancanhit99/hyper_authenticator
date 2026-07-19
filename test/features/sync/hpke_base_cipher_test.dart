@@ -171,6 +171,19 @@ void main() {
         throwsA(isA<HpkeException>()),
       );
     });
+
+    test('X25519 low-order public key fail closed', () async {
+      final cipher = HpkeBaseCipher();
+      await expectLater(
+        cipher.seal(
+          recipientPublicKey: List<int>.filled(32, 0),
+          plaintext: List<int>.filled(32, 1),
+          info: utf8.encode('TEST_ONLY_DEVICE_WRAP_INFO'),
+          aad: utf8.encode('TEST_ONLY_DEVICE_WRAP_AAD'),
+        ),
+        throwsA(isA<HpkeException>()),
+      );
+    });
   });
 }
 

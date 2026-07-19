@@ -88,16 +88,43 @@ void main() {
       );
     });
 
+    test(
+      'context length-prefix không collision khi identifier chứa delimiter',
+      () async {
+        final dataKey = List<int>.filled(32, 17);
+        final wrapped = await cipher.wrapDataKey(
+          dataKeyBytes: dataKey,
+          recipientPublicKeyBytes: device.publicKeyBytes,
+          userId: 'TEST_ONLY_USER:A',
+          installationId: 'B',
+          deviceKeyId: 'C',
+          keyGeneration: 1,
+        );
+
+        await expectLater(
+          cipher.unwrapDataKey(
+            wrappedKey: wrapped,
+            recipientPrivateKeyBytes: device.privateKeyBytes,
+            recipientPublicKeyBytes: device.publicKeyBytes,
+            userId: 'TEST_ONLY_USER',
+            installationId: 'A:B',
+            deviceKeyId: 'C',
+          ),
+          throwsA(isA<DeviceKeyCryptoException>()),
+        );
+      },
+    );
+
     test('device-wrapped envelope round-trip và future shape fail closed', () {
-      const envelope = DeviceWrappedVaultKey(
+      final envelope = DeviceWrappedVaultKey(
         formatVersion: 1,
         keyGeneration: 3,
         kem: DeviceWrappedVaultKey.kemName,
         kdf: DeviceWrappedVaultKey.kdfName,
         aead: DeviceWrappedVaultKey.aeadName,
-        encapsulatedKey: 'TEST_ONLY_ENCAPSULATED_KEY',
-        ciphertext: 'TEST_ONLY_CIPHERTEXT',
-        authTag: 'TEST_ONLY_AUTH_TAG',
+        encapsulatedKey: base64UrlEncode(List<int>.filled(32, 1)),
+        ciphertext: base64UrlEncode(List<int>.filled(32, 2)),
+        authTag: base64UrlEncode(List<int>.filled(16, 3)),
       );
 
       expect(DeviceWrappedVaultKey.fromJson(envelope.toJson()), envelope);
@@ -105,6 +132,20 @@ void main() {
         () => DeviceWrappedVaultKey.fromJson(<String, dynamic>{
           ...envelope.toJson(),
           'key_generation': 0,
+        }),
+        throwsFormatException,
+      );
+      expect(
+        () => DeviceWrappedVaultKey.fromJson(<String, dynamic>{
+          ...envelope.toJson(),
+          'format_version': 2,
+        }),
+        throwsFormatException,
+      );
+      expect(
+        () => DeviceWrappedVaultKey.fromJson(<String, dynamic>{
+          ...envelope.toJson(),
+          'ciphertext': 'A' * 4096,
         }),
         throwsFormatException,
       );
@@ -208,5 +249,60 @@ void main() {
         throwsA(isA<DeviceKeyCryptoException>()),
       );
     });
+
+    test(
+      'envelope oversized hoặc base64url không canonical fail sớm',
+      () async {
+        final wrapped = await cipher.wrapDataKey(
+          dataKeyBytes: List<int>.filled(32, 5),
+          recipientPublicKeyBytes: device.publicKeyBytes,
+          userId: 'TEST_ONLY_USER_A',
+          installationId: 'TEST_ONLY_INSTALLATION_A',
+          deviceKeyId: 'TEST_ONLY_DEVICE_KEY_A',
+          keyGeneration: 1,
+        );
+
+        Future<List<int>> unwrap(DeviceWrappedVaultKey value) =>
+            cipher.unwrapDataKey(
+              wrappedKey: value,
+              recipientPrivateKeyBytes: device.privateKeyBytes,
+              recipientPublicKeyBytes: device.publicKeyBytes,
+              userId: 'TEST_ONLY_USER_A',
+              installationId: 'TEST_ONLY_INSTALLATION_A',
+              deviceKeyId: 'TEST_ONLY_DEVICE_KEY_A',
+            );
+
+        await expectLater(
+          unwrap(
+            DeviceWrappedVaultKey(
+              formatVersion: wrapped.formatVersion,
+              keyGeneration: wrapped.keyGeneration,
+              kem: wrapped.kem,
+              kdf: wrapped.kdf,
+              aead: wrapped.aead,
+              encapsulatedKey: wrapped.encapsulatedKey,
+              ciphertext: 'A' * 4096,
+              authTag: wrapped.authTag,
+            ),
+          ),
+          throwsA(isA<DeviceKeyCryptoException>()),
+        );
+        await expectLater(
+          unwrap(
+            DeviceWrappedVaultKey(
+              formatVersion: wrapped.formatVersion,
+              keyGeneration: wrapped.keyGeneration,
+              kem: wrapped.kem,
+              kdf: wrapped.kdf,
+              aead: wrapped.aead,
+              encapsulatedKey: wrapped.encapsulatedKey.replaceAll('=', ''),
+              ciphertext: wrapped.ciphertext,
+              authTag: wrapped.authTag,
+            ),
+          ),
+          throwsA(isA<DeviceKeyCryptoException>()),
+        );
+      },
+    );
   });
 }

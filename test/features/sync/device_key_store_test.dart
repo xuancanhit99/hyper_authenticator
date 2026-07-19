@@ -45,6 +45,24 @@ void main() {
       expect(storage.values, hasLength(2));
     });
 
+    test('storage key không collision khi identifier chứa delimiter', () async {
+      final first = await keyStore.getOrCreate(
+        userId: 'TEST_ONLY_USER:A',
+        installationId: 'B',
+      );
+      final second = await keyStore.getOrCreate(
+        userId: 'TEST_ONLY_USER',
+        installationId: 'A:B',
+      );
+
+      expect(second.privateKeyBytes, isNot(first.privateKeyBytes));
+      expect(storage.values, hasLength(2));
+      expect(
+        storage.values.keys.every((key) => !key.contains('TEST_ONLY_USER')),
+        isTrue,
+      );
+    });
+
     test('hai initialization đồng thời dùng cùng một key material', () async {
       final results = await Future.wait([
         keyStore.getOrCreate(

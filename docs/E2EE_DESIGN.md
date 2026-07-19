@@ -144,7 +144,8 @@ cho rollback/audit; runtime client không inject bridge. Nếu môi trường kh
   bulk revoke xuống một session, current session vẫn authenticated; cleanup pass.
 - Device registry production cho phép list/targeted session revoke nhưng chưa đổi
   key hierarchy. HPKE Base primitive staged đã khớp official RFC 9180 vector cho
-  AES-128-GCM và AES-256-GCM; device key store/proof test pass nhưng chưa inject,
+  AES-128-GCM và AES-256-GCM; context length-prefix, exact canonical envelope,
+  low-order-key rejection và device key store/proof test pass nhưng chưa inject,
   chưa có schema/RPC và không phải runtime capability.
 - Release plaintext guard và DI generation test path.
 

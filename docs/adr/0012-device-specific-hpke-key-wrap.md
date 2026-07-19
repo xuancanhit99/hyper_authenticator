@@ -34,7 +34,13 @@ nhiều implementation/storage boundary hơn protocol tối thiểu hiện tại
 - DEK wrap dùng HPKE Base mode, one-shot sequence zero, suite cố định:
   `DHKEM(X25519, HKDF-SHA256)`, `HKDF-SHA256`, `AES-256-GCM`.
 - `info` và AAD bind user ID, installation ID, opaque device-key ID, key
-  generation và recipient public key. Unknown suite/version/generation fail closed.
+  generation và recipient public key. Mọi field dùng unsigned 32-bit
+  length-prefix theo byte UTF-8/binary, không ghép delimiter text; vì vậy hai bộ
+  identifier khác nhau không thể tạo cùng context do dấu phân cách. Unknown
+  suite/version/generation fail closed.
+- Envelope chỉ nhận canonical padded base64url với exact decoded length:
+  encapsulated key 32 byte, ciphertext 32 byte và GCM tag 16 byte. Input
+  oversized/non-canonical bị từ chối trước AEAD decrypt.
 - Implementation tối thiểu phải khớp official RFC vector cho AES-128-GCM và
   official vector AES-256-GCM trước khi được inject. Không mở API multi-message,
   PSK hoặc authenticated mode.
@@ -114,6 +120,9 @@ compromise ngay khi một trusted client tự wrap DEK cho public key attacker.
   hardware-non-exportable key API riêng từng OS.
 - Local HPKE implementation dù khớp RFC vector vẫn cần independent security review
   trước khi tuyên bố stable production cryptographic device revoke.
+- Source chủ động destroy object key và best-effort overwrite các buffer dẫn xuất
+  sau mỗi operation. Dart VM/GC và platform implementation có thể tạo bản sao nên
+  đây không phải cam kết zeroization phần cứng hoặc toàn bộ process memory.
 
 ### Threat/failure behavior
 
@@ -145,6 +154,8 @@ không drop column/table cho tới khi đã audit không còn device v2 cần wr
 
 - Official RFC 9180 Base vector AES-128-GCM và official AES-256-GCM vector.
 - Tamper/wrong user/installation/device/generation/private key fail closed.
+- Delimiter-collision, non-canonical/oversized envelope và X25519 low-order key
+  fail closed trước khi runtime integration.
 - Secure-storage round-trip, corrupt record không tự replace, user isolation.
 - PostgreSQL ephemeral + remote two-user/three-device contract.
 - Native two-device runtime: enroll, rotate, surviving device auto-unwrap,
