@@ -38,7 +38,7 @@ mô tả preview là stable production release.
 |---|---|
 | `flutter doctor -v` | Pass, không có lỗi toolchain |
 | `flutter analyze` | Pass, 0 diagnostic |
-| `flutter test` | 129 test pass |
+| `flutter test` | 130 test pass |
 | Vietnamese UI contract | Primary auth/accounts/settings/add-edit surface đã dùng tiếng Việt; app khóa `Locale('vi')` cùng Material/Widgets/Cupertino localization delegate và widget test xác minh locale runtime, vẫn giữ thuật ngữ technical cần thiết |
 | Core accessibility automation | Auth/accounts/add-account và Settings recovery/conflict/session dialog pass labeled tap target + Android 48×48 + WCAG text-contrast guideline trên light/dark theme ở viewport 320×640/text scale 200%; keyboard regression bao phủ Auth forms, theme/add/search/copy, manual add-account và sensitive dialog Tab/Shift+Tab/Enter/Space/Escape; TOTP secret key/raw recovery key không vào semantics tree |
 | Lifecycle privacy shield | Widget regression che toàn bộ router ở `inactive/hidden/paused/detached`, bỏ focus, chặn interaction/ticker và loại nội dung bên dưới khỏi semantics; `resumed` khôi phục state hiện có. Đây không phải bằng chứng active screenshot prevention hoặc native app-switcher snapshot trên thiết bị thật |
@@ -96,6 +96,8 @@ verification phải inject `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY` và
   revision và session được giữ khi cần độ chính xác.
 - Scanner hiển thị trạng thái đang chờ quyền camera và lỗi permission/unsupported
   bằng tiếng Việt, có retry hoặc quay lại nhập thủ công thay vì nền đen không rõ trạng thái.
+- Add-account completion dùng state riêng không chứa secret, chống submit lặp và
+  không pop page cuối khi lifecycle/router reload xen giữa operation.
 - Logo dịch vụ và font Averta không rõ license đã bị loại khỏi release; UI dùng
   avatar ký tự render bằng code. Data contract không thay đổi vì logo không persist.
 
@@ -217,7 +219,7 @@ Capability là hành vi source hiện tại, không thay thế device test và s
   `29660968360` từ default branch đã pass sau merge.
 - GitHub Private Vulnerability Reporting đã bật; `.github/SECURITY.md` hướng dẫn
   gửi báo cáo riêng tư và cấm đưa credential vào public issue.
-- `scripts/agent/check.sh full` là quality gate canonical; baseline hiện có 129 test,
+- `scripts/agent/check.sh full` là quality gate canonical; baseline hiện có 130 test,
   analyze/format cả device integration source nhưng không tự boot virtual device.
 - `scripts/supabase/` giữ remote contract, backup, health, restore và off-host harness.
 - Scheduled restore contract nằm trong full gate; production systemd timer/health

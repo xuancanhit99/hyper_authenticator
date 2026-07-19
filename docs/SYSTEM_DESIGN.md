@@ -103,6 +103,13 @@ dừng trước DI để không tự chọn hoặc ghi đè dữ liệu.
   refresh khi app resume.
 - Full `otpauth` URI, `secretKey` và generated code không được log.
 
+Form thêm account đánh dấu submit đang chạy để chặn request lặp. Sau khi persist,
+`AccountsBloc` phát `AccountAddSuccess` không chứa account/secret rồi mới queue
+`LoadAccounts`; UI chỉ hoàn tất navigation trên signal operation-specific này.
+`AccountsLoaded` do reload/lifecycle không được phép tự đóng route. Khi GoRouter
+không còn back stack, completion đi về `/` thay vì gọi `Navigator.pop` trên page
+cuối; regression khóa race này qua lifecycle integration Linux.
+
 ## App lock và logout
 
 Local-auth preference nằm trong SharedPreferences; OS challenge do `local_auth`.

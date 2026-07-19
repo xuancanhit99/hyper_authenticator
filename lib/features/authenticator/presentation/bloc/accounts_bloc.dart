@@ -67,7 +67,8 @@ class AccountsBloc extends Bloc<AccountsEvent, AccountsState> {
 
     await failureOrAccount.fold(
       (failure) async => emit(AccountsError(_mapFailureToMessage(failure))),
-      (account) async {
+      (_) async {
+        emit(const AccountAddSuccess());
         // After successfully adding, reload the list to show the new account
         add(LoadAccounts()); // Trigger reload
         // Alternatively, if state holds the list, update it directly:

@@ -28,6 +28,8 @@ không bao giờ được đặt trong Flutter `.env`, asset, build log hoặc b
 - Versioned copy-on-write vault; commit marker ghi sau cùng; rollback generation.
 - Compaction giữ active và rollback generation.
 - TOTP validation tập trung; không log barcode payload/secret.
+- `AccountAddSuccess` không mang account/secret trong BLoC state; UI chỉ dùng tín
+  hiệu operation-specific này để hoàn tất navigation.
 - Logout không xóa vault.
 - App lock fail closed và relock theo lifecycle.
 - Root `PrivacyShield` che toàn bộ router ở mọi lifecycle khác `resumed`, bỏ

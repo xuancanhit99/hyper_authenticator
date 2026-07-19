@@ -24,6 +24,8 @@ làm mất state hoặc thay đổi local/cloud vault.
   không xuất hiện trong semantics tree khi shield đang bật.
 - [x] `resumed` khôi phục UI hiện có mà không dispose hoặc mutate data.
 - [x] Có regression test dùng placeholder, không chứa credential thật.
+- [x] Linux lifecycle smoke không làm Add Account pop page cuối hoặc xử lý
+  `AccountsLoaded` không liên quan như add-success.
 - [x] Full canonical gate pass.
 
 ## Bằng chứng hiện tại
@@ -65,13 +67,17 @@ làm mất state hoặc thay đổi local/cloud vault.
 - [x] Thêm lifecycle/focus/pointer/semantics regression.
 - [x] Cập nhật security, system design, NFR, testing, roadmap và project status.
 - [x] Chạy full gate và review diff.
+- [x] Thay generic `AccountsLoaded` completion bằng `AccountAddSuccess` không chứa
+  secret và route-safe navigation sau khi CI tái hiện lifecycle race.
 
 ## Nhật ký xác minh
 
 | Command hoặc test | Kết quả | Ngày |
 |---|---|---|
 | `flutter test test/core/security/privacy_shield_test.dart test/app_localization_test.dart` | Pass 2 test | 2026-07-19 |
-| `scripts/agent/check.sh full` | Pass 54 docs, generated/format/analyze 0 diagnostic, platform/release/operations, 129 Flutter tests và encrypted migration | 2026-07-19 |
+| `scripts/agent/check.sh full` | Pass 54 docs, generated/format/analyze 0 diagnostic, platform/release/operations, 130 Flutter tests và encrypted migration | 2026-07-19 |
+| CI Linux tại `eafa693` | Fail: initial shield chặn add form; dùng làm regression evidence | 2026-07-19 |
+| CI Linux tại `a909576` | Đi qua add/storage, fail do generic `AccountsLoaded` pop page cuối khi lifecycle transition; dùng làm regression evidence | 2026-07-19 |
 
 ## Tác động tài liệu
 
