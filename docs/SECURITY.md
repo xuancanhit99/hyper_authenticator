@@ -175,6 +175,19 @@ representation thành `[REDACTED]`, phòng transition/crash logger vô tình ghi
 Các auth event/state chứa email, password hoặc user identity cũng redact string
 representation; equality vẫn hoạt động nhưng transition log không lộ credential/PII.
 
+## Device-specific key foundation — **Staged, chưa production**
+
+ADR-0012 đề xuất HPKE Base
+DHKEM(X25519, HKDF-SHA256)/HKDF-SHA256/AES-256-GCM cho per-device DEK wrap.
+Implementation hiện không có DI annotation/call site và đã khóa bằng official RFC
+vector, wrong-context/tamper test cùng secure-storage corrupt-record test.
+
+Device private key và binding secret là credential. Chúng không được log, đưa vào
+SharedPreferences, analytics, fixture thật hoặc server response. Membership proof
+được domain-separate từ current DEK để session attacker không có DEK không khiến
+trusted client tự động cấp wrap. Đây vẫn là proposal: chưa có backend schema,
+enrollment/rotation runtime và chưa qua independent security review.
+
 ## Destructive operations
 
 - Cloud conflict phải hỏi rõ dùng cloud hay giữ local.
@@ -245,9 +258,10 @@ directory mode 0700 rồi cleanup bằng trap.
 
 1. Chưa có external alert channel/SIEM; systemd failure hiện chỉ vào journal.
 2. Chưa có independent cryptographic/security review.
-3. Đã có bulk revoke mọi auth session khác và server-side active-session guard cho
-   encrypted vault, nhưng chưa có device registry/list, revoke riêng từng thiết bị
-   hoặc device-specific wrapped key. Backup cũ vẫn decrypt được bằng key material cũ.
+3. Đã có device registry, bulk/targeted auth-session revoke và server-side
+   active-session guard. Device-specific wrapped key mới ở mức primitive staged;
+   chưa có schema/runtime/independent review. Backup cũ vẫn decrypt được bằng key
+   material cũ.
 4. SMTP delivery tới mailbox thật và expired recovery link chưa được E2E test.
 5. Signing key/certificate chưa được owner cung cấp trên môi trường build; GitHub
    Preview vì vậy có SmartScreen/package-signature risk đã công bố.

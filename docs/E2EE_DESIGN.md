@@ -142,12 +142,17 @@ cho rollback/audit; runtime client không inject bridge. Nếu môi trường kh
   xác nhận remote và test user/row được xóa sau kiểm tra.
 - Android Pixel AVD session smoke: isolated user có hai auth session, client SDK
   bulk revoke xuống một session, current session vẫn authenticated; cleanup pass.
+- Device registry production cho phép list/targeted session revoke nhưng chưa đổi
+  key hierarchy. HPKE Base primitive staged đã khớp official RFC 9180 vector cho
+  AES-128-GCM và AES-256-GCM; device key store/proof test pass nhưng chưa inject,
+  chưa có schema/RPC và không phải runtime capability.
 - Release plaintext guard và DI generation test path.
 
 ## Khoảng trống đã biết
 
-- Chưa có individual device registry, revoke riêng một thiết bị hoặc
-  device-specific key wrap; hiện chỉ có bulk revoke mọi session khác.
+- Device registry và targeted auth-session revoke đã deploy. Device-specific key
+  wrap mới ở trạng thái ADR đề xuất + primitive staged; chưa có enrollment,
+  atomic wrap-set rotation, runtime recovery hoặc production schema.
 - Trusted-device/QR transfer.
 - Tombstone hoặc history ngoài một current snapshot.
 - Browser E2EE threat model.

@@ -217,6 +217,9 @@ post-probe current image/health/hash và 5/5 public SPA route pass.
 - Remote schema change phải có migration test + isolated cross-user contract.
 - Field persist phải có round-trip test, không silently default.
 - UI conflict/destructive operation cần widget/integration coverage khi ổn định.
+- Cryptographic protocol mới phải khớp official/pinned vector trước round-trip và
+  tamper test. Device-wrap foundation hiện dùng RFC 9180/CFRG vector cho cả
+  AES-128-GCM reference suite và AES-256-GCM suite được chọn.
 
 ## Secret hygiene trong test
 
@@ -261,6 +264,8 @@ post-probe current image/health/hash và 5/5 public SPA route pass.
    emulator, iOS Simulator và GitHub-hosted Windows Server 2025; biometric/camera
    và secure-storage behavior trên thiết bị thật chưa được chứng minh.
 2. Chưa có two-device physical E2EE test.
+   HPKE/device-key unit test không thay thế enrollment/rotation runtime hoặc
+   independent cryptographic review.
 3. Chưa có mailbox SMTP/expired-link E2E.
 4. Low-concurrency Auth budget đã enforce; chưa có long-duration soak hoặc
    production-scale workload test.

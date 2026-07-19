@@ -187,6 +187,36 @@ khi một active session đăng ký.
 Không lưu TOTP secret, DEK, recovery key hoặc auth token trong SharedPreferences
 hay device registry.
 
+## Device-specific wrapped DEK — **Dự kiến, chưa persist production**
+
+ADR-0012 đề xuất thêm `key_generation` monotonic vào encrypted snapshot và một
+HPKE wrap riêng cho mỗi device key đã có membership proof hợp lệ. Primitive/model
+đã staged nhưng không được inject; schema dưới đây chưa tồn tại trên production.
+
+~~~json
+{
+  "format_version": 1,
+  "key_generation": 2,
+  "kem": "DHKEM-X25519-HKDF-SHA256",
+  "kdf": "HKDF-SHA256",
+  "aead": "AES-256-GCM",
+  "encapsulated_key": "base64url",
+  "ciphertext": "base64url",
+  "auth_tag": "base64url"
+}
+~~~
+
+- Device private key và random binding secret 256-bit nằm trong platform secure
+  storage theo user + installation; không vào SharedPreferences hoặc server response.
+- HPKE `info`/AAD bind user, installation, opaque device-key ID, generation và
+  recipient public key.
+- Membership proof dùng HMAC-SHA256 với key HKDF domain-separated từ current DEK;
+  backend không thể verify, client có DEK phải verify trước khi include device
+  trong generation mới.
+- Binding secret chỉ dùng resume server record qua TLS và backend dự kiến chỉ lưu
+  hash; nó không wrap DEK và không thay membership proof.
+- Recovery-key wrapped DEK v1 tiếp tục là break-glass path.
+
 ## Compatibility plaintext
 
 `synced_accounts` dùng snake_case và từng chứa `secret_key` plaintext. Runtime DI

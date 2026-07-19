@@ -56,6 +56,7 @@ mô tả preview là stable production release.
 | Windows release + installer | Pass upgrade vault thật từ source `1.0.0+9`/plugin 3.1.2 sang current COW v2, configured x64 bundle, local-vault runtime và NSIS 3.12 unsigned candidate; install/launch/metadata-upgrade/uninstall giữ AppData pass, bundle + installer/checksum giữ 14 ngày |
 | GitHub Desktop Preview | `v1.1.0-preview.1` public pre-release tại commit `6c3bd4b`; Windows x64 NSIS và Linux amd64 `.deb` cùng individual checksum + `SHA256SUMS.txt`; public unauthenticated re-download khớp SHA-256 |
 | Device registry client | Model/identity store/repository/BLoC/widget regression pass: stable installation UUID, server-bound load, current-session protection, targeted confirmation, double-submit guard và identifier redaction |
+| Device-wrap crypto foundation | **Staged, chưa inject/deploy:** HPKE Base X25519/HKDF-SHA256/AES-256-GCM khớp official RFC vector; device key/proof/secure-storage test fail closed. ADR-0012 còn ở trạng thái đề xuất, không phải production capability |
 
 Build không có `--dart-define-from-file` chỉ chứng minh compile. Runtime/release
 verification phải inject `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY` và
@@ -94,6 +95,10 @@ verification phải inject `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY` và
   current `session_id`, không trả raw session/IP/user-agent; targeted revoke cấm
   current/cross-tenant row và xóa đúng auth session. Local TOTP trên target vẫn
   được giữ và re-login được phép; bulk revoke vẫn là fallback cho phiên chưa register.
+- HPKE/device-key source đã staged ngoài runtime DI để khóa protocol bằng official
+  RFC vector và secure-storage regression trước khi thiết kế schema. Nó chưa đổi
+  encrypted snapshot production, chưa enroll device key và chưa được mô tả là
+  cryptographic revoke.
 - Web Settings không mời đăng nhập để dùng cloud sync khi capability bị tắt.
 - Primary UI đã dùng tiếng Việt nhất quán cho auth, navigation, accounts,
   add/edit, settings và user-facing failure; Web document khai báo `lang="vi"`.
@@ -167,9 +172,11 @@ Capability là hành vi source hiện tại, không thay thế device test và s
 5. Low-concurrency Auth budget đã enforce; chưa có long-duration soak hoặc
    production-scale workload test.
 6. E2EE v1 đã có DEK rotation, bulk revoke và targeted revoke cho registered auth
-   session với server-side enforcement. Chưa có permanent device ban,
-   device-specific key wrap, tombstone/history hoặc Web E2EE trust model. Backup
-   cũ vẫn dùng key generation cũ; targeted revoke không remote-wipe local vault.
+   session với server-side enforcement. Device-specific HPKE wrap mới có primitive
+   staged/ADR đề xuất; chưa có schema, enrollment, atomic wrap-set rotation hoặc
+   runtime recovery. Chưa có permanent device ban, tombstone/history hoặc Web E2EE
+   trust model. Backup cũ vẫn dùng key generation cũ; targeted revoke không
+   remote-wipe local vault.
 7. Local-vault integration smoke đã pass Android emulator, iOS Simulator và
    GitHub-hosted Windows Server 2025; biometric/camera và secure-storage behavior
    trên thiết bị thật vẫn chưa được chứng minh. Mobile harness chủ động từ chối
@@ -235,7 +242,7 @@ Capability là hành vi source hiện tại, không thay thế device test và s
   `29660968360` từ default branch đã pass sau merge.
 - GitHub Private Vulnerability Reporting đã bật; `.github/SECURITY.md` hướng dẫn
   gửi báo cáo riêng tư và cấm đưa credential vào public issue.
-- `scripts/agent/check.sh full` là quality gate canonical; baseline hiện có 136 test,
+- `scripts/agent/check.sh full` là quality gate canonical; baseline hiện có 165 test,
   analyze/format cả device integration source nhưng không tự boot virtual device.
 - `scripts/supabase/` giữ remote contract, backup, health, restore và off-host harness.
 - Scheduled restore contract nằm trong full gate; production systemd timer/health

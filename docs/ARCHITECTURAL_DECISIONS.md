@@ -34,6 +34,12 @@ Tài liệu này lập chỉ mục quyết định bền vững. Quyết định
 
 Đã áp dụng không đồng nghĩa production-ready; defect/risk nằm trong `PROJECT_STATUS.md`.
 
+## Quyết định đang đề xuất
+
+| ID | Quyết định | Trạng thái | Bằng chứng |
+|---|---|---|---|
+| A-026 | Device-specific DEK wrap dùng HPKE, DEK-derived membership proof và atomic key-generation rotation | Đề xuất; primitive staged, chưa inject/deploy | [ADR-0012](adr/0012-device-specific-hpke-key-wrap.md) |
+
 ## Quyết định còn mở
 
 | ID đề xuất | Quyết định cần có | Lý do |
