@@ -245,6 +245,23 @@ trước khi boot Flutter và xóa cùng container. Không chạy script với `
 Đây là authenticated debug runtime evidence theo kiến trúc host của Docker. Nó
 không thay signed `.deb`, historical-upgrade hoặc distro/desktop matrix.
 
+## Mobile authenticated E2EE runtime
+
+Sau khi operator tạo isolated user ngoài client process, chạy cùng test trên
+Android emulator hoặc iOS Simulator đang boot:
+
+    E2EE_TEST_EMAIL=<isolated-user> \
+    E2EE_TEST_PASSWORD=<temporary-password> \
+    scripts/agent/mobile_e2ee_integration.sh \
+      .env <emulator-or-simulator-id> \
+      --allow-emulator-vault-reset
+
+Harness fail closed với thiết bị thật/macOS, service-role environment hoặc target
+không phải Android/iOS. Credential tạm chỉ vào config 0600 trong sandbox và bị xóa
+sau test. Suite reset local test vault, xóa cả DEK lẫn device private key, dùng HA1
+để thay key, rồi xoay recovery key + DEK tới revision 4. Operator phải xóa isolated
+user và xác minh snapshot/device/verifier cascade về 0 sau mỗi lượt.
+
 ## Dependency
 
     flutter pub outdated

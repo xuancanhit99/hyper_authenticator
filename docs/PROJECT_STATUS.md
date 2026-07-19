@@ -45,10 +45,10 @@ mô tả preview là stable production release.
 | Platform configuration gate | Pass network/backup/signing/Keychain/ID |
 | Release config validator | Pass với `.env` public hiện tại, không in key |
 | Gitleaks full history | Pass sau exact allowlist RFC 6238 test vector |
-| Android debug + Pixel AVD runtime | Pass build/install, Supabase auth, setup revision 1, recovery-key rotation revision 2, vault-key rotation revision 3, fresh-device recovery revision 3, bulk revoke session thật 2→1 và local-vault integration smoke có cleanup |
+| Android debug + Pixel AVD runtime | Pass build/install, Supabase auth, device-wrap setup/sync, xóa device private key rồi HA1 replacement, recovery/DEK rotation revision 1→4 và cleanup 0; bulk revoke session thật 2→1 cùng local-vault integration smoke cũng pass |
 | Web release + hardened Nginx image | `1.1.0-ae1ab36` `linux/amd64` đang healthy trên production; local/public `main.dart.js` SHA-256 `1a0d63a6…f66ea6` khớp, 5 SPA route và TLS/HSTS/CSP/cache/Permissions-Policy pass; browser xác minh runtime `lang=vi`, Flutter render và console sạch; live rollback về `1.1.0-12fce73` rồi forward lại current pass exact image/hash/route |
 | macOS debug compile unsigned | Pass; không phải runtime/signing evidence |
-| iOS 26.5 simulator debug | Pass build/runtime với Supabase init và local-vault integration smoke có cleanup |
+| iOS 26.5 simulator debug | Pass build/runtime với Supabase init; device-wrap setup/sync, lost-device-key HA1 replacement, recovery/DEK rotation revision 1→4 và cleanup 0; local-vault integration smoke cũng pass |
 | Android release | Fail closed đúng thiết kế vì chưa có upload keystore |
 | macOS release | Bị chặn vì chưa có development/distribution certificate |
 | Linux release + Debian artifact | Pass configured `linux/x64`, historical `1.0.0+9` vault upgrade, private-keyring UI smoke và `.deb` `1.1.0+10` amd64; hosted amd64 pass clean transition/retention + X11/Wayland trên Ubuntu 22.04/24.04 và Debian 12/13 |
@@ -56,7 +56,7 @@ mô tả preview là stable production release.
 | Windows release + installer | Pass upgrade vault thật từ source `1.0.0+9`/plugin 3.1.2 sang current COW v2, configured x64 bundle, local-vault runtime và NSIS 3.12 unsigned candidate; install/launch/metadata-upgrade/uninstall giữ AppData pass, bundle + installer/checksum giữ 14 ngày |
 | GitHub Desktop Preview | `v1.1.0-preview.1` public pre-release tại commit `6c3bd4b`; Windows x64 NSIS và Linux amd64 `.deb` cùng individual checksum + `SHA256SUMS.txt`; public unauthenticated re-download khớp SHA-256 |
 | Device registry client | Model/identity store/repository/BLoC/widget regression pass: stable installation UUID, server-bound load, current-session protection, targeted confirmation, double-submit guard và identifier redaction |
-| Device-wrap cryptographic revoke | **Server production + client runtime đã xác minh:** HPKE Base X25519/HKDF-SHA256/AES-256-GCM; server-only DEK verifier; enrollment, lost-device-key HA1 recovery, publish-v2 và exact wrap-set rotation pass trên Linux isolated runtime. Client mới chưa nằm trong GitHub Preview binary và chưa có physical two-device review |
+| Device-wrap cryptographic revoke | **Server production + client runtime đã xác minh:** HPKE Base X25519/HKDF-SHA256/AES-256-GCM; server-only DEK verifier; enrollment, lost-device-key HA1 recovery, publish-v2 và exact wrap-set rotation pass trên Linux, Android AVD và iOS Simulator. Client mới chưa nằm trong GitHub Preview binary và chưa có physical two-device review |
 
 Build không có `--dart-define-from-file` chỉ chứng minh compile. Runtime/release
 verification phải inject `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY` và

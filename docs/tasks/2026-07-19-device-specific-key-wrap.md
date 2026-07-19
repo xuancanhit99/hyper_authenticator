@@ -75,6 +75,7 @@ nhập recovery key.
 | `scripts/agent/check.sh full` | 182 Flutter test + mọi gate pass | 2026-07-19 |
 | Production backup/off-host/full restore + 53 remote checks | Pass | 2026-07-19 |
 | Linux lost-device-key HA1 recovery + rotation runtime | Revision 1→4 pass, cleanup 0 | 2026-07-19 |
+| Android AVD + iOS Simulator lost-key runtime | Mỗi target revision 1→4 pass, cleanup 0 | 2026-07-19 |
 
 ## Tác động tài liệu
 
@@ -89,5 +90,5 @@ nhập recovery key.
 ## Bàn giao
 
 ADR đã được owner chấp nhận; client/server, backup/restore, remote regression và
-Linux lost-key runtime đã pass. Còn physical two-device/representative native
-runtime, independent review và phát hành binary mới.
+Linux, Android AVD và iOS Simulator lost-key runtime đã pass. Còn physical
+two-device, independent review và phát hành binary mới.
