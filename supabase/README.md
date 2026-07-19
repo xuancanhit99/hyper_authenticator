@@ -36,6 +36,17 @@ Apply E2EE migration:
       psql -X -v ON_ERROR_STOP=1 -U supabase_admin -d postgres \
       < supabase/migrations/20260718230000_enforce_active_vault_sessions.sql
 
+    docker exec -i supabase-db \
+      psql -X -v ON_ERROR_STOP=1 -U supabase_admin -d postgres \
+      < supabase/migrations/20260719070000_create_authenticator_device_registry.sql
+
+Device-wrap client-v2 và migration đã staged nhưng chưa deploy production; chỉ
+apply sau full gate, backup và rollback checkpoint:
+
+    docker exec -i supabase-db \
+      psql -X -v ON_ERROR_STOP=1 -U supabase_admin -d postgres \
+      < supabase/migrations/20260719150000_add_device_specific_vault_keys.sql
+
 Test migration local:
 
     scripts/supabase/test_encrypted_vault_migration.sh

@@ -1,6 +1,6 @@
 # ADR-0012: Device-specific DEK wrap bằng HPKE và membership proof
 
-- Trạng thái: Đề xuất
+- Trạng thái: Đã chấp nhận
 - Ngày: 2026-07-19
 - Owner: canhvx
 - Thay thế:
@@ -146,7 +146,8 @@ Migration dự kiến additive:
 5. backfill current row generation 1, không tạo device key giả;
 6. client v2 enroll sau khi có DEK/recovery; client v1 tiếp tục dùng `HA1` wrap.
 
-Không deploy schema hoặc inject primitive khi ADR còn **Đề xuất**. Rollback trước
+Owner đã chấp nhận ADR ngày 19-07-2026. Schema/RPC phải được khóa bằng PostgreSQL
+contract và backup/rollback rehearsal trước production deploy. Rollback trước
 runtime chỉ xóa source staged. Sau rollout, rollback client giữ recovery-key path,
 không drop column/table cho tới khi đã audit không còn device v2 cần wrap.
 

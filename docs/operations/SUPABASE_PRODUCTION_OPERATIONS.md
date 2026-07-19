@@ -16,6 +16,8 @@ Kiểm tra:
   còn tham chiếu helper/`session_revoked`;
 - device registry có FORCE RLS/no direct SELECT, ba RPC security-definer và revoke
   function còn active-session guard + delete đúng `auth.sessions`;
+- device key/wrap cùng server-only DEK verifier không cấp direct SELECT; publish-v2,
+  wrap và atomic rotation RPC còn `SECURITY DEFINER` đúng signature;
 - public Auth và Recovery HTTP boundary;
 - verified backup gần nhất chưa quá hạn.
 
@@ -67,6 +69,7 @@ cluster, full restore với `--no-owner --no-privileges`, probe:
 - table có RLS + FORCE RLS;
 - active-session helper/policy/RPC được restore và còn đúng security boundary;
 - device-registry table/privilege/RPC được restore đúng security boundary;
+- device-wrap table, private verifier và v2/rotation RPC được restore đúng boundary;
 - encrypted và registry table đọc được bằng owner ở database tạm.
 
 Trap luôn force-drop database tạm. Script không restore đè production database.

@@ -38,7 +38,7 @@ Tài liệu này lập chỉ mục quyết định bền vững. Quyết định
 
 | ID | Quyết định | Trạng thái | Bằng chứng |
 |---|---|---|---|
-| A-026 | Device-specific DEK wrap dùng HPKE, DEK-derived membership proof và atomic key-generation rotation | Đề xuất; primitive staged, chưa inject/deploy | [ADR-0012](adr/0012-device-specific-hpke-key-wrap.md) |
+| A-026 | Device-specific DEK wrap dùng HPKE, DEK-derived membership proof và atomic key-generation rotation | Đã chấp nhận; client/migration staged, chưa deploy production | [ADR-0012](adr/0012-device-specific-hpke-key-wrap.md) |
 
 ## Quyết định còn mở
 

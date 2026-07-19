@@ -175,13 +175,14 @@ representation thành `[REDACTED]`, phòng transition/crash logger vô tình ghi
 Các auth event/state chứa email, password hoặc user identity cũng redact string
 representation; equality vẫn hoạt động nhưng transition log không lộ credential/PII.
 
-## Device-specific key foundation — **Staged, chưa production**
+## Device-specific key foundation — **ADR đã duyệt, chưa production**
 
 ADR-0012 đề xuất HPKE Base
 DHKEM(X25519, HKDF-SHA256)/HKDF-SHA256/AES-256-GCM cho per-device DEK wrap.
-Implementation hiện không có DI annotation/call site và đã khóa bằng official RFC
-vector, wrong-context/tamper/low-order-key test cùng secure-storage corrupt-record
-test. Context dùng length-prefix thay delimiter; envelope bắt buộc canonical exact
+Implementation đã có DI, enrollment/recovery/publish-v2/atomic-rotation call site
+và được khóa bằng official RFC vector, wrong-context/tamper/low-order-key test cùng
+secure-storage corrupt-record test. Context dùng length-prefix thay delimiter;
+envelope bắt buộc canonical exact
 length để từ chối payload oversized trước decrypt. Derived HPKE key object được
 destroy và buffer tạm được overwrite best-effort; Dart VM/GC không bảo đảm mọi
 bản sao trong process đã zeroize.
@@ -189,8 +190,13 @@ bản sao trong process đã zeroize.
 Device private key và binding secret là credential. Chúng không được log, đưa vào
 SharedPreferences, analytics, fixture thật hoặc server response. Membership proof
 được domain-separate từ current DEK để session attacker không có DEK không khiến
-trusted client tự động cấp wrap. Đây vẫn là proposal: chưa có backend schema,
-enrollment/rotation runtime và chưa qua independent security review.
+trusted client tự động cấp wrap. Server còn so khớp vault membership verifier
+HMAC dẫn xuất từ DEK; verifier nằm trong bảng `private`, không xuất hiện trong
+snapshot SELECT hoặc device RPC. Additive migration/RPC staged chỉ công khai public
+key, SHA-256 binding-secret hash và opaque per-device proof qua controlled RPC;
+direct table access bị revoke/force RLS. V2 publish yêu cầu active device binding;
+rotation thay snapshot + verifier + exact wrap set + revoke session trong một
+transaction. Schema chưa deploy và chưa qua independent security review.
 
 ## Destructive operations
 

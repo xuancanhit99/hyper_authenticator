@@ -115,10 +115,33 @@ device_registry_ready=$(docker exec "$DB_CONTAINER" psql \
      ) > 0")
 [[ "$device_registry_ready" == t ]]
 
+device_wrap_ready=$(docker exec "$DB_CONTAINER" psql \
+  -X -v ON_ERROR_STOP=1 -U supabase_admin -d "$database_name" -Atqc \
+  "select
+     to_regclass('public.authenticator_device_keys') is not null
+     and to_regclass('public.authenticator_device_key_wraps') is not null
+     and to_regclass('private.encrypted_vault_membership_verifiers') is not null
+     and not has_table_privilege(
+       'authenticated', 'public.authenticator_device_keys', 'select'
+     )
+     and not has_table_privilege(
+       'authenticated', 'public.authenticator_device_key_wraps', 'select'
+     )
+     and not has_table_privilege(
+       'authenticated', 'private.encrypted_vault_membership_verifiers', 'select'
+     )
+     and to_regprocedure(
+       'public.publish_encrypted_vault_snapshot_v2(bigint,bigint,text,smallint,text,text,text,text,smallint,text,text,text)'
+     ) is not null
+     and to_regprocedure(
+       'public.rotate_encrypted_vault_device_keys(bigint,bigint,text,smallint,text,text,text,text,smallint,text,text,text,text,jsonb,uuid[])'
+     ) is not null")
+[[ "$device_wrap_ready" == t ]]
+
 data_probe=$(docker exec "$DB_CONTAINER" psql \
   -X -v ON_ERROR_STOP=1 -U supabase_admin -d "$database_name" -Atqc \
   "select count(*) >= 0 from auth.users; select count(*) >= 0 from public.encrypted_vault_snapshots")
 [[ $(printf '%s\n' "$data_probe" | grep -c '^t$') -eq 2 ]]
 
 printf '%s\n' \
-  'Supabase restore rehearsal pass: checksum, catalog, full restore, schema, force-RLS, active-session và device-registry guard.'
+  'Supabase restore rehearsal pass: checksum, catalog, full restore, schema, force-RLS, active-session, device-registry và device-wrap guard.'

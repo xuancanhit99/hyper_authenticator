@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:cryptography/cryptography.dart';
 import 'package:hyper_authenticator/features/sync/domain/entities/device_wrapped_vault_key.dart';
 import 'package:hyper_authenticator/features/sync/domain/services/hpke_base_cipher.dart';
+import 'package:injectable/injectable.dart';
 
 class DeviceKeyCryptoException implements Exception {
   final String message;
@@ -13,6 +14,7 @@ class DeviceKeyCryptoException implements Exception {
   String toString() => 'DeviceKeyCryptoException: $message';
 }
 
+@lazySingleton
 class DeviceKeyCipher {
   static const _keyLength = 32;
   final X25519 _keyExchange;
@@ -242,6 +244,49 @@ class DeviceKeyCipher {
       return base64UrlEncode(proof.bytes);
     } finally {
       proofKey?.destroy();
+      dataKey.destroy();
+    }
+  }
+
+  Future<String> createVaultMembershipVerifier({
+    required List<int> dataKeyBytes,
+    required String userId,
+    required int keyGeneration,
+  }) async {
+    _requireKey(dataKeyBytes, 'Vault data key');
+    if (!_isValidIdentifier(userId) || keyGeneration < 1) {
+      throw const DeviceKeyCryptoException(
+        'Vault membership context không hợp lệ.',
+      );
+    }
+    final context = _contextBytes(
+      label: 'hyper-authenticator:v1:vault-membership-verifier',
+      fields: <List<int>>[
+        utf8.encode(userId),
+        utf8.encode(keyGeneration.toString()),
+      ],
+    );
+    final dataKey = SecretKey(dataKeyBytes);
+    SecretKey? verifierKey;
+    try {
+      verifierKey = await _membershipKdf.deriveKey(
+        secretKey: dataKey,
+        nonce: _contextBytes(
+          label: 'hyper-authenticator:v1:vault-membership-kdf',
+          fields: <List<int>>[
+            utf8.encode(userId),
+            utf8.encode(keyGeneration.toString()),
+          ],
+        ),
+        info: context,
+      );
+      final verifier = await _membershipMac.calculateMac(
+        context,
+        secretKey: verifierKey,
+      );
+      return base64UrlEncode(verifier.bytes);
+    } finally {
+      verifierKey?.destroy();
       dataKey.destroy();
     }
   }

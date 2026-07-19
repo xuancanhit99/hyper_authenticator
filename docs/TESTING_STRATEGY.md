@@ -18,11 +18,15 @@ build. Bỏ `<env-file>` chỉ chứng minh compile, không chứng minh bootstr
 
 `full` phải pass generated-code drift, format (gồm source `integration_test`),
 analyze, platform manifest/entitlement contract, Flutter test và encrypted
-PostgreSQL migration contract. Nó không tự boot emulator/simulator.
+PostgreSQL migration contract. Contract hiện gồm device-wrap two-phase enrollment,
+legacy cutoff, server-only DEK verifier chống fake self-wrap, active-device binding,
+exact-set rotation và atomic crypto revoke. Nó không tự boot emulator/simulator.
 
 ## Coverage hiện tại
 
-169 Flutter tests bao phủ:
+181 Flutter tests bao phủ cả focused regression cho device enrollment, local
+unwrap/proof trước confirm, generation-aware publish và exact-set rotation
+preparation, cùng các nhóm sau:
 
 - router/auth/logout/offline-local-vault boundary;
 - post-login navigation trực tiếp hoặc return an toàn về Settings, stale null auth

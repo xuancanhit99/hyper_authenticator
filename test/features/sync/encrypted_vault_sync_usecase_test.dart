@@ -5,6 +5,7 @@ import 'package:hyper_authenticator/features/auth/domain/entities/user_entity.da
 import 'package:hyper_authenticator/features/auth/domain/repositories/auth_repository.dart';
 import 'package:hyper_authenticator/features/authenticator/domain/entities/authenticator_account.dart';
 import 'package:hyper_authenticator/features/authenticator/domain/repositories/authenticator_repository.dart';
+import 'package:hyper_authenticator/features/sync/domain/entities/authenticator_device_key.dart';
 import 'package:hyper_authenticator/features/sync/domain/entities/encrypted_sync_result.dart';
 import 'package:hyper_authenticator/features/sync/domain/entities/encrypted_vault_envelope.dart';
 import 'package:hyper_authenticator/features/sync/domain/entities/encrypted_vault_snapshot.dart';
@@ -13,6 +14,7 @@ import 'package:hyper_authenticator/features/sync/domain/repositories/encrypted_
 import 'package:hyper_authenticator/features/sync/domain/repositories/vault_key_repository.dart';
 import 'package:hyper_authenticator/features/sync/domain/services/vault_cipher.dart';
 import 'package:hyper_authenticator/features/sync/domain/usecases/encrypted_vault_sync_usecase.dart';
+import 'package:hyper_authenticator/features/sync/domain/usecases/device_key_enrollment_usecase.dart';
 
 void main() {
   const userId = '00000000-0000-4000-8000-000000000001';
@@ -663,6 +665,7 @@ EncryptedVaultSyncUseCase _createUseCase({
   keys,
   metadata,
   cipher,
+  _TestDeviceKeyCoordinator(),
 );
 
 T _right<T>(Either<Failure, T> result) => result.fold(
@@ -737,6 +740,102 @@ class _MemoryEncryptedVaultRepository implements EncryptedVaultRepository {
     }
     return Right(envelope.revision);
   }
+
+  @override
+  Future<Either<Failure, int>> publishV2({
+    required String userId,
+    required int expectedRevision,
+    required int expectedKeyGeneration,
+    required List<int> bindingSecretBytes,
+    required EncryptedVaultEnvelope envelope,
+    required WrappedVaultKey wrappedDataKey,
+  }) async {
+    final result = await publish(
+      userId: userId,
+      expectedRevision: expectedRevision,
+      envelope: envelope,
+      wrappedDataKey: wrappedDataKey,
+    );
+    if (result.isRight() && snapshot != null) {
+      snapshot = EncryptedVaultSnapshot(
+        envelope: snapshot!.envelope,
+        wrappedDataKey: snapshot!.wrappedDataKey,
+        updatedAt: snapshot!.updatedAt,
+        keyGeneration: expectedKeyGeneration,
+        deviceWrapVersion: 1,
+      );
+    }
+    return result;
+  }
+
+  @override
+  Future<Either<Failure, int>> rotateDeviceKeys({
+    required String userId,
+    required int expectedRevision,
+    required int expectedKeyGeneration,
+    required List<int> bindingSecretBytes,
+    required EncryptedVaultEnvelope envelope,
+    required WrappedVaultKey wrappedDataKey,
+    required String nextVaultMembershipVerifier,
+    required List<DeviceKeyRotationWrap> deviceWraps,
+    required List<String> excludedDeviceKeyIds,
+  }) async {
+    final result = await publish(
+      userId: userId,
+      expectedRevision: expectedRevision,
+      envelope: envelope,
+      wrappedDataKey: wrappedDataKey,
+    );
+    if (result.isRight() && snapshot != null) {
+      snapshot = EncryptedVaultSnapshot(
+        envelope: snapshot!.envelope,
+        wrappedDataKey: snapshot!.wrappedDataKey,
+        updatedAt: snapshot!.updatedAt,
+        keyGeneration: expectedKeyGeneration + 1,
+        deviceWrapVersion: 1,
+      );
+    }
+    return result;
+  }
+}
+
+class _TestDeviceKeyCoordinator implements DeviceKeyCoordinator {
+  @override
+  Future<Either<Failure, ActiveDeviceKeyAuthorization>> ensureCurrentDevice({
+    required String userId,
+    required List<int> dataKeyBytes,
+    required int keyGeneration,
+  }) async => Right(
+    ActiveDeviceKeyAuthorization(
+      deviceKey: AuthenticatorDeviceKey(
+        deviceKeyId: '70000000-0000-4000-8000-000000000001',
+        installationId: '70000000-0000-4000-8000-000000000002',
+        publicKeyBytes: List<int>.filled(32, 1),
+        state: AuthenticatorDeviceKeyState.active,
+        createdAt: DateTime.utc(2026, 7, 19),
+        wrappedAt: DateTime.utc(2026, 7, 19),
+        activatedAt: DateTime.utc(2026, 7, 19),
+        isCurrent: true,
+        wrappedVaultKey: null,
+        membershipProof: null,
+      ),
+      bindingSecretBytes: List<int>.filled(32, 2),
+    ),
+  );
+
+  @override
+  Future<Either<Failure, DeviceKeyRotationPlan>> prepareRotation({
+    required String userId,
+    required List<int> currentDataKeyBytes,
+    required List<int> nextDataKeyBytes,
+    required int currentKeyGeneration,
+  }) async => Right(
+    DeviceKeyRotationPlan(
+      bindingSecretBytes: List<int>.filled(32, 2),
+      nextVaultMembershipVerifier: 'TEST_ONLY_VERIFIER',
+      wraps: const <DeviceKeyRotationWrap>[],
+    ),
+  );
 }
 
 class _MemoryVaultKeyRepository implements VaultKeyRepository {

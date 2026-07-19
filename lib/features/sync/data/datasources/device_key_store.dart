@@ -4,6 +4,7 @@ import 'package:cryptography/cryptography.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:hyper_authenticator/features/sync/domain/entities/device_wrapped_vault_key.dart';
 import 'package:hyper_authenticator/features/sync/domain/services/device_key_cipher.dart';
+import 'package:injectable/injectable.dart';
 
 class DeviceKeyStoreException implements Exception {
   const DeviceKeyStoreException();
@@ -12,7 +13,20 @@ class DeviceKeyStoreException implements Exception {
   String toString() => 'DeviceKeyStoreException(<redacted>)';
 }
 
-class DeviceKeyStore {
+abstract class DeviceKeyMaterialStore {
+  Future<DeviceKeyMaterial?> read({
+    required String userId,
+    required String installationId,
+  });
+
+  Future<DeviceKeyMaterial> getOrCreate({
+    required String userId,
+    required String installationId,
+  });
+}
+
+@LazySingleton(as: DeviceKeyMaterialStore)
+class DeviceKeyStore implements DeviceKeyMaterialStore {
   static const _storagePrefix = 'ha:e2ee:v2:device-key:';
   static const _formatVersion = 1;
   final FlutterSecureStorage _secureStorage;
@@ -22,6 +36,7 @@ class DeviceKeyStore {
 
   DeviceKeyStore(this._secureStorage, this._cipher);
 
+  @override
   Future<DeviceKeyMaterial?> read({
     required String userId,
     required String installationId,
@@ -60,6 +75,7 @@ class DeviceKeyStore {
     }
   }
 
+  @override
   Future<DeviceKeyMaterial> getOrCreate({
     required String userId,
     required String installationId,

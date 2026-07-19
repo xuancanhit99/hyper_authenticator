@@ -198,10 +198,35 @@ lock và chỉ ghi evidence 0600 sau checksum/catalog/schema/FORCE RLS/session-g
 probe pass. Health gate yêu cầu evidence chưa quá 9 ngày. Baseline 19-07-2026 pass
 và cleanup không còn database rehearsal.
 
+## Device-wrap migration — **Đã triển khai trong source, chưa deploy**
+
+`20260719150000_add_device_specific_vault_keys.sql` additive-only:
+
+- backfill snapshot `key_generation=1`, `device_wrap_version=0`;
+- thêm private device public-key/binding-hash và current wrap table, force RLS,
+  không grant direct table access;
+- lưu vault membership verifier dẫn xuất từ DEK trong bảng `private` server-only;
+  verifier không nằm trong snapshot SELECT hoặc response RPC;
+- bind nullable device key vào registry session cùng installation;
+- two-phase `begin → publish wrap → target confirm`;
+- chặn legacy publish sau khi protocol version 1 được active;
+- v2 normal publish yêu cầu exact generation và active device binding;
+- rotation atomically thay snapshot, generation, exact survivor wrap set và xóa
+  auth session của device bị loại.
+
+Local PostgreSQL 17 contract chứng minh backward compatibility trước activation,
+web enrollment reject, wrong binding/cross-session fail, session không biết DEK
+verifier không thể self-wrap, target-only confirmation, incomplete wrap set
+rollback, surviving wrap generation mới và excluded session mất quyền. Backend
+so khớp vault-level verifier; client vẫn phải verify per-device membership proof
+và local unwrap bằng current DEK trước confirm/rotation.
+
 ## Khoảng trống đã biết
 
 - SMTP mailbox delivery/expired-token E2E chưa có.
 - External alert channel chưa cấu hình.
 - `synced_accounts` chưa drop để giữ rollback path.
-- Device registry mới thu hồi auth session; chưa có device-specific wrapped DEK,
-  permanent ban hoặc remote wipe local vault.
+- Device registry production mới thu hồi auth session. Device-specific wrapped
+  DEK client/migration/RPC đã staged và pass focused + local PostgreSQL contract
+  nhưng chưa deploy hoặc có remote/native runtime evidence; remote wipe local vault
+  không nằm trong thiết kế.

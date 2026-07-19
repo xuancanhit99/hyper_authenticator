@@ -259,7 +259,10 @@ Local authentication/scanner bị ẩn theo thiết kế.
 1. Full verified backup và off-host encrypted copy.
 2. Diff official upstream pin/compose/env; staging upgrade trước.
 3. Apply additive encrypted snapshot, active-session guard rồi device-registry
-   migration theo thứ tự filename, bằng role owner `supabase_admin`.
+   migration theo thứ tự filename, bằng role owner `supabase_admin`. Device-wrap
+   migration chỉ apply sau khi client v2 artifact/local contract đã sẵn sàng;
+   server-only DEK verifier nằm trong schema `private`. Mặc định backfill protocol
+   0 nên chưa khóa legacy client cho tới target confirm.
 4. Chạy official smoke + encrypted/device remote contracts; phải chứng minh JWT
    của targeted session bị RLS/RPC chặn nhưng session hiện tại vẫn hoạt động.
 5. Deploy client chỉ ghi encrypted snapshot.
@@ -270,6 +273,12 @@ Local authentication/scanner bị ẩn theo thiết kế.
 Device-registry rollback: bỏ client UI trước, khôi phục health/restore probe rồi
 drop ba RPC/table bằng migration riêng. Apply/rollback schema không sửa encrypted
 snapshot; auth session đã thu hồi không thể phục hồi, người dùng đăng nhập lại.
+
+Device-wrap rollback trước activation: bỏ client v2 rồi drop RPC/table/nullable
+session FK bằng migration riêng; giữ hai snapshot column additive. Sau khi
+`device_wrap_version=1`, không downgrade về legacy RPC vì có thể làm lệch DEK và
+wrap set; rollback phải tắt sync, giữ local vault/remote row và dùng HA1 recovery
+trên client v2 đã biết generation. Auth session đã crypto-revoke không phục hồi.
 
 ## Backup/rollback
 

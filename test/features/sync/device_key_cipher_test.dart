@@ -204,6 +204,41 @@ void main() {
       },
     );
 
+    test('vault membership verifier bind DEK, user và generation', () async {
+      final dataKey = List<int>.generate(32, (index) => index + 1);
+      final verifier = await cipher.createVaultMembershipVerifier(
+        dataKeyBytes: dataKey,
+        userId: 'TEST_ONLY_USER_A',
+        keyGeneration: 2,
+      );
+
+      expect(base64Url.decode(verifier), hasLength(32));
+      expect(
+        await cipher.createVaultMembershipVerifier(
+          dataKeyBytes: dataKey,
+          userId: 'TEST_ONLY_USER_A',
+          keyGeneration: 2,
+        ),
+        verifier,
+      );
+      expect(
+        await cipher.createVaultMembershipVerifier(
+          dataKeyBytes: dataKey,
+          userId: 'TEST_ONLY_USER_A',
+          keyGeneration: 3,
+        ),
+        isNot(verifier),
+      );
+      expect(
+        await cipher.createVaultMembershipVerifier(
+          dataKeyBytes: List<int>.filled(32, 9),
+          userId: 'TEST_ONLY_USER_A',
+          keyGeneration: 2,
+        ),
+        isNot(verifier),
+      );
+    });
+
     test('private key khác và envelope tamper fail closed', () async {
       final other = await cipher.createKeyMaterial();
       final wrapped = await cipher.wrapDataKey(
