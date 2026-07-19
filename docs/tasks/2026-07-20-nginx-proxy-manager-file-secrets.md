@@ -74,6 +74,7 @@ và rollback mất khả năng xác thực.
 | Production preparation | Fresh backup `npm-20260719T215745Z`; restore 4/4; exact canary cleanup; bundle `file-secrets-npm-20260719T215906Z`; checksum/mode/candidate/26 routes pass; production restart count 0 | 2026-07-20 |
 | Post-preparation deploy audit | Route/secret/config mutation được đưa vào cùng transaction; mọi failure rollback exact original và giữ route snapshot nếu recovery fail | 2026-07-20 |
 | Production candidate semantic diff | Sau khi reverse đúng ba password env và secret mounts/top-level entries, candidate normalized byte-semantically bằng current resolved Compose | 2026-07-20 |
+| Rollback freshness audit | Deploy từ chối bundle quá 7.200 giây trước mutation và yêu cầu preparation mới để rollback DB không stale | 2026-07-20 |
 
 ## Tác động tài liệu
 

@@ -237,6 +237,11 @@ Sau khi owner duyệt downtime ngắn, deploy chỉ nhận exact bundle đã byt
       /etc/hyper-authenticator/nginx-proxy-manager-route-exceptions.conf \
       --allow-production-nginx-proxy-manager-file-secrets
 
+Bundle mặc định chỉ hợp lệ trong 7.200 giây từ `CREATED_AT`. Nếu maintenance bị
+trì hoãn, harness fail trước mutation và yêu cầu chạy lại preparation để rollback
+database không bỏ sót route/certificate/user phát sinh sau backup. Chỉ thay
+`NPM_FILE_SECRET_MAX_AGE_SECONDS` bằng giá trị dương khi có lý do vận hành đã review.
+
 Harness recreate DB trước rồi app, khóa exact image/version, authenticated DB 4/4,
 API, Nginx, không còn plaintext `Config.Env`, exact secret mount, full route matrix
 và systemd timer. Cài route helper, chuyển secret directory và swap config đều nằm

@@ -285,7 +285,8 @@ secret không được log/commit/copy sang CI. Renderer chỉ tạo output mớ
 0700, Compose/`.env` 0600 và secret 0400; mismatch hoặc partial file-secret config
 fail mà không in credential. Deploy recreate DB trước app, xác minh không còn
 plaintext password trong `Config.Env`, exact mounts và chỉ xóa secret sau khi exact
-rollback runtime/route đã pass.
+rollback runtime/route đã pass. Bundle quá 7.200 giây fail trước mutation để tránh
+rollback bằng database snapshot đã bỏ sót thay đổi NPM mới.
 
 NPM upgrade rehearsal chỉ extract sensitive app/certificate vào sandbox 0700,
 dùng password ngẫu nhiên qua env file 0600 và Docker network `--internal` không

@@ -14,6 +14,7 @@ DB_CONTAINER=${NPM_DB_CONTAINER:-nginx-proxy-manager-db}
 ROUTE_INSTALL_DIR=${NPM_ROUTE_INSTALL_DIR:-/usr/local/lib/hyper-authenticator}
 ROUTE_SERVICE=${NPM_ROUTE_SERVICE:-hyper-auth-nginx-proxy-manager-routes.service}
 ROUTE_TIMER=${NPM_ROUTE_TIMER:-hyper-auth-nginx-proxy-manager-routes.timer}
+MAX_BUNDLE_AGE_SECONDS=${NPM_FILE_SECRET_MAX_AGE_SECONDS:-7200}
 
 if [[ -z "$BUNDLE" || -z "$CRITICAL_MANIFEST" ||
   "$CONFIRMATION" != '--allow-production-nginx-proxy-manager-file-secrets' ]]; then
@@ -25,13 +26,17 @@ if [[ $(uname -s) != Linux ]]; then
   printf '%s\n' 'NPM file-secret deploy chỉ chạy trên Linux operator host.' >&2
   exit 65
 fi
-for command_name in chown cmp cut docker find flock grep install mktemp mv \
+for command_name in chown cmp cut date docker find flock grep install mktemp mv \
   realpath seq sha256sum sleep stat systemctl; do
   command -v "$command_name" >/dev/null 2>&1 || {
     printf 'Thiếu NPM file-secret deploy dependency: %s\n' "$command_name" >&2
     exit 69
   }
 done
+if [[ ! "$MAX_BUNDLE_AGE_SECONDS" =~ ^[1-9][0-9]*$ ]]; then
+  printf '%s\n' 'NPM_FILE_SECRET_MAX_AGE_SECONDS phải là số nguyên dương.' >&2
+  exit 64
+fi
 if [[ ! -d "$COMPOSE_DIR" || ! -d "$BACKUP_ROOT" || ! -d "$BUNDLE" ||
   ! -f "$CRITICAL_MANIFEST" ]]; then
   printf '%s\n' 'NPM file-secret deploy input không đầy đủ.' >&2
@@ -93,17 +98,29 @@ read_metadata() {
   grep -m1 "^${1}=" "$BUNDLE/METADATA.env" | cut -d= -f2-
 }
 backup_basename=$(read_metadata BACKUP_BASENAME)
+created_at=$(read_metadata CREATED_AT)
 app_image_id=$(read_metadata APP_IMAGE_ID)
 app_version=$(read_metadata APP_VERSION)
 db_image_id=$(read_metadata DB_IMAGE_ID)
 critical_sha=$(read_metadata CRITICAL_MANIFEST_SHA256)
 exception_sha=$(read_metadata EXCEPTION_MANIFEST_SHA256)
 if [[ ! "$backup_basename" =~ ^npm-[0-9]{8}T[0-9]{6}Z$ ||
+  ! "$created_at" =~ ^[0-9]{8}T[0-9]{6}Z$ ||
   ! "$app_image_id" =~ ^sha256:[0-9a-f]{64}$ ||
   ! "$db_image_id" =~ ^sha256:[0-9a-f]{64}$ ||
   ! "$app_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
   printf '%s\n' 'NPM file-secret metadata không hợp lệ.' >&2
   exit 64
+fi
+created_epoch=$(date -u -d \
+  "${created_at:0:4}-${created_at:4:2}-${created_at:6:2}T${created_at:9:2}:${created_at:11:2}:${created_at:13:2}Z" \
+  +%s 2>/dev/null || true)
+now_epoch=$(date -u +%s)
+if [[ ! "$created_epoch" =~ ^[0-9]+$ ]] || ((created_epoch > now_epoch)) ||
+  ((now_epoch - created_epoch > MAX_BUNDLE_AGE_SECONDS)); then
+  printf 'NPM file-secret bundle đã stale hoặc có timestamp không hợp lệ; giới hạn %s giây. Chạy lại preparation.\n' \
+    "$MAX_BUNDLE_AGE_SECONDS" >&2
+  exit 1
 fi
 BACKUP_DIR="$BACKUP_ROOT/$backup_basename"
 for path in METADATA.env SHA256SUMS database-npm.sql config-app-letsencrypt.tar.gz; do

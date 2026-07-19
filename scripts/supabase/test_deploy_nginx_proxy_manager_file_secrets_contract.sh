@@ -11,6 +11,8 @@ for contract in \
   'cmp -s compose.yaml' \
   'cmp -s .env' \
   'sha256sum --check SHA256SUMS' \
+  'NPM_FILE_SECRET_MAX_AGE_SECONDS' \
+  'Chạy lại preparation' \
   'docker compose up -d --no-deps --force-recreate "$DB_SERVICE"' \
   'docker compose up -d --no-deps --force-recreate "$APP_SERVICE"' \
   'file_secret_gate' \
