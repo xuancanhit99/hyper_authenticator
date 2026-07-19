@@ -38,17 +38,17 @@ mô tả preview là stable production release.
 |---|---|
 | `flutter doctor -v` | Pass, không có lỗi toolchain |
 | `flutter analyze` | Pass, 0 diagnostic |
-| `flutter test` | 182 test pass |
+| `flutter test` | 186 test pass |
 | Vietnamese UI contract | Primary auth/accounts/settings/add-edit surface đã dùng tiếng Việt; app khóa `Locale('vi')` cùng Material/Widgets/Cupertino localization delegate và widget test xác minh locale runtime, vẫn giữ thuật ngữ technical cần thiết |
 | Core accessibility automation | Auth/accounts/add-account và Settings recovery/conflict/session dialog pass labeled tap target + Android 48×48 + WCAG text-contrast guideline trên light/dark theme ở viewport 320×640/text scale 200%; keyboard regression bao phủ Auth forms, theme/add/search/copy, manual add-account và sensitive dialog Tab/Shift+Tab/Enter/Space/Escape; TOTP secret key/raw recovery key không vào semantics tree |
 | Lifecycle privacy shield | Widget regression che toàn bộ router ở `inactive/hidden/paused/detached`, bỏ focus, chặn interaction/ticker và loại nội dung bên dưới khỏi semantics; `resumed` khôi phục state hiện có. Đây không phải bằng chứng active screenshot prevention hoặc native app-switcher snapshot trên thiết bị thật |
 | Platform configuration gate | Pass network/backup/signing/Keychain/ID |
 | Release config validator | Pass với `.env` public hiện tại, không in key |
 | Gitleaks full history | Pass sau exact allowlist RFC 6238 test vector |
-| Android debug + Pixel AVD runtime | Pass build/install, Supabase auth, device-wrap setup/sync, xóa device private key rồi HA1 replacement, recovery/DEK rotation revision 1→4 và cleanup 0; bulk revoke session thật 2→1 cùng local-vault integration smoke cũng pass |
+| Android debug + Pixel AVD runtime | Pass build/install, Supabase auth, hai session/device key active, xóa primary private key rồi HA1 replacement, exact wrap rotation và secondary stale-DEK auto-unwrap generation 2, revision 1→4 + cleanup 404; bulk revoke 2→1 và local-vault smoke cũng pass |
 | Web release + hardened Nginx image | `1.1.0-ae1ab36` `linux/amd64` đang healthy trên production; local/public `main.dart.js` SHA-256 `1a0d63a6…f66ea6` khớp, 5 SPA route và TLS/HSTS/CSP/cache/Permissions-Policy pass; browser xác minh runtime `lang=vi`, Flutter render và console sạch; live rollback về `1.1.0-12fce73` rồi forward lại current pass exact image/hash/route |
 | macOS debug compile unsigned | Pass; không phải runtime/signing evidence |
-| iOS 26.5 simulator debug | Pass build/runtime với Supabase init; device-wrap setup/sync, lost-device-key HA1 replacement, recovery/DEK rotation revision 1→4 và cleanup 0; local-vault integration smoke cũng pass |
+| iOS 26.5 simulator debug | Pass Supabase init; hai session/device key active, lost-primary-key HA1 replacement, exact wrap rotation và secondary stale-DEK auto-unwrap generation 2, revision 1→4 + cleanup 404; local-vault smoke cũng pass |
 | Android release | Fail closed đúng thiết kế vì chưa có upload keystore |
 | macOS release | Bị chặn vì chưa có development/distribution certificate |
 | Linux release + Debian artifact | Pass configured `linux/x64`, historical `1.0.0+9` vault upgrade, private-keyring UI smoke và `.deb` `1.1.0+10` amd64; hosted amd64 pass clean transition/retention + X11/Wayland trên Ubuntu 22.04/24.04 và Debian 12/13 |
@@ -56,7 +56,7 @@ mô tả preview là stable production release.
 | Windows release + installer | Pass upgrade vault thật từ source `1.0.0+9`/plugin 3.1.2 sang current COW v2, configured x64 bundle, local-vault runtime và NSIS 3.12 unsigned candidate; install/launch/metadata-upgrade/uninstall giữ AppData pass, bundle + installer/checksum giữ 14 ngày |
 | GitHub Desktop Preview | `v1.1.0-preview.2` public pre-release tại commit `fd787d0`; Windows x64 NSIS và Linux amd64 `.deb` chứa device-wrap client, cùng individual checksum + `SHA256SUMS.txt`; public unauthenticated re-download khớp SHA-256 |
 | Device registry client | Model/identity store/repository/BLoC/widget regression pass: stable installation UUID, server-bound load, current-session protection, targeted confirmation, double-submit guard và identifier redaction |
-| Device-wrap cryptographic revoke | **Server production + client runtime đã xác minh:** HPKE Base X25519/HKDF-SHA256/AES-256-GCM; server-only DEK verifier; enrollment, lost-device-key HA1 recovery, publish-v2 và exact wrap-set rotation pass trên Linux, Android AVD và iOS Simulator. Client đã có trong `v1.1.0-preview.2`; chưa có physical two-device review |
+| Device-wrap cryptographic revoke | **Server production + client runtime đã xác minh:** HPKE Base X25519/HKDF-SHA256/AES-256-GCM; server-only DEK verifier; enrollment, lost-device-key HA1 recovery, publish-v2, exact wrap rotation và surviving-session auto-unwrap pass trên Linux/Android/iOS. Client fix mới chưa có trong Preview binary; chưa có physical two-device review |
 
 Build không có `--dart-define-from-file` chỉ chứng minh compile. Runtime/release
 verification phải inject `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY` và
@@ -86,7 +86,8 @@ verification phải inject `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY` và
   cancel/conflict giữ key cũ, ambiguous verification cảnh báo giữ key mới.
 - Vault key có thể xoay bằng DEK + recovery key mới; current snapshot được
   re-encrypt atomically, DEK local chỉ thay sau verify và thiết bị giữ DEK cũ phải
-  recovery lại.
+  verify exact current-device HPKE wrap/proof rồi tự unwrap generation mới. Thiết
+  bị bị exclude, mất private key hoặc wrap sai mới phải dùng HA1.
 - Remote request bind với Supabase user ID hiện tại để chặn race đổi session.
 - Settings có bulk revoke mọi Supabase session khác; session hiện tại, local vault
   và DEK được giữ. Backend đối chiếu JWT `session_id` với `auth.sessions` trong cả
@@ -133,7 +134,7 @@ verification phải inject `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY` và
   self-revoke bị từ chối, targeted refresh/JWT mất quyền ngay và current session
   tiếp tục hoạt động; cleanup còn 0 test user và 0 orphan registry row.
 - Device-wrap + lost-key replacement migration đã deploy production. Full gate
-  182 test, PostgreSQL verifier/rotation contract, 53 remote regression check,
+  186 test, PostgreSQL verifier/rotation contract, 53 remote regression check,
   post-migration backup/full restore/off-host copy và Linux client revision 1→4
   đều pass; cleanup còn 0 user/snapshot/device/verifier.
 - Auth load budget dùng public key: 100/100 HTTP 200 ở concurrency 10; p95 578 ms,
@@ -180,8 +181,9 @@ Capability là hành vi source hiện tại, không thay thế device test và s
 6. E2EE v1 đã có DEK rotation, bulk revoke và targeted revoke cho registered auth
    session với server-side enforcement. Device-specific HPKE wrap đã có ADR được
    duyệt và đã deploy server; Linux client runtime pass cả mất device private key,
-   HA1 recovery và rotation. Còn physical two-device, independent review,
-   tombstone/history, release binary mới và Web E2EE trust model. Backup cũ vẫn
+   HA1 recovery và rotation; Android/iOS two-session survivor auto-unwrap cũng pass.
+   Còn physical two-device, independent review, tombstone/history, release binary
+   chứa auto-unwrap fix và Web E2EE trust model. Backup cũ vẫn
    dùng key generation cũ; targeted revoke không remote-wipe local vault.
 7. Local-vault integration smoke đã pass Android emulator, iOS Simulator và
    GitHub-hosted Windows Server 2025; biometric/camera và secure-storage behavior
@@ -247,7 +249,7 @@ Capability là hành vi source hiện tại, không thay thế device test và s
   Debian/PE32 signature; sai expected commit/tag fail closed.
 - GitHub Private Vulnerability Reporting đã bật; `.github/SECURITY.md` hướng dẫn
   gửi báo cáo riêng tư và cấm đưa credential vào public issue.
-- `scripts/agent/check.sh full` là quality gate canonical; baseline hiện có 182 test,
+- `scripts/agent/check.sh full` là quality gate canonical; baseline hiện có 186 test,
   analyze/format cả device integration source nhưng không tự boot virtual device.
 - `scripts/supabase/` giữ remote contract, backup, health, restore và off-host harness.
 - Scheduled restore contract nằm trong full gate; production systemd timer/health

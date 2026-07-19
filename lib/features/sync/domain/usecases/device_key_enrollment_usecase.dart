@@ -23,6 +23,11 @@ abstract class DeviceKeyCoordinator {
     required List<int> nextDataKeyBytes,
     required int currentKeyGeneration,
   });
+
+  Future<Either<Failure, List<int>>> unwrapCurrentDeviceDataKey({
+    required String userId,
+    required int keyGeneration,
+  });
 }
 
 @LazySingleton(as: DeviceKeyCoordinator)
@@ -181,6 +186,89 @@ class DeviceKeyEnrollmentUseCase implements DeviceKeyCoordinator {
   }
 
   @override
+  Future<Either<Failure, List<int>>> unwrapCurrentDeviceDataKey({
+    required String userId,
+    required int keyGeneration,
+  }) async {
+    try {
+      if (userId.trim().isEmpty || keyGeneration < 1) {
+        return const Left(
+          SyncOperationFailure('Device wrap context không hợp lệ.'),
+        );
+      }
+      final identity = await _identityStore.readOrCreate();
+      _value(await _sessionRepository.load(userId: userId));
+      final material = await _keyStore.read(
+        userId: userId,
+        installationId: identity.installationId,
+      );
+      if (material == null) {
+        return const Left(
+          StorageFailure('Device private key không còn khả dụng.'),
+        );
+      }
+      final current = _currentInstallationKey(
+        _value(await _deviceKeyRepository.list(userId: userId)),
+        expectedInstallationId: identity.installationId,
+        expectedPublicKey: material.publicKeyBytes,
+      );
+      if (current.state != AuthenticatorDeviceKeyState.active) {
+        throw const _DeviceKeyFailure(
+          SyncOperationFailure('Device key hiện tại không còn active.'),
+        );
+      }
+      final wrappedKey = current.wrappedVaultKey;
+      final proof = current.membershipProof;
+      if (wrappedKey == null ||
+          proof == null ||
+          wrappedKey.keyGeneration != keyGeneration) {
+        throw const _DeviceKeyFailure(
+          SyncOperationFailure('Device wrap hiện tại không đầy đủ hoặc đã cũ.'),
+        );
+      }
+      final unwrapped = await _cipher.unwrapDataKey(
+        wrappedKey: wrappedKey,
+        recipientPrivateKeyBytes: material.privateKeyBytes,
+        recipientPublicKeyBytes: material.publicKeyBytes,
+        userId: userId,
+        installationId: current.installationId,
+        deviceKeyId: current.deviceKeyId,
+      );
+      final proofValid = await _cipher.verifyMembershipProof(
+        proof: proof,
+        dataKeyBytes: unwrapped,
+        publicKeyBytes: current.publicKeyBytes,
+        userId: userId,
+        installationId: current.installationId,
+        deviceKeyId: current.deviceKeyId,
+        keyGeneration: keyGeneration,
+      );
+      if (!proofValid) {
+        throw const _DeviceKeyFailure(
+          SyncOperationFailure(
+            'Device wrap không chứng minh quyền sở hữu vault key hiện tại.',
+          ),
+        );
+      }
+      return Right(List<int>.unmodifiable(unwrapped));
+    } on _DeviceKeyFailure catch (error) {
+      return Left(error.failure);
+    } on DeviceKeyStoreException {
+      return const Left(
+        StorageFailure('Không thể đọc device private key an toàn.'),
+      );
+    } on DeviceKeyCryptoException catch (error) {
+      return Left(SyncOperationFailure(error.message));
+    } catch (_) {
+      return const Left(
+        SyncOperationFailure(
+          'Không thể unwrap vault key cho thiết bị hiện tại.',
+        ),
+      );
+    }
+  }
+
+  @override
   Future<Either<Failure, DeviceKeyRotationPlan>> prepareRotation({
     required String userId,
     required List<int> currentDataKeyBytes,
@@ -263,6 +351,24 @@ class DeviceKeyEnrollmentUseCase implements DeviceKeyCoordinator {
     final current = keys.where((key) => key.isCurrent).toList(growable: false);
     if (current.length != 1 ||
         current.single.deviceKeyId != expectedDeviceKeyId ||
+        current.single.installationId != expectedInstallationId ||
+        Mac(current.single.publicKeyBytes) != Mac(expectedPublicKey)) {
+      throw const _DeviceKeyFailure(
+        SyncOperationFailure(
+          'Server trả device key không khớp cài đặt hiện tại.',
+        ),
+      );
+    }
+    return current.single;
+  }
+
+  AuthenticatorDeviceKey _currentInstallationKey(
+    List<AuthenticatorDeviceKey> keys, {
+    required String expectedInstallationId,
+    required List<int> expectedPublicKey,
+  }) {
+    final current = keys.where((key) => key.isCurrent).toList(growable: false);
+    if (current.length != 1 ||
         current.single.installationId != expectedInstallationId ||
         Mac(current.single.publicKeyBytes) != Mac(expectedPublicKey)) {
       throw const _DeviceKeyFailure(

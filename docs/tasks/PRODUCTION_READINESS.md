@@ -24,10 +24,10 @@ behavior an toàn, backend có backup/restore/health harness và release gate t�
 - [x] Device mới import key; decrypt failure không overwrite local.
 - [x] Conflict/network/retry không delete snapshot hợp lệ.
 - [x] Recovery-key rotation atomic; cancel/conflict giữ key cũ và lỗi verify cảnh báo trạng thái mơ hồ.
-- [x] DEK + recovery-key rotation atomic; thiết bị giữ DEK cũ cần recovery và
-  post-commit ambiguity không nâng metadata mù.
+- [x] DEK + recovery-key rotation atomic; surviving active device tự unwrap exact
+  wrap generation mới, excluded/mất private key dùng HA1 và ambiguity không nâng metadata mù.
 - [x] Không có secret thật trong log/fixture/remote plaintext request.
-- [x] 105 test + analyzer + platform/release-config gate pass.
+- [x] 186 test + analyzer + platform/release-config gate pass.
 - [x] Bulk revoke mọi session khác; RLS/RPC chặn JWT của session đã revoke ngay
   trong khi session hiện tại và local vault được giữ.
 - [x] Local-vault integration smoke pass trên Android emulator và iOS Simulator,

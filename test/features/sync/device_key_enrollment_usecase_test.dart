@@ -142,8 +142,80 @@ void main() {
         ),
         nextDataKey,
       );
+
+      remote
+        ..wrappedKey = plan.wraps.single.wrappedVaultKey
+        ..proof = plan.wraps.single.membershipProof
+        ..keyGeneration = 2;
+      final unwrapped = await useCase.unwrapCurrentDeviceDataKey(
+        userId: userId,
+        keyGeneration: 2,
+      );
+      expect(
+        unwrapped.fold(
+          (failure) => throw TestFailure(failure.message),
+          (value) => value,
+        ),
+        nextDataKey,
+      );
     },
   );
+
+  test('current device wrap có proof bị sửa fail closed', () async {
+    final currentDataKey = List<int>.filled(32, 8);
+    final nextDataKey = List<int>.filled(32, 9);
+    expect(
+      (await useCase.ensureCurrentDevice(
+        userId: userId,
+        dataKeyBytes: currentDataKey,
+        keyGeneration: 1,
+      )).isRight(),
+      isTrue,
+    );
+    final plan = (await useCase.prepareRotation(
+      userId: userId,
+      currentDataKeyBytes: currentDataKey,
+      nextDataKeyBytes: nextDataKey,
+      currentKeyGeneration: 1,
+    )).fold((failure) => throw TestFailure(failure.message), (value) => value);
+    remote
+      ..wrappedKey = plan.wraps.single.wrappedVaultKey
+      ..proof = base64UrlEncode(List<int>.filled(32, 77))
+      ..keyGeneration = 2;
+
+    final result = await useCase.unwrapCurrentDeviceDataKey(
+      userId: userId,
+      keyGeneration: 2,
+    );
+
+    expect(
+      result.fold((failure) => failure, (_) => null),
+      isA<SyncOperationFailure>(),
+    );
+  });
+
+  test('không tự tạo device key mới khi private key đã mất', () async {
+    useCase = DeviceKeyEnrollmentUseCase(
+      AuthenticatorInstallationIdentityStore(
+        await SharedPreferences.getInstance(),
+        const Uuid(),
+      ),
+      _SessionRepository(),
+      _MissingMaterialStore(),
+      remote,
+      cipher,
+    );
+
+    final result = await useCase.unwrapCurrentDeviceDataKey(
+      userId: userId,
+      keyGeneration: 1,
+    );
+
+    expect(
+      result.fold((failure) => failure, (_) => null),
+      isA<StorageFailure>(),
+    );
+  });
 }
 
 class _MaterialStore implements DeviceKeyMaterialStore {
@@ -162,6 +234,26 @@ class _MaterialStore implements DeviceKeyMaterialStore {
     required String userId,
     required String installationId,
   }) async => material;
+
+  @override
+  Future<void> delete({
+    required String userId,
+    required String installationId,
+  }) async {}
+}
+
+class _MissingMaterialStore implements DeviceKeyMaterialStore {
+  @override
+  Future<DeviceKeyMaterial> getOrCreate({
+    required String userId,
+    required String installationId,
+  }) async => throw TestFailure('getOrCreate không được gọi khi unwrap.');
+
+  @override
+  Future<DeviceKeyMaterial?> read({
+    required String userId,
+    required String installationId,
+  }) async => null;
 
   @override
   Future<void> delete({

@@ -283,7 +283,7 @@ void main() {
   );
 
   test(
-    'xoay vault key thay DEK và buộc thiết bị giữ key cũ recovery lại',
+    'xoay vault key cho surviving device tự unwrap generation mới',
     () async {
       final oldRecoveryCode = await seedRemote([first, second]);
       final oldDataKey = List<int>.from(keys.values[userId]!);
@@ -334,6 +334,9 @@ void main() {
 
       final staleDeviceKeys = _MemoryVaultKeyRepository()
         ..values[userId] = oldDataKey;
+      final staleDeviceCoordinator = _TestDeviceKeyCoordinator(
+        unwrappedDataKey: newDataKey,
+      );
       final staleDevice = _createUseCase(
         userId: userId,
         cipher: cipher,
@@ -341,13 +344,67 @@ void main() {
         local: _MemoryAuthenticatorRepository(const [first, second]),
         keys: staleDeviceKeys,
         metadata: _MemoryMetadataRepository(),
+        deviceKeyCoordinator: staleDeviceCoordinator,
       );
-      expect(
-        _right(await staleDevice.inspect()),
-        isA<EncryptedSyncRecoveryRequired>(),
-      );
+      expect(_right(await staleDevice.inspect()), isA<EncryptedSyncReady>());
+      expect(staleDeviceKeys.values[userId], newDataKey);
+      expect(staleDeviceCoordinator.unwrapCount, 1);
     },
   );
+
+  test('device wrap decrypt sai snapshot không ghi đè DEK local', () async {
+    await seedRemote([first]);
+    final oldDataKey = List<int>.from(keys.values[userId]!);
+    _right(await useCase.prepareVaultKeyRotation());
+    _right(await useCase.confirmVaultKeyRotation());
+
+    final staleDeviceKeys = _MemoryVaultKeyRepository()
+      ..values[userId] = oldDataKey;
+    final staleDevice = _createUseCase(
+      userId: userId,
+      cipher: cipher,
+      remote: remote,
+      local: _MemoryAuthenticatorRepository(const [first]),
+      keys: staleDeviceKeys,
+      metadata: _MemoryMetadataRepository(),
+      deviceKeyCoordinator: _TestDeviceKeyCoordinator(
+        unwrappedDataKey: List<int>.filled(32, 99),
+      ),
+    );
+
+    expect(
+      _right(await staleDevice.inspect()),
+      isA<EncryptedSyncRecoveryRequired>(),
+    );
+    expect(staleDeviceKeys.values[userId], oldDataKey);
+  });
+
+  test('device wrap auth failure không bị mô tả sai thành recovery', () async {
+    await seedRemote([first]);
+    final oldDataKey = List<int>.from(keys.values[userId]!);
+    _right(await useCase.prepareVaultKeyRotation());
+    _right(await useCase.confirmVaultKeyRotation());
+
+    final staleDevice = _createUseCase(
+      userId: userId,
+      cipher: cipher,
+      remote: remote,
+      local: _MemoryAuthenticatorRepository(const [first]),
+      keys: _MemoryVaultKeyRepository()..values[userId] = oldDataKey,
+      metadata: _MemoryMetadataRepository(),
+      deviceKeyCoordinator: _TestDeviceKeyCoordinator(
+        unwrapFailure: const AuthCredentialsFailure(
+          'TEST_ONLY device session revoked',
+        ),
+      ),
+    );
+
+    final result = await staleDevice.inspect();
+    expect(
+      result.fold((failure) => failure, (_) => null),
+      isA<AuthCredentialsFailure>(),
+    );
+  });
 
   test('hủy xoay vault key giữ nguyên DEK, recovery key và remote', () async {
     final oldRecoveryCode = await seedRemote([first]);
@@ -658,6 +715,7 @@ EncryptedVaultSyncUseCase _createUseCase({
   required _MemoryAuthenticatorRepository local,
   required _MemoryVaultKeyRepository keys,
   required _MemoryMetadataRepository metadata,
+  DeviceKeyCoordinator? deviceKeyCoordinator,
 }) => EncryptedVaultSyncUseCase(
   _MemoryAuthRepository(UserEntity(id: userId)),
   local,
@@ -665,7 +723,7 @@ EncryptedVaultSyncUseCase _createUseCase({
   keys,
   metadata,
   cipher,
-  _TestDeviceKeyCoordinator(),
+  deviceKeyCoordinator ?? _TestDeviceKeyCoordinator(),
 );
 
 T _right<T>(Either<Failure, T> result) => result.fold(
@@ -800,6 +858,12 @@ class _MemoryEncryptedVaultRepository implements EncryptedVaultRepository {
 }
 
 class _TestDeviceKeyCoordinator implements DeviceKeyCoordinator {
+  final List<int>? unwrappedDataKey;
+  final Failure? unwrapFailure;
+  int unwrapCount = 0;
+
+  _TestDeviceKeyCoordinator({this.unwrappedDataKey, this.unwrapFailure});
+
   @override
   Future<Either<Failure, ActiveDeviceKeyAuthorization>> ensureCurrentDevice({
     required String userId,
@@ -836,6 +900,23 @@ class _TestDeviceKeyCoordinator implements DeviceKeyCoordinator {
       wraps: const <DeviceKeyRotationWrap>[],
     ),
   );
+
+  @override
+  Future<Either<Failure, List<int>>> unwrapCurrentDeviceDataKey({
+    required String userId,
+    required int keyGeneration,
+  }) async {
+    unwrapCount++;
+    final failure = unwrapFailure;
+    if (failure != null) return Left(failure);
+    final value = unwrappedDataKey;
+    if (value == null) {
+      return const Left(
+        StorageFailure('TEST_ONLY device private key unavailable'),
+      );
+    }
+    return Right(List<int>.unmodifiable(value));
+  }
 }
 
 class _MemoryVaultKeyRepository implements VaultKeyRepository {

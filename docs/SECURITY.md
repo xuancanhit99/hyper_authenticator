@@ -65,7 +65,8 @@ không bao giờ được đặt trong Flutter `.env`, asset, build log hoặc b
   và không vô hiệu key cũ đối với encrypted backup lịch sử.
 - Vault-key rotation sinh DEK + recovery key mới, re-encrypt current snapshot và
   atomic publish cả ciphertext/wrapped key. DEK local chỉ thay sau remote verify;
-  cancel/conflict giữ key cũ. Thiết bị chỉ có DEK cũ phải recovery lại.
+  cancel/conflict giữ key cũ. Surviving active device có private key sẽ verify
+  exact HPKE wrap/proof rồi tự thay DEK; excluded/mất private key mới cần HA1.
 - Publish/verify/secure-storage failure sau request được coi là mơ hồ; client giữ
   last-seen revision cũ và hướng user giữ recovery key mới thay vì retry mù.
 - Settings cho phép một phiên tin cậy gọi Supabase `SignOutScope.others`: phiên
@@ -197,8 +198,9 @@ key, SHA-256 binding-secret hash và opaque per-device proof qua controlled RPC;
 direct table access bị revoke/force RLS. V2 publish yêu cầu active device binding;
 rotation thay snapshot + verifier + exact wrap set + revoke session trong một
 transaction. Lost local device key chỉ được thay bằng đúng DEK verifier dẫn xuất
-từ HA1; key/session cũ bị revoke atomically. Server production và Linux isolated
-runtime đã pass; chưa qua independent security review hoặc physical two-device test.
+từ HA1; key/session cũ bị revoke atomically. Production cùng Linux, Android AVD và
+iOS Simulator runtime đã pass; two-session runtime còn xác minh survivor tự unwrap
+generation mới. Chưa qua independent security review hoặc physical two-device test.
 
 ## Destructive operations
 

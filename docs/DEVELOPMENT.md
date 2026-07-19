@@ -247,8 +247,19 @@ không thay signed `.deb`, historical-upgrade hoặc distro/desktop matrix.
 
 ## Mobile authenticated E2EE runtime
 
-Sau khi operator tạo isolated user ngoài client process, chạy cùng test trên
-Android emulator hoặc iOS Simulator đang boot:
+Preferred operator wrapper tự tạo/xóa isolated user và giữ service-role key ngoài
+Flutter process/repository:
+
+    scripts/agent/mobile_e2ee_operator.sh \
+      .env /secure/path/supabase-operator.env \
+      <emulator-or-simulator-id> \
+      --allow-isolated-user-and-emulator-vault-reset
+
+Operator env phải nằm ngoài repository, mode 0600. Wrapper dùng header/config tạm
+0600, không đặt credential trong argv/log, luôn thử xóa user trong trap và yêu cầu
+admin GET trả 404 sau cleanup.
+
+Khi user lifecycle được quản lý riêng, có thể chạy client-only harness:
 
     E2EE_TEST_EMAIL=<isolated-user> \
     E2EE_TEST_PASSWORD=<temporary-password> \
@@ -258,9 +269,9 @@ Android emulator hoặc iOS Simulator đang boot:
 
 Harness fail closed với thiết bị thật/macOS, service-role environment hoặc target
 không phải Android/iOS. Credential tạm chỉ vào config 0600 trong sandbox và bị xóa
-sau test. Suite reset local test vault, xóa cả DEK lẫn device private key, dùng HA1
-để thay key, rồi xoay recovery key + DEK tới revision 4. Operator phải xóa isolated
-user và xác minh snapshot/device/verifier cascade về 0 sau mỗi lượt.
+sau test. Suite reset local vault; tạo hai auth session/installation/device key;
+xóa DEK + primary private key rồi dùng HA1 thay key; xoay recovery key + DEK tới
+revision 4; bắt secondary và primary stale-DEK path tự unwrap generation mới.
 
 ## Dependency
 

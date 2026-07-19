@@ -4,12 +4,14 @@ set -euo pipefail
 ROOT=$(cd "$(dirname "$0")/../.." && pwd)
 CLIENT_ENV_FILE=${1:-}
 OPERATOR_ENV_FILE=${2:-}
-CONFIRMATION=${3:-}
+DEVICE_ID=${3:-}
+CONFIRMATION=${4:-}
 
 if [[ -z "$CLIENT_ENV_FILE" || -z "$OPERATOR_ENV_FILE" ||
-  "$CONFIRMATION" != '--allow-isolated-remote-user' ]]; then
+  -z "$DEVICE_ID" ||
+  "$CONFIRMATION" != '--allow-isolated-user-and-emulator-vault-reset' ]]; then
   printf '%s\n' \
-    'Usage: scripts/agent/linux_e2ee_operator.sh CLIENT_ENV OPERATOR_ENV --allow-isolated-remote-user' >&2
+    'Usage: scripts/agent/mobile_e2ee_operator.sh CLIENT_ENV OPERATOR_ENV DEVICE_ID --allow-isolated-user-and-emulator-vault-reset' >&2
   printf '%s\n' \
     'OPERATOR_ENV phải là file 0600 ngoài repository, chứa SERVICE_ROLE_KEY.' >&2
   exit 64
@@ -43,11 +45,11 @@ if (( (8#$operator_mode & 8#077) != 0 )); then
   exit 78
 fi
 
-for command in curl jq openssl; do
-  if ! command -v "$command" >/dev/null 2>&1; then
-    printf 'Thiếu E2EE operator dependency: %s\n' "$command" >&2
+for command in curl dart jq openssl; do
+  command -v "$command" >/dev/null 2>&1 || {
+    printf 'Thiếu mobile E2EE operator dependency: %s\n' "$command" >&2
     exit 69
-  fi
+  }
 done
 
 cd "$ROOT"
@@ -92,11 +94,11 @@ if [[ -z "$service_role_key" || ! "$base_url" =~ ^https://[^/]+ ]]; then
 fi
 
 operator_tmp=$(mktemp -d \
-  "${TMPDIR:-/tmp}/hyper-auth-e2ee-operator.XXXXXX")
+  "${TMPDIR:-/tmp}/hyper-auth-mobile-e2ee-operator.XXXXXX")
 operator_headers="$operator_tmp/operator.headers"
-create_request="$operator_tmp/create-user-request.json"
-create_response="$operator_tmp/create-user.json"
-delete_response="$operator_tmp/delete-user.json"
+create_request="$operator_tmp/create-user.json"
+create_response="$operator_tmp/create-user-response.json"
+delete_response="$operator_tmp/delete-user-response.json"
 email_input="$operator_tmp/email"
 password_input="$operator_tmp/password"
 user_id=
@@ -118,7 +120,7 @@ best_effort_delete_user() {
   curl --max-time 20 -sS -o /dev/null -X DELETE \
     "$base_url/auth/v1/admin/users/$user_id" \
     -H "@$operator_headers" || true
-  find "$operator_headers" -maxdepth 0 -delete 2>/dev/null || true
+  rm -f "$operator_headers"
 }
 
 cleanup() {
@@ -131,7 +133,7 @@ chmod 0700 "$operator_tmp"
 umask 077
 
 suffix="$(date +%s)-$$"
-test_email="e2ee-linux-${suffix}@example.invalid"
+test_email="e2ee-mobile-${suffix}@example.invalid"
 test_password="TEST_ONLY-$(openssl rand -hex 18)"
 printf '%s' "$test_email" >"$email_input"
 printf '%s' "$test_password" >"$password_input"
@@ -141,22 +143,23 @@ rm -f "$email_input" "$password_input"
 
 write_operator_headers
 curl --max-time 20 -fsS "$base_url/auth/v1/admin/users" -X POST \
-    -H "@$operator_headers" \
-    -H 'Content-Type: application/json' -d @"$create_request" >"$create_response"
+  -H "@$operator_headers" \
+  -H 'Content-Type: application/json' -d @"$create_request" >"$create_response"
 rm -f "$operator_headers" "$create_request"
 
 user_id=$(jq -r '.id // empty' "$create_response")
 if [[ -z "$user_id" ]]; then
-  printf '%s\n' 'Supabase không trả ID cho isolated E2EE test user.' >&2
+  printf '%s\n' 'Supabase không trả ID cho isolated mobile E2EE user.' >&2
   exit 1
 fi
-find "$create_response" -maxdepth 0 -delete
-printf '%s\n' 'E2EE_OPERATOR_PHASE=isolated-user-created'
+rm -f "$create_response"
+printf '%s\n' 'MOBILE_E2EE_OPERATOR_PHASE=isolated-user-created'
 
 runtime_status=0
 E2EE_TEST_EMAIL="$test_email" E2EE_TEST_PASSWORD="$test_password" \
-  scripts/agent/linux_e2ee_container.sh \
-  "$CLIENT_ENV_FILE" --allow-isolated-remote-user || runtime_status=$?
+  scripts/agent/mobile_e2ee_integration.sh \
+  "$CLIENT_ENV_FILE" "$DEVICE_ID" --allow-emulator-vault-reset || \
+  runtime_status=$?
 test_email=
 test_password=
 
@@ -167,26 +170,26 @@ delete_status=$(curl --max-time 20 -sS -o "$delete_response" -w '%{http_code}' \
 verify_status=$(curl --max-time 20 -sS -o /dev/null -w '%{http_code}' \
   "$base_url/auth/v1/admin/users/$user_id" \
   -H "@$operator_headers")
-find "$operator_headers" "$delete_response" -maxdepth 0 -delete
+rm -f "$operator_headers" "$delete_response"
 
 if [[ "$delete_status" != 200 && "$delete_status" != 204 ]]; then
-  printf 'Không xóa được isolated E2EE test user (HTTP %s).\n' \
+  printf 'Không xóa được isolated mobile E2EE user (HTTP %s).\n' \
     "$delete_status" >&2
   exit 1
 fi
 if [[ "$verify_status" != 404 ]]; then
-  printf 'Isolated E2EE test user còn tồn tại sau cleanup (HTTP %s).\n' \
+  printf 'Isolated mobile E2EE user còn tồn tại sau cleanup (HTTP %s).\n' \
     "$verify_status" >&2
   exit 1
 fi
 user_id=
-printf '%s\n' 'E2EE_OPERATOR_PHASE=remote-cleanup-verified'
+printf '%s\n' 'MOBILE_E2EE_OPERATOR_PHASE=remote-cleanup-verified'
 
 if [[ $runtime_status -ne 0 ]]; then
-  printf 'Linux E2EE client runtime thất bại với exit code %s.\n' \
+  printf 'Mobile E2EE runtime thất bại với exit code %s.\n' \
     "$runtime_status" >&2
   exit "$runtime_status"
 fi
 
 printf '%s\n' \
-  'Linux E2EE operator pass: isolated user lifecycle và client runtime đều sạch.'
+  'Mobile E2EE operator pass: isolated user lifecycle và runtime đều sạch.'

@@ -128,8 +128,10 @@ backup lịch sử vẫn có thể chứa wrapped key cũ.
 Xoay vault key cũng không đổi schema/key format nhưng sinh DEK và recovery key
 mới. Current snapshot được re-encrypt bằng DEK mới; ciphertext và wrapped DEK mới
 được publish trong cùng RPC/revision. Sau verify, secure storage thay DEK cũ bằng
-DEK mới. Thiết bị chỉ giữ DEK cũ không thể decrypt current envelope; backup lịch
-sử vẫn giữ envelope/key generation cũ.
+DEK mới. Thiết bị active chỉ giữ DEK generation cũ sẽ đọc exact HPKE wrap của
+installation/current session, verify membership proof, decrypt current envelope
+rồi mới persist DEK generation mới. Thiết bị bị exclude, mất private key hoặc có
+wrap/proof sai vẫn phải dùng recovery key; backup lịch sử giữ generation cũ.
 
 ## PostgreSQL encrypted contract
 

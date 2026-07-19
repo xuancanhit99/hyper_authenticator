@@ -222,6 +222,12 @@ rollback, surviving wrap generation mới và excluded session mất quyền. Ba
 so khớp vault-level verifier; client vẫn phải verify per-device membership proof
 và local unwrap bằng current DEK trước confirm/rotation.
 
+Android AVD và iOS Simulator authenticated runtime tạo hai auth session,
+installation UUID và X25519 key độc lập ở generation 1. Primary rotate snapshot +
+exact two-wrap set; secondary giữ DEK cũ, đọc current-only wrap, verify proof và
+tự persist generation 2 sau khi decrypt revision 4. Operator xóa isolated user và
+admin API xác minh 404; đây chưa phải physical two-device evidence.
+
 ## Khoảng trống đã biết
 
 - SMTP mailbox delivery/expired-token E2E chưa có.
@@ -229,5 +235,6 @@ và local unwrap bằng current DEK trước confirm/rotation.
 - `synced_accounts` chưa drop để giữ rollback path.
 - Device registry production mới thu hồi auth session. Device-specific wrapped
   DEK client/migration/RPC đã deploy và pass focused + local PostgreSQL + remote
-  regression + Linux runtime; còn physical two-device/independent review. Remote
+  regression + Linux/Android/iOS runtime; còn physical two-device/independent
+  review. Remote
   wipe local vault không nằm trong thiết kế.

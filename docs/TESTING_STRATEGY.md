@@ -24,7 +24,7 @@ exact-set rotation và atomic crypto revoke. Nó không tự boot emulator/simul
 
 ## Coverage hiện tại
 
-182 Flutter tests bao phủ cả focused regression cho device enrollment, local
+186 Flutter tests bao phủ cả focused regression cho device enrollment, local
 unwrap/proof trước confirm, generation-aware publish và exact-set rotation
 preparation, cùng các nhóm sau:
 
@@ -45,7 +45,8 @@ preparation, cùng các nhóm sau:
 - secure key-store initialize/write/delete verification;
 - encrypted setup/cancel/recovery/wrong key/sync/conflict/use-cloud/keep-local;
 - recovery-key rotation success/cancel/concurrent conflict và ambiguous verify;
-- vault-key rotation success/cancel/conflict, stale-device recovery requirement,
+- vault-key rotation success/cancel/conflict, surviving-device automatic unwrap,
+  tampered wrap không persist DEK, revoked binding không giả thành recovery,
   post-commit transport/verify ambiguity và secure-storage write failure;
 - recovery dialog tự quản lý controller, đóng route an toàn khi submit hoặc hủy;
 - recovery key bị redact khỏi BLoC event/state transition string;
@@ -118,6 +119,13 @@ public config, thêm account qua UI, secure-storage round-trip, lifecycle
 foreground/hidden, BLoC reload, chuyển Settings/Accounts và local-vault cleanup.
 Runner chỉ chấp nhận Android emulator hoặc iOS Simulator; thiết bị thật và macOS
 bị từ chối để không chạm vault người dùng.
+
+Authenticated E2EE smoke trên Android AVD và iOS Simulator còn tạo hai Supabase
+session, installation UUID và X25519 key độc lập. Sau khi cả hai active ở generation
+1, primary session rotate exact wrap set; secondary giữ DEK cũ và phải tự unwrap
+generation 2 rồi decrypt revision 4 không dùng HA1. Suite cũng ghi đè primary bằng
+DEK cũ để khóa cùng regression, sau đó operator xóa isolated user và admin GET phải
+trả 404. Đây là two-session native-process evidence, chưa phải hai thiết bị vật lý.
 
 Linux CI dùng cùng behavioral suite nhưng chạy trong private D-Bus Secret Service,
 Xvfb và XDG sandbox mode 0700. Harness chỉ chạy khi `CI=true`, kiểm tra keyring
@@ -271,8 +279,8 @@ post-probe current image/health/hash và 5/5 public SPA route pass.
    và secure-storage behavior trên thiết bị thật chưa được chứng minh.
 2. Chưa có two-device physical E2EE test.
    Linux sandbox, Android AVD và iOS Simulator đã pass lost-device-key HA1
-   replacement + rotation; chúng không thay physical-device hoặc independent
-   cryptographic review.
+   replacement + rotation; Android/iOS còn pass two-session survivor auto-unwrap.
+   Chúng không thay physical-device hoặc independent cryptographic review.
 3. Chưa có mailbox SMTP/expired-link E2E.
 4. Low-concurrency Auth budget đã enforce; chưa có long-duration soak hoặc
    production-scale workload test.

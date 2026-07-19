@@ -30,7 +30,8 @@ nhập recovery key.
 - [x] Rotation publish snapshot/recovery wrap/device wrap set atomically.
 - [x] Surviving device tự unwrap generation mới; excluded device fail closed.
 - [x] Recovery key `HA1` tiếp tục recovery khi device key mất.
-- [ ] Remote contract, backup/restore, native two-device runtime và full gate pass.
+- [x] Remote contract, backup/restore, native two-session runtime và full gate pass.
+- [ ] Physical two-device runtime.
 - [x] Owner chấp nhận ADR trước khi inject/deploy.
 
 ## Bằng chứng hiện tại
@@ -63,7 +64,8 @@ nhập recovery key.
 - [x] Thiết kế migration/RPC + PostgreSQL contract trước khi apply production.
 - [x] Tích hợp repository/use case vào existing SyncBloc flow và ambiguity behavior.
 - [x] Rollout production backup-first + restore/remote/Linux runtime.
-- [ ] Chạy physical multi-device và CI sau push commit cuối.
+- [ ] Chạy physical multi-device.
+- [ ] Push commit cuối và xác minh CI.
 
 ## Nhật ký xác minh
 
@@ -72,10 +74,12 @@ nhập recovery key.
 | Focused analyze | 0 diagnostic | 2026-07-19 |
 | HPKE/device-key + sync focused suite | 43 pass | 2026-07-19 |
 | PostgreSQL device-wrap/verifier migration contract | Pass | 2026-07-19 |
-| `scripts/agent/check.sh full` | 182 Flutter test + mọi gate pass | 2026-07-19 |
+| `scripts/agent/check.sh full` | 186 Flutter test + mọi gate pass | 2026-07-19 |
 | Production backup/off-host/full restore + 53 remote checks | Pass | 2026-07-19 |
 | Linux lost-device-key HA1 recovery + rotation runtime | Revision 1→4 pass, cleanup 0 | 2026-07-19 |
 | Android AVD + iOS Simulator lost-key runtime | Mỗi target revision 1→4 pass, cleanup 0 | 2026-07-19 |
+| Android AVD + iOS Simulator two-session runtime | 2 active key, exact rotation, secondary auto-unwrap generation 2, cleanup 404 | 2026-07-19 |
+| Production health sau mobile runtime | Container/capacity/session/device-wrap/HTTPS/backup/restore freshness pass | 2026-07-19 |
 | Tag CI + public Preview verification | `v1.1.0-preview.2`/`fd787d0`, CI 7/7 và 5 asset pass | 2026-07-19 |
 
 ## Tác động tài liệu
