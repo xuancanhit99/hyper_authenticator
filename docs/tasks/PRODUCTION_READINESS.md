@@ -1,6 +1,6 @@
 # Task: Hoàn thiện production readiness
 
-- Trạng thái: Đã phát hành GitHub Preview; còn external stable/store gate
+- Trạng thái: Baseline đã merge vào master và phát hành GitHub Preview; còn external stable/store gate
 - Bắt đầu/cập nhật: 2026-07-18
 - Owner: canhvx
 - ADR: 0002, 0003, 0004, 0005, 0007, 0009, 0010, 0012
@@ -100,6 +100,8 @@ behavior an toàn, backend có backup/restore/health harness và release gate t�
 | GitHub Actions run `29648841164` | Pass 7/7 tại branch head `09c7024`; xác nhận toàn bộ Windows historical/runtime/installer gate cùng Linux, Apple, Android, Web, quality và secret history tiếp tục xanh sau khi cập nhật tài liệu bằng chứng |
 | GitHub Actions run `29652281356` | Pass 7/7 tại `12fce73`; Linux hosted amd64 historical `1.0.0+9` upgrade, private keyring, `.deb` transition, Ubuntu 22.04/24.04 + Debian 12/13 X11/Wayland và artifact đều pass; Windows/Apple/Android/Web/quality/secret tiếp tục xanh |
 | GitHub Actions run `29652820428` | Pass 7/7 tại `ae1ab36`; khóa runtime locale `vi` tiếp tục pass toàn bộ Linux/Windows/Apple/Android/Web/quality/secret gate |
+| PR #13/default-branch CI | Push `29702398632`, PR `29702399673` và default branch `29702816811` đều pass 7/7; baseline NPM hardening được merge tại `6634cf8` |
+| PR #15/default-branch CI | NPM Docker file-secret rollout merge tại `8ed7900`; default branch `29721415906` pass 7/7 sau backup/restore readiness fix |
 | Tag CI + public Preview 3 | `v1.1.0-preview.3`/`87d546c`: CI `29693607103` pass 7/7; release-event verifier `29693941594` pass exact 5 public asset/checksum/signature |
 | Windows artifact tại `3ba300d` | Current unsigned installer SHA-256 `c981974d…bd37f85`; release bundle và installer artifact upload thành công, hết hạn 01-08-2026 |
 | Android configured release | Fail closed vì thiếu upload keystore |

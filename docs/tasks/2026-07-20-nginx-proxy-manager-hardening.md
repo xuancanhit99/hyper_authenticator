@@ -1,6 +1,6 @@
 # Task: Hardening Nginx Proxy Manager production
 
-- Trạng thái: Đang thực hiện
+- Trạng thái: Đã hoàn tất
 - Bắt đầu: 2026-07-20
 - Owner: Hyperz
 - Issue hoặc ADR liên quan: production operations hardening
@@ -30,7 +30,7 @@ Loại floating update và world-readable credential khỏi reverse proxy produc
 - [x] Production deploy 2.15.1 và automatic rollback rehearsal pass.
 - [x] Hourly persistent route monitor enable và service run đầu pass.
 - [x] Full repository gate pass.
-- [ ] Branch-head CI pass.
+- [x] Branch-head, PR và default-branch CI pass.
 
 ## Bằng chứng hiện tại
 
@@ -77,9 +77,10 @@ Loại floating update và world-readable credential khỏi reverse proxy produc
 - [x] Khóa all-domain/critical route regression và sinh maintenance bundle không mutate production.
 - [x] Deploy production bằng exact bundle với post-gate và auto-rollback.
 - [x] Enable hourly persistent route monitor.
-- [ ] Chuyển DB password sang Docker file secrets trong maintenance window.
+- [x] Chuyển DB password sang Docker file secrets trong maintenance window;
+  chi tiết nằm trong task `2026-07-20-nginx-proxy-manager-file-secrets.md`.
 - [x] Cập nhật canonical docs và full gate.
-- [ ] Commit/push và branch-head CI.
+- [x] Commit/push và branch-head CI.
 
 ## Nhật ký xác minh
 
@@ -94,7 +95,7 @@ Loại floating update và world-readable credential khỏi reverse proxy produc
 | Dedicated backup | `npm-20260719T184130Z`; checksum/archive pass trước và sau atomic move | 2026-07-20 |
 | Isolated restore | Exact MariaDB image, network tắt, authenticated readiness và 4/4 core table pass; 0 temp container còn lại | 2026-07-20 |
 | NPM 2.15.1 canary | Exact digest `52b2c599…9858bb`; API 200, Nginx syntax, 4/4 core table; internal/no-port và cleanup pass | 2026-07-20 |
-| NPM route matrix | 26 discovered HTTPS domain, 6 critical pass, 11/11 exact pre-existing 502 exception, 0 stream; output redacted | 2026-07-20 |
+| NPM route matrix | 26 discovered HTTPS domain, 6 critical pass, 10/10 exact pre-existing 502 exception, 0 stream; output redacted | 2026-07-20 |
 | Maintenance preparation | Fresh backup `npm-20260719T192955Z`; restore/canary/route recheck pass; bundle `maintenance-npm-20260719T193145Z` 0700/0600 và checksum pass; production unchanged | 2026-07-20 |
 | Post-canary public smoke | Auth 100/100 p95 365/max 374 ms; Studio 401; Flutter Web 200; production vẫn NPM 2.14.0, Nginx syntax/container/timer pass | 2026-07-20 |
 | Auto-rollback deployment | Lần đầu target pass API/Nginx nhưng route mới 502; exact Compose/image 2.14.0 được khôi phục. Outage còn lại chứng minh upstream network drift độc lập | 2026-07-20 |
@@ -102,7 +103,10 @@ Loại floating update và world-readable credential khỏi reverse proxy produc
 | Fresh production deployment | Backup `npm-20260719T200634Z`, restore/canary/bundle `maintenance-npm-20260719T200758Z`; production 2.15.1 exact digest, API/Nginx/26-domain route pass | 2026-07-20 |
 | Hourly route timer | Enabled/active/persistent; service run đầu pass 26 domain, 6 critical, 10/10 exception | 2026-07-20 |
 | Post-upgrade Auth load | 100/100 HTTP 200, concurrency 10, p95 337 ms, max 395 ms dưới budget 1.000/2.000 ms | 2026-07-20 |
-| `scripts/agent/check.sh full` + secret scan | Pass 186 test, analyzer, docs, route/preparation + operations/platform/migration contract và 152-commit history scan | 2026-07-20 |
+| `scripts/agent/check.sh full` + secret scan | Pass 186 test, analyzer, docs, route/preparation + operations/platform/migration contract và full-history scan | 2026-07-20 |
+| Branch/PR/default CI | Push run `29702398632`, PR run `29702399673` và default-branch run `29702816811` đều pass 7/7; PR #13 merge tại `6634cf8` | 2026-07-20 |
+| Post-merge docs + secret gate | Documentation gate pass 61 Markdown file; history scan 154 commit và staged diff không có leak | 2026-07-20 |
+| File-secret follow-up/default CI | Production migration + post-backup restore pass; PR #15 merge tại `8ed7900` và default-branch run `29721415906` pass 7/7 | 2026-07-20 |
 
 ## Tác động tài liệu
 
@@ -115,5 +119,6 @@ Loại floating update và world-readable credential khỏi reverse proxy produc
 ## Bàn giao
 
 NPM 2.15.1 production upgrade, auto-rollback rehearsal và hourly route monitoring
-đã hoàn tất; còn branch-head CI. Chuyển DB password sang Docker file secrets và
-cleanup bốn orphan certificate qua NPM API/UI vẫn là follow-up riêng.
+đã hoàn tất và được xác minh trên default branch. DB password cũng đã chuyển sang
+Docker file secrets trong task follow-up và pass backup/restore. Cleanup bốn
+orphan certificate qua NPM API/UI vẫn là follow-up vận hành riêng.

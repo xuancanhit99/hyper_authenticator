@@ -1,6 +1,6 @@
 # Trạng thái dự án
 
-Baseline được xác minh ngày **19 tháng 7 năm 2026** trên macOS 26.5.1.
+Baseline được xác minh ngày **20 tháng 7 năm 2026** trên macOS 26.5.1.
 
 ## Kết luận hiện tại
 
@@ -286,6 +286,12 @@ Capability là hành vi source hiện tại, không thay thế device test và s
 - GitHub Actions run `29675120583` tại merge commit `37619f7` pass 7/7; edit
   operation-completion fix được xác minh cùng Windows/Linux artifact runtime,
   Android, Apple, Web, quality và secret history gate.
+- GitHub Actions run `29702816811` tại merge commit `6634cf8` pass 7/7; source
+  HPKE/device-wrap, NPM deploy/timer contract và toàn bộ platform/quality/secret
+  gate được xác minh trên default branch sau PR #13.
+- GitHub Actions run `29721415906` tại merge commit `8ed7900` pass 7/7; NPM
+  Docker file-secret rollout, backup/restore fix và toàn bộ platform/quality/
+  secret gate được xác minh trên default branch sau PR #15.
 - Tag CI run `29693607103` tại `v1.1.0-preview.3`/`87d546c` pass 7/7. Release
   public có pre-release flag, không phải draft, đúng năm asset; Windows SHA-256
   `7b303749…c4c8332`, Linux SHA-256 `4b0f09c1…fd838f2` đã được tải lại không auth

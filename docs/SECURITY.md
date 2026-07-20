@@ -176,7 +176,7 @@ representation thành `[REDACTED]`, phòng transition/crash logger vô tình ghi
 Các auth event/state chứa email, password hoặc user identity cũng redact string
 representation; equality vẫn hoạt động nhưng transition log không lộ credential/PII.
 
-## Device-specific key protocol — **Đã deploy server, client mới chưa phát hành**
+## Device-specific key protocol — **Đã deploy server và phát hành trong GitHub Preview**
 
 ADR-0012 đề xuất HPKE Base
 DHKEM(X25519, HKDF-SHA256)/HKDF-SHA256/AES-256-GCM cho per-device DEK wrap.
