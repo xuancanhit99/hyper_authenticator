@@ -15,13 +15,16 @@ nhập/xuất QR và giao diện sáng/tối.
 ## Tải ứng dụng
 
 - Web: [authenticator.hyperz.xyz](https://authenticator.hyperz.xyz/).
-- Desktop Preview hiện tại: [v1.1.0-preview.1](https://github.com/xuancanhit99/hyper_authenticator/releases/tag/v1.1.0-preview.1).
+- Desktop Preview hiện tại: [v1.1.0-preview.3](https://github.com/xuancanhit99/hyper_authenticator/releases/tag/v1.1.0-preview.3).
 
 GitHub Preview hiện chỉ dành cho Windows x64 và Linux amd64. Luôn kiểm tra
 `SHA256SUMS.txt`; Windows SmartScreen có thể cảnh báo vì installer chưa code-sign.
 Android, iOS và macOS chưa được phân phối binary ở giai đoạn này. Android signed
 APK và macOS signed/notarized package có thể được bổ sung vào GitHub Releases sau
 khi đủ credential cùng runtime gate; iOS vẫn cần kênh phân phối do Apple cho phép.
+Android app-signing certificate đã được owner chốt; signed APK đã build/test local
+và còn chờ tag CI cùng public-download gate trước khi xuất hiện ở release kế tiếp.
+Emulator clean-install/vault-retaining upgrade đã pass.
 
 ## Chức năng
 

@@ -118,6 +118,22 @@ Runtime-configured build:
 Android/macOS/iOS store release cần signing credential; thiếu credential phải fail,
 không fallback debug/unsigned.
 
+Android signed GitHub APK dùng app signing key lâu dài nằm ngoài repository. Không
+đưa password vào command line/chat; chạy helper tương tác để tạo ignored
+`android/key.properties` mode `0600`, sau đó build/verify signer/checksum:
+
+    scripts/agent/configure_android_signing.sh \
+      "$HOME/.hyper-authenticator/signing/android/hyper-authenticator-app-signing.jks" \
+      hyper-authenticator \
+      CONFIGURE_LOCAL_ANDROID_SIGNING
+
+    scripts/agent/build_android_release.sh \
+      .env build/release/android --allow-app-signing
+
+Fingerprint public canonical nằm ở `android/app-signing-certificate.sha256`.
+Keystore và password cần ít nhất hai backup encrypted/offline do owner kiểm soát;
+mất app signing key đồng nghĩa không thể phát hành APK cập nhật tương thích.
+
 ## Test chọn lọc
 
     flutter test test/features/sync/encrypted_vault_sync_usecase_test.dart
