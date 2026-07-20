@@ -275,18 +275,22 @@ post-probe current image/health/hash và 5/5 public SPA route pass.
 - `test_nginx_proxy_manager_timing_contract.sh` khóa exact health route, exact
   image digest pin, logrotate-compatible filename và tám timing field; cấm đưa
   request/client variable vào NPM timing log.
-- `backup_nginx_proxy_manager.sh` tạo transactional least-privilege NPM database dump cùng
-  config/app/Let’s Encrypt archive, checksum và retention 0700/0600; raw DB volume
-  và access log không đi vào archive.
+- `backup_nginx_proxy_manager.sh` tạo transactional least-privilege NPM database
+  dump cùng config/app/Let’s Encrypt archive, checksum và retention 0700/0600;
+  production file-secret chỉ được archive theo exact two-file allowlist 0400. Raw
+  DB volume và access log không đi vào archive.
 - `rehearse_nginx_proxy_manager_backup.sh` xác minh checksum/archive rồi restore
   vào exact pinned MariaDB image với network tắt; yêu cầu đủ user/proxy/certificate/
-  setting table và cleanup container/sandbox.
+  setting table và cleanup container/sandbox. Gate chỉ nhận final server sau
+  init-complete marker cùng ba authenticated probe liên tiếp, không nhận nhầm
+  temporary bootstrap server trước shutdown.
 - `rehearse_nginx_proxy_manager_upgrade.sh` clone app/certificate/database vào
   internal Docker network không host port, rồi khóa exact target version, API 200,
   Nginx syntax và 4/4 core table trước khi cleanup container/volume/network/sandbox.
 - `test_nginx_proxy_manager_backup_contract.sh` khóa transactional/exclusion,
-  exact image/database metadata, authenticated readiness, no-port canary và network
-  isolation; ngăn quay lại `mariadb-admin ping` vốn có thể nhận nhầm temporary init server.
+  exact image/database metadata, sustained authenticated readiness sau init-complete,
+  no-port canary và network isolation; ngăn quay lại single probe hoặc
+  `mariadb-admin ping` vốn có thể nhận nhầm temporary init server.
 - `test_nginx_proxy_manager_route_matrix.sh` khám phá mọi enabled HTTP domain,
   fail khi có stream/wildcard chưa cover, khóa exact critical status và chỉ cho
   pre-existing 5xx qua protected hash/status exception; output không lộ domain.

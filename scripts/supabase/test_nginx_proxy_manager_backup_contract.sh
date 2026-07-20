@@ -27,6 +27,9 @@ for pattern in \
   '--single-transaction' \
   "--exclude='data/mysql'" \
   "--exclude='data/app/logs'" \
+  'CREDENTIAL_SOURCE=$credential_source' \
+  'secrets/npm_db_root_password' \
+  'NPM secrets directory không khớp exact backup allowlist.' \
   'DB_IMAGE_ID=$db_image' \
   'DB_NAME=$db_name' \
   'sha256sum --check SHA256SUMS'; do
@@ -36,6 +39,11 @@ done
 for pattern in \
   '--network none' \
   'docker image inspect "$db_image_id"' \
+  'MariaDB init process done. Ready for start up.' \
+  'ready_streak=$((ready_streak + 1))' \
+  'if ((ready_streak >= 3)); then' \
+  'credential_source=${credential_source:-environment}' \
+  'NPM file-secret backup thiếu archive path' \
   '--batch --skip-column-names -e "SELECT 1"' \
   '--database="$1"' \
   'table_name IN'; do

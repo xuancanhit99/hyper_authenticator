@@ -1,6 +1,6 @@
 # Task: Chuyển NPM database credential sang Docker file secrets
 
-- Trạng thái: Production preparation pass; chờ owner duyệt maintenance mutation
+- Trạng thái: Hoàn tất production migration và hậu kiểm
 - Bắt đầu: 2026-07-20
 - Owner: Hyperz
 - Issue hoặc ADR liên quan: production operations hardening
@@ -26,9 +26,9 @@ và rollback mất khả năng xác thực.
 - [x] Isolated clone dùng exact production image + candidate secret contract pass.
 - [x] Fresh production backup và full isolated restore rehearsal pass.
 - [x] Candidate renderer chỉ đổi environment/secrets và tạo private checksum bundle.
-- [ ] Maintenance recreate đúng app + DB; runtime/API/Nginx/database/route gate pass.
-- [ ] Post-migration backup, restore rehearsal và hourly route service pass.
-- [ ] `docker inspect` không còn plaintext DB password trong app/DB Config.Env.
+- [x] Maintenance recreate đúng app + DB; runtime/API/Nginx/database/route gate pass.
+- [x] Post-migration backup, restore rehearsal và hourly route service pass.
+- [x] `docker inspect` không còn plaintext DB password trong app/DB Config.Env.
 
 ## Bằng chứng hiện tại
 
@@ -37,8 +37,9 @@ và rollback mất khả năng xác thực.
 - Runtime NPM có `/etc/s6-overlay/s6-rc.d/prepare/60-secrets.sh`, hỗ trợ hậu tố
   `__FILE`; official MariaDB entrypoint gọi `file_env` cho `MYSQL_PASSWORD` và
   `MYSQL_ROOT_PASSWORD`.
-- Production hiện có hai service, không có Compose secret; ba password env literal.
-- Giả định: giữ nguyên hai giá trị password hiện tại trong secret file 0400.
+- Production có hai service cùng ba file-secret mount; không còn password literal
+  trong `Config.Env`, Compose hoặc `.env`.
+- Hai giá trị password được giữ nguyên trong secret file 0400; không rotate credential.
 
 ## Đánh giá rủi ro
 
@@ -58,7 +59,7 @@ và rollback mất khả năng xác thực.
 - [x] Chạy full repository gate.
 - [x] Commit/push và branch CI.
 - [x] Chạy production preparation không mutate runtime.
-- [ ] Owner chốt maintenance mutation recreate DB/app.
+- [x] Owner chốt maintenance mutation recreate DB/app.
 
 ## Nhật ký xác minh
 
@@ -76,6 +77,12 @@ và rollback mất khả năng xác thực.
 | Production candidate semantic diff | Sau khi reverse đúng ba password env và secret mounts/top-level entries, candidate normalized byte-semantically bằng current resolved Compose | 2026-07-20 |
 | Rollback freshness audit | Deploy từ chối bundle quá 7.200 giây trước mutation và yêu cầu preparation mới để rollback DB không stale | 2026-07-20 |
 | Production stale negative gate | Exact deploy với giới hạn cố ý 1 giây fail trước mutation; checksum pass, secrets target vẫn vắng, plaintext count 1/2 và app/DB restart count 0 | 2026-07-20 |
+| Fresh approved preparation | Backup `npm-20260720T050813Z`; isolated restore/canary pass; bundle `file-secrets-npm-20260720T050952Z`; checksum/mode/26 route pass và production không drift | 2026-07-20 |
+| Production file-secret deploy | DB-first rồi app; exact NPM 2.15.1/MariaDB image, API/Nginx/DB 4/4, 26 route, timer và automatic transaction gate pass; restart count 0 sau recreate | 2026-07-20 |
+| Independent secret inspection | App plaintext/file-key `0/1`, DB `0/2`; ba `/run/secrets/*` mount; Compose/`.env` 0600, directory 0700, secret 0400 | 2026-07-20 |
+| Post-migration backup + restore | `npm-20260720T052216Z`; metadata `file-secrets`, exact ba secret archive path, checksum và restore 4/4 core table pass sau khi khóa temporary-bootstrap readiness race | 2026-07-20 |
+| Public/runtime hậu kiểm | Web/recovery HTTP 200, Supabase 11/11 healthy, health/backup/restore/route timer active; Auth load lượt lặp 100/100, p95 901 ms, max 990 ms | 2026-07-20 |
+| Final repository gate | Docs 62, generated/format/analyzer/platform, release/operations harness, 186 Flutter test và encrypted migration pass; 163 commit + working diff secret scan không leak | 2026-07-20 |
 
 ## Tác động tài liệu
 
@@ -89,7 +96,10 @@ và rollback mất khả năng xác thực.
 
 ## Bàn giao
 
-Source renderer/preparation/deploy/rollback, full local gate, branch CI và
-production preparation đều pass. Production chưa migrate; bước tiếp theo chỉ là
-recreate database trước rồi app bằng exact private bundle trong maintenance được
-owner duyệt. Nếu post-gate fail, harness khôi phục exact Compose/`.env` và runtime.
+Production đã chuyển sang Docker file secrets bằng fresh private bundle được owner
+duyệt. Password không đổi, database/certificate/route giữ nguyên và post-migration
+backup đã restore đủ 4/4 core table. Lượt Auth load đầu 100/100 nhưng p95 1.212 ms
+do TLS vượt budget 1.000 ms; lượt lặp đạt p95 901/max 990 ms, không có HTTP failure.
+Restore harness được sửa để không nhận nhầm temporary bootstrap MariaDB là final
+server. Full repository gate và secret scan đã pass; branch CI chạy lại trên
+commit bàn giao sau khi push.

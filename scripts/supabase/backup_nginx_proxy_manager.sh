@@ -74,6 +74,34 @@ for sensitive_path in compose.yaml .env data/app/keys.json; do
     exit 78
   fi
 done
+
+credential_source=environment
+archive_paths=(compose.yaml .env data/app data/letsencrypt)
+if [[ -d secrets ]]; then
+  if [[ $(stat -c '%a' secrets) != 700 ]]; then
+    printf '%s\n' 'NPM secrets directory phải mode 0700.' >&2
+    exit 78
+  fi
+  mapfile -t secret_entries < <(
+    find secrets -mindepth 1 -maxdepth 1 -printf '%P\n' | LC_ALL=C sort
+  )
+  if [[ ${#secret_entries[@]} -ne 2 ||
+    ${secret_entries[0]:-} != npm_db_password ||
+    ${secret_entries[1]:-} != npm_db_root_password ]]; then
+    printf '%s\n' 'NPM secrets directory không khớp exact backup allowlist.' >&2
+    exit 78
+  fi
+  for secret_path in secrets/npm_db_password secrets/npm_db_root_password; do
+    if [[ ! -f "$secret_path" || -L "$secret_path" ||
+      $(stat -c '%a' "$secret_path") != 400 ]]; then
+      printf 'NPM secret backup input không phải regular file mode 0400: %s\n' \
+        "$secret_path" >&2
+      exit 78
+    fi
+  done
+  credential_source=file-secrets
+  archive_paths+=(secrets)
+fi
 for container in "$APP_CONTAINER" "$DB_CONTAINER"; do
   if [[ $(docker inspect "$container" --format '{{.State.Running}}') != true ]]; then
     printf 'NPM container không chạy: %s\n' "$container" >&2
@@ -111,7 +139,7 @@ tar -C "$COMPOSE_DIR" \
   --exclude='data/mysql' \
   --exclude='data/app/logs' \
   -czf "$work_dir/config-app-letsencrypt.tar.gz" \
-  compose.yaml .env data/app data/letsencrypt
+  "${archive_paths[@]}"
 
 app_image=$(docker inspect "$APP_CONTAINER" --format '{{.Image}}')
 db_image=$(docker inspect "$DB_CONTAINER" --format '{{.Image}}')
@@ -128,6 +156,7 @@ APP_IMAGE_ID=$app_image
 DB_CONTAINER=$DB_CONTAINER
 DB_IMAGE_ID=$db_image
 DB_NAME=$db_name
+CREDENTIAL_SOURCE=$credential_source
 EOF
 
 if [[ ! -s "$work_dir/database-npm.sql" ]] ||
@@ -137,11 +166,20 @@ if [[ ! -s "$work_dir/database-npm.sql" ]] ||
 fi
 archive_listing="$work_dir/archive.list"
 tar -tzf "$work_dir/config-app-letsencrypt.tar.gz" >"$archive_listing"
-for expected_path in \
+expected_archive_paths=(
   compose.yaml \
   .env \
   data/app/keys.json \
-  data/letsencrypt/; do
+  data/letsencrypt/
+)
+if [[ "$credential_source" == file-secrets ]]; then
+  expected_archive_paths+=(
+    secrets/
+    secrets/npm_db_password
+    secrets/npm_db_root_password
+  )
+fi
+for expected_path in "${expected_archive_paths[@]}"; do
   if ! grep -Fxq "$expected_path" "$archive_listing"; then
     printf 'NPM backup archive thiếu path: %s\n' "$expected_path" >&2
     exit 1

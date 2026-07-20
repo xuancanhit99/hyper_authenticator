@@ -164,10 +164,14 @@ verification phải inject `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY` và
   còn pass DB root/app + NPM `__FILE`, API/Nginx/DB 4/4, internal/no-port và cleanup.
   Renderer/preparation/deploy source hiện có contract cho private candidate,
   checksum/drift guard, DB-first recreate, post-gate và automatic rollback.
-  Production preparation đã tạo fresh backup `npm-20260719T215745Z` và private
-  bundle `file-secrets-npm-20260719T215906Z`; restore/canary/checksum/candidate/
-  route hậu kiểm đều pass, app/DB restart count vẫn 0. Production Compose vẫn còn
-  literal cho tới khi owner duyệt maintenance recreate DB/app riêng.
+  Production migration đã dùng fresh backup `npm-20260720T050813Z` và private
+  bundle `file-secrets-npm-20260720T050952Z`; DB-first/app recreate, exact image,
+  API/Nginx/DB 4/4, route/timer và automatic transaction gate đều pass. App/DB
+  `Config.Env` có plaintext/file-key count `0/1` và `0/2`; ba secret mount tồn tại,
+  host directory/file giữ `0700/0400`. Post-backup `npm-20260720T052216Z` có
+  metadata `file-secrets`, exact ba secret archive path và đã restore 4/4 core
+  table trong MariaDB cô lập. Restore harness hiện chờ init-complete cùng ba
+  authenticated probe liên tiếp để không race temporary bootstrap server.
 - Full NPM matrix tự khám phá 26 HTTPS domain/0 stream: sáu route trọng yếu pass;
   10 route của stack khác trả pre-existing 502 và được khóa bằng hash/status
   exception. `radar.vnpay.dev` đã phục hồi 200 nên exception tương ứng bị xóa.
