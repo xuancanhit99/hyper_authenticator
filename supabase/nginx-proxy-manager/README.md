@@ -35,8 +35,15 @@ Rollback: khôi phục exact backup, chạy `nginx -t`, reload rồi giữ timin
 
 Production được phát hiện từng dùng floating `jc21/nginx-proxy-manager:latest`.
 Compose phải pin exact digest đã xác minh trước mọi lần recreate. Ba DB password
-hiện còn là literal trong compose production, vì vậy compose và `.env` bắt buộc
-mode `0600`; `data/app/keys.json` cũng bắt buộc `0600`.
+production đã được thay bằng Docker file secrets: secret directory/file bắt buộc
+`0700`/`0400`; Compose, `.env` và `data/app/keys.json` bắt buộc `0600`.
+
+`backup_nginx_proxy_manager.sh` và `test_nginx_proxy_manager_route_matrix.sh`
+source `nginx_proxy_manager_database.sh`, rồi stream
+`npm_database_exec_container.sh` vào database container. Khi cài một trong hai
+operator script lên host, phải cài cả hai helper cùng directory và giữ executable
+chỉ cho operator/root. Helper hỗ trợ `MYSQL_PASSWORD`, `MARIADB_PASSWORD` và biến
+`*_PASSWORD_FILE` mà không chuyển password qua Docker CLI hoặc log.
 
 `PRODUCTION_PIN` ghi exact image/version đang chạy và target upstream đã review;
 file này không tự cho phép upgrade. Production Compose phải khớp hai digest runtime
@@ -67,9 +74,9 @@ Rehearse database dump mà không chạm production:
       --allow-isolated-nginx-proxy-manager-restore
 
 Harness dùng exact MariaDB image ID đã đóng băng trong metadata, chạy container
-`--network none`, chờ authenticated readiness, restore đúng database name trong
-metadata và yêu cầu đủ bốn core table. Temp password chỉ đi qua env file 0600;
-container và sandbox được cleanup bằng trap.
+`--network none`, chờ init-complete và ba authenticated probe liên tiếp, restore
+đúng database name trong metadata và yêu cầu đủ bốn core table. Temp password chỉ
+đi qua env file 0600; container và sandbox được cleanup bằng trap.
 
 Baseline production 19-07-2026: backup `npm-20260719T184130Z` pass checksum cả
 trước/sau atomic move; restore rehearsal pass `user`, `proxy_host`, `certificate`
@@ -84,15 +91,43 @@ Rehearse target upgrade không publish port:
       2.15.1 \
       --allow-isolated-nginx-proxy-manager-upgrade
 
-Harness chỉ extract app/Let’s Encrypt vào sandbox 0700, restore DB vào anonymous
-volume tạm, nối hai container qua Docker network `--internal`, rồi yêu cầu API
-200, exact version, `nginx -t`, 4/4 core table và không có host port. Cleanup xóa
-container kèm volume, network và sandbox cả khi fail.
+Harness chỉ extract app/Let’s Encrypt vào sandbox 0700, tạo DB root/app secret
+file 0400, truyền `MARIADB_*_PASSWORD_FILE` và `DB_MYSQL_PASSWORD__FILE`, restore
+DB vào anonymous volume tạm rồi nối hai container qua Docker network `--internal`.
+Gate yêu cầu không còn plaintext password trong `Config.Env`, đủ secret mount,
+API 200, exact version, `nginx -t`, 4/4 core table và không có host port. Cleanup
+xóa container kèm volume, network và sandbox cả khi fail.
 
 Canary `2.15.1` image ID/digest `52b2c599…9858bb` đã pass ngày 19-07-2026; exact
 image này được deploy production ngày 20-07-2026 sau fresh backup/restore và
 public-route regression. Canary vẫn không thay public route hoặc rollback gate cho
 upgrade tương lai.
+
+File-secret production migration ngày 20-07-2026 dùng fresh backup
+`npm-20260720T050813Z` và bundle `file-secrets-npm-20260720T050952Z`. Exact NPM
+2.15.1/MariaDB 10.5.29, API/Nginx/DB 4/4, internal/no-port canary, DB-first/app
+deploy, 26 route và timer đều pass; không rotate password.
+
+Chuẩn bị file-secret bundle mà không recreate production:
+
+    scripts/supabase/prepare_nginx_proxy_manager_file_secrets.sh \
+      /opt/stacks/nginx-proxy-manager-app \
+      /home/operator/backups/nginx-proxy-manager \
+      /etc/hyper-authenticator/nginx-proxy-manager-critical-routes.conf \
+      /etc/hyper-authenticator/nginx-proxy-manager-route-exceptions.conf \
+      --allow-nginx-proxy-manager-file-secret-preparation
+
+Sau khi review bundle/evidence và duyệt maintenance, deploy bằng
+`deploy_nginx_proxy_manager_file_secrets.sh` với confirmation
+`--allow-production-nginx-proxy-manager-file-secrets`. Deploy recreate DB trước
+app và tự rollback exact Compose/`.env`/runtime/routes nếu post-gate fail. Bundle,
+secret và rollback đều sensitive; không đưa path hoặc nội dung vào issue/CI log.
+
+Post-migration backup `npm-20260720T052216Z` có metadata `file-secrets`, exact ba
+secret archive path, checksum pass và restore 4/4 core table trong exact isolated
+MariaDB. App/DB `Config.Env` plaintext/file-key count là `0/1` và `0/2`; đủ ba
+`/run/secrets/*` mount, host secret directory/file `0700`/`0400`. Restore harness
+chờ final server ổn định để tránh race temporary bootstrap socket của MariaDB.
 
 ## Route matrix và maintenance bundle
 

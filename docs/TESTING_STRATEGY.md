@@ -110,6 +110,10 @@ Production/staging test dùng isolated user và tự cleanup:
   p95 tối đa 1 giây và single-request tối đa 2 giây;
 - Auth load pacing contract: sleep đúng giữa batch, không sleep sau batch cuối và
   từ chối interval âm trước network; dùng cho soak bảo thủ không tạo user/payload.
+- NPM database credential contract chạy fake Docker boundary để khóa plaintext-env,
+  `MYSQL_PASSWORD_FILE`/`MARIADB_PASSWORD_FILE`, command exit propagation, missing
+  credential silent failure và symlink reject. Production read-only route matrix
+  còn phải pass trước/sau maintenance; static contract không thay file-secret canary.
 
 Android Pixel AVD còn xác minh SDK thật gọi bulk revoke: isolated user có hai
 session, UI xác nhận action, session count giảm 2→1, current session vẫn ở Settings
@@ -271,18 +275,22 @@ post-probe current image/health/hash và 5/5 public SPA route pass.
 - `test_nginx_proxy_manager_timing_contract.sh` khóa exact health route, exact
   image digest pin, logrotate-compatible filename và tám timing field; cấm đưa
   request/client variable vào NPM timing log.
-- `backup_nginx_proxy_manager.sh` tạo transactional least-privilege NPM database dump cùng
-  config/app/Let’s Encrypt archive, checksum và retention 0700/0600; raw DB volume
-  và access log không đi vào archive.
+- `backup_nginx_proxy_manager.sh` tạo transactional least-privilege NPM database
+  dump cùng config/app/Let’s Encrypt archive, checksum và retention 0700/0600;
+  production file-secret chỉ được archive theo exact two-file allowlist 0400. Raw
+  DB volume và access log không đi vào archive.
 - `rehearse_nginx_proxy_manager_backup.sh` xác minh checksum/archive rồi restore
   vào exact pinned MariaDB image với network tắt; yêu cầu đủ user/proxy/certificate/
-  setting table và cleanup container/sandbox.
+  setting table và cleanup container/sandbox. Gate chỉ nhận final server sau
+  init-complete marker cùng ba authenticated probe liên tiếp, không nhận nhầm
+  temporary bootstrap server trước shutdown.
 - `rehearse_nginx_proxy_manager_upgrade.sh` clone app/certificate/database vào
   internal Docker network không host port, rồi khóa exact target version, API 200,
   Nginx syntax và 4/4 core table trước khi cleanup container/volume/network/sandbox.
 - `test_nginx_proxy_manager_backup_contract.sh` khóa transactional/exclusion,
-  exact image/database metadata, authenticated readiness, no-port canary và network
-  isolation; ngăn quay lại `mariadb-admin ping` vốn có thể nhận nhầm temporary init server.
+  exact image/database metadata, sustained authenticated readiness sau init-complete,
+  no-port canary và network isolation; ngăn quay lại single probe hoặc
+  `mariadb-admin ping` vốn có thể nhận nhầm temporary init server.
 - `test_nginx_proxy_manager_route_matrix.sh` khám phá mọi enabled HTTP domain,
   fail khi có stream/wildcard chưa cover, khóa exact critical status và chỉ cho
   pre-existing 5xx qua protected hash/status exception; output không lộ domain.
@@ -293,6 +301,17 @@ post-probe current image/health/hash và 5/5 public SPA route pass.
   byte-match current Compose và exact current/target image. Nó recreate riêng app,
   khóa runtime/API/Nginx/full route sau deploy và tự rollback exact Compose/image
   nếu fail; contract cấm dừng/xóa MariaDB, network hoặc volume.
+- `render_nginx_proxy_manager_file_secrets.py` có fixture khóa exact env transform,
+  candidate không chứa credential, mode 0700/0600/0400 và mismatch redaction.
+- `prepare_nginx_proxy_manager_file_secrets.sh` bắt buộc route/fresh backup/restore/
+  exact canary trước private checksum bundle; contract cấm production Compose
+  lifecycle mutation.
+- `deploy_nginx_proxy_manager_file_secrets.sh` byte-match Compose + `.env`, khóa
+  backup/image/manifest checksum, recreate DB trước app và yêu cầu API/Nginx/DB 4/4,
+  secret mounts, no-plaintext-env, route/timer. Contract buộc mọi route/secret/config
+  mutation nằm sau transaction boundary, khóa exact rollback DB/app, giữ route
+  snapshot khi rollback fail, từ chối bundle stale trước mutation và cấm xóa
+  network/volume/data.
 - `hyper-auth-nginx-proxy-manager-routes.timer` chạy full redacted route matrix mỗi
   giờ, persistent qua reboot; contract khóa manifest path, explicit mutation flag
   và systemd sandbox không inject credential.

@@ -62,10 +62,18 @@ run_operations_harness() {
     scripts/agent/mobile_e2ee_integration.sh \
     scripts/agent/mobile_e2ee_operator.sh \
     scripts/supabase/backup_nginx_proxy_manager.sh \
+    scripts/supabase/nginx_proxy_manager_database.sh \
+    scripts/supabase/npm_database_exec_container.sh \
+    scripts/supabase/prepare_nginx_proxy_manager_file_secrets.sh \
+    scripts/supabase/deploy_nginx_proxy_manager_file_secrets.sh \
     scripts/supabase/rehearse_nginx_proxy_manager_backup.sh \
     scripts/supabase/rehearse_nginx_proxy_manager_upgrade.sh
+  scripts/supabase/test_render_nginx_proxy_manager_file_secrets.sh
+  scripts/supabase/test_prepare_nginx_proxy_manager_file_secrets_contract.sh
+  scripts/supabase/test_deploy_nginx_proxy_manager_file_secrets_contract.sh
   scripts/supabase/test_nginx_proxy_manager_timing_contract.sh
   scripts/supabase/test_nginx_proxy_manager_backup_contract.sh
+  scripts/supabase/test_nginx_proxy_manager_database_exec_contract.sh
   scripts/supabase/test_nginx_proxy_manager_route_matrix_contract.sh
   scripts/supabase/test_nginx_proxy_manager_route_timer_contract.sh
   scripts/supabase/test_prepare_nginx_proxy_manager_upgrade_contract.sh

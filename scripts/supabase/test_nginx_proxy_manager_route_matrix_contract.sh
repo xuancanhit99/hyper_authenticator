@@ -20,7 +20,9 @@ for pattern in \
   'exception_status' \
   'matched_exceptions' \
   'matched_exceptions != exception_count' \
-  'manifest_mode'; do
+  'manifest_mode' \
+  'source "$SCRIPT_DIR/nginx_proxy_manager_database.sh"' \
+  'npm_database_exec "$DB_CONTAINER"'; do
   grep -Fq -- "$pattern" "$SCRIPT"
 done
 if grep -E 'printf .*(\$domain|\$url|\$manifest_host)' "$SCRIPT" |

@@ -261,11 +261,35 @@ UTC timestamp trong temp directory mode 0700 rồi cleanup bằng trap. NPM timi
 chỉ nhận exact Auth health route và allowlist tám field status/request/upstream
 timing; không ghi client IP, URI, header, User-Agent, payload hoặc credential.
 
-NPM production compose hiện còn giữ DB password literal nên compose và `.env`
-bắt buộc mode 0600; application `keys.json` cũng mode 0600. Runtime NPM/MariaDB
-được pin exact digest thay vì floating tag. Backup NPM chứa database/config/
-certificate là sensitive artifact, phải giữ directory/file 0700/0600 và không
-đưa vào repository hoặc CI.
+NPM production không còn giữ DB password literal trong Compose, `.env` hoặc
+container `Config.Env`. Runtime dùng ba file-secret mount; host secret directory
+giữ mode `0700`, hai secret file `0400`, còn Compose, `.env` và application
+`keys.json` giữ `0600`. Runtime NPM/MariaDB được pin exact digest thay vì floating
+tag. Backup NPM chứa database/config/certificate và secret file nên là sensitive
+artifact, phải giữ directory/file `0700`/`0600` hoặc chặt hơn và không đưa vào
+repository hoặc CI.
+
+**Đã triển khai:** backup và route-matrix harness resolve database
+credential bên trong MariaDB container từ `MYSQL_PASSWORD`/`MARIADB_PASSWORD`
+hoặc biến `*_PASSWORD_FILE`. File path phải absolute, readable, là regular file
+không phải symlink; thiếu hoặc sai credential fail im lặng trước database command.
+Password không đi qua Docker CLI argument hoặc host process environment. Helper
+giữ tương thích cả rollback backup dạng env cũ và production file-secret.
+
+**Đã triển khai:** production đã chuyển DB credential sang Docker file secrets
+bằng renderer fail-closed, read-only preparation và deploy/rollback transaction.
+Fresh backup + restore, exact canary, DB-first/app recreate, no-plaintext inspect,
+post-backup restore và public/runtime gate đều pass. Không được rotate credential,
+xóa rollback artifact hoặc recreate database/app lần tiếp theo trước fresh backup,
+restore, exact canary, checksum/drift guard và pre-route pass.
+
+Bundle file-secret là sensitive: original/candidate, `.env`, resolved input và
+secret không được log/commit/copy sang CI. Renderer chỉ tạo output mới, giữ bundle
+0700, Compose/`.env` 0600 và secret 0400; mismatch hoặc partial file-secret config
+fail mà không in credential. Deploy recreate DB trước app, xác minh không còn
+plaintext password trong `Config.Env`, exact mounts và chỉ xóa secret sau khi exact
+rollback runtime/route đã pass. Bundle quá 7.200 giây fail trước mutation để tránh
+rollback bằng database snapshot đã bỏ sót thay đổi NPM mới.
 
 NPM upgrade rehearsal chỉ extract sensitive app/certificate vào sandbox 0700,
 dùng password ngẫu nhiên qua env file 0600 và Docker network `--internal` không

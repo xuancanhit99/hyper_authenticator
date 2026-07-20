@@ -53,6 +53,14 @@ if [[ ! "$db_name" =~ ^[A-Za-z0-9_]+$ ]]; then
   printf '%s\n' 'NPM backup metadata thiếu database name hợp lệ.' >&2
   exit 1
 fi
+credential_source=$(grep -m1 '^CREDENTIAL_SOURCE=' \
+  "$BACKUP_DIR/METADATA.env" | cut -d= -f2- || true)
+credential_source=${credential_source:-environment}
+if [[ "$credential_source" != environment &&
+  "$credential_source" != file-secrets ]]; then
+  printf '%s\n' 'NPM backup metadata có credential source không hợp lệ.' >&2
+  exit 1
+fi
 docker image inspect "$db_image_id" >/dev/null
 
 listing_tmp=$(mktemp "${TMPDIR:-/tmp}/hyper-auth-npm-listing.XXXXXX")
@@ -65,6 +73,16 @@ tar -tzf "$BACKUP_DIR/config-app-letsencrypt.tar.gz" >"$listing_tmp"
 if ! cmp -s "$BACKUP_DIR/archive.list" "$listing_tmp"; then
   printf '%s\n' 'NPM archive listing không khớp backup evidence.' >&2
   exit 1
+fi
+if [[ "$credential_source" == file-secrets ]]; then
+  for expected_path in \
+    secrets/ secrets/npm_db_password secrets/npm_db_root_password; do
+    if ! grep -Fxq "$expected_path" "$listing_tmp"; then
+      printf 'NPM file-secret backup thiếu archive path: %s\n' \
+        "$expected_path" >&2
+      exit 1
+    fi
+  done
 fi
 find "$listing_tmp" -maxdepth 0 -type f -delete
 trap - EXIT
@@ -94,13 +112,28 @@ docker run --detach \
 container_created=true
 
 ready=false
-for _ in $(seq 1 60); do
-  if docker exec "$container" sh -lc \
-    'MYSQL_PWD="$MARIADB_ROOT_PASSWORD" mariadb --user=root \
-      --batch --skip-column-names -e "SELECT 1"' \
-    >/dev/null 2>&1; then
-    ready=true
-    break
+ready_streak=0
+for _ in $(seq 1 90); do
+  # MariaDB's entrypoint first opens a temporary bootstrap server, then stops
+  # it before starting the final server. A single authenticated SELECT can hit
+  # that temporary window and make the subsequent restore race the shutdown.
+  init_complete=false
+  if docker logs "$container" 2>&1 |
+    grep -Fq 'MariaDB init process done. Ready for start up.'; then
+    init_complete=true
+  fi
+  if [[ "$init_complete" == true ]] &&
+    docker exec "$container" sh -lc \
+      'MYSQL_PWD="$MARIADB_ROOT_PASSWORD" mariadb --user=root \
+        --batch --skip-column-names -e "SELECT 1"' \
+      >/dev/null 2>&1; then
+    ready_streak=$((ready_streak + 1))
+    if ((ready_streak >= 3)); then
+      ready=true
+      break
+    fi
+  else
+    ready_streak=0
   fi
   sleep 1
 done
