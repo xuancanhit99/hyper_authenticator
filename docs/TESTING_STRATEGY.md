@@ -187,7 +187,7 @@ backup trước/sau migration có encrypted off-host copy.
 
 | Target | Gate |
 |---|---|
-| Android | Debug build mỗi CI; signed APK + runtime/upgrade gate trước GitHub Release; AAB/internal track khi mở Play Store |
+| Android | Debug build mỗi CI; tag CI dùng encrypted secrets để build APK, bắt buộc `apksigner` khớp fingerprint; runtime/upgrade gate trước GitHub Release; AAB/internal track khi mở Play Store |
 | iOS | Simulator build mỗi CI; không public binary qua GitHub; signed archive + device/TestFlight trước phân phối |
 | macOS | Unsigned compile CI; Developer ID + signed runtime + notarized package trước GitHub Release hoặc phân phối khác |
 | Web | Configured release + hardened image contract + CSP/runtime `lang=vi` browser smoke |
@@ -198,13 +198,15 @@ backup trước/sau migration có encrypted off-host copy.
 
 `scripts/agent/github_preview_release.sh` chỉ publish khi tag dạng preview khớp
 `pubspec.yaml`, trỏ đúng checkout và có workflow `CI` push thành công của chính tag.
-`check_github_preview_assets.sh` yêu cầu đúng một `.deb`/checksum và một Windows
-setup/checksum, từ chối env/source-map/debug symbol rồi tạo manifest SHA-256 tổng.
+`check_github_preview_assets.sh` yêu cầu đúng một `.deb`/checksum, một Windows
+setup/checksum và với mọi tag mới một signed Android APK/checksum; từ chối
+env/source-map/debug symbol rồi tạo manifest SHA-256 tổng.
 `verify_github_preview_release.sh` là post-upload gate độc lập credential: public
 API phải chứng minh non-draft pre-release, annotated tag tới exact commit, successful
 CI run đúng tag/commit và release note provenance; public download phải có exact
-năm asset, khớp GitHub digest, individual checksum, manifest tái tạo và Debian/PE32
-signature. Publisher chuyển gate lỗi về draft; workflow `Verify Public GitHub
+năm asset cho ba legacy preview hoặc bảy asset cho tag mới, khớp GitHub digest,
+individual checksum, manifest tái tạo, Android signer pin và Debian/PE32 signature.
+Publisher chuyển gate lỗi về draft; workflow `Verify Public GitHub
 Preview` chạy trên release `published` hoặc manual tag. Workflow dùng verifier từ
 default branch nhưng lấy package version đã đóng băng trong public release note,
 nên release cũ không phụ thuộc `pubspec.yaml` hiện tại.
@@ -212,6 +214,8 @@ nên release cũ không phụ thuộc `pubspec.yaml` hiện tại.
 Regression tối thiểu của harness:
 
 - fixture hợp lệ tạo đúng năm release asset;
+- fixture Android mới tạo đúng bảy asset; thiếu APK hoặc APK trong legacy contract
+  đều fail closed;
 - checksum sai, sai version, asset thừa thuộc denylist hoặc output không rỗng đều fail;
 - explicit historical package-version override cho public release cũ phải pass;
 - release tồn tại, repository private, tag/HEAD mismatch hoặc tag CI chưa xanh đều
@@ -345,6 +349,9 @@ post-probe current image/health/hash và 5/5 public SPA route pass.
 5. Windows/Linux unsigned package đủ điều kiện GitHub Preview nhưng chưa phải stable.
    Windows còn code signing và physical-device/Windows Hello. Linux còn KDE
    login-unlock/physical desktop và signed package E2EE runtime.
+   Android app signing key đã được tạo/pin; signed build, clean install/cold launch
+   và vault-retaining upgrade 10→11 đã pass trên Pixel AVD API 37. Còn tag CI,
+   public download và camera/biometric trên thiết bị thật nên chưa được phát hành.
 6. Accessibility automation đã bao phủ Auth, account list, form thêm account và
    sensitive Settings recovery/conflict/session dialog với WCAG text-contrast
    gate light/dark cùng core keyboard traversal. Chưa thay TalkBack/VoiceOver

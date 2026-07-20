@@ -108,11 +108,17 @@ không bao giờ được đặt trong Flutter `.env`, asset, build log hoặc b
 - Windows installer toolchain pin NSIS 3.12 archive SHA-256 và xác minh compiler
   version. Builder từ chối env/source-map/debug artifact; unsigned candidate có
   checksum LF portable và không được mô tả là signed release.
-- GitHub Preview harness chỉ nhận Windows/Linux installer từ successful CI run của
-  chính tag, kiểm tra version/checksum/allowlist và tạo manifest tổng. Publish cần
-  confirmation rõ ràng; release luôn mang pre-release flag và cảnh báo unsigned.
+- Android app signing key nằm ngoài repository, file mode `0600`; source chỉ pin
+  public certificate SHA-256. Local/GitHub configuration dùng prompt ẩn, CI chỉ
+  khôi phục keystore vào runner tạm và xóa ở bước `always()`. Gradle/build harness
+  fail closed khi thiếu credential hoặc APK signer không khớp pin.
+- GitHub Preview harness chỉ nhận artifact từ successful CI run của chính tag,
+  kiểm tra version/checksum/allowlist và tạo manifest tổng. Ba preview lịch sử giữ
+  Windows/Linux; mọi tag mới bắt buộc thêm signed Android APK/checksum. Publish cần
+  confirmation rõ ràng; release luôn mang pre-release flag và cảnh báo platform.
 - Post-publish verifier không gửi Authorization, đối chiếu public tag/commit/tag-CI,
-  exact năm asset, GitHub SHA-256 digest, checksum/manifest và file signature. Gate
+  exact 5/7 asset theo contract, GitHub SHA-256 digest, checksum/manifest, Android
+  signer fingerprint và file signature desktop. Gate
   lỗi yêu cầu publisher chuyển release về draft thay vì để public trạng thái mơ hồ.
 - Web live rollback harness chỉ nhận image pin semantic-version + commit hex và
   exact JS hash. Nó không source/in deployment env, preflight shadow trước mutation,

@@ -5,7 +5,12 @@ ROOT=$(cd "$(dirname "$0")/../.." && pwd)
 VERIFIER="$ROOT/scripts/agent/verify_github_preview_release.sh"
 PUBLISHER="$ROOT/scripts/agent/github_preview_release.sh"
 
-bash -n "$VERIFIER" "$PUBLISHER"
+bash -n \
+  "$VERIFIER" \
+  "$PUBLISHER" \
+  "$ROOT/scripts/agent/build_android_release.sh" \
+  "$ROOT/scripts/agent/configure_android_signing.sh" \
+  "$ROOT/scripts/agent/configure_github_android_signing.sh"
 
 expect_failure() {
   local label=$1
@@ -53,6 +58,20 @@ fi
 if ! search_fixed 'gh release edit "$TAG" --repo "$repo" --draft' \
   "$PUBLISHER" >/dev/null; then
   printf '%s\n' 'Publisher thiếu fail-closed draft rollback.' >&2
+  exit 1
+fi
+if ! search_fixed 'REQUIRE_ANDROID_SIGNED_APK=true' "$PUBLISHER" >/dev/null; then
+  printf '%s\n' 'Publisher chưa bắt buộc signed Android APK.' >&2
+  exit 1
+fi
+if ! search_fixed 'android/app-signing-certificate.sha256' \
+  "$VERIFIER" >/dev/null; then
+  printf '%s\n' 'Public verifier chưa pin Android signing fingerprint.' >&2
+  exit 1
+fi
+if ! search_fixed 'android/local.properties' \
+  "$ROOT/scripts/agent/build_android_release.sh" >/dev/null; then
+  printf '%s\n' 'Android release harness chưa hỗ trợ SDK path local trên macOS.' >&2
   exit 1
 fi
 

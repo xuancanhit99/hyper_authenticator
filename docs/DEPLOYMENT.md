@@ -78,8 +78,11 @@ chưa tồn tại, exact artifact name, checksum và denylist env/source-map/deb
 Nó chỉ tải artifact từ CI run của tag, tạo `SHA256SUMS.txt`, release note bắt buộc
 và publish với GitHub pre-release flag. Sau publish,
 `verify_github_preview_release.sh` cố ý không gửi Authorization và yêu cầu public
-API/download pass exact release state, tag/commit/successful tag CI, năm asset,
-GitHub digest, checksum/manifest cùng Debian/PE32 signature. Nếu gate lỗi, publisher
+API/download pass exact release state, tag/commit/successful tag CI, asset allowlist,
+GitHub digest, checksum/manifest cùng platform signature. Ba tag `v1.1.0-preview.1`
+đến `.3` giữ legacy contract năm asset Windows/Linux; mọi tag mới bắt buộc thêm
+signed Android APK/checksum thành bảy asset và khớp certificate fingerprint pin.
+Nếu gate lỗi, publisher
 chuyển release về draft; nếu cả rollback API lỗi, command phát cảnh báo `CRITICAL`
 và exit non-zero. Xóa hoặc chuyển pre-release về draft là rollback channel; không
 xóa source tag hoặc local vault của người dùng.
@@ -101,10 +104,48 @@ mailbox thật; credential SMTP chỉ được đặt trên server, không đưa
 
 ## Android
 
-Yêu cầu file `android/key.properties` ignored và keystore do owner quản lý. Source
-hiện gọi file này là `upload-keystore.jks`, nhưng trước public APK owner phải chốt
-key bên trong là Android **app signing key** lâu dài của kênh GitHub. Build script
-đã fail nếu release signing thiếu:
+App signing key lâu dài của kênh GitHub đã được owner tạo ngoài repository tại
+`~/.hyper-authenticator/signing/android/`; file phải giữ mode `0600`. Public
+certificate SHA-256 được pin tại `android/app-signing-certificate.sha256`; private
+keystore, `android/key.properties` và password tuyệt đối không được commit, đưa vào
+artifact hoặc gửi qua chat. JKS là format được Flutter hướng dẫn và không cần đổi
+sang PKCS12 chỉ vì warning mặc định của Java 9+.
+
+Tạo local `android/key.properties` qua prompt ẩn và xác minh đúng alias/fingerprint:
+
+    scripts/agent/configure_android_signing.sh \
+      "$HOME/.hyper-authenticator/signing/android/hyper-authenticator-app-signing.jks" \
+      hyper-authenticator \
+      CONFIGURE_LOCAL_ANDROID_SIGNING
+
+Sau đó build APK signed, validate public runtime config, xác minh bằng `apksigner`
+và tạo checksum trong output directory rỗng:
+
+    scripts/agent/build_android_release.sh \
+      .env \
+      build/release/android \
+      --allow-app-signing
+
+Gradle nhận `android/key.properties` cho local hoặc bốn biến môi trường
+`ANDROID_KEYSTORE_PATH`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD` và
+`ANDROID_STORE_PASSWORD` cho CI. Release luôn fail closed khi thiếu một giá trị;
+không fallback debug-signed/unsigned.
+
+Sau khi đã tạo ít nhất hai backup encrypted/offline của keystore và password, owner
+upload bốn GitHub Actions secrets qua prompt ẩn (command này thay đổi repository
+secrets, không in giá trị):
+
+    scripts/agent/configure_github_android_signing.sh \
+      "$HOME/.hyper-authenticator/signing/android/hyper-authenticator-app-signing.jks" \
+      hyper-authenticator \
+      xuancanhit99/hyper_authenticator \
+      UPLOAD_ANDROID_SIGNING_SECRETS
+
+Tag CI chỉ khôi phục keystore vào runner tạm, build/check signer rồi upload đúng
+APK/checksum; cleanup chạy cả khi build fail. Publisher không nhận keystore,
+`key.properties`, public runtime config hay debug symbol.
+
+Build AAB riêng khi mở Play Store:
 
     flutter build appbundle --release \
       --dart-define-from-file=.env.production \

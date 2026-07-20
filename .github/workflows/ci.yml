@@ -55,8 +55,12 @@ jobs:
       - run: bash scripts/agent/check.sh full
 
   android:
-    name: Android debug APK
+    name: Android debug and tagged signed APK
     runs-on: ubuntu-latest
+    env:
+      SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+      SUPABASE_PUBLISHABLE_KEY: ${{ vars.SUPABASE_PUBLISHABLE_KEY }}
+      PASSWORD_RECOVERY_URL: ${{ vars.PASSWORD_RECOVERY_URL }}
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-java@v5
@@ -71,6 +75,61 @@ jobs:
           cache: true
       - run: flutter pub get
       - run: flutter build apk --debug
+      - name: Tạo và xác minh public runtime config cho signed tag
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          config_path="$RUNNER_TEMP/android-release-config.json"
+          jq -n \
+            --arg supabase_url "$SUPABASE_URL" \
+            --arg publishable_key "$SUPABASE_PUBLISHABLE_KEY" \
+            --arg recovery_url "$PASSWORD_RECOVERY_URL" \
+            '{
+              SUPABASE_URL: $supabase_url,
+              SUPABASE_PUBLISHABLE_KEY: $publishable_key,
+              PASSWORD_RECOVERY_URL: $recovery_url,
+              ALLOW_INSECURE_PLAINTEXT_SYNC: false
+            }' > "$config_path"
+          dart run tool/agent/check_release_config.dart "$config_path"
+          printf 'ANDROID_RELEASE_CONFIG_PATH=%s\n' "$config_path" >> "$GITHUB_ENV"
+      - name: Khôi phục app signing key tạm và build signed APK
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: bash
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          ANDROID_STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
+        run: |
+          set -euo pipefail
+          test -n "$ANDROID_KEYSTORE_BASE64"
+          test -n "$ANDROID_KEY_ALIAS"
+          test -n "$ANDROID_KEY_PASSWORD"
+          test -n "$ANDROID_STORE_PASSWORD"
+          umask 077
+          export ANDROID_KEYSTORE_PATH="$RUNNER_TEMP/android-app-signing.jks"
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode \
+            > "$ANDROID_KEYSTORE_PATH"
+          chmod 0600 "$ANDROID_KEYSTORE_PATH"
+          scripts/agent/build_android_release.sh \
+            "$ANDROID_RELEASE_CONFIG_PATH" \
+            "$RUNNER_TEMP/android-release-artifact" \
+            --allow-app-signing
+      - name: Lưu signed Android APK trong 14 ngày
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: actions/upload-artifact@v7
+        with:
+          name: hyper-authenticator-android-apk-${{ github.sha }}
+          path: ${{ runner.temp }}/android-release-artifact
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
+      - name: Xóa app signing key khỏi runner
+        if: always() && startsWith(github.ref, 'refs/tags/v')
+        shell: bash
+        run: rm -f "$RUNNER_TEMP/android-app-signing.jks"
 
   web:
     name: Web release and serving contract

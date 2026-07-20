@@ -20,7 +20,8 @@ fi
 make_fixture() {
   local root=$1
   local version=${2:-1.1.0+10}
-  mkdir -p "$root/linux" "$root/windows"
+  local include_android=${3:-false}
+  mkdir -p "$root/linux" "$root/windows" "$root/android"
   printf '%s' 'TEST_ONLY_DEBIAN_PACKAGE' \
     > "$root/linux/hyper-authenticator_${version}_amd64.deb"
   printf '%s' 'TEST_ONLY_WINDOWS_INSTALLER' \
@@ -36,6 +37,15 @@ make_fixture() {
       "hyper-authenticator-${version}-windows-x64-setup.exe" \
       > "hyper-authenticator-${version}-windows-x64-setup.exe.sha256"
   )
+  if [[ "$include_android" == true ]]; then
+    printf '%s' 'TEST_ONLY_SIGNED_ANDROID_APK' \
+      > "$root/android/hyper-authenticator-${version}-android.apk"
+    (
+      cd "$root/android"
+      "${hash_command[@]}" "hyper-authenticator-${version}-android.apk" \
+        > "hyper-authenticator-${version}-android.apk.sha256"
+    )
+  fi
 }
 
 expect_failure() {
@@ -59,6 +69,34 @@ if [[ $(find "$valid_output" -maxdepth 1 -type f | wc -l | tr -d ' ') -ne 5 ]]; 
   exit 1
 fi
 printf '%s\n' '✓ Valid fixture tạo đúng năm release asset'
+
+android_input="$WORK_ROOT/android-input"
+android_output="$WORK_ROOT/android-output"
+make_fixture "$android_input" '1.1.0+10' true
+mkdir -p "$android_output"
+REQUIRE_ANDROID_SIGNED_APK=true \
+  "$ROOT/scripts/agent/check_github_preview_assets.sh" \
+  "$android_input" "$android_output" >/dev/null
+if [[ $(find "$android_output" -maxdepth 1 -type f | wc -l | tr -d ' ') -ne 7 ]]; then
+  printf '%s\n' 'Signed Android fixture không tạo đúng bảy release asset.' >&2
+  exit 1
+fi
+printf '%s\n' '✓ Signed Android fixture tạo đúng bảy release asset'
+
+missing_android_input="$WORK_ROOT/missing-android-input"
+missing_android_output="$WORK_ROOT/missing-android-output"
+make_fixture "$missing_android_input"
+mkdir -p "$missing_android_output"
+expect_failure missing-android \
+  env REQUIRE_ANDROID_SIGNED_APK=true \
+  "$ROOT/scripts/agent/check_github_preview_assets.sh" \
+  "$missing_android_input" "$missing_android_output"
+
+unexpected_android_output="$WORK_ROOT/unexpected-android-output"
+mkdir -p "$unexpected_android_output"
+expect_failure unexpected-android-in-legacy-contract \
+  "$ROOT/scripts/agent/check_github_preview_assets.sh" \
+  "$android_input" "$unexpected_android_output"
 
 checksum_input="$WORK_ROOT/checksum-input"
 checksum_output="$WORK_ROOT/checksum-output"

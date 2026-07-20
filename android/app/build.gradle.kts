@@ -15,15 +15,21 @@ if (keystorePropertiesFile.exists()) {
     keystoreProperties.load(FileInputStream(keystorePropertiesFile))
 }
 
-val releaseStoreFile = keystoreProperties["storeFile"]
-    ?.toString()
-    ?.takeIf { it.isNotBlank() }
-    ?.let { file("../$it") }
+fun signingValue(propertyName: String, environmentName: String): String? =
+    keystoreProperties[propertyName]
+        ?.toString()
+        ?.takeIf { it.isNotBlank() }
+        ?: System.getenv(environmentName)?.takeIf { it.isNotBlank() }
+
+val releaseStorePath = signingValue("storeFile", "ANDROID_KEYSTORE_PATH")
+val releaseKeyAlias = signingValue("keyAlias", "ANDROID_KEY_ALIAS")
+val releaseKeyPassword = signingValue("keyPassword", "ANDROID_KEY_PASSWORD")
+val releaseStorePassword = signingValue("storePassword", "ANDROID_STORE_PASSWORD")
+val releaseStoreFile = releaseStorePath?.let { rootProject.file(it) }
 val hasReleaseSigningConfig =
-    keystorePropertiesFile.exists() &&
     releaseStoreFile?.exists() == true &&
-    listOf("keyAlias", "keyPassword", "storePassword").all {
-        !keystoreProperties[it]?.toString().isNullOrBlank()
+    listOf(releaseKeyAlias, releaseKeyPassword, releaseStorePassword).all {
+        !it.isNullOrBlank()
     }
 val releaseTaskRequested = gradle.startParameter.taskNames.any {
     it.contains("release", ignoreCase = true)
@@ -43,13 +49,10 @@ android {
     signingConfigs {
         create("release") {
             if (hasReleaseSigningConfig) {
-                keyAlias = keystoreProperties["keyAlias"] as String?
-                keyPassword = keystoreProperties["keyPassword"] as String?
-                // Resolve storeFile path relative to this build script's directory (android/app)
-                // Path in properties (app/upload-keystore.jks) is relative to android/
-                // So, go up one level ('../') then append the path from properties.
+                keyAlias = releaseKeyAlias
+                keyPassword = releaseKeyPassword
                 storeFile = releaseStoreFile
-                storePassword = keystoreProperties["storePassword"] as String?
+                storePassword = releaseStorePassword
             }
         }
     }
@@ -72,6 +75,8 @@ android {
             } else if (releaseTaskRequested) {
                 throw GradleException(
                     "Android release signing chưa được cấu hình đầy đủ. " +
+                        "Dùng android/key.properties hoặc ANDROID_KEYSTORE_PATH/" +
+                        "ANDROID_KEY_ALIAS/ANDROID_KEY_PASSWORD/ANDROID_STORE_PASSWORD. " +
                         "Release build bị dừng để tránh tạo artifact debug-signed hoặc unsigned.",
                 )
             }

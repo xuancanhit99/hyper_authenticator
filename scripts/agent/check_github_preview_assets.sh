@@ -4,6 +4,7 @@ set -euo pipefail
 ROOT=$(cd "$(dirname "$0")/../.." && pwd)
 ARTIFACT_ROOT=${1:-}
 OUTPUT_DIR=${2:-}
+REQUIRE_ANDROID_SIGNED_APK=${REQUIRE_ANDROID_SIGNED_APK:-false}
 
 if [[ -z "$ARTIFACT_ROOT" || -z "$OUTPUT_DIR" ]]; then
   printf '%s\n' \
@@ -14,6 +15,11 @@ fi
 if [[ ! -d "$ARTIFACT_ROOT" ]]; then
   printf 'Artifact root không tồn tại: %s\n' "$ARTIFACT_ROOT" >&2
   exit 66
+fi
+if [[ "$REQUIRE_ANDROID_SIGNED_APK" != true &&
+  "$REQUIRE_ANDROID_SIGNED_APK" != false ]]; then
+  printf '%s\n' 'REQUIRE_ANDROID_SIGNED_APK chỉ nhận true hoặc false.' >&2
+  exit 64
 fi
 
 package_version=${PACKAGE_VERSION_OVERRIDE:-$(
@@ -40,6 +46,12 @@ while IFS= read -r value; do exe_files+=("$value"); done \
 exe_checksums=()
 while IFS= read -r value; do exe_checksums+=("$value"); done \
   < <(find_sorted -name 'hyper-authenticator-*-windows-x64-setup.exe.sha256')
+apk_files=()
+while IFS= read -r value; do apk_files+=("$value"); done \
+  < <(find_sorted -name 'hyper-authenticator-*-android.apk')
+apk_checksums=()
+while IFS= read -r value; do apk_checksums+=("$value"); done \
+  < <(find_sorted -name 'hyper-authenticator-*-android.apk.sha256')
 
 if [[ ${#deb_files[@]} -ne 1 || ${#deb_checksums[@]} -ne 1 ]]; then
   printf '%s\n' 'Release bundle phải có đúng một Debian package và checksum.' >&2
@@ -49,9 +61,19 @@ if [[ ${#exe_files[@]} -ne 1 || ${#exe_checksums[@]} -ne 1 ]]; then
   printf '%s\n' 'Release bundle phải có đúng một Windows installer và checksum.' >&2
   exit 1
 fi
+if [[ "$REQUIRE_ANDROID_SIGNED_APK" == true ]]; then
+  if [[ ${#apk_files[@]} -ne 1 || ${#apk_checksums[@]} -ne 1 ]]; then
+    printf '%s\n' 'Release bundle phải có đúng một signed Android APK và checksum.' >&2
+    exit 1
+  fi
+elif [[ ${#apk_files[@]} -ne 0 || ${#apk_checksums[@]} -ne 0 ]]; then
+  printf '%s\n' 'Legacy release bundle không được chứa Android APK ngoài contract.' >&2
+  exit 1
+fi
 
 expected_deb="hyper-authenticator_${package_version}_amd64.deb"
 expected_exe="hyper-authenticator-${package_version}-windows-x64-setup.exe"
+expected_apk="hyper-authenticator-${package_version}-android.apk"
 if [[ $(basename "${deb_files[0]}") != "$expected_deb" ]]; then
   printf 'Debian package không khớp pubspec version %s: %s\n' \
     "$package_version" "$(basename "${deb_files[0]}")" >&2
@@ -62,10 +84,21 @@ if [[ $(basename "${exe_files[0]}") != "$expected_exe" ]]; then
     "$package_version" "$(basename "${exe_files[0]}")" >&2
   exit 1
 fi
+if [[ "$REQUIRE_ANDROID_SIGNED_APK" == true ]] &&
+  [[ $(basename "${apk_files[0]}") != "$expected_apk" ]]; then
+  printf 'Android APK không khớp pubspec version %s: %s\n' \
+    "$package_version" "$(basename "${apk_files[0]}")" >&2
+  exit 1
+fi
 
 if [[ $(dirname "${deb_files[0]}") != $(dirname "${deb_checksums[0]}") ]] ||
   [[ $(dirname "${exe_files[0]}") != $(dirname "${exe_checksums[0]}") ]]; then
   printf '%s\n' 'Binary và checksum phải nằm cùng artifact directory.' >&2
+  exit 1
+fi
+if [[ "$REQUIRE_ANDROID_SIGNED_APK" == true ]] &&
+  [[ $(dirname "${apk_files[0]}") != $(dirname "${apk_checksums[0]}") ]]; then
+  printf '%s\n' 'Android APK và checksum phải nằm cùng artifact directory.' >&2
   exit 1
 fi
 
@@ -80,7 +113,11 @@ fi
 
 checksum_binaries=("${deb_files[0]}" "${exe_files[0]}")
 checksum_files=("${deb_checksums[0]}" "${exe_checksums[0]}")
-for index in 0 1; do
+if [[ "$REQUIRE_ANDROID_SIGNED_APK" == true ]]; then
+  checksum_binaries+=("${apk_files[0]}")
+  checksum_files+=("${apk_checksums[0]}")
+fi
+for index in "${!checksum_binaries[@]}"; do
   checksum=${checksum_files[$index]}
   binary=${checksum_binaries[$index]}
   checksum_dir=$(dirname "$checksum")
@@ -121,13 +158,22 @@ for source in \
   "${exe_files[0]}" "${exe_checksums[0]}"; do
   cp "$source" "$OUTPUT_DIR/$(basename "$source")"
 done
+if [[ "$REQUIRE_ANDROID_SIGNED_APK" == true ]]; then
+  for source in "${apk_files[0]}" "${apk_checksums[0]}"; do
+    cp "$source" "$OUTPUT_DIR/$(basename "$source")"
+  done
+fi
 
 (
   cd "$OUTPUT_DIR"
-  "${hash_command[@]}" \
-    "$(basename "${deb_files[0]}")" \
-    "$(basename "${exe_files[0]}")" \
-    > SHA256SUMS.txt
+  manifest_binaries=(
+    "$(basename "${deb_files[0]}")"
+    "$(basename "${exe_files[0]}")"
+  )
+  if [[ "$REQUIRE_ANDROID_SIGNED_APK" == true ]]; then
+    manifest_binaries+=("$(basename "${apk_files[0]}")")
+  fi
+  "${hash_command[@]}" "${manifest_binaries[@]}" > SHA256SUMS.txt
   "${hash_command[@]}" --check SHA256SUMS.txt
 )
 

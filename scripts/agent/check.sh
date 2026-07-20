@@ -50,6 +50,10 @@ run_platform() {
 
 run_release_harness() {
   printf '\n%s\n' "== GitHub Preview release harness gate =="
+  bash -n \
+    scripts/agent/build_android_release.sh \
+    scripts/agent/configure_android_signing.sh \
+    scripts/agent/configure_github_android_signing.sh
   scripts/agent/test_github_preview_assets.sh
   scripts/agent/test_github_preview_release_contract.sh
   web-deployment/test-production-rollback-contract.sh
