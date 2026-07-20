@@ -7,24 +7,23 @@ nhập/xuất QR và giao diện sáng/tối.
 
 > Trạng thái dự án: **production baseline kỹ thuật; GitHub Releases là kênh phân
 > phối binary ưu tiên trong giai đoạn hiện tại**. Web đang chạy production.
-> Windows/Linux có package đã vượt hosted CI nhưng chưa ký; chỉ được phát hành dưới
-> dạng pre-release với checksum và cảnh báo rõ ràng. App store, signing cho stable,
+> Android có APK đã ký; Windows/Linux có package chưa ký. Các binary chỉ được phát
+> hành dưới dạng pre-release với checksum và cảnh báo rõ ràng. App store, signing
+> cho stable,
 > device test, SMTP mailbox và public legal/support metadata được hoãn sang giai
 > đoạn sau. Xem [Trạng thái dự án](docs/PROJECT_STATUS.md).
 
 ## Tải ứng dụng
 
 - Web: [authenticator.hyperz.xyz](https://authenticator.hyperz.xyz/).
-- Desktop Preview hiện tại: [v1.1.0-preview.3](https://github.com/xuancanhit99/hyper_authenticator/releases/tag/v1.1.0-preview.3).
+- GitHub Preview hiện tại: [v1.1.0-preview.4](https://github.com/xuancanhit99/hyper_authenticator/releases/tag/v1.1.0-preview.4).
 
-GitHub Preview hiện chỉ dành cho Windows x64 và Linux amd64. Luôn kiểm tra
-`SHA256SUMS.txt`; Windows SmartScreen có thể cảnh báo vì installer chưa code-sign.
-Android, iOS và macOS chưa được phân phối binary ở giai đoạn này. Android signed
-APK và macOS signed/notarized package có thể được bổ sung vào GitHub Releases sau
-khi đủ credential cùng runtime gate; iOS vẫn cần kênh phân phối do Apple cho phép.
-Android app-signing certificate đã được owner chốt; signed APK đã build/test local
-và còn chờ tag CI cùng public-download gate trước khi xuất hiện ở release kế tiếp.
-Emulator clean-install/vault-retaining upgrade đã pass.
+GitHub Preview có Android APK signed, Windows x64 installer và Linux amd64 Debian
+package. Luôn kiểm tra `SHA256SUMS.txt`; Android có thể yêu cầu cho phép cài từ
+browser/GitHub, còn Windows SmartScreen có thể cảnh báo vì installer chưa code-sign.
+iOS và macOS chưa được phân phối binary ở giai đoạn này. Android signed APK đã
+pass tag CI, public-download/signature gate và emulator clean-install/
+vault-retaining upgrade; camera/biometric trên thiết bị thật vẫn là gate sau.
 
 ## Chức năng
 

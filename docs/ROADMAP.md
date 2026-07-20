@@ -28,15 +28,15 @@ Roadmap ưu tiên theo rủi ro. Checkbox chỉ được đánh dấu khi có so
 - [x] Publish `v1.1.0-preview.1` và xác minh lại public download/checksum.
 - [x] Công bố private security reporting trên GitHub.
 - [x] Chốt app store và SMTP là milestone hoãn, không chặn GitHub Preview.
-- [ ] Phát hành preview tiếp theo từ tested tag khi có thay đổi đủ giá trị cho người dùng.
+- [x] Phát hành `v1.1.0-preview.4` từ tested tag và xác minh public download.
 - [x] Chốt Android app-signing key dùng lâu dài và pin public certificate SHA-256.
-- [ ] Thêm signed APK vào GitHub Releases sau signed build/runtime/upgrade gate;
+- [x] Thêm signed APK vào GitHub Releases sau signed build/runtime/upgrade gate;
   không cần chờ Play Store.
 - [ ] Thêm macOS package sau Developer ID/notarization/runtime gate; không phát
   hành unsigned compile artifact.
 
-Exit criteria: GitHub pre-release public có Windows/Linux artifact đúng contract,
-tag CI xanh, checksum tải lại khớp và release note nêu signing/SMTP/platform risk.
+Exit criteria: GitHub pre-release public có Android/Windows/Linux artifact đúng
+contract, tag CI xanh, checksum tải lại khớp và release note nêu signing/SMTP/platform risk.
 
 ## Ưu tiên P1 — Reliability và operations
 
@@ -93,7 +93,7 @@ tag CI xanh, checksum tải lại khớp và release note nêu signing/SMTP/plat
 - [x] Build signed APK, xác minh signer và pass clean-install/vault-retaining
   upgrade trên Android AVD.
 - [x] Upload đủ bốn GitHub encrypted signing secrets sau khi owner xác nhận backup.
-- [ ] Chạy tag CI và public signed APK. Nếu mở
+- [x] Chạy tag CI và public signed APK; public verifier xác minh đúng signer. Nếu mở
   Play Store, reuse app signing key để giữ cross-channel upgrade rồi tách upload
   key cho AAB/internal track.
 - [ ] Owner cung cấp Apple certificate/profile; macOS GitHub package cần
