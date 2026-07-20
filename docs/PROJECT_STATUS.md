@@ -12,10 +12,10 @@ không có trust boundary tương đương platform secure storage.
 
 Source, local data path, E2EE client/server contract, backup và backend health
 harness đã đạt baseline kỹ thuật. GitHub Releases là kênh phân phối binary ưu tiên:
-Windows/Linux unsigned chỉ được public dưới dạng pre-release có checksum, tag CI
-provenance và cảnh báo rõ ràng. Android signed APK và macOS notarized package có
-thể bổ sung theo gate riêng mà không cần chờ app store; iOS vẫn phụ thuộc kênh
-Apple. Store/SMTP được hoãn; signed stable vẫn cần credential thuộc owner và không
+Windows/Linux unsigned và Android signed APK chỉ được public dưới dạng pre-release
+có checksum, tag CI provenance và cảnh báo rõ ràng. macOS notarized package có thể
+bổ sung theo gate riêng mà không cần chờ app store; iOS vẫn phụ thuộc kênh Apple.
+Store/SMTP được hoãn; signed stable vẫn cần credential thuộc owner và không
 mô tả preview là stable production release.
 
 ## Toolchain và dependency
@@ -49,12 +49,12 @@ mô tả preview là stable production release.
 | Web release + hardened Nginx image | `1.1.0-ae1ab36` `linux/amd64` đang healthy trên production; local/public `main.dart.js` SHA-256 `1a0d63a6…f66ea6` khớp, 5 SPA route và TLS/HSTS/CSP/cache/Permissions-Policy pass; browser xác minh runtime `lang=vi`, Flutter render và console sạch; live rollback về `1.1.0-12fce73` rồi forward lại current pass exact image/hash/route |
 | macOS debug compile unsigned | Pass; không phải runtime/signing evidence |
 | iOS 26.5 simulator debug | Pass Supabase init; hai session/device key active, lost-primary-key HA1 replacement, exact wrap rotation và secondary stale-DEK auto-unwrap generation 2, revision 1→4 + cleanup 404; local-vault smoke với direct Keychain preflight/fail-safe cleanup cũng pass |
-| Android release | Signed APK `1.1.0+10` build pass với public config, `apksigner` xác minh đúng một signer và SHA-256 pin; Pixel 10 Pro XL AVD API 37 clean install/cold launch/Vietnamese semantics/crash=0 pass. Test candidate cùng key nâng `1.1.0+10`→`1.1.1+11`, giữ `firstInstallTime` và TEST_ONLY encrypted-vault fixture; AVD đã cleanup rồi restore canonical `1.1.0+10`. Owner đã xác nhận backup và GitHub có đủ bốn encrypted signing secrets; còn tag CI/public download và physical camera/biometric gate |
+| Android release | Signed APK `1.1.0+10` build pass với public config, `apksigner` xác minh đúng một signer và SHA-256 pin; Pixel 10 Pro XL AVD API 37 clean install/cold launch/Vietnamese semantics/crash=0 pass. Test candidate cùng key nâng `1.1.0+10`→`1.1.1+11`, giữ `firstInstallTime` và TEST_ONLY encrypted-vault fixture. Owner đã backup key; tag CI `29761935925`, public download/signature gate và hosted verifier `29762712975` pass. Còn physical camera/biometric gate |
 | macOS release | Bị chặn vì chưa có development/distribution certificate |
 | Linux release + Debian artifact | Pass configured `linux/x64`, historical `1.0.0+9` vault upgrade, private-keyring UI smoke và `.deb` `1.1.0+10` amd64; hosted amd64 pass clean transition/retention + X11/Wayland trên Ubuntu 22.04/24.04 và Debian 12/13 |
 | Linux authenticated E2EE runtime | Pass trên Ubuntu 24.04 arm64 container tạm: client thật đăng nhập production Supabase, setup revision 1, sync revision 2, fresh-device recovery, recovery-key rotation revision 3, reject key cũ, vault-key rotation revision 4 và recovery cuối; operator xóa user/row và admin probe xác nhận 404 |
 | Windows release + installer | Pass upgrade vault thật từ source `1.0.0+9`/plugin 3.1.2 sang current COW v2, configured x64 bundle, local-vault runtime và NSIS 3.12 unsigned candidate; install/launch/metadata-upgrade/uninstall giữ AppData pass, bundle + installer/checksum giữ 14 ngày |
-| GitHub Desktop Preview | `v1.1.0-preview.3` public pre-release tại commit `87d546c`; Windows x64 NSIS và Linux amd64 `.deb` chứa surviving-device auto-unwrap fix, cùng individual checksum + `SHA256SUMS.txt`; public unauthenticated re-download khớp SHA-256 |
+| GitHub Preview | `v1.1.0-preview.4` public pre-release tại commit `7f17cce`; Android signed APK, Windows x64 NSIS và Linux amd64 `.deb` tạo đúng bảy asset. Public unauthenticated re-download khớp GitHub digest/checksum/manifest; Android signer fingerprint, Debian và PE32 signature pass |
 | Device registry client | Model/identity store/repository/BLoC/widget regression pass: stable installation UUID, server-bound load, current-session protection, targeted confirmation, double-submit guard và identifier redaction |
 | Device-wrap cryptographic revoke | **Server production + client runtime đã xác minh:** HPKE Base X25519/HKDF-SHA256/AES-256-GCM; server-only DEK verifier; enrollment, lost-device-key HA1 recovery, publish-v2, exact wrap rotation và surviving-session auto-unwrap pass trên Linux/Android/iOS. Fix đã có trong Preview 3; chưa có physical two-device review |
 
@@ -212,9 +212,9 @@ Capability là hành vi source hiện tại, không thay thế device test và s
 
 1. Android app signing key đã do owner tạo/backup ngoài repository, local config
    mode `0600`, public fingerprint đã pin; signed build và emulator vault-retaining
-   upgrade pass. GitHub có đủ bốn encrypted signing secrets. Còn tag CI, public
-   download và physical camera/biometric evidence. GitHub hiện vẫn chỉ
-   public Windows/Linux unsigned preview. Apple/Windows signing credential chưa
+   upgrade pass. GitHub có đủ bốn encrypted signing secrets; tag CI và public
+   Android APK/signature verification pass. Còn physical camera/biometric evidence.
+   Apple/Windows signing credential chưa
    có; app store được hoãn.
 2. SMTP được hoãn. Endpoint chấp nhận recovery flow và token contract pass, nhưng delivery
    tới mailbox thật cùng expired-token E2E chưa được chứng minh.
@@ -302,17 +302,23 @@ Capability là hành vi source hiện tại, không thay thế device test và s
   public có pre-release flag, không phải draft, đúng năm asset; Windows SHA-256
   `7b303749…c4c8332`, Linux SHA-256 `4b0f09c1…fd838f2` đã được tải lại không auth
   và xác minh bằng manifest công khai.
+- PR #16 merge commit `7f17cce` bổ sung Android signed release contract. Tag CI
+  `29761935925` tại `v1.1.0-preview.4` pass 7/7, gồm signed APK/checksum, exact
+  fingerprint pin và cleanup keystore tạm. Publisher run `29762594069` pass.
+- `v1.1.0-preview.4` public có đúng bảy asset. Public verifier local và hosted run
+  `29762712975` tải không Authorization, xác minh GitHub digest, checksum/manifest,
+  Android signer fingerprint, Debian và PE32 signature đều pass.
 - `.github/dependabot.yml` kiểm tra Pub và GitHub Actions hằng tuần.
 - `release-preview.yml` cùng `github_preview_release.sh` fail closed theo
   tag/version/successful tag CI. Ba preview lịch sử giữ Windows/Linux allowlist;
   source mới bắt buộc thêm signed Android APK/checksum và exact certificate pin.
   Workflow gốc đã có trên default branch từ merge commit `893b5be`; Android
-  extension còn chờ merge/tag evidence.
+  extension đã merge tại `7f17cce` và pass tag/public evidence ở Preview 4.
 - `verify-release.yml` và `verify_github_preview_release.sh` đóng gate sau upload
-  bằng public API/download không Authorization. Lượt hiện tại xác minh lại
-  `v1.1.0-preview.3`, exact commit/run/năm asset, API digest, checksum/manifest và
-  Debian/PE32 signature; mọi tag mới còn bắt buộc bảy asset và `apksigner` khớp
-  pin. Release-event run `29693941594` pass; sai expected commit/tag fail closed.
+  bằng public API/download không Authorization. Lượt hiện tại xác minh
+  `v1.1.0-preview.4`, exact commit/run/bảy asset, API digest, checksum/manifest,
+  Android signer pin và Debian/PE32 signature. Manual hosted run `29762712975`
+  pass; sai expected commit/tag fail closed.
 - GitHub Private Vulnerability Reporting đã bật; `.github/SECURITY.md` hướng dẫn
   gửi báo cáo riêng tư và cấm đưa credential vào public issue.
 - `scripts/agent/check.sh full` là quality gate canonical; baseline hiện có 186 test,

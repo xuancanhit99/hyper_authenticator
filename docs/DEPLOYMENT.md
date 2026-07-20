@@ -52,10 +52,11 @@ store chưa nằm trên critical path. Mỗi platform vẫn phải vượt gate 
 | iOS | Không phân phối public qua GitHub | Signing/provisioning và kênh Apple phù hợp |
 | Web | Production URL | Deploy image độc lập, không đóng gói vào GitHub Release |
 
-GitHub Preview chỉ gồm Windows x64 NSIS installer và Linux amd64 Debian package.
+GitHub Preview gồm Android signed APK, Windows x64 NSIS installer và Linux amd64
+Debian package.
 Tag phải có dạng `vX.Y.Z-preview.N`, khớp app version và trỏ tới commit có workflow
 `CI` của chính tag pass toàn bộ. Android debug APK, Apple compile build và Windows
-portable CI bundle không được publish.
+portable CI bundle không được publish; chỉ Android APK từ signed tag job được nhận.
 
 Quy trình maintainer:
 
@@ -95,6 +96,10 @@ version mà không tin local tag content làm provenance:
 
     scripts/agent/verify_github_preview_release.sh \
       v1.1.0-preview.1 xuancanhit99/hyper_authenticator
+
+Publisher tự chạy public verifier trước khi kết thúc. Với Preview 4 được tạo bằng
+workflow token, secondary `release: published` không tự phát sinh; maintainer đã
+manual-dispatch `Verify Public GitHub Preview` và hosted run `29762712975` pass.
 
 SMTP production chưa được cấu hình ở giai đoạn này và không chặn phát hành binary
 qua GitHub. Release note phải nói rõ email khôi phục mật khẩu có thể chưa tới

@@ -1,6 +1,6 @@
 # Task: Phát hành Android signed APK qua GitHub
 
-- Trạng thái: Đang thực hiện
+- Trạng thái: Hoàn thành
 - Bắt đầu: 2026-07-20
 - Owner: Hyperz
 - Issue hoặc ADR liên quan: ADR-0010
@@ -22,8 +22,8 @@ theo tiếp tục dùng cùng app signing key.
 - [x] App signing key ở ngoài repository, mode `0600`, có backup do owner giữ.
 - [x] Gradle fail closed khi release signing thiếu và hỗ trợ path tuyệt đối/CI env.
 - [x] Local harness build APK, xác minh chữ ký và khóa SHA-256 fingerprint.
-- [x] Tag CI có source tạo signed APK/checksum mà không upload keystore hoặc debug
-      symbol; bốn encrypted secrets đã có, còn chờ tag runtime evidence.
+- [x] Tag CI tạo signed APK/checksum mà không upload keystore hoặc debug symbol;
+      bốn encrypted secrets và tag runtime evidence đều đã xác minh.
 - [x] GitHub publisher/public verifier yêu cầu APK từ mọi tag mới nhưng vẫn đọc
       được ba preview lịch sử chỉ có Windows/Linux.
 - [x] Signed APK pass install/runtime/upgrade gate trên Android emulator.
@@ -54,8 +54,8 @@ theo tiếp tục dùng cùng app signing key.
 - [x] Mở rộng CI/tag artifact và GitHub Preview publisher/verifier.
 - [x] Chạy local signed build, signature verification và emulator upgrade.
 - [x] Chạy full gate và secret history gate.
-- [ ] Chạy tag CI với encrypted signing secrets đã cấu hình.
-- [ ] Publish preview kế tiếp rồi tải lại không auth để xác minh.
+- [x] Chạy tag CI với encrypted signing secrets đã cấu hình.
+- [x] Publish preview kế tiếp rồi tải lại không auth để xác minh.
 
 ## Nhật ký xác minh
 
@@ -73,6 +73,9 @@ theo tiếp tục dùng cùng app signing key.
 | Signed upgrade `1.1.0+10`→test `1.1.1+11` | Cùng signer, `firstInstallTime` và TEST_ONLY encrypted-vault fixture được giữ; AVD cleanup/restore `1.1.0+10` pass | 2026-07-20 |
 | Post-runtime `scripts/agent/check.sh full` | Docs/generated/format/analyze/platform/release/ops và 186 test pass; migration gặp một transient container socket failure | 2026-07-20 |
 | `scripts/supabase/test_encrypted_vault_migration.sh` retry | Pass ngay sau transient; container tạm cleanup đúng contract | 2026-07-20 |
+| Tag CI `29761935925` | Pass 7/7; signed APK/checksum, signer pin, artifact upload và keystore cleanup đều xanh | 2026-07-20 |
+| Publisher `29762594069` | Publish `v1.1.0-preview.4` pre-release từ exact tag CI artifact, đúng bảy asset | 2026-07-20 |
+| Public verifier local + hosted `29762712975` | Không Authorization; exact tag/commit/CI, digest/checksum/manifest, Android signer, Debian/PE32 đều pass | 2026-07-20 |
 
 ## Tác động tài liệu
 
@@ -86,5 +89,6 @@ theo tiếp tục dùng cùng app signing key.
 
 ## Bàn giao
 
-Signed build/runtime/upgrade evidence, owner backup confirmation và GitHub encrypted
-secrets đã có. Còn tag CI và public artifact verification.
+Mục tiêu đã đạt: signed build/runtime/upgrade, owner backup, encrypted secrets,
+tag CI, public artifact và unauthenticated verification đều có bằng chứng. Physical
+camera/biometric và app store là gate ngoài phạm vi task này.
