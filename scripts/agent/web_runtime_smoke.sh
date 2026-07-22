@@ -86,6 +86,12 @@ if [[ "$server_ready" != true ]]; then
   exit 1
 fi
 
+# Chrome trên GitHub-hosted Ubuntu không luôn ghi DevToolsActivePort khi nhận
+# port 0. Chọn một loopback port trống ngay trước khi launch và probe readiness;
+# không dùng một fixed port có thể xung đột giữa các runner/process.
+debug_port=$(python3 -c \
+  'import socket; s=socket.socket(); s.bind(("127.0.0.1", 0)); print(s.getsockname()[1]); s.close()')
+
 "$chrome_binary" \
   --headless=new \
   --disable-background-networking \
@@ -96,22 +102,33 @@ fi
   --no-first-run \
   --no-sandbox \
   --remote-allow-origins='*' \
-  --remote-debugging-port=0 \
+  --remote-debugging-port="$debug_port" \
   --user-data-dir="$tmp_dir/chrome-profile" \
   "http://127.0.0.1:$server_port/" \
   >"$tmp_dir/chrome.log" 2>&1 &
 chrome_pid=$!
 
-devtools_port_file="$tmp_dir/chrome-profile/DevToolsActivePort"
-for _ in {1..40}; do
-  if [[ -s "$devtools_port_file" ]]; then
-    debug_port=$(head -n 1 "$devtools_port_file")
+devtools_ready=false
+for _ in {1..120}; do
+  if curl --silent --fail --max-time 1 \
+    "http://127.0.0.1:$debug_port/json/version" >/dev/null; then
+    devtools_ready=true
+    break
+  fi
+  if ! kill -0 "$chrome_pid" >/dev/null 2>&1; then
     break
   fi
   sleep 0.25
 done
-if [[ -z "${debug_port:-}" || ! "$debug_port" =~ ^[0-9]+$ ]]; then
-  printf '%s\n' 'Chrome không công bố DevTools port hợp lệ.' >&2
+if [[ "$devtools_ready" != true ]]; then
+  chrome_state=stopped
+  log_endpoint_state=missing
+  kill -0 "$chrome_pid" >/dev/null 2>&1 && chrome_state=running
+  grep -q 'DevTools listening on ws://' "$tmp_dir/chrome.log" && \
+    log_endpoint_state=present
+  printf \
+    'Chrome DevTools không sẵn sàng: process=%s, log_endpoint=%s.\n' \
+    "$chrome_state" "$log_endpoint_state" >&2
   exit 1
 fi
 
