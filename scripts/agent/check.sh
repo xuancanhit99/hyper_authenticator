@@ -53,7 +53,11 @@ run_release_harness() {
   bash -n \
     scripts/agent/build_android_release.sh \
     scripts/agent/configure_android_signing.sh \
-    scripts/agent/configure_github_android_signing.sh
+    scripts/agent/configure_github_android_signing.sh \
+    scripts/agent/separate_local_env.sh \
+    scripts/agent/test_ide_run_config.sh
+  scripts/agent/test_ide_run_config.sh
+  scripts/agent/test_separate_local_env.sh
   scripts/agent/test_github_preview_assets.sh
   scripts/agent/test_github_preview_release_contract.sh
   web-deployment/test-production-rollback-contract.sh

@@ -32,13 +32,43 @@ Chạy app:
 `.env` chỉ được Flutter đọc ở build time qua command flag, không load runtime và
 không bundle như asset.
 
+Trong Android Studio, chọn shared Run Configuration
+`Hyper Authenticator (local .env)` rồi Run/Debug. Configuration này chỉ tham
+chiếu file `.env` local qua `--dart-define-from-file=.env`; nó không chứa hoặc
+commit giá trị config. Run Configuration mặc định tự sinh tên `main.dart` không
+truyền flag này, nên app sẽ chủ động dừng ở startup vì thiếu Supabase client
+config.
+
 Validate theo đúng release contract mà không in key:
 
     dart run tool/agent/check_release_config.dart .env
 
 Validator chỉ cho phép bốn nhóm public client config (có alias legacy
 `SUPABASE_ANON_KEY`), HTTPS URL và publishable/legacy `anon` key. Server/operator
-variable phải nằm ở file khác ngoài repository.
+variable phải nằm ở file local khác và không được Git track.
+
+## Cấu hình server local
+
+Các biến SSH/remote operator không thuộc runtime contract của ứng dụng. Giữ chúng
+trong `.env.server` mode `0600`; file này được Git ignore và không được truyền cho
+`flutter run`, `flutter build` hoặc GitHub Actions. Tạo mới từ template:
+
+    cp .env.server.example .env.server
+    chmod 0600 .env.server
+
+Nếu `.env` cũ đang trộn client config và năm biến server canonical, tách một lần
+mà không in giá trị:
+
+    scripts/agent/separate_local_env.sh \
+      .env .env.server SEPARATE_LOCAL_SERVER_CONFIG
+
+Helper fail closed khi thiếu/lặp biến, khi plaintext sync không phải `false`, khi
+file không có permission an toàn hoặc khi `.env.server` đã tồn tại. Encrypted
+off-host backup đọc SSH config bằng biến môi trường trỏ tới file này:
+
+    OPERATOR_ENV="$PWD/.env.server" \
+      AGE_RECIPIENT_FILE=/secure/path/age-recipient.txt \
+      scripts/supabase/pull_encrypted_backup.sh
 
 ## Workflow AI Agent
 
