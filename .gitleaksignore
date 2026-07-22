@@ -1,2 +1,5 @@
 # Public RFC 6238 TOTP test vector, không phải credential.
 757f1bb58db87d525b9d0bf04d31f2436de2181e:test/features/authenticator/generate_totp_code_test.dart:generic-api-key:8
+
+# Synthetic publishable-key fixture for the local environment-separation contract.
+946aaf6586aecaba9cc972ce1805b7099363e4f6:scripts/agent/test_separate_local_env.sh:generic-api-key:16
