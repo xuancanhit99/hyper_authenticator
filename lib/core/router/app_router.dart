@@ -185,6 +185,7 @@ class AppRouter {
           // which triggers Flutter's duplicate GlobalKey assertion. Tab
           // switching keeps the native NavigationBar animation below.
           pageBuilder: (context, state, navigationShell) => NoTransitionPage(
+            key: state.pageKey,
             child: MainNavigationPage(navigationShell: navigationShell),
           ),
           branches: [
