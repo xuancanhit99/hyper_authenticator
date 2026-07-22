@@ -4,6 +4,7 @@
 - Ngày: 2026-07-19
 - Owner: canhvx
 - Thay thế:
+- Được bổ sung bởi: ADR-0013
 - Bị thay thế bởi:
 
 ## Bối cảnh
@@ -169,3 +170,19 @@ không drop column/table cho tới khi đã audit không còn device v2 cần wr
 - [Official CFRG test vectors, pinned commit](https://github.com/cfrg/draft-irtf-cfrg-hpke/blob/5f503c564da00b0687b3de75f1dfbdfc4079ad31/test-vectors.json)
 - [Google Tink hybrid encryption](https://developers.google.com/tink/hybrid)
 - [Google Tink primitives by language](https://developers.google.com/tink/primitives-by-language)
+
+## Phụ lục triển khai — 22-07-2026
+
+- Client, schema/RPC và device-wrap production đã được triển khai. Trạng thái hiện
+  tại nằm ở `docs/PROJECT_STATUS.md`; đoạn “dự kiến/staged” phía trên là kế hoạch
+  rollout tại thời điểm ADR được chấp nhận.
+- `prepareRotation` hiện xác minh wrapped key và membership proof của **mọi** active
+  device ở current generation trước khi tạo bất kỳ next-generation wrap nào. Proof
+  giả, thiếu hoặc stale làm toàn bộ rotation fail closed.
+- RPC hỗ trợ exact exclusion và atomic revoke ở backend contract. UI/client hiện
+  truyền danh sách exclusion rỗng, nên thao tác “xoay vault key” thông thường cấp
+  wrap mới cho toàn bộ active device đã verify. Chưa có user-facing flow gọi exact
+  exclusion; targeted/bulk revoke trong Settings chỉ thu hồi auth session và không
+  được mô tả là cryptographic exclusion.
+- Cutoff protocol `0`, row-lock publish và plaintext retirement được quyết định
+  tiếp trong [ADR-0013](0013-retire-plaintext-and-require-device-bound-publish.md).

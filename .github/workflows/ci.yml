@@ -132,7 +132,7 @@ jobs:
         run: rm -f "$RUNNER_TEMP/android-app-signing.jks"
 
   web:
-    name: Web release and serving contract
+    name: Web configured runtime and serving contract
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -142,7 +142,25 @@ jobs:
           channel: stable
           cache: true
       - run: flutter pub get
-      - run: bash scripts/agent/build.sh web
+      - name: Tạo public config tổng hợp và build Web release
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          config_path="$RUNNER_TEMP/web-runtime-config.json"
+          jq -n \
+            --arg supabase_url 'https://supabase.example.invalid' \
+            --arg publishable_key 'sb_publishable_ABCDEFGHIJKLMNOPQRSTUV_ABCDEFGH' \
+            --arg recovery_url 'https://auth.example.invalid/reset-password/' \
+            '{
+              SUPABASE_URL: $supabase_url,
+              SUPABASE_PUBLISHABLE_KEY: $publishable_key,
+              PASSWORD_RECOVERY_URL: $recovery_url,
+              ALLOW_INSECURE_PLAINTEXT_SYNC: false
+            }' > "$config_path"
+          bash scripts/agent/build.sh web "$config_path"
+      - name: Chạy release artifact trong Chrome headless
+        run: bash scripts/agent/web_runtime_smoke.sh
       - run: bash web-deployment/test.sh
 
   linux:

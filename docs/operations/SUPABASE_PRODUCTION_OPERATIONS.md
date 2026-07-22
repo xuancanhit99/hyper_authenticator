@@ -18,8 +18,16 @@ Kiểm tra:
   function còn active-session guard + delete đúng `auth.sessions`;
 - device key/wrap cùng server-only DEK verifier không cấp direct SELECT; publish-v2,
   wrap và atomic rotation RPC còn `SECURITY DEFINER` đúng signature;
+- `public.synced_accounts` không còn trong catalog/PostgREST;
+- legacy publish chỉ tạo revision `1`, từ chối expected revision `NULL`;
+  publish-v2 có exact-row `FOR UPDATE`, yêu cầu protocol `1` và active device
+  binding trước update;
 - public Auth và Recovery HTTP boundary;
 - verified backup gần nhất chưa quá hạn.
+
+Hai probe plaintext/publish trên thuộc health script mới và chỉ được cài lên
+production cùng terminal migrations ngày 22-07-2026; nếu cài trước, health fail là
+đúng thiết kế chứ không phải lý do nới contract.
 
 Systemd template:
 
@@ -70,6 +78,8 @@ cluster, full restore với `--no-owner --no-privileges`, probe:
 - active-session helper/policy/RPC được restore và còn đúng security boundary;
 - device-registry table/privilege/RPC được restore đúng security boundary;
 - device-wrap table, private verifier và v2/rotation RPC được restore đúng boundary;
+- plaintext table đã vắng mặt, legacy publish còn initial-only và v2 definition có
+  row lock/protocol `1` guard;
 - encrypted và registry table đọc được bằng owner ở database tạm.
 
 Trap luôn force-drop database tạm. Script không restore đè production database.
@@ -251,9 +261,70 @@ domain NXDOMAIN vẫn renew fail khi NPM startup. Không xóa trực tiếp data
 certificate files. Operator phải dùng NPM API/UI để xóa sau backup nếu domain đã
 bỏ, hoặc khôi phục DNS rồi renew nếu còn dùng.
 
+## Terminal P0 migration — **Đã triển khai production**
+
+Hai migration đã pass local PostgreSQL concurrency contract và deploy production
+ngày 22-07-2026:
+
+    supabase/migrations/20260722100000_harden_device_wrap_publish.sql
+    supabase/migrations/20260722110000_retire_plaintext_synced_accounts.sql
+
+Migration đầu giữ onboarding revision `1`, nhưng mọi update tiếp theo phải đi qua
+device-bound v2 RPC; v2 khóa exact snapshot bằng `FOR UPDATE` trước khi kiểm tra
+protocol `1`. Migration sau đặt `row_security=off`, lấy `ACCESS EXCLUSIVE` lock và
+chỉ drop `public.synced_accounts` trong nhánh đã lock khi table rỗng. Operator
+thiếu `BYPASSRLS` hoặc còn row đều fail closed; trường hợp còn row trả
+`plaintext_legacy_rows_present`, không xóa row/table và không dùng `CASCADE`.
+
+Trình tự bắt buộc:
+
+1. Chốt maintenance window và dừng rollout client/server khác.
+2. Tạo fresh full backup bằng `backup_production.sh`; xác minh manifest/catalog,
+   tạo encrypted off-host copy và chạy restore rehearsal trên chính backup đó.
+3. Kiểm tra lại ngay trước mutation: encrypted/device state tương thích và
+   `select count(*) from public.synced_accounts` bằng `0`. Không in row content.
+4. Apply đúng thứ tự với `ON_ERROR_STOP=1`:
+
+       docker exec -i supabase-db \
+         psql -X -v ON_ERROR_STOP=1 -U supabase_admin -d postgres \
+         < supabase/migrations/20260722100000_harden_device_wrap_publish.sql
+
+       docker exec -i supabase-db \
+         psql -X -v ON_ERROR_STOP=1 -U supabase_admin -d postgres \
+         < supabase/migrations/20260722110000_retire_plaintext_synced_accounts.sql
+
+5. Reload PostgREST schema cache theo lifecycle của stack, rồi chạy health và toàn
+   bộ remote contracts bên dưới.
+6. Tạo post-change backup và restore rehearsal; chỉ mở lại rollout khi table-absent,
+   publish cutoff/row-lock và cleanup test user đều pass.
+
+Evidence lượt deploy: pre-backup/off-host `supabase-20260722T153421Z`; zero-row
+preflight; hai migration + PostgREST reload pass. Một post-backup đầu đã tạo đủ
+artifact nhưng service báo fail ở retention vì ba archive lịch sử thuộc
+`root:root`; ownership được chuẩn hóa về service account, giữ mode private, rồi
+service chạy lại thành công. Post-backup `supabase-20260722T155219Z`, full restore,
+encrypted off-host copy, health, table-absent, lượt rollout ban đầu encrypted
+35/35, registry 25/25 và
+recovery 8/8 đều pass. Final app-data audit bằng 0.
+
+Adversarial review sau rollout bổ sung explicit legacy `NULL` guard, đặt DROP ngay
+trong existence/lock branch và `row_security=off` để operator thiếu `BYPASSRLS`
+fail closed. Canonical SQL được re-apply sau pre-backup/off-host
+`supabase-20260722T161217Z`. Remote encrypted 36/36, health, final zero-data/
+table-absent/NULL-guard probe, post-backup `supabase-20260722T161534Z`, full restore
+và encrypted off-host copy đều pass.
+
+Nếu zero-row preflight hoặc migration fail, dừng rollout và giữ nguyên database để
+điều tra/migrate thủ công. Không xóa row để làm gate xanh. Sau khi plaintext table
+đã drop, rollback cần restore full backup + config/release tương thích trong
+maintenance window; không dựng lại table thủ công hoặc bật lại plaintext client.
+
 ## Contract sau deploy/upgrade
 
 Chạy theo thứ tự:
+
+    scripts/supabase/test_remote_contract.sh \
+      /path/to/server.env https://api.example.com
 
     scripts/supabase/test_remote_encrypted_vault_contract.sh \
       /path/to/server.env https://api.example.com
@@ -267,8 +338,14 @@ Chạy theo thứ tự:
 
     scripts/supabase/test_remote_studio_proxy.sh https://studio.example.com
 
-Sau test xác nhận isolated user được dọn. Không chạy plaintext RLS contract trên
-production mới nếu compatibility table đã được freeze/drop.
+`test_remote_contract.sh` là terminal table-absent contract: cả publishable và
+service-role request phải nhận HTTP 404 cùng `PGRST205`/`42P01`. Sau các suite tạo
+user, xác nhận isolated user/encrypted row đã được dọn.
+
+Encrypted remote suite đã được nâng thành 36 assertion cho expected-revision `NULL`, negative legacy cutoff,
+enroll/self-wrap/confirm protocol `1`, v2 publish, session revoke và cross-tenant
+isolation. Phải chạy suite này sau rollout; không xem local PostgreSQL contract là
+bằng chứng thay thế cho public HTTPS production boundary.
 
 ## Upgrade Supabase
 
@@ -307,10 +384,13 @@ không mix database mới với service cũ nếu upstream không bảo đảm c
 - Disk/RAM/container: dừng rollout, giữ backup, đọc bounded journal và health output.
 - Auth/recovery failure: giữ local vault usable, không bật plaintext sync fallback.
 - Revision conflict tăng: không delete encrypted rows; kiểm tra client/server contract.
-- Thiết bị/session nghi bị lộ: từ thiết bị tin cậy xoay vault key, sau đó dùng
-  “Thiết bị đã đăng nhập” để thu hồi target đã register hoặc “Đăng xuất các phiên
-  khác” cho phiên cũ/không nhận diện; xác minh remote device/session contract.
-  Targeted revoke không remote-wipe local vault và không phải permanent ban.
+- Thiết bị/session nghi bị lộ: dùng “Thiết bị đã đăng nhập” để thu hồi target đã
+  register hoặc “Đăng xuất các phiên khác” cho phiên cũ/không nhận diện, rồi xác
+  minh remote device/session contract. Đây chỉ là auth-session revocation, không
+  remote-wipe local vault, không permanent ban và không tự loại device key khỏi
+  quyền giải mã. Generic vault-key rotation hiện cấp wrap mới cho mọi active
+  device có membership proof hợp lệ; UI chưa có per-device cryptographic exclusion.
+  Nếu TOTP/DEK có thể đã lộ, xử lý như credential incident thay vì dựa vào revoke.
 - Suspected server secret leak: rotate server credential/JWT/SMTP/DB theo scope;
   publishable key xử lý riêng, tuyệt đối không đưa service-role vào app.
 - Suspected recovery key/TOTP leak: đây là user credential incident; rotate TOTP tại
@@ -318,6 +398,7 @@ không mix database mới với service cũ nếu upstream không bảo đảm c
 
 ## Khoảng trống
 
+- Client chưa có per-device cryptographic exclusion; revoke hiện là session-only.
 - Chưa có external alert delivery.
 - Chưa có PITR/continuous WAL archive.
 - Off-host copy chưa ở dedicated backup system.

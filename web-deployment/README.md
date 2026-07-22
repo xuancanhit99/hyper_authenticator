@@ -3,10 +3,24 @@
 Harness này đóng gói `build/web` vào Nginx non-root đã pin digest mà không gửi
 source hoặc `.env` vào Docker build context.
 
-Build artifact và image:
+Build configured artifact, chạy browser runtime smoke rồi mới đóng image:
 
     scripts/agent/build.sh web .env
+    scripts/agent/web_runtime_smoke.sh
+    web-deployment/test.sh
     web-deployment/build-image.sh hyper-authenticator-web:1.1.0-<commit> linux/amd64
+
+`web_runtime_smoke.sh` phục vụ chính `build/web` trên loopback và boot bằng
+Chrome/Chromium headless với profile cô lập. Gate yêu cầu Flutter engine mount,
+semantics local-vault shell (`Mã xác thực`, `Tài khoản`) và không xuất hiện startup
+fallback do thiếu public config. Web CI tạo config tổng hợp dùng các origin
+`.invalid`, nên không cần hoặc làm lộ credential production. Positive configured
+build và negative build thiếu config đã được chạy để xác nhận harness phân biệt
+đúng; đây không thay login/camera smoke trên public HTTPS origin.
+
+`scripts/agent/check.sh full` chỉ kiểm tra shell syntax và Node parser của harness
+vì không tạo Web artifact. Browser runtime thật chạy trong Web CI sau configured
+release build; `web-deployment/test.sh` tiếp tục là serving/image contract riêng.
 
 Đối số thứ hai pin kiến trúc của host chạy container. Production hiện dùng
 `linux/amd64`; truyền sai hoặc bỏ đối số khi cross-build trên Apple Silicon có thể
@@ -28,7 +42,7 @@ trùng khi edge proxy đã cấu hình HSTS.
 Scanner Web hiện dùng `zxing-wasm 3.1.1` được pin bởi `mobile_scanner`; CSP mở
 jsDelivr/Fastly cho script/WASM fallback. Flutter engine dùng Noto Sans fallback
 từ `fonts.gstatic.com`; cả `connect-src` và `font-src` chỉ mở đúng origin này.
-Chạy contract:
+Chạy lại serving contract khi đã có configured artifact:
 
     web-deployment/test.sh
 

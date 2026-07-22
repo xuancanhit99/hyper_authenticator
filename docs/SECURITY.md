@@ -42,7 +42,9 @@ không bao giờ được đặt trong Flutter `.env`, asset, build log hoặc b
 - App lock fail closed và relock theo lifecycle.
 - Root `PrivacyShield` che toàn bộ router ở mọi lifecycle khác `resumed`, bỏ
   keyboard focus, dừng ticker và loại cây nội dung khỏi semantics trong khi che.
-  Lớp che không dispose hoặc mutate vault/state bên dưới.
+  Lớp che dùng Material 3 static, có opaque base + gradient không sample route,
+  responsive ở viewport hẹp/text scale lớn và chỉ công khai một semantics label
+  an toàn. Nó không dispose hoặc mutate vault/state bên dưới.
 - Platform capability chặn plugin không hỗ trợ thay vì gọi rồi fallback không an toàn.
 - Windows đóng băng AppData identity tương thích `1.0.0+9`. Layout migrator chạy
   trước DI, chỉ copy atomic allowlist, không theo symlink/không xóa nguồn và dừng
@@ -65,8 +67,12 @@ không bao giờ được đặt trong Flutter `.env`, asset, build log hoặc b
   và không vô hiệu key cũ đối với encrypted backup lịch sử.
 - Vault-key rotation sinh DEK + recovery key mới, re-encrypt current snapshot và
   atomic publish cả ciphertext/wrapped key. DEK local chỉ thay sau remote verify;
-  cancel/conflict giữ key cũ. Surviving active device có private key sẽ verify
-  exact HPKE wrap/proof rồi tự thay DEK; excluded/mất private key mới cần HA1.
+  cancel/conflict giữ key cũ. Trước khi tạo next-generation wrap, client dùng DEK
+  hiện tại để verify current-generation wrap/proof của **mọi** active device và
+  fail closed nếu một entry thiếu, stale hoặc giả. Generic rotation cấp wrap mới
+  cho toàn bộ tập đã verify; Settings chưa có per-device cryptographic exclusion.
+  Surviving device có private key sẽ verify exact HPKE wrap/proof rồi tự thay DEK;
+  device không có wrap hoặc mất private key phải dùng HA1.
 - Publish/verify/secure-storage failure sau request được coi là mơ hồ; client giữ
   last-seen revision cũ và hướng user giữ recovery key mới thay vì retry mù.
 - Settings cho phép một phiên tin cậy gọi Supabase `SignOutScope.others`: phiên
@@ -96,7 +102,8 @@ không bao giờ được đặt trong Flutter `.env`, asset, build log hoặc b
 
 - Bootstrap chỉ nhận HTTPS Supabase origin và public `sb_publishable_*`/legacy
   `anon`; server key bị từ chối mà không xuất hiện trong error.
-- Release bắt buộc HTTPS recovery URL và `ALLOW_INSECURE_PLAINTEXT_SYNC=false`.
+- Release bắt buộc HTTPS recovery URL. `ALLOW_INSECURE_PLAINTEXT_SYNC` chỉ còn là
+  poison sentinel; giá trị `true` bị từ chối ở mọi build, không chỉ Release.
 - Android release manifest có INTERNET, cấm cleartext và tắt OS backup.
 - Cả Debug/Release entitlement iOS/macOS đều khai báo Keychain Sharing; platform
   gate chống regression khi runner được regenerate.
@@ -133,9 +140,10 @@ vault về mặt mật mã; support/admin không thể khôi phục plaintext.
 
 Targeted device-session revoke chỉ cắt Supabase authorization và hủy refresh
 session. Nó không remote-wipe local TOTP, không làm thiết bị quên DEK đã giữ và
-không vô hiệu encrypted backup cũ. Khi thiết bị bị mất/compromise, xoay vault key
-trên thiết bị tin cậy trước khi targeted hoặc bulk revoke nếu cần thu hồi cả khả
-năng decrypt current snapshot của client tuân thủ.
+không vô hiệu encrypted backup cũ. Xoay vault key bằng flow generic hiện tại cũng
+không loại target: mọi active device key có proof hợp lệ đều nhận wrap mới. Backend
+có atomic exclusion contract, nhưng Settings/client flow chưa cung cấp lựa chọn đó;
+vì vậy không được mô tả chuỗi “rotate rồi revoke” như cryptographic device revoke.
 
 Recovery key không được tự động copy, log, gửi analytics hoặc lưu SharedPreferences.
 UI cho phép copy theo hành động rõ ràng; người dùng phải đưa key vào password manager
@@ -155,8 +163,11 @@ identity qua app switcher/background snapshot trên toàn bộ Flutter target. S
 bootstrap, mọi lifecycle signal `inactive`, `hidden`, `paused` và `detached` đều
 che nội dung; `resumed` mới gỡ shield. Widget regression xác minh overlay opaque,
 bỏ focus, chặn interaction và không để nội dung bên dưới xuất hiện trong semantics
-tree. Initial `detached` trước lifecycle signal không tự che vì Linux headless và
-một số desktop runtime không phát `resumed`; CI runtime khóa compatibility này.
+tree. Overlay dùng opaque base cùng gradient đã alpha-blend, branding Material 3
+static, không blur/animation/ticker; regression bao phủ light/dark theme, viewport
+320 px và text scale 200%. Initial `detached` trước lifecycle signal không tự che
+vì Linux headless và một số desktop runtime không phát `resumed`; CI runtime khóa
+compatibility này.
 
 **Khoảng trống đã biết:** shield không ngăn active screenshot, screen recording,
 screen sharing khi app vẫn `resumed`, camera ngoài chụp màn hình hoặc phần mềm đã
@@ -202,18 +213,33 @@ HMAC dẫn xuất từ DEK; verifier nằm trong bảng `private`, không xuất
 snapshot SELECT hoặc device RPC. Additive migration/RPC chỉ công khai public
 key, SHA-256 binding-secret hash và opaque per-device proof qua controlled RPC;
 direct table access bị revoke/force RLS. V2 publish yêu cầu active device binding;
-rotation thay snapshot + verifier + exact wrap set + revoke session trong một
-transaction. Lost local device key chỉ được thay bằng đúng DEK verifier dẫn xuất
-từ HA1; key/session cũ bị revoke atomically. Production cùng Linux, Android AVD và
-iOS Simulator runtime đã pass; two-session runtime còn xác minh survivor tự unwrap
-generation mới. Chưa qua independent security review hoặc physical two-device test.
+client phải verify wrap + proof của toàn bộ active set bằng current DEK trước khi
+tạo bất kỳ next-generation wrap nào. Rotation backend thay snapshot + verifier +
+exact wrap set và có thể revoke excluded session trong một transaction; generic
+client hiện gửi exclusion rỗng. Lost local device key chỉ được thay bằng đúng DEK
+verifier dẫn xuất từ HA1; key/session cũ bị revoke atomically.
+
+Migration hardening cuối cùng giới hạn legacy publish RPC ở initial revision 1.
+Mọi update phải dùng RPC v2; hàm này khóa exact snapshot row bằng `FOR UPDATE`, rồi
+kiểm tra revision/generation/protocol `1` và active device binding trên state đã
+khóa. Protocol `0` bị từ chối trước mutation, nên confirm protocol và publish
+không còn cửa sổ TOCTOU. Production cùng Linux, Android AVD và iOS Simulator
+runtime của device-wrap cơ sở đã pass; two-session runtime còn xác minh survivor
+tự unwrap generation mới. Chưa qua independent security review hoặc physical
+two-device test.
 
 ## Destructive operations
 
 - Cloud conflict phải hỏi rõ dùng cloud hay giữ local.
 - Dùng cloud chỉ replace sau re-download đúng revision và decrypt/validate.
 - Dọn Supabase data/volume yêu cầu full backup + checksum + restore note.
-- Drop plaintext compatibility table là migration riêng, không nằm trong client rollout.
+- Plaintext client stack đã bị xóa. Migration loại bỏ cuối cùng chỉ drop
+  `public.synced_accounts` sau `ACCESS EXCLUSIVE` lock khi bảng rỗng; còn row thì
+  abort nguyên transaction với `plaintext_legacy_rows_present`, không log content
+  và không dùng `CASCADE`. Migration đặt `row_security=off`, nên operator thiếu
+  `BYPASSRLS` fail closed thay vì nhận count bị policy lọc. Production apply ngày 22-07 đã dùng fresh backup,
+  off-host copy và zero-row preflight; mọi future restore/rollout vẫn phải lặp
+  các gate này. Rollback không bật lại plaintext trong client mới.
 - Logout và disable sync không được xóa local vault hoặc remote snapshot.
 - Device integration local-vault suite chỉ chạy trên Android emulator/iOS Simulator,
   cần opt-in rõ ràng và luôn cleanup fixture; runner từ chối máy thật/macOS để tránh
@@ -331,13 +357,16 @@ mode 0600. Hourly route service không inject credential, dùng `ProtectSystem`,
 1. Chưa có external alert channel/SIEM; systemd failure hiện chỉ vào journal.
 2. Chưa có independent cryptographic/security review.
 3. Đã có device registry, bulk/targeted auth-session revoke và server-side
-   active-session guard. Device-specific wrapped key đã deploy nhưng chưa có
-   physical two-device/independent review;
-   chưa có schema/runtime/independent review. Backup cũ vẫn decrypt được bằng key
-   material cũ.
+   active-session guard. Device-specific wrapped key đã deploy và có runtime trên
+   Linux/Android/iOS, nhưng chưa có physical two-device/independent review. Backend
+   hỗ trợ exact-set exclusion trong atomic rotation; Settings/generic client chưa
+   cung cấp per-device cryptographic exclusion và hiện giữ mọi active device có proof
+   hợp lệ. Backup cũ vẫn decrypt được bằng key material cũ.
 4. SMTP delivery tới mailbox thật và expired recovery link chưa được E2E test.
-5. Signing key/certificate chưa được owner cung cấp trên môi trường build; GitHub
-   Preview vì vậy có SmartScreen/package-signature risk đã công bố.
+5. Android app-signing key đã được owner backup và đưa vào GitHub Actions encrypted
+   secrets; signed APK/tag CI/public signer verification đều pass. Apple và Windows
+   signing certificate vẫn chưa có, nên desktop GitHub Preview còn
+   Gatekeeper/SmartScreen/package-signature risk đã công bố.
 6. Browser local vault có trust model yếu hơn native dù cloud sync đã tắt.
 7. Background/app-switcher đã có lifecycle shield; active screenshot/recording/
    sharing khi app foreground vẫn là accepted risk chưa có platform runtime gate.

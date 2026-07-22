@@ -116,7 +116,8 @@ device_registry_ready=$(docker exec supabase-db psql -X -v ON_ERROR_STOP=1 \
 device_wrap_ready=$(docker exec supabase-db psql -X -v ON_ERROR_STOP=1 \
   -U supabase_admin -d postgres -Atqc \
   "select
-     to_regclass('public.authenticator_device_keys') is not null
+     to_regclass('public.synced_accounts') is null
+     and to_regclass('public.authenticator_device_keys') is not null
      and to_regclass('public.authenticator_device_key_wraps') is not null
      and to_regclass('private.encrypted_vault_membership_verifiers') is not null
      and not has_table_privilege(
@@ -133,6 +134,24 @@ device_wrap_ready=$(docker exec supabase-db psql -X -v ON_ERROR_STOP=1 \
        where oid = 'public.publish_encrypted_vault_snapshot_v2(bigint,bigint,text,smallint,text,text,text,text,smallint,text,text,text)'::regprocedure
          and prosecdef
      )
+     and position(
+       'for update'
+       in lower(pg_get_functiondef(
+         'public.publish_encrypted_vault_snapshot_v2(bigint,bigint,text,smallint,text,text,text,text,smallint,text,text,text)'::regprocedure
+       ))
+     ) > 0
+     and position(
+       'p_expected_revision <> 0'
+       in pg_get_functiondef(
+         'public.publish_encrypted_vault_snapshot(bigint,smallint,text,text,text,text,smallint,text,text,text)'::regprocedure
+       )
+     ) > 0
+     and position(
+       'p_expected_revision is null'
+       in lower(pg_get_functiondef(
+         'public.publish_encrypted_vault_snapshot(bigint,smallint,text,text,text,text,smallint,text,text,text)'::regprocedure
+       ))
+     ) > 0
      and exists (
        select 1 from pg_proc
        where oid = 'public.begin_authenticator_device_key_enrollment(uuid,text,text,text)'::regprocedure

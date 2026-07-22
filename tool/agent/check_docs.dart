@@ -6,6 +6,7 @@ const requiredDocuments = <String>[
   'README.md',
   'privacy_policy.md',
   'docs/README.md',
+  'docs/PRIVACY_POLICY.md',
   'docs/PROJECT_STATUS.md',
   'docs/SYSTEM_DESIGN.md',
   'docs/ARCHITECTURAL_DECISIONS.md',

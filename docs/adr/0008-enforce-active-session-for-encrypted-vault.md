@@ -103,6 +103,15 @@ JWT của session vừa revoke có thể truy cập vault tới `exp`.
 - Flutter repository/BLoC/widget tests xác minh typed failure, confirmation và
   in-progress behavior.
 
+## Cập nhật triển khai — 22-07-2026
+
+Device registry và device-specific wrap đã được bổ sung sau ADR này, nhưng generic
+vault-key rotation hiện cấp wrap mới cho mọi active device có membership proof hợp
+lệ. Vì vậy flow “xoay vault key rồi bulk revoke” phía trên chỉ kết hợp rotation và
+authorization revoke; nó **không** cryptographically exclude riêng thiết bị mục
+tiêu và không remote-wipe local vault. Current encrypted remote suite có 36 check;
+20/20 phía trên là evidence lịch sử của active-session rollout ban đầu.
+
 ## Rollout
 
 1. Tạo verified backup trước migration.

@@ -37,7 +37,7 @@ Các thay đổi có sẵn trong working tree thuộc về người dùng. Khôn
 - `lib/features/authenticator`: tài khoản local, TOTP, QR và khóa thiết bị.
 - `lib/features/sync`: đồng bộ snapshot qua Supabase.
 - `lib/features/settings`: sinh trắc học, điều khiển sync và logout.
-- `assets`: font, branding và bản đồ logo authenticator.
+- `assets`: branding/logo do owner kiểm soát.
 - `android`, `ios`, `macos`, `web`, `windows`, `linux`: platform runner.
 - `reset-password-web`: trang Supabase recovery tĩnh, tách biệt.
 - `web-deployment`: Nginx production image và serving contract cho Flutter Web.
@@ -59,14 +59,15 @@ Các thay đổi có sẵn trong working tree thuộc về người dùng. Khôn
 
 Đọc `docs/PROJECT_STATUS.md` trước khi tác động đến:
 
-- cloud secret ở dạng plaintext;
-- upload cloud theo kiểu xóa rồi chèn;
-- xóa dữ liệu local khi logout;
-- làm mất tham số TOTP không phải mặc định khi lưu;
-- deep link khôi phục mật khẩu chưa hoàn thiện;
-- quyền sở hữu instance giữa `SyncBloc` và `AccountsBloc` của UI;
-- thiếu automated test và CI;
-- permission, entitlement và release signing của platform chưa hoàn thiện.
+- restore/rollback backup lịch sử có plaintext table và terminal migration
+  device-bound cutoff;
+- membership proof của toàn bộ active device trước rotation; generic rotation
+  hiện chưa có user-facing per-device cryptographic exclusion;
+- session revoke không phải remote wipe local vault hoặc crypto-exclude device;
+- Web E2EE trust boundary và browser storage;
+- Privacy Shield không phải active screenshot/recording prevention;
+- permission, physical-device evidence và Apple/Windows release signing;
+- SMTP delivery, external alert channel và off-host backup SLA.
 
 ## Quy tắc kiến trúc
 

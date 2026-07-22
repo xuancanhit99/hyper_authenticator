@@ -3,6 +3,14 @@
 Tài liệu này ghi đúng artifact đã tạo trước khi clean instance legacy ngày
 **17 tháng 7 năm 2026**. Backup không nằm trong Git repository.
 
+> **Snapshot lịch sử cần được giữ để disaster recovery.** Ba table business
+> `api_keys`, `provider_key_logs`, `user_provider_keys` trong backup này không phải
+> `synced_accounts` của Hyper Authenticator. Current backend contract nằm ở
+> `docs/SUPABASE_INTEGRATION.md`. Terminal plaintext-retirement migration ngày
+> 22-07-2026 đã deploy trên production current sau backup/zero-row preflight;
+> artifact legacy này vẫn có thể chứa schema/data lịch sử khác và không phải bằng
+> chứng trạng thái production hiện tại.
+
 ## Vị trí và mức nhạy cảm
 
 Vị trí hiện tại trên máy operator:
@@ -122,9 +130,16 @@ Dùng khi chỉ cần cứu một phần data business cũ.
 Hướng dẫn upstream về restore self-hosted cần được đối chiếu với version target:
 [Supabase self-hosted restore guide](https://supabase.com/docs/guides/self-hosting/restore-from-platform).
 
-## Instance mới hiện tại
+## Instance mới tại thời điểm clean 17-07-2026
 
 Instance mới là fresh PostgreSQL 17, không nhận data legacy. Sau smoke/RLS test và
 cleanup, `auth.users`, Auth audit, Storage bucket/object, Realtime message và
 `public.synced_accounts` đều bằng `0`. Migration/system metadata được giữ để các
 service hoạt động.
+
+Nếu restore một snapshot trước terminal cutoff để dựng lại Hyper Authenticator,
+phải áp dụng lại migration chain trong môi trường cô lập. Migration
+`20260722110000_retire_plaintext_synced_accounts.sql` sẽ fail closed nếu
+`synced_accounts` có row; khi đó giữ nguyên dữ liệu, backup và lập migration thủ
+công, không xóa row để ép table drop. Chỉ mở traffic sau khi publish hardening,
+table-absent remote contract, health và restore rehearsal đều pass.

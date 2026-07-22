@@ -78,9 +78,11 @@ hay contract cảnh báo/checksum dễ kiểm chứng.
 
 ## Bảo mật và quyền riêng tư
 
-Release chỉ nhận hai installer allowlist và checksum, từ chối env, source map và
-debug symbol. Client chỉ chứa public Supabase publishable config; service-role,
-SMTP, database và signing credential không được đưa vào artifact hay Actions.
+Release chỉ nhận asset allowlist và checksum, từ chối env, source map và debug
+symbol. Client chỉ chứa public Supabase publishable config; service-role, SMTP và
+database credential không được đưa vào artifact hay Actions. Android keystore và
+password chỉ được đưa vào encrypted Actions secrets cho trusted tag CI, khôi phục
+tạm trên runner rồi xóa ở bước `always()`; không được đưa vào artifact hoặc log.
 
 ## Dữ liệu và compatibility
 
@@ -95,6 +97,16 @@ local vault của người dùng đã cài.
 - Workflow `CI` của chính tag pass toàn bộ job.
 - `scripts/agent/check_github_preview_assets.sh` xác minh asset và SHA-256.
 - GitHub Release public có pre-release flag, đúng năm asset và tải xuống được.
+
+## Cập nhật triển khai — 20-07-2026
+
+Owner đã backup Android app-signing key và cấu hình bốn encrypted Actions secrets.
+Contract hiện tại bắt buộc bảy asset cho tag mới: Windows installer/checksum,
+Linux package/checksum, signed Android APK/checksum và manifest tổng. Preview 4 đã
+pass tag CI, public unauthenticated re-download, checksum/GitHub digest và exact
+Android signer fingerprint. Các câu “hai installer”, “năm asset” và Android ở thì
+tương lai phía trên là snapshot của quyết định ban đầu; contract runtime hiện tại
+nằm trong `docs/DEPLOYMENT.md` và `docs/PROJECT_STATUS.md`.
 
 ## Rollout
 

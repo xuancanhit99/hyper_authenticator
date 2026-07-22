@@ -291,6 +291,33 @@ class DeviceKeyEnrollmentUseCase implements DeviceKeyCoordinator {
             SyncOperationFailure('Tập active device không hợp lệ để rotate.'),
           );
         }
+        // Do not trust an `active` state or a canonical-looking proof returned
+        // by the server on its own.  The current DEK is the only authority
+        // that can validate membership in the current generation.  Validate
+        // the complete set before creating any next-generation wrap so a
+        // forged device can never receive a fresh DEK from this client.
+        for (final key in activeKeys) {
+          final wrappedKey = key.wrappedVaultKey;
+          final proof = key.membershipProof;
+          if (wrappedKey == null ||
+              proof == null ||
+              wrappedKey.keyGeneration != currentKeyGeneration ||
+              !await _cipher.verifyMembershipProof(
+                proof: proof,
+                dataKeyBytes: currentDataKeyBytes,
+                publicKeyBytes: key.publicKeyBytes,
+                userId: userId,
+                installationId: key.installationId,
+                deviceKeyId: key.deviceKeyId,
+                keyGeneration: currentKeyGeneration,
+              )) {
+            throw const _DeviceKeyFailure(
+              SyncOperationFailure(
+                'Active device wrap hiện tại không chứng minh được quyền truy cập vault.',
+              ),
+            );
+          }
+        }
         final nextGeneration = currentKeyGeneration + 1;
         final nextVerifier = await _cipher.createVaultMembershipVerifier(
           dataKeyBytes: nextDataKeyBytes,

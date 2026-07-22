@@ -3,6 +3,13 @@
 Tài liệu này ghi lại rollout ngày **18 tháng 7 năm 2026**. Public URL, key, token,
 email và user ID không được ghi vào repository.
 
+> **Snapshot lịch sử.** Bằng chứng row count, Nginx Proxy Manager và backlog bên
+> dưới chỉ mô tả ngày rollout. Contract/status hiện tại nằm ở
+> `docs/SUPABASE_INTEGRATION.md` và
+> `docs/operations/SUPABASE_PRODUCTION_OPERATIONS.md`. Terminal migration loại bỏ
+> `public.synced_accounts` đã deploy production ngày 22-07-2026 sau
+> backup/zero-row preflight; các đoạn lịch sử bên dưới không thay thế status đó.
+
 ## Kết quả
 
 **Đã triển khai**:
@@ -71,6 +78,9 @@ Không chỉ rollback template hoặc redirect riêng lẻ; ba phần client URL
 và template phải tương thích với nhau.
 
 ## Khoảng trống còn lại
+
+Danh sách dưới đây là gap tại thời điểm 18-07-2026; không dùng nó thay current
+project status:
 
 - Chưa gửi/đọc email thật qua SMTP mailbox được kiểm soát; vì vậy delivery,
   anti-spam và body cuối cùng tại provider chưa được xác minh E2E.

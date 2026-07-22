@@ -9,11 +9,14 @@ MIGRATIONS=(
   "$ROOT/supabase/migrations/20260719150000_add_device_specific_vault_keys.sql"
   "$ROOT/supabase/migrations/20260719170000_allow_recovery_device_key_replacement.sql"
 )
+HARDENING_MIGRATION="$ROOT/supabase/migrations/20260722100000_harden_device_wrap_publish.sql"
 IMAGE=${POSTGRES_TEST_IMAGE:-postgres:17-alpine@sha256:979c4379dd698aba0b890599a6104e082035f98ef31d9b9291ec22f2b13059ca}
 CONTAINER="hyper-auth-e2ee-postgres-test-$$"
+TEMP_DIR=$(mktemp -d "${TMPDIR:-/tmp}/hyper-auth-e2ee-postgres-test.XXXXXX")
 
 cleanup() {
   docker container rm -f "$CONTAINER" >/dev/null 2>&1 || true
+  find "$TEMP_DIR" -depth -delete 2>/dev/null || true
 }
 trap cleanup EXIT INT TERM
 
@@ -298,6 +301,33 @@ TWO_32='AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI='
 THREE_32='AwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwM='
 ZERO_16='AAAAAAAAAAAAAAAAAAAAAA=='
 
+publish_v2_sql() {
+  local expected_revision=$1
+  local expected_generation=$2
+  local session_id=$3
+  local binding_secret=${4:-$ONE_32}
+  docker exec -i "$CONTAINER" psql -X -A -t -v ON_ERROR_STOP=1 -U postgres <<SQL
+set role authenticated;
+set application_name = 'ha_protocol_publish_v2';
+set request.jwt.claims = '{"sub":"11111111-1111-4111-8111-111111111111","session_id":"$session_id"}';
+select revision || ':' || key_generation || ':' || device_wrap_version
+from public.publish_encrypted_vault_snapshot_v2(
+  $expected_revision::bigint,
+  $expected_generation::bigint,
+  '$binding_secret',
+  1::smallint,
+  'AES-256-GCM',
+  'AAAAAAAAAAAAAAAA',
+  'TEST_ONLY_V2_CIPHERTEXT',
+  'AAAAAAAAAAAAAAAAAAAAAA==',
+  1::smallint,
+  'BBBBBBBBBBBBBBBB',
+  'TEST_ONLY_V2_WRAPPED_KEY_CIPHERTEXT_1234567890',
+  'BBBBBBBBBBBBBBBBBBBBBB=='
+);
+SQL
+}
+
 device_protocol_backfill=$(docker exec -i "$CONTAINER" \
   psql -X -A -t -v ON_ERROR_STOP=1 -U postgres <<'SQL' | tail -n 1
 select key_generation || ':' || device_wrap_version || ':' ||
@@ -307,6 +337,70 @@ where user_id = '11111111-1111-4111-8111-111111111111';
 SQL
 )
 [[ "$device_protocol_backfill" == '1:0:true' ]]
+
+docker exec -i "$CONTAINER" psql -X -v ON_ERROR_STOP=1 -U postgres \
+  <"$HARDENING_MIGRATION"
+
+if null_revision_error=$(
+  docker exec -i "$CONTAINER" psql -X \
+    -v ON_ERROR_STOP=1 -v VERBOSITY=verbose -U postgres 2>&1 <<'SQL'
+set role authenticated;
+set request.jwt.claims = '{"sub":"22222222-2222-4222-8222-222222222222","session_id":"bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"}';
+select revision from public.publish_encrypted_vault_snapshot(
+  null::bigint,
+  1::smallint,
+  'AES-256-GCM',
+  'AAAAAAAAAAAAAAAA',
+  'TEST_ONLY_NULL_REVISION_CIPHERTEXT',
+  'AAAAAAAAAAAAAAAAAAAAAA==',
+  1::smallint,
+  'BBBBBBBBBBBBBBBB',
+  'TEST_ONLY_NULL_REVISION_WRAPPED_KEY_1234567890',
+  'BBBBBBBBBBBBBBBBBBBBBB=='
+);
+SQL
+); then
+  printf '%s\n' 'Legacy publish đã chấp nhận expected revision NULL.' >&2
+  exit 1
+fi
+if [[ "$null_revision_error" != *'22023: invalid_expected_revision'* ]]; then
+  printf '%s\n' \
+    'Legacy publish từ chối NULL nhưng không trả đúng SQLSTATE/message.' >&2
+  exit 1
+fi
+
+null_revision_nonmutation=$(docker exec -i "$CONTAINER" \
+  psql -X -A -t -v ON_ERROR_STOP=1 -U postgres <<'SQL' | tail -n 1
+select count(*) = 0
+from public.encrypted_vault_snapshots
+where user_id = '22222222-2222-4222-8222-222222222222';
+SQL
+)
+[[ "$null_revision_nonmutation" == t ]]
+
+if publish_sql 3 cccccccc-cccc-4ccc-8ccc-cccccccccccc >/dev/null 2>&1; then
+  printf '%s\n' 'Legacy publish đã update snapshot sau protocol cutoff.' >&2
+  exit 1
+fi
+
+if publish_v2_sql \
+  3 1 cccccccc-cccc-4ccc-8ccc-cccccccccccc >/dev/null 2>&1; then
+  printf '%s\n' 'V2 publish đã chấp nhận snapshot protocol 0.' >&2
+  exit 1
+fi
+
+publish_lock_contract=$(docker exec -i "$CONTAINER" \
+  psql -X -A -t -v ON_ERROR_STOP=1 -U postgres <<'SQL' | tail -n 1
+select
+  position(
+    'for update'
+    in lower(pg_get_functiondef(
+      'public.publish_encrypted_vault_snapshot_v2(bigint,bigint,text,smallint,text,text,text,text,smallint,text,text,text)'::regprocedure
+    ))
+  ) > 0;
+SQL
+)
+[[ "$publish_lock_contract" == t ]]
 
 if docker exec -i "$CONTAINER" psql -X -v ON_ERROR_STOP=1 -U postgres <<'SQL' >/dev/null 2>&1
 set role authenticated;
@@ -387,6 +481,7 @@ confirm_device_key() {
   local generation=$5
   docker exec -i "$CONTAINER" psql -X -A -t -v ON_ERROR_STOP=1 -U postgres <<SQL
 set role authenticated;
+set application_name = 'ha_protocol_confirm';
 set request.jwt.claims = '{"sub":"$user_id","session_id":"$session_id"}';
 select public.confirm_current_authenticator_device_key(
   '$device_key_id'::uuid,
@@ -458,6 +553,93 @@ if confirm_device_key \
   exit 1
 fi
 
+# Hold the exact snapshot row while a v2 publish and device confirmation race.
+# The hardened v2 RPC must wait at SELECT ... FOR UPDATE, then observe protocol
+# 0 and fail without incrementing revision. The queued confirm may then enable
+# protocol 1. The pre-hardening implementation read protocol 0 before waiting
+# at UPDATE and would incorrectly commit the publish after the lock released.
+docker exec -i "$CONTAINER" psql -X -v ON_ERROR_STOP=1 -U postgres \
+  >"$TEMP_DIR/protocol-locker.log" 2>&1 <<'SQL' &
+set application_name = 'ha_protocol_lock_blocker';
+begin;
+select revision
+from public.encrypted_vault_snapshots
+where user_id = '11111111-1111-4111-8111-111111111111'
+for update;
+select pg_sleep(3);
+commit;
+SQL
+locker_pid=$!
+
+locker_ready=false
+for _ in {1..50}; do
+  locker_state=$(docker exec -i "$CONTAINER" psql \
+    -X -A -t -v ON_ERROR_STOP=1 -U postgres <<'SQL' | tail -n 1
+select exists (
+  select 1
+  from pg_stat_activity
+  where application_name = 'ha_protocol_lock_blocker'
+    and wait_event = 'PgSleep'
+);
+SQL
+  )
+  if [[ "$locker_state" == t ]]; then
+    locker_ready=true
+    break
+  fi
+  sleep 0.05
+done
+[[ "$locker_ready" == true ]]
+
+publish_v2_sql 3 1 cccccccc-cccc-4ccc-8ccc-cccccccccccc \
+  >"$TEMP_DIR/concurrent-publish.log" 2>&1 &
+concurrent_publish_pid=$!
+
+publish_waiting=false
+for _ in {1..50}; do
+  publish_state=$(docker exec -i "$CONTAINER" psql \
+    -X -A -t -v ON_ERROR_STOP=1 -U postgres <<'SQL' | tail -n 1
+select exists (
+  select 1
+  from pg_stat_activity
+  where application_name = 'ha_protocol_publish_v2'
+    and wait_event_type = 'Lock'
+);
+SQL
+  )
+  if [[ "$publish_state" == t ]]; then
+    publish_waiting=true
+    break
+  fi
+  sleep 0.05
+done
+[[ "$publish_waiting" == true ]]
+
+confirm_device_key \
+  11111111-1111-4111-8111-111111111111 \
+  cccccccc-cccc-4ccc-8ccc-cccccccccccc \
+  "$current_device_key" "$ONE_32" 1 \
+  >"$TEMP_DIR/concurrent-confirm.log" 2>&1 &
+concurrent_confirm_pid=$!
+
+wait "$locker_pid"
+if wait "$concurrent_publish_pid"; then
+  printf '%s\n' \
+    'Concurrent v2 publish đã vượt protocol 0 trong lúc confirm.' >&2
+  exit 1
+fi
+wait "$concurrent_confirm_pid"
+[[ "$(tail -n 1 "$TEMP_DIR/concurrent-confirm.log")" == t ]]
+
+concurrent_protocol_state=$(docker exec -i "$CONTAINER" \
+  psql -X -A -t -v ON_ERROR_STOP=1 -U postgres <<'SQL' | tail -n 1
+select revision || ':' || key_generation || ':' || device_wrap_version
+from public.encrypted_vault_snapshots
+where user_id = '11111111-1111-4111-8111-111111111111';
+SQL
+)
+[[ "$concurrent_protocol_state" == '3:1:1' ]]
+
 confirm_result=$(confirm_device_key \
   11111111-1111-4111-8111-111111111111 \
   cccccccc-cccc-4ccc-8ccc-cccccccccccc \
@@ -477,32 +659,6 @@ if publish_sql 3 cccccccc-cccc-4ccc-8ccc-cccccccccccc >/dev/null 2>&1; then
   printf '%s\n' 'Legacy publish vẫn chạy sau khi device-wrap protocol đã bật.' >&2
   exit 1
 fi
-
-publish_v2_sql() {
-  local expected_revision=$1
-  local expected_generation=$2
-  local session_id=$3
-  local binding_secret=${4:-$ONE_32}
-  docker exec -i "$CONTAINER" psql -X -A -t -v ON_ERROR_STOP=1 -U postgres <<SQL
-set role authenticated;
-set request.jwt.claims = '{"sub":"11111111-1111-4111-8111-111111111111","session_id":"$session_id"}';
-select revision || ':' || key_generation || ':' || device_wrap_version
-from public.publish_encrypted_vault_snapshot_v2(
-  $expected_revision::bigint,
-  $expected_generation::bigint,
-  '$binding_secret',
-  1::smallint,
-  'AES-256-GCM',
-  'AAAAAAAAAAAAAAAA',
-  'TEST_ONLY_V2_CIPHERTEXT',
-  'AAAAAAAAAAAAAAAAAAAAAA==',
-  1::smallint,
-  'BBBBBBBBBBBBBBBB',
-  'TEST_ONLY_V2_WRAPPED_KEY_CIPHERTEXT_1234567890',
-  'BBBBBBBBBBBBBBBBBBBBBB=='
-);
-SQL
-}
 
 if publish_v2_sql \
   3 1 cccccccc-cccc-4ccc-8ccc-cccccccccccc "$TWO_32" \

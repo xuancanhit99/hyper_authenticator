@@ -36,12 +36,11 @@ void main() {
         supabaseUrl: 'https://supabase.example.com/',
         supabasePublishableKey: legacyKeyForRole('anon'),
         passwordRecoveryUrl: '',
-        allowInsecurePlaintextSync: true,
+        allowInsecurePlaintextSync: false,
         releaseMode: false,
       );
 
       expect(config.passwordRecoveryUrl, isNull);
-      expect(config.allowInsecurePlaintextSync, isTrue);
     });
 
     test('từ chối HTTP và Supabase URL có path', () {
@@ -119,14 +118,14 @@ void main() {
       );
     });
 
-    test('release luôn từ chối plaintext sync flag', () {
+    test('mọi build luôn từ chối plaintext sync flag đã retired', () {
       expect(
         () => PublicRuntimeConfig.validate(
           supabaseUrl: 'https://supabase.example.com',
           supabasePublishableKey: publishableKey,
-          passwordRecoveryUrl: 'https://auth.example.com/reset-password/',
+          passwordRecoveryUrl: '',
           allowInsecurePlaintextSync: true,
-          releaseMode: true,
+          releaseMode: false,
         ),
         throwsStateError,
       );

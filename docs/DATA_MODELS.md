@@ -128,10 +128,14 @@ backup lịch sử vẫn có thể chứa wrapped key cũ.
 Xoay vault key cũng không đổi schema/key format nhưng sinh DEK và recovery key
 mới. Current snapshot được re-encrypt bằng DEK mới; ciphertext và wrapped DEK mới
 được publish trong cùng RPC/revision. Sau verify, secure storage thay DEK cũ bằng
-DEK mới. Thiết bị active chỉ giữ DEK generation cũ sẽ đọc exact HPKE wrap của
-installation/current session, verify membership proof, decrypt current envelope
-rồi mới persist DEK generation mới. Thiết bị bị exclude, mất private key hoặc có
-wrap/proof sai vẫn phải dùng recovery key; backup lịch sử giữ generation cũ.
+DEK mới. Trước khi tạo next-generation wrap, generic client verify
+current-generation wrap + membership proof của mọi active device bằng DEK hiện
+tại; entry thiếu, stale hoặc giả làm preparation fail trước publish. Tất cả active
+device đã verify đều nhận wrap mới vì UI hiện chưa hỗ trợ per-device exclusion.
+Thiết bị chỉ giữ DEK generation cũ sẽ đọc exact HPKE wrap của installation/current
+session, verify proof, decrypt current envelope rồi mới persist DEK mới. Thiết bị
+không có wrap do một explicit backend exclusion, mất private key hoặc có wrap/proof
+sai phải dùng recovery key; backup lịch sử vẫn giữ generation cũ.
 
 ## PostgreSQL encrypted contract
 
@@ -149,8 +153,13 @@ Table `public.encrypted_vault_snapshots`:
 | `updated_at timestamptz` | Server timestamp |
 
 `publish_encrypted_vault_snapshot` nhận expected revision và toàn bộ encrypted
-field. Nó insert revision 1 khi expected=0 hoặc update revision+1 khi current
-revision khớp; ngược lại trả `PT409`.
+field. Terminal protocol contract chỉ cho legacy RPC insert revision 1 khi
+`expected_revision=0`; request update qua RPC này bị từ chối với
+`device_key_protocol_required`. Mọi update tiếp theo dùng
+`publish_encrypted_vault_snapshot_v2`: hàm khóa exact user/revision/generation row
+bằng `FOR UPDATE`, yêu cầu `device_wrap_version=1` và active current-device binding,
+rồi mới tăng revision. Version stale trả `PT409`; protocol `0` bị từ chối trước
+mutation.
 
 Authorization không thêm column vào encrypted table. JWT phải có `session_id` do
 Supabase Auth cấp; helper `private.is_current_auth_session_active()` chỉ trả true
@@ -218,32 +227,49 @@ Linux isolated runtime và Android/iOS two-session runtime đã pass. GitHub Pre
 - Parser fail closed với suite/version lạ, field oversized, base64url
   non-canonical hoặc decoded length sai trước khi gọi AEAD.
 - Membership proof theo device dùng HMAC-SHA256 với key HKDF domain-separated từ
-  current DEK; client có DEK phải verify trước confirm và trước khi include device
-  trong generation mới. Một vault membership verifier riêng cũng dẫn xuất từ DEK,
-  bind user + generation và chỉ lưu trong bảng `private` không cấp client access;
-  RPC so khớp verifier để session không biết DEK không thể self-enroll bằng proof giả.
+  current DEK; client có DEK phải verify trước confirm. Khi rotate, client verify
+  wrap + proof của **toàn bộ** active set ở current generation trước khi tạo bất kỳ
+  wrap mới nào, nên một entry giả/stale làm operation fail closed thay vì nhận DEK
+  mới. Một vault membership verifier riêng cũng dẫn xuất từ DEK, bind user +
+  generation và chỉ lưu trong bảng `private` không cấp client access; RPC so khớp
+  verifier để session không biết DEK không thể self-enroll bằng proof giả.
 - Binding secret chỉ dùng resume server record qua TLS; migration chỉ lưu SHA-256
   của random secret 256-bit, không trả hash/raw secret qua RPC. Nó không wrap DEK
   và không thay membership proof.
 - Device state đi `pending → wrapped → active`; chỉ target session được confirm
-  sau local unwrap. Rotation tăng generation đúng một, thay exact wrap set trong
-  cùng transaction và chuyển device bị loại sang `revoked` đồng thời xóa auth session.
+  sau local unwrap. Rotation tăng generation đúng một và backend thay exact wrap
+  set trong cùng transaction; ID nằm trong explicit exclusion được chuyển sang
+  `revoked` đồng thời xóa auth session. Generic client hiện truyền exclusion rỗng,
+  nên khả năng backend này chưa phải cryptographic revoke cho người dùng.
 - Nếu secure storage mất device private key nhưng người dùng còn HA1, client dẫn
   xuất đúng vault verifier để thay key trên cùng installation; server revoke key/
   session cũ trước khi bind key mới. Verifier sai không được thay key.
-- `device_wrap_version=1` chặn legacy publish RPC; v2 normal publish bind exact
-  generation và active device binding để client cũ không làm lệch DEK/wrap set.
+- Legacy publish RPC chỉ tạo revision 1. Mọi update dùng v2, khóa exact snapshot row
+  rồi yêu cầu `device_wrap_version=1`, exact generation và active device binding;
+  protocol `0`/client cũ không thể update hoặc race với protocol confirmation.
 - Recovery-key wrapped DEK v1 tiếp tục là break-glass path.
 
-## Compatibility plaintext
+## Đường sync plaintext đã được loại bỏ
 
-`synced_accounts` dùng snake_case và từng chứa `secret_key` plaintext. Runtime DI
-không đăng ký datasource/repository/use case cũ; release guard vẫn chặn. Table chỉ
-được giữ cho migration/rollback có kiểm soát và phải backup trước khi drop.
+`public.synced_accounts` từng chứa `secret_key` plaintext. Datasource, mapper,
+repository và use case của path này đã bị xóa khỏi client. Compile define
+`ALLOW_INSECURE_PLAINTEXT_SYNC` chỉ còn là poison sentinel; mọi build từ chối
+`true`.
+
+Migration loại bỏ cuối cùng lấy `ACCESS EXCLUSIVE` lock trước khi đếm row trong
+transaction. Bảng không tồn tại thì migration idempotent; bảng rỗng được drop
+ngay trong nhánh đã lock, không `CASCADE`; còn bất kỳ row nào thì toàn bộ
+transaction abort với `plaintext_legacy_rows_present`, giữ nguyên table/data để
+operator backup và migrate thủ công. Restore backup cũ phải chạy lại zero-row
+preflight và migration trước khi nhận traffic.
 
 ## Versioning và migration
 
 - Unknown future encrypted format bị từ chối trước decrypt.
 - Không downgrade hoặc silently default field đã persist.
-- Schema E2EE là additive; plaintext table chưa bị drop trong rollout này.
-- Migration phá hủy table cũ cần backup, compatibility audit và rollback riêng.
+- Device-wrap schema giữ additive history; hardening cuối cùng chỉ cắt quyền update
+  protocol `0` sau revision đầu tiên.
+- Plaintext retirement là destructive và fail closed khi còn row. Production
+  apply ngày 22-07-2026 đã pass fresh full backup, checksum/off-host copy,
+  zero-row evidence và restore rehearsal; future restore/instance phải lặp lại
+  các gate này. Rollback dùng backup tương thích, không bật lại plaintext client path.

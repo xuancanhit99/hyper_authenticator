@@ -8,13 +8,11 @@ class PublicRuntimeConfig {
   final Uri supabaseUrl;
   final String supabasePublishableKey;
   final Uri? passwordRecoveryUrl;
-  final bool allowInsecurePlaintextSync;
 
   const PublicRuntimeConfig._({
     required this.supabaseUrl,
     required this.supabasePublishableKey,
     required this.passwordRecoveryUrl,
-    required this.allowInsecurePlaintextSync,
   });
 
   static PublicRuntimeConfig validate({
@@ -48,15 +46,16 @@ class PublicRuntimeConfig {
     if (releaseMode && parsedRecoveryUrl == null) {
       throw StateError('Release bắt buộc cấu hình PASSWORD_RECOVERY_URL');
     }
-    if (releaseMode && allowInsecurePlaintextSync) {
-      throw StateError('Release không được bật ALLOW_INSECURE_PLAINTEXT_SYNC');
+    if (allowInsecurePlaintextSync) {
+      throw StateError(
+        'ALLOW_INSECURE_PLAINTEXT_SYNC đã bị loại bỏ và phải luôn là false',
+      );
     }
 
     return PublicRuntimeConfig._(
       supabaseUrl: parsedSupabaseUrl,
       supabasePublishableKey: supabasePublishableKey,
       passwordRecoveryUrl: parsedRecoveryUrl,
-      allowInsecurePlaintextSync: allowInsecurePlaintextSync,
     );
   }
 

@@ -8,18 +8,12 @@ class AppConfig {
   final String supabaseUrl;
   final String supabasePublishableKey;
   final String? passwordRecoveryUrl;
-  final bool allowInsecurePlaintextSync;
-  final bool releaseMode;
 
   const AppConfig({
     required this.supabaseUrl,
     required this.supabasePublishableKey,
     this.passwordRecoveryUrl,
-    this.allowInsecurePlaintextSync = false,
-    this.releaseMode = kReleaseMode,
   });
-
-  bool get plaintextSyncAvailable => allowInsecurePlaintextSync && !releaseMode;
 
   @factoryMethod
   static AppConfig fromEnvironment() {
@@ -48,7 +42,6 @@ class AppConfig {
       supabaseUrl: validated.supabaseUrl.toString(),
       supabasePublishableKey: validated.supabasePublishableKey,
       passwordRecoveryUrl: validated.passwordRecoveryUrl?.toString(),
-      allowInsecurePlaintextSync: validated.allowInsecurePlaintextSync,
     );
   }
 }

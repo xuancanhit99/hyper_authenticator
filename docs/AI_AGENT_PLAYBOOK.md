@@ -13,7 +13,10 @@
 - `scripts/agent/doctor.sh`: kiểm tra environment và configuration.
 - `scripts/agent/check.sh`: documentation, quick và full gate.
 - `supabase/`: upstream pin, non-secret compose overlay, migration và backend contract.
-- `scripts/supabase/test_remote_contract.sh`: isolated Auth/RLS integration gate.
+- `scripts/supabase/test_remote_contract.sh`: terminal table-absent contract qua
+  public và service-role boundary; không tạo user.
+- `scripts/supabase/test_remote_encrypted_vault_contract.sh`: isolated
+  Auth/RLS/device-bound publish contract và tự cleanup test user.
 - `docs/operations`: runbook backup/restore không chứa secret.
 
 ## Bắt đầu session

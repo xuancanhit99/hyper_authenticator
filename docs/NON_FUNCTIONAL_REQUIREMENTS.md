@@ -73,7 +73,8 @@ Bắt buộc:
 
 ## Usability và accessibility
 
-Baseline automated đã triển khai cho Auth, danh sách TOTP và form thêm account:
+Baseline automated đã triển khai cho Auth, danh sách TOTP, form thêm account và
+các dialog Settings nhạy cảm:
 
 - control có tap action pass labeled tap target và Android 48×48 guideline;
 - password visibility, tìm kiếm, copy TOTP và account action có accessible name
@@ -83,6 +84,8 @@ Baseline automated đã triển khai cho Auth, danh sách TOTP và form thêm ac
   countdown; không công bố secret key hoặc URI `otpauth`.
 - WCAG text contrast pass trên light/dark theme cho core surface và sensitive
   Settings dialog;
+- Settings recovery import/key confirmation, sync conflict và session-revoke
+  dialog pass viewport 320×640, text scale 200%, tap-target, semantics và contrast;
 - keyboard regression bao phủ Auth forms, account theme/add/search/copy, manual
   add-account và sensitive dialog bằng Tab/Shift+Tab/Enter/Space/Escape.
 
@@ -90,8 +93,8 @@ Mục tiêu còn lại:
 
 - chạy TalkBack/VoiceOver, full Settings/main-navigation keyboard/focus audit và
   focus visualization trên runtime đại diện;
-- mở rộng text scaling/guideline test sang Settings, recovery/conflict dialog và
-  mọi trạng thái lỗi;
+- mở rộng text scaling/guideline test sang các Settings surface và mọi trạng thái
+  lỗi chưa nằm trong baseline trên;
 - action không phụ thuộc riêng vào màu;
 - destructive action giải thích chính xác tác động dữ liệu;
 - feedback copy không làm lộ secret đã sao chép;
