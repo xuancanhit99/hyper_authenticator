@@ -3,3 +3,4 @@
 
 # Synthetic publishable-key fixture for the local environment-separation contract.
 946aaf6586aecaba9cc972ce1805b7099363e4f6:scripts/agent/test_separate_local_env.sh:generic-api-key:16
+75d74aee8161623eff272a1077f5f4cbdc9e5aec:scripts/agent/test_separate_local_env.sh:generic-api-key:16
