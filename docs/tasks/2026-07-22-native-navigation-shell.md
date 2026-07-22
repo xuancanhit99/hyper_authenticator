@@ -31,7 +31,9 @@ của từng tab và vẫn giữ `/` cùng `/settings` làm URL canonical.
 - Test hiện có: URL/tab mapping và device integration chuyển Settings/Accounts.
 - Giả định: transition native của route phân cấp vẫn do `MaterialPage` chọn theo
   platform; shell page dùng `NoTransitionPage` để không giữ hai
-  `StatefulNavigationShell` có cùng `GlobalKey` khi app-lock redirect liên tiếp.
+  `StatefulNavigationShell` có cùng `GlobalKey` khi app-lock redirect liên tiếp;
+  startup/lock là overlay child trên root navigator để shell không bị
+  re-enter.
 
 ## Đánh giá rủi ro
 

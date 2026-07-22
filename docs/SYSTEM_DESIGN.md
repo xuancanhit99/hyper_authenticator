@@ -68,9 +68,11 @@ GoRouter giữ URL làm source of truth cho main navigation: `/` mở Accounts v
 đổi tab và không chạy full-page transition giữa các tab. Page của shell dùng
 `NoTransitionPage` có chủ đích: khi app-lock redirect xảy ra liên tiếp trong
 lifecycle transition, transition mặc định có thể giữ hai shell có cùng
-`GlobalKey` trong tree và làm Flutter fail. `NavigationBar` vẫn animate
-indicator trong 200 ms, còn route phân cấp như Auth hoặc Thêm/Sửa tài khoản
-tiếp tục dùng page transition native mà Flutter chọn theo platform.
+`GlobalKey` trong tree và làm Flutter fail. Các route bootstrap/lock là overlay
+child của shell nhưng render trên root navigator, vì vậy shell luôn mounted và
+bottom navigation không lọt qua màn hình khóa. `NavigationBar` vẫn animate
+indicator trong 200 ms, còn route phân cấp như Auth hoặc Thêm/Sửa tài khoản tiếp
+tục dùng page transition native mà Flutter chọn theo platform.
 
 Không ép `initialLocation`, vì làm vậy sẽ bỏ qua browser deep link và platform
 route ban đầu. Bottom navigation dùng `StatefulNavigationShell.goBranch`, nên URL,

@@ -131,6 +131,7 @@ class CombinedAuthRefreshStream extends ChangeNotifier {
 class AppRouter {
   final AuthBloc authBloc;
   final LocalAuthBloc localAuthBloc; // Add LocalAuthBloc dependency
+  final _rootNavigatorKey = GlobalKey<NavigatorState>();
 
   AppRouter(this.authBloc, this.localAuthBloc); // Update constructor
 
@@ -142,6 +143,7 @@ class AppRouter {
 
   GoRouter _buildRouter() {
     return GoRouter(
+      navigatorKey: _rootNavigatorKey,
       // Chỉ lắng nghe AuthBloc để refresh redirect
       // Listen to both Blocs for refresh
       refreshListenable: CombinedAuthRefreshStream([
@@ -149,12 +151,6 @@ class AppRouter {
         localAuthBloc.stream,
       ]),
       routes: [
-        GoRoute(
-          path: AppRoutes.startup,
-          name: AppRoutes.startup,
-          builder: (context, state) =>
-              const Scaffold(body: Center(child: CircularProgressIndicator())),
-        ),
         // Public route
         GoRoute(
           path: AppRoutes.login,
@@ -195,6 +191,26 @@ class AppRouter {
                   path: AppRoutes.main,
                   name: AppRoutes.main,
                   builder: (context, state) => const AccountsPage(),
+                  routes: [
+                    // Keep bootstrap and lock overlays in the shell match
+                    // list, but render them on the root navigator so the
+                    // bottom navigation is covered and the shell is not
+                    // destroyed/re-entered during lifecycle redirects.
+                    GoRoute(
+                      path: 'startup',
+                      name: AppRoutes.startup,
+                      parentNavigatorKey: _rootNavigatorKey,
+                      builder: (context, state) => const Scaffold(
+                        body: Center(child: CircularProgressIndicator()),
+                      ),
+                    ),
+                    GoRoute(
+                      path: 'lock-screen',
+                      name: AppRoutes.lockScreen,
+                      parentNavigatorKey: _rootNavigatorKey,
+                      builder: (context, state) => const LockScreenPage(),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -214,12 +230,6 @@ class AppRouter {
           path: AppRoutes.addAccount,
           name: AppRoutes.addAccount,
           builder: (context, state) => const AddAccountPage(),
-        ),
-        // Lock Screen Route
-        GoRoute(
-          path: AppRoutes.lockScreen,
-          name: AppRoutes.lockScreen,
-          builder: (context, state) => const LockScreenPage(),
         ),
         // --- End New Auth Routes ---
         // Edit Account Route (protected by redirect)
