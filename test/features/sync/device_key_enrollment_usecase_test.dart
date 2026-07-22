@@ -194,6 +194,153 @@ void main() {
     );
   });
 
+  test('rotation từ chối active device có membership proof giả', () async {
+    final currentDataKey = List<int>.filled(32, 8);
+    final nextDataKey = List<int>.filled(32, 9);
+    expect(
+      (await useCase.ensureCurrentDevice(
+        userId: userId,
+        dataKeyBytes: currentDataKey,
+        keyGeneration: 1,
+      )).isRight(),
+      isTrue,
+    );
+
+    final secondMaterial = await cipher.createKeyMaterial();
+    const secondDeviceKeyId = '44444444-4444-4444-8444-444444444444';
+    final secondWrappedKey = await cipher.wrapDataKey(
+      dataKeyBytes: currentDataKey,
+      recipientPublicKeyBytes: secondMaterial.publicKeyBytes,
+      userId: userId,
+      installationId: '55555555-5555-4555-8555-555555555555',
+      deviceKeyId: secondDeviceKeyId,
+      keyGeneration: 1,
+    );
+    remote.additionalKeys = <AuthenticatorDeviceKey>[
+      AuthenticatorDeviceKey(
+        deviceKeyId: secondDeviceKeyId,
+        installationId: '55555555-5555-4555-8555-555555555555',
+        publicKeyBytes: secondMaterial.publicKeyBytes,
+        state: AuthenticatorDeviceKeyState.active,
+        createdAt: DateTime.utc(2026, 7, 19),
+        wrappedAt: DateTime.utc(2026, 7, 19, 0, 1),
+        activatedAt: DateTime.utc(2026, 7, 19, 0, 2),
+        isCurrent: false,
+        wrappedVaultKey: secondWrappedKey,
+        // Canonical length, but not a MAC under the current DEK.
+        membershipProof: base64UrlEncode(List<int>.filled(32, 77)),
+      ),
+    ];
+
+    final result = await useCase.prepareRotation(
+      userId: userId,
+      currentDataKeyBytes: currentDataKey,
+      nextDataKeyBytes: nextDataKey,
+      currentKeyGeneration: 1,
+    );
+
+    expect(
+      result.fold((failure) => failure, (_) => null),
+      isA<SyncOperationFailure>(),
+    );
+  });
+
+  test('rotation từ chối active device thiếu wrap và proof', () async {
+    final currentDataKey = List<int>.filled(32, 8);
+    expect(
+      (await useCase.ensureCurrentDevice(
+        userId: userId,
+        dataKeyBytes: currentDataKey,
+        keyGeneration: 1,
+      )).isRight(),
+      isTrue,
+    );
+    final secondMaterial = await cipher.createKeyMaterial();
+    remote.additionalKeys = <AuthenticatorDeviceKey>[
+      AuthenticatorDeviceKey(
+        deviceKeyId: '44444444-4444-4444-8444-444444444444',
+        installationId: '55555555-5555-4555-8555-555555555555',
+        publicKeyBytes: secondMaterial.publicKeyBytes,
+        state: AuthenticatorDeviceKeyState.active,
+        createdAt: DateTime.utc(2026, 7, 19),
+        wrappedAt: DateTime.utc(2026, 7, 19, 0, 1),
+        activatedAt: DateTime.utc(2026, 7, 19, 0, 2),
+        isCurrent: false,
+        wrappedVaultKey: null,
+        membershipProof: null,
+      ),
+    ];
+
+    final result = await useCase.prepareRotation(
+      userId: userId,
+      currentDataKeyBytes: currentDataKey,
+      nextDataKeyBytes: List<int>.filled(32, 9),
+      currentKeyGeneration: 1,
+    );
+
+    expect(
+      result.fold((failure) => failure, (_) => null),
+      isA<SyncOperationFailure>(),
+    );
+  });
+
+  test('rotation từ chối active device wrap ở stale generation', () async {
+    final currentDataKey = List<int>.filled(32, 8);
+    expect(
+      (await useCase.ensureCurrentDevice(
+        userId: userId,
+        dataKeyBytes: currentDataKey,
+        keyGeneration: 1,
+      )).isRight(),
+      isTrue,
+    );
+    final secondMaterial = await cipher.createKeyMaterial();
+    const secondDeviceKeyId = '44444444-4444-4444-8444-444444444444';
+    const secondInstallationId = '55555555-5555-4555-8555-555555555555';
+    final staleWrap = await cipher.wrapDataKey(
+      dataKeyBytes: currentDataKey,
+      recipientPublicKeyBytes: secondMaterial.publicKeyBytes,
+      userId: userId,
+      installationId: secondInstallationId,
+      deviceKeyId: secondDeviceKeyId,
+      keyGeneration: 2,
+    );
+    final staleProof = await cipher.createMembershipProof(
+      dataKeyBytes: currentDataKey,
+      publicKeyBytes: secondMaterial.publicKeyBytes,
+      userId: userId,
+      installationId: secondInstallationId,
+      deviceKeyId: secondDeviceKeyId,
+      keyGeneration: 2,
+    );
+    remote.additionalKeys = <AuthenticatorDeviceKey>[
+      AuthenticatorDeviceKey(
+        deviceKeyId: secondDeviceKeyId,
+        installationId: secondInstallationId,
+        publicKeyBytes: secondMaterial.publicKeyBytes,
+        state: AuthenticatorDeviceKeyState.active,
+        createdAt: DateTime.utc(2026, 7, 19),
+        wrappedAt: DateTime.utc(2026, 7, 19, 0, 1),
+        activatedAt: DateTime.utc(2026, 7, 19, 0, 2),
+        isCurrent: false,
+        wrappedVaultKey: staleWrap,
+        membershipProof: staleProof,
+      ),
+    ];
+
+    final result = await useCase.prepareRotation(
+      userId: userId,
+      currentDataKeyBytes: currentDataKey,
+      nextDataKeyBytes: List<int>.filled(32, 9),
+      currentKeyGeneration: 1,
+    );
+
+    expect(
+      result.fold((failure) => failure, (_) => null),
+      isA<SyncOperationFailure>(),
+    );
+  });
+
   test('không tự tạo device key mới khi private key đã mất', () async {
     useCase = DeviceKeyEnrollmentUseCase(
       AuthenticatorInstallationIdentityStore(
@@ -287,6 +434,7 @@ class _MemoryDeviceKeyRepository implements DeviceKeyRepository {
   int publishCount = 0;
   int confirmCount = 0;
   int listCount = 0;
+  List<AuthenticatorDeviceKey> additionalKeys = <AuthenticatorDeviceKey>[];
 
   _MemoryDeviceKeyRepository({
     required this.deviceKeyId,
@@ -331,6 +479,7 @@ class _MemoryDeviceKeyRepository implements DeviceKeyRepository {
         wrappedVaultKey: wrappedKey,
         membershipProof: proof,
       ),
+      ...additionalKeys,
     ]);
   }
 

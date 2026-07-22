@@ -17,14 +17,18 @@ build. Bỏ `<env-file>` chỉ chứng minh compile, không chứng minh bootstr
 | Auth/storage/sync/DI/platform | `scripts/agent/check.sh full` |
 
 `full` phải pass generated-code drift, format (gồm source `integration_test`),
-analyze, platform manifest/entitlement contract, Flutter test và encrypted
-PostgreSQL migration contract. Contract hiện gồm device-wrap two-phase enrollment,
-legacy cutoff, server-only DEK verifier chống fake self-wrap, active-device binding,
-exact-set rotation và atomic crypto revoke. Nó không tự boot emulator/simulator.
+analyze, platform manifest/entitlement contract, release/operations harness,
+Flutter test, encrypted PostgreSQL migration contract và plaintext-retirement
+migration contract. Contract hiện gồm device-wrap two-phase enrollment, membership
+proof của mọi active device trước rotation, legacy update/protocol-0 cutoff,
+server-only DEK verifier chống fake self-wrap, active-device binding, row lock
+`FOR UPDATE` với concurrent confirm/publish regression, exact-set rotation, atomic
+crypto revoke và `ACCESS EXCLUSIVE` plaintext retirement với concurrent-writer
+regression. Nó không tự boot emulator/simulator hoặc Web browser runtime.
 
 ## Coverage hiện tại
 
-186 Flutter tests bao phủ cả focused regression cho device enrollment, local
+Flutter suite bao phủ focused regression cho device enrollment, local
 unwrap/proof trước confirm, generation-aware publish và exact-set rotation
 preparation, cùng các nhóm sau:
 
@@ -55,8 +59,9 @@ preparation, cùng các nhóm sau:
 - recovery dialog tự quản lý controller, đóng route an toàn khi submit hoặc hủy;
 - recovery key bị redact khỏi BLoC event/state transition string;
 - remote encrypted mapper, revision response và conflict mapping;
-- plaintext bridge release guard.
-- public runtime config: HTTPS-only, key role, recovery URL và release plaintext flag.
+- plaintext retirement: không còn client bridge, poison sentinel từ chối `true`
+  ở mọi build mode và terminal migration fail closed khi table còn row;
+- public runtime config: HTTPS-only, key role, recovery URL và plaintext poison sentinel;
 - Web unavailable tile không hứa đăng nhập/cloud sync khi capability bị tắt.
 - Primary auth/accounts UI dùng label tiếng Việt và không quay lại các label tiếng Anh
   cũ; app locale runtime bị khóa ở `vi` với Material/Widgets/Cupertino delegate,
@@ -98,9 +103,9 @@ preparation, cùng các nhóm sau:
 
 Production/staging test dùng isolated user và tự cleanup:
 
-- encrypted RLS/RPC contract: 20 checks, gồm atomic ciphertext/wrapped-key rotation,
-  hai session cùng user, revoke session cũ, RLS/RPC chặn JWT cũ ngay và session
-  hiện tại tiếp tục hoạt động;
+- encrypted RLS/RPC contract: 36 checks, gồm expected-revision `NULL`, legacy cutoff, native enrollment,
+  self-wrap/confirm, device-bound v2 atomic ciphertext/wrapped-key update, hai
+  session cùng user, revoke session cũ, cross-tenant isolation và current survival;
 - device registry contract: 25 checks, gồm no-direct-table/anonymous, two-user/
   two-session isolation, server current marker, self/cross-tenant reject, targeted
   refresh/JWT revoke, current survival và cleanup 0 orphan;
@@ -191,10 +196,10 @@ backup trước/sau migration có encrypted off-host copy.
 
 | Target | Gate |
 |---|---|
-| Android | Debug build mỗi CI; tag CI dùng encrypted secrets để build APK, bắt buộc `apksigner` khớp fingerprint; runtime/upgrade gate trước GitHub Release; AAB/internal track khi mở Play Store |
+| Android | Debug build mỗi CI; tag CI dùng encrypted secrets để build APK và bắt buộc `apksigner` khớp fingerprint; `v1.1.0-preview.4` đã pass runtime/upgrade/public signer gate; physical camera/biometric trước stable, AAB/internal track khi mở Play Store |
 | iOS | Simulator build mỗi CI; không public binary qua GitHub; signed archive + device/TestFlight trước phân phối |
 | macOS | Unsigned compile CI; Developer ID + signed runtime + notarized package trước GitHub Release hoặc phân phối khác |
-| Web | Configured release + hardened image contract + CSP/runtime `lang=vi` browser smoke |
+| Web | Configured release + Chrome headless local-vault semantics/startup-failure smoke + hardened image contract + CSP/runtime `lang=vi` production-browser smoke |
 | Windows | Hosted local-vault runtime + historical `1.0.0+9` vault-upgrade harness + configured x64 + NSIS install/launch/metadata-upgrade/uninstall retention; installer/checksum được phép lên GitHub Preview unsigned; physical device/signing trước stable |
 | Linux | Hosted amd64 configured x64 + historical `1.0.0+9` upgrade + private-keyring runtime + `.deb` transition + Ubuntu/Debian X11/Wayland matrix; package/checksum được phép lên GitHub Preview unsigned; KDE/login/signed runtime trước stable |
 
@@ -262,6 +267,11 @@ post-probe current image/health/hash và 5/5 public SPA route pass.
   Gitleaks; CI tải binary đã pin sau khi xác minh SHA-256.
 - `web-deployment/test.sh` build image từ tar allowlist rồi kiểm tra CSP/cache/SPA,
   read-only, dotfile, no-log và không chứa `.env`.
+- `scripts/agent/web_runtime_smoke.sh` chạy chính configured `build/web` trong
+  Chrome/Chromium headless, yêu cầu engine/semantics local-vault shell và từ chối
+  startup fallback. Web CI dùng public config tổng hợp `.invalid`; local positive
+  và negative build thiếu config đã chứng minh harness phân biệt đúng. `full` chỉ
+  chạy syntax/Node parse gate; browser runtime thật thuộc Web CI/build matrix.
 - `test-production-rollback-contract.sh` không dùng Docker/network thật; fake live
   state bao phủ rollback/forward và failure auto-restore trong full gate.
 - `scripts/agent/build_linux_container.sh` archive committed ref vào Ubuntu 22.04
@@ -353,9 +363,10 @@ post-probe current image/health/hash và 5/5 public SPA route pass.
 5. Windows/Linux unsigned package đủ điều kiện GitHub Preview nhưng chưa phải stable.
    Windows còn code signing và physical-device/Windows Hello. Linux còn KDE
    login-unlock/physical desktop và signed package E2EE runtime.
-   Android app signing key đã được tạo/pin; signed build, clean install/cold launch
-   và vault-retaining upgrade 10→11 đã pass trên Pixel AVD API 37. Còn tag CI,
-   public download và camera/biometric trên thiết bị thật nên chưa được phát hành.
+   Android app signing key đã được tạo/pin; signed build, clean install/cold launch,
+   vault-retaining upgrade 10→11 trên Pixel AVD API 37, tag CI và public
+   download/signature verifier của `v1.1.0-preview.4` đều pass. APK hiện là signed
+   pre-release; camera/biometric trên thiết bị thật vẫn còn trước stable.
 6. Accessibility automation đã bao phủ Auth, account list, form thêm account và
    sensitive Settings recovery/conflict/session dialog với WCAG text-contrast
    gate light/dark cùng core keyboard traversal. Chưa thay TalkBack/VoiceOver

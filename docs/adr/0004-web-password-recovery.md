@@ -59,3 +59,11 @@ expired, malformed, reuse và cross-environment.
 2. Allow-list URL chính xác.
 3. Serve template từ URL mà Auth container truy cập được.
 4. Cấu hình `GOTRUE_MAILER_TEMPLATES_RECOVERY` và smoke test trước production.
+
+## Cập nhật triển khai — 22-07-2026
+
+Recovery Web, redirect/template và remote token contract 8/8 đã deploy; SMTP
+mailbox delivery và expired-link E2E được owner hoãn riêng cho GitHub Preview,
+với cảnh báo công khai. Chúng vẫn là gate bắt buộc trước khi quảng bá email
+delivery hoặc phát hành stable/store. Câu “release gate” và bước smoke production
+phía trên là quyết định mục tiêu ban đầu, không phải bằng chứng mailbox hiện đã pass.

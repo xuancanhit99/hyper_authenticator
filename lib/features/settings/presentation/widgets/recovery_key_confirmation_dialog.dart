@@ -93,7 +93,7 @@ class _RecoveryKeyConfirmationDialogState
     RecoveryKeyOperation.recoveryKeyRotation =>
       'Recovery key cũ không thể mở snapshot hiện tại sau khi hoàn tất. Thiết bị đã giữ vault key vẫn tiếp tục hoạt động.',
     RecoveryKeyOperation.vaultKeyRotation =>
-      'Cả vault key và recovery key sẽ đổi. Thiết bị khác chỉ giữ vault key cũ sẽ không đọc được snapshot mới và phải nhập recovery key mới. Thao tác không đăng xuất session Supabase khác và không xóa backup lịch sử.',
+      'Cả vault key và recovery key sẽ đổi. Mọi device key đang active có membership proof hợp lệ sẽ nhận wrap cho vault key mới. Thao tác không đăng xuất phiên Supabase, không loại riêng thiết bị và không xóa backup lịch sử.',
   };
 
   String _actionFor(RecoveryKeyOperation operation) => switch (operation) {

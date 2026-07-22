@@ -69,7 +69,7 @@ void main(List<String> arguments) {
   }
 
   stdout.writeln(
-    'Release config pass: chỉ chứa public key, HTTPS URL và plaintext sync tắt.',
+    'Release config pass: chỉ chứa public key, HTTPS URL và plaintext path đã retired.',
   );
 }
 

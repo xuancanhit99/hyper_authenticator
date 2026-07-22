@@ -55,7 +55,9 @@ run_release_harness() {
     scripts/agent/configure_android_signing.sh \
     scripts/agent/configure_github_android_signing.sh \
     scripts/agent/separate_local_env.sh \
-    scripts/agent/test_ide_run_config.sh
+    scripts/agent/test_ide_run_config.sh \
+    scripts/agent/web_runtime_smoke.sh
+  node --check tool/agent/web_runtime_probe.mjs
   scripts/agent/test_ide_run_config.sh
   scripts/agent/test_separate_local_env.sh
   scripts/agent/test_github_preview_assets.sh
@@ -75,7 +77,8 @@ run_operations_harness() {
     scripts/supabase/prepare_nginx_proxy_manager_file_secrets.sh \
     scripts/supabase/deploy_nginx_proxy_manager_file_secrets.sh \
     scripts/supabase/rehearse_nginx_proxy_manager_backup.sh \
-    scripts/supabase/rehearse_nginx_proxy_manager_upgrade.sh
+    scripts/supabase/rehearse_nginx_proxy_manager_upgrade.sh \
+    scripts/supabase/test_plaintext_retirement_migration.sh
   scripts/supabase/test_render_nginx_proxy_manager_file_secrets.sh
   scripts/supabase/test_prepare_nginx_proxy_manager_file_secrets_contract.sh
   scripts/supabase/test_deploy_nginx_proxy_manager_file_secrets_contract.sh
@@ -112,6 +115,8 @@ run_full() {
   flutter test || status=1
   printf '\n%s\n' "== Supabase encrypted migration gate =="
   scripts/supabase/test_encrypted_vault_migration.sh || status=1
+  printf '\n%s\n' "== Supabase plaintext retirement gate =="
+  scripts/supabase/test_plaintext_retirement_migration.sh || status=1
   return "$status"
 }
 

@@ -352,6 +352,34 @@ void main() {
     },
   );
 
+  test('rotation plan fail không gọi remote rotation RPC', () async {
+    await seedRemote([first]);
+    final snapshotBeforeRotation = remote.snapshot;
+    final failingUseCase = _createUseCase(
+      userId: userId,
+      cipher: cipher,
+      remote: remote,
+      local: local,
+      keys: keys,
+      metadata: metadata,
+      deviceKeyCoordinator: _TestDeviceKeyCoordinator(
+        prepareFailure: const SyncOperationFailure(
+          'TEST_ONLY active device membership proof invalid',
+        ),
+      ),
+    );
+
+    _right(await failingUseCase.prepareVaultKeyRotation());
+    final result = await failingUseCase.confirmVaultKeyRotation();
+
+    expect(
+      result.fold((failure) => failure, (_) => null),
+      isA<SyncOperationFailure>(),
+    );
+    expect(remote.rotateCount, 0);
+    expect(remote.snapshot, same(snapshotBeforeRotation));
+  });
+
   test('device wrap decrypt sai snapshot không ghi đè DEK local', () async {
     await seedRemote([first]);
     final oldDataKey = List<int>.from(keys.values[userId]!);
@@ -737,6 +765,7 @@ class _MemoryEncryptedVaultRepository implements EncryptedVaultRepository {
   bool failNextPublishAfterCommit = false;
   bool tamperNextDownloadAfterPublish = false;
   bool _tamperNextDownload = false;
+  int rotateCount = 0;
 
   @override
   Future<Either<Failure, EncryptedVaultSnapshot?>> download({
@@ -838,6 +867,7 @@ class _MemoryEncryptedVaultRepository implements EncryptedVaultRepository {
     required List<DeviceKeyRotationWrap> deviceWraps,
     required List<String> excludedDeviceKeyIds,
   }) async {
+    rotateCount++;
     final result = await publish(
       userId: userId,
       expectedRevision: expectedRevision,
@@ -860,9 +890,14 @@ class _MemoryEncryptedVaultRepository implements EncryptedVaultRepository {
 class _TestDeviceKeyCoordinator implements DeviceKeyCoordinator {
   final List<int>? unwrappedDataKey;
   final Failure? unwrapFailure;
+  final Failure? prepareFailure;
   int unwrapCount = 0;
 
-  _TestDeviceKeyCoordinator({this.unwrappedDataKey, this.unwrapFailure});
+  _TestDeviceKeyCoordinator({
+    this.unwrappedDataKey,
+    this.unwrapFailure,
+    this.prepareFailure,
+  });
 
   @override
   Future<Either<Failure, ActiveDeviceKeyAuthorization>> ensureCurrentDevice({
@@ -893,13 +928,17 @@ class _TestDeviceKeyCoordinator implements DeviceKeyCoordinator {
     required List<int> currentDataKeyBytes,
     required List<int> nextDataKeyBytes,
     required int currentKeyGeneration,
-  }) async => Right(
-    DeviceKeyRotationPlan(
-      bindingSecretBytes: List<int>.filled(32, 2),
-      nextVaultMembershipVerifier: 'TEST_ONLY_VERIFIER',
-      wraps: const <DeviceKeyRotationWrap>[],
-    ),
-  );
+  }) async {
+    final failure = prepareFailure;
+    if (failure != null) return Left(failure);
+    return Right(
+      DeviceKeyRotationPlan(
+        bindingSecretBytes: List<int>.filled(32, 2),
+        nextVaultMembershipVerifier: 'TEST_ONLY_VERIFIER',
+        wraps: const <DeviceKeyRotationWrap>[],
+      ),
+    );
+  }
 
   @override
   Future<Either<Failure, List<int>>> unwrapCurrentDeviceDataKey({

@@ -3,6 +3,13 @@
 Tài liệu này ghi lại rollout additive ngày **18 tháng 7 năm 2026**. Không đặt
 public URL, key, token, user ID hoặc nội dung backup trong repository.
 
+> **Snapshot lịch sử, không phải contract production hiện tại.** Device registry
+> và device-specific wrap đã được bổ sung ngày 19-07-2026. ADR-0013 cùng
+> `docs/SUPABASE_INTEGRATION.md` mô tả terminal publish hardening và plaintext
+> retirement đã deploy production ngày 22-07-2026 sau backup/zero-row preflight.
+> Vì vậy các câu “compatibility table không bị drop” và “việc còn lại” bên dưới
+> chỉ đúng tại thời điểm rollout 18-07-2026.
+
 ## Kết quả
 
 **Đã triển khai** trên Supabase self-hosted:
@@ -73,6 +80,8 @@ Nếu bắt buộc gỡ toàn bộ encrypted schema:
 Không rollback bằng cách bật lại plaintext sync cho release build.
 
 ## Việc còn lại
+
+Danh sách dưới đây là backlog tại thời điểm 18-07-2026, không phải status hiện tại:
 
 - Recovery Web, TLS, Auth template, redirect allow-list và local
   `PASSWORD_RECOVERY_URL` đã deploy; còn SMTP mailbox/expired-token E2E.

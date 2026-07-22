@@ -65,7 +65,7 @@ class AuthenticationSessionTile extends StatelessWidget {
         scrollable: true,
         title: const Text('Đăng xuất các phiên khác?'),
         content: const Text(
-          'Thiết bị này vẫn đăng nhập. Các phiên khác bị hủy refresh token và server chặn ngay quyền đọc/ghi encrypted vault. Local vault và vault key trên thiết bị này không thay đổi.\n\nNếu nghi một thiết bị đã bị lộ, hãy xoay vault key trước khi thực hiện bước này để thu hồi cả khả năng giải mã snapshot mới.',
+          'Thiết bị này vẫn đăng nhập. Các phiên khác bị hủy refresh token và server chặn ngay quyền đọc/ghi encrypted vault. Local vault và vault key trên các thiết bị không bị xóa.\n\nĐây là thu hồi phiên Supabase, không phải remote wipe hay loại device key khỏi lần xoay vault key kế tiếp. Thiết bị khác vẫn có thể đăng nhập lại.',
         ),
         actions: [
           TextButton(

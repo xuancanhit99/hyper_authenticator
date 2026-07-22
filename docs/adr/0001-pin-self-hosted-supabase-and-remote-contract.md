@@ -4,7 +4,7 @@
 - Ngày: 2026-07-17
 - Owner: Repository owner
 - Thay thế: Deployment legacy không có versioned migration
-- Bị thay thế bởi:
+- Bị thay thế một phần bởi: ADR-0005, ADR-0013
 
 ## Bối cảnh
 
@@ -99,3 +99,19 @@ cô lập. Rollback client sang bản camelCase không được thực hiện tr
 3. Áp dụng migration rồi chạy toàn bộ test qua public endpoint.
 4. Dọn test data, cập nhật public client config và build Flutter từ cùng commit.
 5. Rollback nếu service unhealthy, public TLS path lỗi hoặc RLS negative test fail.
+
+## Ghi chú thay thế — 22-07-2026
+
+ADR này vẫn là nguồn quyết định cho việc pin Supabase self-hosted, version hóa
+migration, public HTTPS và RLS. Các đoạn mô tả `public.synced_accounts`, mapper
+snake_case và plaintext compatibility bridge ở trên là trạng thái lịch sử tại
+thời điểm chấp nhận:
+
+- [ADR-0005](0005-e2ee-versioned-snapshot-sync.md) thay đường sync runtime bằng
+  encrypted versioned snapshot với recovery key do người dùng giữ.
+- [ADR-0013](0013-retire-plaintext-and-require-device-bound-publish.md) xóa client
+  plaintext path, drop bảng chỉ khi zero-row preflight pass và khóa update sau
+  revision đầu tiên vào device-bound publish.
+
+Không dùng phần schema plaintext lịch sử của ADR này làm contract runtime hiện
+tại. Bằng chứng deploy mới nhất nằm trong `docs/PROJECT_STATUS.md`.

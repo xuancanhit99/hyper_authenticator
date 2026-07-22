@@ -16,7 +16,8 @@ Roadmap ưu tiên theo rủi ro. Checkbox chỉ được đánh dấu khi có so
 - [x] Recovery Web token-hash contract.
 - [x] AES-256-GCM encrypted snapshot, recovery key onboarding/import.
 - [x] Atomic optimistic revision RPC và explicit conflict UX.
-- [x] Client plaintext runtime bridge bị loại khỏi DI/release.
+- [x] Client plaintext sync source/runtime path bị loại bỏ; poison config bị từ
+  chối ở mọi build.
 - [x] Daily verified backup, restore rehearsal, encrypted off-host copy và health timer.
 - [x] Primary UI tiếng Việt và Web document language `vi`; giữ thuật ngữ technical
   khi cần độ chính xác.
@@ -38,6 +39,24 @@ Roadmap ưu tiên theo rủi ro. Checkbox chỉ được đánh dấu khi có so
 Exit criteria: GitHub pre-release public có Android/Windows/Linux artifact đúng
 contract, tag CI xanh, checksum tải lại khớp và release note nêu signing/SMTP/platform risk.
 
+## Ưu tiên P0 — Đóng security/data-contract gap
+
+- [x] Thêm fail-closed terminal migration: chỉ drop legacy `synced_accounts` khi
+  bảng rỗng, abort và giữ nguyên row/table nếu còn data.
+- [x] Chặn update encrypted snapshot qua protocol 0; device protocol publish khóa
+  exact revision/generation row bằng `FOR UPDATE` trước khi commit.
+- [x] Xác minh current-generation membership proof cho toàn bộ active device trước
+  khi tạo bất kỳ wrap generation mới nào.
+- [x] Thêm configured Flutter Web release artifact smoke bằng headless Chrome và
+  negative gate cho build thiếu runtime config.
+- [x] Làm lại Privacy Shield bằng Material 3 opaque, responsive light/dark và có
+  regression ở viewport nhỏ/text scale 200%.
+- [x] Deploy hai terminal P0 migration lên production sau fresh full backup,
+  zero-row preflight, remote contract/health và restore evidence.
+
+Exit criteria: full client/SQL/docs gate pass; production chỉ được đánh dấu hoàn
+tất sau backup + apply + post-gate có evidence, không suy ra từ local migration.
+
 ## Ưu tiên P1 — Reliability và operations
 
 - [ ] Đưa encrypted off-host backup lên backup host/object storage độc lập Mac cá nhân.
@@ -54,9 +73,11 @@ contract, tag CI xanh, checksum tải lại khớp và release note nêu signing
 ## Ưu tiên P1 — Product/security
 
 - [x] Device registry bind server-side và targeted auth-session revocation.
-- [x] Device-specific HPKE key wrap, exact surviving wrap-set rotation và
-  cryptographic read revocation đã deploy production; physical two-device và
-  independent review vẫn là gate riêng.
+- [x] Device-specific HPKE key wrap và exact wrap-set publication primitive đã
+  deploy production; physical two-device và independent review vẫn là gate riêng.
+- [ ] Thêm user-facing cryptographic device exclusion. Targeted/bulk revoke hiện
+  chỉ thu hồi Supabase session; generic key rotation vẫn giữ mọi active device có
+  membership proof hợp lệ và không phải remote wipe.
 - [ ] Trusted-device hoặc QR recovery transfer.
 - [ ] Export/delete account/data UX và retention policy.
 - [ ] Localization đa ngôn ngữ.
@@ -65,8 +86,9 @@ contract, tag CI xanh, checksum tải lại khớp và release note nêu signing
   semantics tree.
 - [x] Automated WCAG text contrast light/dark và core keyboard traversal cho
   Auth/accounts/add-account/sensitive Settings dialog.
-- [x] Lifecycle privacy shield che router ở mọi trạng thái khác `resumed`, có
-  regression cho focus, interaction và semantics.
+- [x] Lifecycle privacy shield che router ở mọi trạng thái khác `resumed`, dùng
+  Material 3 opaque responsive và có regression cho focus, interaction, semantics,
+  light/dark cùng text scale 200%.
 - [ ] TalkBack/VoiceOver runtime, full Settings/main-navigation keyboard audit,
   reduced-motion, native app-switcher snapshot và active screenshot/recording
   review trên platform đại diện.

@@ -49,7 +49,8 @@ GOTRUE_MAILER_TEMPLATES_RECOVERY=http://reset-password-web:8080/email-templates/
 
 Tên service/port phải khớp Compose network thực tế. Auth fallback sang template
 mặc định nếu URL không truy cập được hoặc Go template không hợp lệ, nên deployment
-phải kiểm tra email body thật trước khi mở production.
+phải kiểm tra email body thật trước khi bật/quảng bá mailbox delivery hoặc phát
+hành stable/store. GitHub Preview hiện vẫn công bố rõ SMTP/mailbox chưa được xác minh.
 
 ## Contract của recovery link
 
@@ -82,4 +83,8 @@ Script chạy syntax/static gates và, khi Docker daemon khả dụng, build ima
 Remote smoke test xác minh canonical path, TLS endpoint, security header, public
 runtime config và template mà không tạo user hoặc gửi email.
 
-Trước production vẫn phải test end-to-end bằng dữ liệu tổng hợp cho link thành công, hết hạn, malformed, reused và cross-environment; đồng thời xác minh SMTP/rate-limit/redirect allow-list tại Supabase.
+Trước khi bỏ cảnh báo mailbox hoặc phát hành stable/store vẫn phải test end-to-end
+bằng dữ liệu tổng hợp cho link thành công, hết hạn, malformed, reused và
+cross-environment; đồng thời xác minh SMTP/rate-limit/redirect allow-list tại
+Supabase. Remote token contract 8/8 hiện tại không chứng minh delivery tới mailbox
+thật hoặc expired-link E2E.

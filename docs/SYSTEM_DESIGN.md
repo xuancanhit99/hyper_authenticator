@@ -36,7 +36,8 @@ hiểu browser profile compromise nằm ngoài native trust boundary.
 3. Injectable/GetIt đăng ký dependency và pre-resolve SharedPreferences.
 4. `AppConfig` đọc compile-time define; `.env` không được bundle làm asset.
    Validator chỉ nhận HTTPS Supabase origin cùng `sb_publishable_*` hoặc legacy
-   JWT có role `anon`; release bắt buộc recovery URL và plaintext flag tắt.
+   JWT có role `anon`; release bắt buộc recovery URL. Plaintext flag chỉ còn là
+   poison sentinel và mọi build đều từ chối giá trị `true`.
 5. Khởi tạo Supabase client.
 6. Cấp shared `AuthBloc`, `AccountsBloc`, `LocalAuthBloc`, `SettingsBloc`; tạo
    `SyncBloc` dùng chính `AccountsBloc` đó.
@@ -146,19 +147,30 @@ thái bootstrap, vì Linux headless/desktop có thể không phát `resumed`; ru
 khóa contract này để app không tự che vĩnh viễn. Khi resume, shield chỉ gỡ overlay;
 state/vault không bị tạo lại hoặc mutate. Control này bổ sung cho `LocalAuthBloc`:
 privacy shield che ngay ở `inactive`, còn app-lock vẫn quyết định challenge theo
-policy hiện tại. Nó không phải active screenshot-prevention API.
+policy hiện tại.
+
+Overlay là Material 3 static, có nền và gradient đã alpha-blend thành màu opaque,
+branding cùng biểu tượng khóa nhưng không blur/sample route nhạy cảm bên dưới.
+Layout dùng `SafeArea`, giới hạn chiều rộng và co giãn ở viewport 320 px/text scale
+200%; light/dark theme đều giữ đúng một semantics label an toàn. Overlay không có
+transition, spinner hoặc ticker nên frame che đầu tiên không chờ animation. Đây là
+privacy control cho background/app-switcher, không phải active
+screenshot-prevention API.
 
 Settings có `SessionSecurityBloc` riêng để revoke mọi Supabase session khác mà
 không đưa `AuthBloc` ra khỏi trạng thái authenticated. Action này giữ session,
-local vault và DEK của thiết bị hiện tại. Với thiết bị nghi bị lộ, UI hướng người
-dùng xoay vault key trước rồi revoke các session khác.
+local vault và DEK của thiết bị hiện tại. Targeted/bulk revoke chỉ thu hồi
+Supabase authorization: nó không remote-wipe local vault, không làm target quên
+DEK đã giữ và không loại device key khỏi lần xoay vault key kế tiếp.
 
 `DeviceSessionBloc` đăng ký rồi list các phiên chạy client có device registry.
 Backend tự bind registry row với JWT `session_id`; client chỉ giữ installation UUID
 không phải credential. Targeted revoke cấm current row và xóa đúng target
 `auth.sessions`, vì vậy active-session guard chặn cloud access ngay. Local vault
 trên target không bị xóa, target có thể đăng nhập lại và session cũ chưa đăng ký
-vẫn chỉ xử lý được bằng bulk revoke.
+vẫn chỉ xử lý được bằng bulk revoke. Backend có contract loại device key trong
+atomic rotation, nhưng Settings/generic rotation hiện chưa cung cấp lựa chọn thiết
+bị: client gửi danh sách exclusion rỗng.
 
 ## Encrypted sync
 
@@ -227,6 +239,12 @@ snapshot. Khi user xác nhận đã lưu key, client re-download đúng revision
 bằng DEK cũ, re-encrypt bằng DEK mới rồi atomic publish ciphertext/wrapped key ở
 revision kế tiếp. DEK secure storage chỉ được thay sau read-after-write verify.
 
+Trước khi tạo bất kỳ next-generation wrap nào, client kiểm tra mọi active device
+có current-generation wrap đầy đủ và membership proof HMAC hợp lệ với DEK hiện
+tại. Một proof thiếu, stale hoặc giả làm toàn bộ preparation fail closed trước khi
+tạo wrap/publish. Generic flow sau đó cấp wrap mới cho **tất cả** active device đã
+được verify; UI hiện chưa triển khai per-device cryptographic exclusion.
+
 Conflict/cancel không đổi key. Publish transport, verify hoặc key-store failure sau
 request được báo là trạng thái mơ hồ và last-seen revision không tăng; recovery key
 mới là đường khôi phục. Thiết bị tuân thủ chỉ có DEK cũ không đọc được current
@@ -235,9 +253,9 @@ snapshot, nhưng auth session và backup cũ không tự bị revoke.
 Surviving native device không thử decrypt mãi bằng DEK cũ rồi yêu cầu HA1. Khi
 current snapshot có `device_wrap_version=1`, client đọc exact current-device wrap,
 unwrap bằng private key local, verify membership proof và chỉ persist DEK mới sau
-khi current snapshot decrypt/validate thành công. Missing private key, excluded
-device, session binding sai hoặc wrap/proof lỗi đều fail closed; auth/server failure
-không bị mô tả sai thành recovery-key failure.
+khi current snapshot decrypt/validate thành công. Missing private key, không có
+wrap do một rotation có exclusion, session binding sai hoặc wrap/proof lỗi đều fail
+closed; auth/server failure không bị mô tả sai thành recovery-key failure.
 
 ## Backend
 
@@ -251,7 +269,17 @@ không bị mô tả sai thành recovery-key failure.
   active owned row không lộ session ID và targeted revoke xóa một non-current
   `auth.sessions` row. Installation ID/label không được dùng làm authorization.
 - Expected revision sai trả SQLSTATE `PT409`/`revision_conflict`.
-- `synced_accounts` plaintext còn là compatibility schema, không nằm trong runtime DI.
+- Legacy `publish_encrypted_vault_snapshot` chỉ được tạo revision 1 với
+  `expected_revision=0`; mọi update tiếp theo phải dùng device-bound RPC v2.
+- RPC v2 khóa exact row/revision/generation bằng `FOR UPDATE`, kiểm tra protocol
+  `1` trên row đã khóa rồi mới xác minh active device binding và update. Protocol
+  `0` hoặc version stale đều fail trước mutation, đóng cửa sổ TOCTOU khi confirm
+  device key chạy đồng thời.
+- Plaintext client stack đã bị xóa. Migration loại bỏ cuối cùng lấy
+  `ACCESS EXCLUSIVE` lock trước khi đếm và chỉ drop `public.synced_accounts` trong
+  nhánh đã lock khi row count bằng `0`; còn credential legacy thì abort nguyên
+  transaction và không dùng `CASCADE`. `ALLOW_INSECURE_PLAINTEXT_SYNC` chỉ còn là
+  poison sentinel; giá trị `true` bị từ chối ở mọi build.
 
 ## Recovery password
 
@@ -286,7 +314,8 @@ Web chỉ có local TOTP + camera QR.
   khác. Device registry + targeted auth-session revoke đã deploy. ADR-0012 cùng
   device-wrap client/migration/RPC đã deploy và pass focused, PostgreSQL, remote
   regression cùng Linux/Android/iOS lost-key runtime và two-session survivor
-  auto-unwrap; physical two-device/independent review, tombstone/history và Web
-  E2EE vẫn chưa có.
+  auto-unwrap. Generic client rotation giữ toàn bộ active device có proof hợp lệ;
+  per-device cryptographic exclusion chưa có flow cho người dùng. Physical
+  two-device/independent review, tombstone/history và Web E2EE vẫn chưa có.
 - Device-level camera/biometric/secure-storage integration coverage chưa đầy đủ.
 - Alerting backend chưa có external notification channel.

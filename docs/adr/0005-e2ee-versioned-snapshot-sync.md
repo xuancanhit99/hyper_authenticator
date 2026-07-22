@@ -4,7 +4,7 @@
 - Ngày: 2026-07-18
 - Owner: canhvx
 - Thay thế: P-002, P-003
-- Bị thay thế bởi:
+- Bị thay thế một phần bởi: ADR-0012, ADR-0013
 
 ## Bối cảnh
 
@@ -77,3 +77,24 @@ test.
 2. Ship onboarding/recovery-key UI và isolated remote contract.
 3. Enable staging E2EE sync; migrate synthetic plaintext.
 4. Chỉ sau telemetry/restore rehearsal mới thiết kế drop plaintext table.
+
+## Ghi chú triển khai và thay thế — 22-07-2026
+
+Quyết định cốt lõi của ADR này đã được áp dụng: native client dùng encrypted
+versioned snapshot, user-held recovery key, optimistic revision và atomic RPC;
+Web vẫn không bật cloud sync. Các câu ở phần bối cảnh, compatibility và rollout
+mô tả kế hoạch chuyển tiếp tại ngày chấp nhận, không phải contract hiện tại:
+
+- [ADR-0012](0012-device-specific-hpke-key-wrap.md) bổ sung device-specific HPKE
+  wrap, membership proof và key-generation rotation. Session revoke riêng không
+  phải cryptographic exclusion; UI xoay vault key thông thường vẫn giữ toàn bộ
+  active device có proof hợp lệ.
+- [ADR-0013](0013-retire-plaintext-and-require-device-bound-publish.md) kết thúc
+  giai đoạn coexistence: plaintext client path bị xóa, bảng legacy chỉ được drop
+  fail-closed khi rỗng, và mọi update sau revision đầu tiên phải dùng protocol
+  device-bound.
+
+Không khôi phục plaintext bridge để rollback client. Restore backup lịch sử phải
+được kiểm tra legacy row, xử lý trong maintenance window rồi áp lại retirement
+migration trước khi nhận traffic. Trạng thái production và bằng chứng runtime
+hiện tại nằm trong `docs/PROJECT_STATUS.md`.

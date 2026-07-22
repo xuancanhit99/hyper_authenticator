@@ -93,6 +93,11 @@ Web production image và Linux compile cô lập:
     web-deployment/build-image.sh hyper-authenticator-web:1.1.0
     scripts/agent/build_linux_container.sh
 
+Sau khi tạo `build/web` bằng public release config hợp lệ, chạy thêm browser
+artifact smoke để xác minh Flutter engine mount, semantics và local-vault shell:
+
+    scripts/agent/web_runtime_smoke.sh
+
 Command có đối số `.env` validate public release contract trước khi build; không
 có đối số chỉ là compile smoke. Xem [Hướng dẫn phát triển](docs/DEVELOPMENT.md)
 và [Chiến lược kiểm thử](docs/TESTING_STRATEGY.md).
@@ -101,7 +106,7 @@ và [Chiến lược kiểm thử](docs/TESTING_STRATEGY.md).
 
 | Platform | Build hiện tại | Giới hạn chức năng đáng chú ý |
 |---|---|---|
-| Android | Đã xác minh debug | Camera QR và device authentication |
+| Android | Signed APK pre-release | Camera QR và device authentication; còn gate thiết bị thật |
 | iOS | Đã xác minh simulator | Cần device và signing để release |
 | macOS | Đã xác minh compile unsigned | Cần signing để test Keychain/runtime và release |
 | Web | Production HTTPS | Không có device authentication hoặc E2EE sync |
@@ -112,9 +117,14 @@ và [Chiến lược kiểm thử](docs/TESTING_STRATEGY.md).
 
 ## Lưu ý bảo mật
 
-Plaintext compatibility sync luôn bị khóa trong release và không còn được đăng ký
-trong runtime DI. E2EE vẫn không thay thế việc người dùng giữ recovery key; mất mọi
-thiết bị cùng recovery key có thể làm mất khả năng khôi phục. Đọc
+Client không còn source/runtime path để đồng bộ TOTP secret ở dạng plaintext.
+Migration retirement chỉ drop legacy table khi xác minh bảng rỗng và fail closed
+nếu còn row; trạng thái deploy production được ghi riêng trong
+[Trạng thái dự án](docs/PROJECT_STATUS.md). E2EE vẫn không thay thế việc người dùng
+giữ recovery key; mất mọi thiết bị cùng recovery key có thể làm mất khả năng khôi
+phục. Revoke Supabase session không phải remote wipe hoặc cryptographic device
+exclusion; generic vault-key rotation vẫn cấp wrap mới cho mọi active device có
+membership proof hợp lệ. Đọc
 [Mô hình bảo mật](docs/SECURITY.md) trước khi dùng dữ liệu nhạy cảm.
 
 ## Đóng góp và giấy phép
