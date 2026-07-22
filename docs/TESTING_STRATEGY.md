@@ -39,7 +39,8 @@ preparation, cùng các nhóm sau:
 - main-navigation URL/tab mapping và deep-link return qua app-lock bootstrap;
   stateful shell regression còn khóa `/` ↔ `/settings` không thay shell
   `ModalRoute`, không chạy full-page animation, giữ state branch và chọn đúng tab
-  khi bootstrap trực tiếp từ `/settings`;
+  khi bootstrap trực tiếp từ `/settings`; device integration lifecycle smoke
+  cũng khóa shell không phát sinh duplicate `GlobalKey` khi lock redirect liên tiếp;
 - TOTP URI/validator, countdown nhiều period và lifecycle resume;
 - local vault migration, concurrent mutation, corruption rollback, atomic replace
   và generation compaction;

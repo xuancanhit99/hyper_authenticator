@@ -30,7 +30,8 @@ của từng tab và vẫn giữ `/` cùng `/settings` làm URL canonical.
 - Cách tái hiện: đổi `/` sang `/settings` bằng bottom navigation trên Android.
 - Test hiện có: URL/tab mapping và device integration chuyển Settings/Accounts.
 - Giả định: transition native của route phân cấp vẫn do `MaterialPage` chọn theo
-  platform; chỉ branch switch của shell cần không animation.
+  platform; shell page dùng `NoTransitionPage` để không giữ hai
+  `StatefulNavigationShell` có cùng `GlobalKey` khi app-lock redirect liên tiếp.
 
 ## Đánh giá rủi ro
 
@@ -58,6 +59,7 @@ của từng tab và vẫn giữ `/` cùng `/settings` làm URL canonical.
 | Focused router tests | Pass 8/8 | 2026-07-22 |
 | `scripts/agent/check.sh full` | Pass toàn bộ, 186 Flutter tests và PostgreSQL migration contract | 2026-07-22 |
 | Android emulator build/run + two tab taps | Build/install/Supabase init/UI label pass, no app crash; headless SwiftShader jank không dùng làm production perf evidence | 2026-07-22 |
+| Linux/Windows local-vault lifecycle smoke | Baseline phát hiện duplicate `StatefulNavigationShell` `GlobalKey` khi redirect lock liên tiếp; đã xử lý bằng `NoTransitionPage`, không đổi vault/data contract | 2026-07-22 |
 
 ## Tác động tài liệu
 

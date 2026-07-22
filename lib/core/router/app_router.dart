@@ -179,8 +179,14 @@ class AppRouter {
           builder: (context, state) => const UpdatePasswordPage(),
         ),
         StatefulShellRoute.indexedStack(
-          builder: (context, state, navigationShell) =>
-              MainNavigationPage(navigationShell: navigationShell),
+          // The shell owns a GlobalKey internally. A default page transition
+          // can briefly keep two shell pages alive when auth-lock redirects
+          // happen in quick succession (for example during lifecycle changes),
+          // which triggers Flutter's duplicate GlobalKey assertion. Tab
+          // switching keeps the native NavigationBar animation below.
+          pageBuilder: (context, state, navigationShell) => NoTransitionPage(
+            child: MainNavigationPage(navigationShell: navigationShell),
+          ),
           branches: [
             StatefulShellBranch(
               routes: [

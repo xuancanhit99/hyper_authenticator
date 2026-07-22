@@ -65,9 +65,12 @@ vào container log. Reverse proxy bên ngoài sở hữu TLS và domain routing.
 GoRouter giữ URL làm source of truth cho main navigation: `/` mở Accounts và
 `/settings` mở Settings. Hai URL là branch của
 `StatefulShellRoute.indexedStack`; mỗi branch có Navigator riêng, giữ state khi
-đổi tab và không chạy full-page transition giữa các tab. `NavigationBar` chỉ
-animate indicator trong 200 ms, còn route phân cấp như Auth hoặc Thêm/Sửa tài
-khoản tiếp tục dùng page transition native mà Flutter chọn theo platform.
+đổi tab và không chạy full-page transition giữa các tab. Page của shell dùng
+`NoTransitionPage` có chủ đích: khi app-lock redirect xảy ra liên tiếp trong
+lifecycle transition, transition mặc định có thể giữ hai shell có cùng
+`GlobalKey` trong tree và làm Flutter fail. `NavigationBar` vẫn animate
+indicator trong 200 ms, còn route phân cấp như Auth hoặc Thêm/Sửa tài khoản
+tiếp tục dùng page transition native mà Flutter chọn theo platform.
 
 Không ép `initialLocation`, vì làm vậy sẽ bỏ qua browser deep link và platform
 route ban đầu. Bottom navigation dùng `StatefulNavigationShell.goBranch`, nên URL,
