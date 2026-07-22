@@ -40,6 +40,7 @@ mô tả preview là stable production release.
 | `flutter analyze` | Pass, 0 diagnostic |
 | `flutter test` | 186 test pass |
 | Vietnamese UI contract | Primary auth/accounts/settings/add-edit surface đã dùng tiếng Việt; app khóa `Locale('vi')` cùng Material/Widgets/Cupertino localization delegate và widget test xác minh locale runtime, vẫn giữ thuật ngữ technical cần thiết |
+| Main navigation shell | Accounts `/` và Settings `/settings` dùng `StatefulShellRoute.indexedStack`: đổi tab không thay shell route/full-page transition, giữ state từng branch và chỉ animate NavigationBar 200 ms; route phân cấp vẫn dùng transition native theo platform |
 | Core accessibility automation | Auth/accounts/add-account và Settings recovery/conflict/session dialog pass labeled tap target + Android 48×48 + WCAG text-contrast guideline trên light/dark theme ở viewport 320×640/text scale 200%; keyboard regression bao phủ Auth forms, theme/add/search/copy, manual add-account và sensitive dialog Tab/Shift+Tab/Enter/Space/Escape; TOTP secret key/raw recovery key không vào semantics tree |
 | Lifecycle privacy shield | Widget regression che toàn bộ router ở `inactive/hidden/paused/detached`, bỏ focus, chặn interaction/ticker và loại nội dung bên dưới khỏi semantics; `resumed` khôi phục state hiện có. Đây không phải bằng chứng active screenshot prevention hoặc native app-switcher snapshot trên thiết bị thật |
 | Platform configuration gate | Pass network/backup/signing/Keychain/ID |

@@ -14,6 +14,8 @@ import 'package:hyper_authenticator/features/authenticator/presentation/pages/ed
 import 'package:hyper_authenticator/features/authenticator/presentation/pages/lock_screen_page.dart';
 import 'package:hyper_authenticator/features/main_navigation/presentation/pages/main_navigation_page.dart';
 import 'package:hyper_authenticator/features/authenticator/domain/entities/authenticator_account.dart'; // Added import for AuthenticatorAccount
+import 'package:hyper_authenticator/features/authenticator/presentation/pages/accounts_page.dart';
+import 'package:hyper_authenticator/features/settings/presentation/pages/settings_page.dart';
 // import 'package:hyper_authenticator/injection_container.dart'; // Not directly needed here
 
 // --- Define Route Paths ---
@@ -29,22 +31,6 @@ class AppRoutes {
   static const updatePassword =
       '/update-password'; // Added for deep link handling
   static const editAccount = '/edit-account'; // Added for EditAccountPage
-
-  static int mainTabIndexForLocation(String location) {
-    return switch (location) {
-      main => 0,
-      settings => 1,
-      _ => throw ArgumentError.value(location, 'location'),
-    };
-  }
-
-  static String mainLocationForTabIndex(int index) {
-    return switch (index) {
-      0 => main,
-      1 => settings,
-      _ => throw RangeError.index(index, const [main, settings], 'index'),
-    };
-  }
 }
 
 /// Pure redirect policy so offline-vault and app-lock behavior can be tested
@@ -145,6 +131,7 @@ class CombinedAuthRefreshStream extends ChangeNotifier {
 class AppRouter {
   final AuthBloc authBloc;
   final LocalAuthBloc localAuthBloc; // Add LocalAuthBloc dependency
+  final _rootNavigatorKey = GlobalKey<NavigatorState>();
 
   AppRouter(this.authBloc, this.localAuthBloc); // Update constructor
 
@@ -156,6 +143,7 @@ class AppRouter {
 
   GoRouter _buildRouter() {
     return GoRouter(
+      navigatorKey: _rootNavigatorKey,
       // Chỉ lắng nghe AuthBloc để refresh redirect
       // Listen to both Blocs for refresh
       refreshListenable: CombinedAuthRefreshStream([
@@ -163,12 +151,6 @@ class AppRouter {
         localAuthBloc.stream,
       ]),
       routes: [
-        GoRoute(
-          path: AppRoutes.startup,
-          name: AppRoutes.startup,
-          builder: (context, state) =>
-              const Scaffold(body: Center(child: CircularProgressIndicator())),
-        ),
         // Public route
         GoRoute(
           path: AppRoutes.login,
@@ -192,36 +174,62 @@ class AppRouter {
           // This page might receive parameters from deep link in the future
           builder: (context, state) => const UpdatePasswordPage(),
         ),
-        // Main App Shell Route (protected by redirect)
-        GoRoute(
-          path: AppRoutes.main, // '/'
-          name: AppRoutes.main,
-          builder: (context, state) => MainNavigationPage(
-            selectedIndex: AppRoutes.mainTabIndexForLocation(
-              state.matchedLocation,
-            ),
+        StatefulShellRoute.indexedStack(
+          // The shell owns a GlobalKey internally. A default page transition
+          // can briefly keep two shell pages alive when auth-lock redirects
+          // happen in quick succession (for example during lifecycle changes),
+          // which triggers Flutter's duplicate GlobalKey assertion. Tab
+          // switching keeps the native NavigationBar animation below.
+          pageBuilder: (context, state, navigationShell) => NoTransitionPage(
+            key: state.pageKey,
+            child: MainNavigationPage(navigationShell: navigationShell),
           ),
-        ),
-        GoRoute(
-          path: AppRoutes.settings,
-          name: AppRoutes.settings,
-          builder: (context, state) => MainNavigationPage(
-            selectedIndex: AppRoutes.mainTabIndexForLocation(
-              state.matchedLocation,
+          branches: [
+            StatefulShellBranch(
+              routes: [
+                GoRoute(
+                  path: AppRoutes.main,
+                  name: AppRoutes.main,
+                  builder: (context, state) => const AccountsPage(),
+                  routes: [
+                    // Keep bootstrap and lock overlays in the shell match
+                    // list, but render them on the root navigator so the
+                    // bottom navigation is covered and the shell is not
+                    // destroyed/re-entered during lifecycle redirects.
+                    GoRoute(
+                      path: 'startup',
+                      name: AppRoutes.startup,
+                      parentNavigatorKey: _rootNavigatorKey,
+                      builder: (context, state) => const Scaffold(
+                        body: Center(child: CircularProgressIndicator()),
+                      ),
+                    ),
+                    GoRoute(
+                      path: 'lock-screen',
+                      name: AppRoutes.lockScreen,
+                      parentNavigatorKey: _rootNavigatorKey,
+                      builder: (context, state) => const LockScreenPage(),
+                    ),
+                  ],
+                ),
+              ],
             ),
-          ),
+            StatefulShellBranch(
+              routes: [
+                GoRoute(
+                  path: AppRoutes.settings,
+                  name: AppRoutes.settings,
+                  builder: (context, state) => const SettingsPage(),
+                ),
+              ],
+            ),
+          ],
         ),
         // Add Account Route (protected by redirect)
         GoRoute(
           path: AppRoutes.addAccount,
           name: AppRoutes.addAccount,
           builder: (context, state) => const AddAccountPage(),
-        ),
-        // Lock Screen Route
-        GoRoute(
-          path: AppRoutes.lockScreen,
-          name: AppRoutes.lockScreen,
-          builder: (context, state) => const LockScreenPage(),
         ),
         // --- End New Auth Routes ---
         // Edit Account Route (protected by redirect)
