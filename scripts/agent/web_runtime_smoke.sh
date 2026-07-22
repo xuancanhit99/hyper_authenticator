@@ -38,15 +38,22 @@ server_pid=
 chrome_pid=
 
 cleanup() {
+  local exit_code=$?
+  trap - EXIT
   if [[ -n "$chrome_pid" ]]; then
     kill "$chrome_pid" >/dev/null 2>&1 || true
+    wait "$chrome_pid" >/dev/null 2>&1 || true
   fi
   if [[ -n "$server_pid" ]]; then
     kill "$server_pid" >/dev/null 2>&1 || true
+    wait "$server_pid" >/dev/null 2>&1 || true
   fi
-  find "$tmp_dir" -depth -delete
+  rm -rf -- "$tmp_dir" >/dev/null 2>&1 || true
+  return "$exit_code"
 }
-trap cleanup EXIT INT TERM
+trap cleanup EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
 
 umask 077
 server_port_file="$tmp_dir/server-port"
