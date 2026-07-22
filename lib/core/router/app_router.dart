@@ -14,6 +14,8 @@ import 'package:hyper_authenticator/features/authenticator/presentation/pages/ed
 import 'package:hyper_authenticator/features/authenticator/presentation/pages/lock_screen_page.dart';
 import 'package:hyper_authenticator/features/main_navigation/presentation/pages/main_navigation_page.dart';
 import 'package:hyper_authenticator/features/authenticator/domain/entities/authenticator_account.dart'; // Added import for AuthenticatorAccount
+import 'package:hyper_authenticator/features/authenticator/presentation/pages/accounts_page.dart';
+import 'package:hyper_authenticator/features/settings/presentation/pages/settings_page.dart';
 // import 'package:hyper_authenticator/injection_container.dart'; // Not directly needed here
 
 // --- Define Route Paths ---
@@ -29,22 +31,6 @@ class AppRoutes {
   static const updatePassword =
       '/update-password'; // Added for deep link handling
   static const editAccount = '/edit-account'; // Added for EditAccountPage
-
-  static int mainTabIndexForLocation(String location) {
-    return switch (location) {
-      main => 0,
-      settings => 1,
-      _ => throw ArgumentError.value(location, 'location'),
-    };
-  }
-
-  static String mainLocationForTabIndex(int index) {
-    return switch (index) {
-      0 => main,
-      1 => settings,
-      _ => throw RangeError.index(index, const [main, settings], 'index'),
-    };
-  }
 }
 
 /// Pure redirect policy so offline-vault and app-lock behavior can be tested
@@ -192,24 +178,29 @@ class AppRouter {
           // This page might receive parameters from deep link in the future
           builder: (context, state) => const UpdatePasswordPage(),
         ),
-        // Main App Shell Route (protected by redirect)
-        GoRoute(
-          path: AppRoutes.main, // '/'
-          name: AppRoutes.main,
-          builder: (context, state) => MainNavigationPage(
-            selectedIndex: AppRoutes.mainTabIndexForLocation(
-              state.matchedLocation,
+        StatefulShellRoute.indexedStack(
+          builder: (context, state, navigationShell) =>
+              MainNavigationPage(navigationShell: navigationShell),
+          branches: [
+            StatefulShellBranch(
+              routes: [
+                GoRoute(
+                  path: AppRoutes.main,
+                  name: AppRoutes.main,
+                  builder: (context, state) => const AccountsPage(),
+                ),
+              ],
             ),
-          ),
-        ),
-        GoRoute(
-          path: AppRoutes.settings,
-          name: AppRoutes.settings,
-          builder: (context, state) => MainNavigationPage(
-            selectedIndex: AppRoutes.mainTabIndexForLocation(
-              state.matchedLocation,
+            StatefulShellBranch(
+              routes: [
+                GoRoute(
+                  path: AppRoutes.settings,
+                  name: AppRoutes.settings,
+                  builder: (context, state) => const SettingsPage(),
+                ),
+              ],
             ),
-          ),
+          ],
         ),
         // Add Account Route (protected by redirect)
         GoRoute(

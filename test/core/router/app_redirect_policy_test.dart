@@ -5,21 +5,6 @@ import 'package:hyper_authenticator/features/auth/presentation/bloc/auth_bloc.da
 import 'package:hyper_authenticator/features/authenticator/presentation/bloc/local_auth_bloc.dart';
 
 void main() {
-  test('main navigation ánh xạ URL và tab ổn định', () {
-    expect(AppRoutes.mainTabIndexForLocation(AppRoutes.main), 0);
-    expect(AppRoutes.mainTabIndexForLocation(AppRoutes.settings), 1);
-    expect(AppRoutes.mainLocationForTabIndex(0), AppRoutes.main);
-    expect(AppRoutes.mainLocationForTabIndex(1), AppRoutes.settings);
-  });
-
-  test('main navigation từ chối URL hoặc tab không thuộc shell', () {
-    expect(
-      () => AppRoutes.mainTabIndexForLocation('/unknown'),
-      throwsArgumentError,
-    );
-    expect(() => AppRoutes.mainLocationForTabIndex(2), throwsRangeError);
-  });
-
   test('app lock bootstrap giữ lại deep link Settings an toàn', () {
     final startupRedirect = AppRedirectPolicy.redirect(
       authState: AuthUnauthenticated(),
