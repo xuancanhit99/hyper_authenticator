@@ -171,7 +171,7 @@ SharedPreferences của feature sync.
 
 SharedPreferences giữ theo Supabase user ID:
 
-- sync enabled/disabled;
+- backup cloud E2EE enabled/disabled;
 - last-seen remote revision.
 
 SharedPreferences còn giữ một installation UUID v4 không phải credential, dùng

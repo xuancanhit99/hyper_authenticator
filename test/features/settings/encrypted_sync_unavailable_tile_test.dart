@@ -9,8 +9,24 @@ void main() {
     );
 
     expect(find.byIcon(Icons.cloud_off), findsOneWidget);
-    expect(find.text('Đồng bộ cloud mã hóa đầu cuối'), findsOneWidget);
+    expect(find.text('Backup cloud mã hóa đầu cuối'), findsOneWidget);
     expect(find.textContaining('Không hỗ trợ trên Web'), findsOneWidget);
     expect(find.text('Đăng nhập để dùng encrypted cloud sync'), findsNothing);
+  });
+
+  testWidgets('local-only giải thích cloud chưa được cấu hình', (tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: EncryptedSyncUnavailableTile(
+            message:
+                'Bản cài này đang chạy local-only. Bạn vẫn có thể thêm và dùng mã TOTP.',
+          ),
+        ),
+      ),
+    );
+
+    expect(find.textContaining('local-only'), findsOneWidget);
+    expect(find.textContaining('mã TOTP'), findsOneWidget);
   });
 }

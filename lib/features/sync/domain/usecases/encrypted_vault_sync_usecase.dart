@@ -739,7 +739,7 @@ class EncryptedVaultSyncUseCase {
     final userId = _authRepository.currentUserEntity?.id;
     if (userId == null || userId.trim().isEmpty) {
       throw const _FailureSignal(
-        AuthCredentialsFailure('Cần đăng nhập để dùng encrypted cloud sync.'),
+        AuthCredentialsFailure('Cần đăng nhập để dùng backup cloud.'),
       );
     }
     return userId;

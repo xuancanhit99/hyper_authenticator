@@ -13,41 +13,29 @@ class AuthCheckRequested extends AuthEvent {}
 class AuthSignInRequested extends AuthEvent {
   final String email;
   final String password;
-  final bool rememberMe; // Added rememberMe flag
 
-  const AuthSignInRequested({
-    required this.email,
-    required this.password,
-    required this.rememberMe, // Added rememberMe flag
-  });
+  const AuthSignInRequested({required this.email, required this.password});
 
   @override
-  List<Object> get props => [email, password, rememberMe]; // Added rememberMe flag
+  List<Object> get props => [email, password];
 
   @override
   String toString() =>
-      'AuthSignInRequested(email: [REDACTED], password: [REDACTED], rememberMe: $rememberMe)';
+      'AuthSignInRequested(email: [REDACTED], password: [REDACTED])';
 }
 
 class AuthSignUpRequested extends AuthEvent {
-  final String name; // Added
   final String email;
   final String password;
-  // final String? phone; // REMOVED
 
-  const AuthSignUpRequested({
-    required this.name,
-    required this.email,
-    required this.password,
-    // this.phone, // REMOVED
-  });
+  const AuthSignUpRequested({required this.email, required this.password});
 
   @override
-  List<Object?> get props => [name, email, password]; // REMOVED phone from props
+  List<Object?> get props => [email, password];
 
   @override
   String toString() =>
-      'AuthSignUpRequested(name: [REDACTED], email: [REDACTED], password: [REDACTED])';
+      'AuthSignUpRequested(email: [REDACTED], password: [REDACTED])';
 }
 
 class AuthRecoverPasswordRequested extends AuthEvent {
@@ -60,9 +48,6 @@ class AuthRecoverPasswordRequested extends AuthEvent {
   @override
   String toString() => 'AuthRecoverPasswordRequested(email: [REDACTED])';
 }
-
-/// Event to load the remembered email from SharedPreferences.
-class LoadRememberedUser extends AuthEvent {}
 
 class AuthSignOutRequested extends AuthEvent {}
 

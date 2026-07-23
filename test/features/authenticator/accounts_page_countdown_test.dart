@@ -5,7 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:fpdart/fpdart.dart';
 import 'package:hyper_authenticator/core/error/failures.dart';
 import 'package:hyper_authenticator/core/theme/app_theme.dart';
-import 'package:hyper_authenticator/core/theme/theme_provider.dart';
+import 'package:hyper_authenticator/core/theme/theme_cubit.dart';
 import 'package:hyper_authenticator/features/authenticator/domain/entities/authenticator_account.dart';
 import 'package:hyper_authenticator/features/authenticator/domain/repositories/authenticator_repository.dart';
 import 'package:hyper_authenticator/features/authenticator/domain/usecases/add_account.dart';
@@ -16,7 +16,6 @@ import 'package:hyper_authenticator/features/authenticator/domain/usecases/updat
 import 'package:hyper_authenticator/features/authenticator/presentation/bloc/accounts_bloc.dart';
 import 'package:hyper_authenticator/features/authenticator/presentation/pages/accounts_page.dart';
 import 'package:hyper_authenticator/features/authenticator/presentation/widgets/circular_countdown_timer.dart';
-import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../support/focus_test_utils.dart';
@@ -55,9 +54,9 @@ void main() {
       await loaded;
 
       await tester.pumpWidget(
-        MultiProvider(
+        MultiBlocProvider(
           providers: [
-            ChangeNotifierProvider(create: (_) => ThemeProvider(preferences)),
+            BlocProvider(create: (_) => ThemeCubit(preferences)),
             BlocProvider.value(value: accountsBloc),
           ],
           child: MaterialApp(
@@ -160,9 +159,9 @@ void main() {
         await loaded;
 
         await tester.pumpWidget(
-          MultiProvider(
+          MultiBlocProvider(
             providers: [
-              ChangeNotifierProvider(create: (_) => ThemeProvider(preferences)),
+              BlocProvider(create: (_) => ThemeCubit(preferences)),
               BlocProvider.value(value: accountsBloc),
             ],
             child: MaterialApp(
@@ -224,14 +223,13 @@ void main() {
         await tester.pump();
         expect(find.text('Đã sao chép mã TOTP.'), findsOneWidget);
 
-        await tester.drag(
-          find.byKey(const Key('accessible-account')),
-          const Offset(-220, 0),
+        await tester.tap(
+          find.byKey(const Key('account-actions-accessible-account')),
         );
-        await tester.pump(const Duration(milliseconds: 500));
-        expect(find.bySemanticsLabel('QR'), findsOneWidget);
-        expect(find.bySemanticsLabel('Sửa'), findsOneWidget);
-        expect(find.bySemanticsLabel('Xóa'), findsOneWidget);
+        await tester.pumpAndSettle();
+        expect(find.text('Sửa'), findsOneWidget);
+        expect(find.text('Xóa'), findsOneWidget);
+        expect(find.text('QR'), findsNothing);
         expect(tester.takeException(), isNull);
 
         await tester.enterText(find.byType(TextField), 'issuer');
