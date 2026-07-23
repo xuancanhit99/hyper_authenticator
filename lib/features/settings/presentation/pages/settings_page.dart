@@ -1,14 +1,11 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:hyper_authenticator/core/config/app_config.dart';
 import 'package:hyper_authenticator/core/platform/platform_capabilities.dart';
 import 'package:hyper_authenticator/features/auth/domain/entities/user_entity.dart';
 import 'package:hyper_authenticator/features/auth/presentation/bloc/auth_bloc.dart';
-import 'package:hyper_authenticator/features/settings/presentation/bloc/device_session_bloc.dart';
 import 'package:hyper_authenticator/features/settings/presentation/bloc/settings_bloc.dart';
 import 'package:hyper_authenticator/features/settings/presentation/bloc/session_security_bloc.dart';
-import 'package:hyper_authenticator/features/settings/presentation/widgets/authenticated_devices_tile.dart';
 import 'package:hyper_authenticator/features/settings/presentation/widgets/authentication_session_tile.dart';
 import 'package:hyper_authenticator/features/settings/presentation/widgets/encrypted_sync_unavailable_tile.dart';
 import 'package:hyper_authenticator/features/settings/presentation/widgets/recovery_import_dialog.dart';
@@ -28,7 +25,6 @@ class SettingsPage extends StatelessWidget {
         BlocProvider(create: (_) => sl<SettingsBloc>()..add(LoadSettings())),
         BlocProvider(create: (_) => sl<SyncBloc>()),
         BlocProvider(create: (_) => sl<SessionSecurityBloc>()),
-        BlocProvider(create: (_) => sl<DeviceSessionBloc>()),
       ],
       child: const _SettingsView(),
     );
@@ -42,35 +38,23 @@ class _SettingsView extends StatelessWidget {
   Widget build(BuildContext context) {
     final authState = context.watch<AuthBloc>().state;
     final currentUser = authState is AuthAuthenticated ? authState.user : null;
+    final cloudConfigured = sl<AppConfig>().cloudEnabled;
     final encryptedSyncSupported =
-        PlatformCapabilities.supportsEncryptedCloudSync;
+        cloudConfigured && PlatformCapabilities.supportsEncryptedCloudSync;
+    final unavailableMessage = cloudConfigured
+        ? 'Không hỗ trợ trên Web vì browser storage không có trust boundary tương đương secure storage native.'
+        : 'Bản cài này đang chạy local-only. Bạn vẫn có thể thêm và dùng mã TOTP mà không cần tài khoản cloud.';
 
-    return MultiBlocListener(
-      listeners: [
-        BlocListener<SessionSecurityBloc, SessionSecurityState>(
-          listener: (context, state) {
-            final message = switch (state) {
-              SessionSecuritySuccess() =>
-                'Đã đăng xuất tất cả phiên khác. Thiết bị này vẫn đăng nhập.',
-              SessionSecurityFailure(:final message) => message,
-              _ => null,
-            };
-            if (message != null) _showMessage(context, message);
-          },
-        ),
-        BlocListener<DeviceSessionBloc, DeviceSessionState>(
-          listener: (context, state) {
-            final message = switch (state) {
-              DeviceSessionRevocationSuccess(:final displayName) =>
-                'Đã đăng xuất $displayName.',
-              DeviceSessionLoadFailure(:final message) => message,
-              DeviceSessionActionFailure(:final message) => message,
-              _ => null,
-            };
-            if (message != null) _showMessage(context, message);
-          },
-        ),
-      ],
+    return BlocListener<SessionSecurityBloc, SessionSecurityState>(
+      listener: (context, state) {
+        final message = switch (state) {
+          SessionSecuritySuccess() =>
+            'Đã đăng xuất tất cả phiên khác. Thiết bị này vẫn đăng nhập.',
+          SessionSecurityFailure(:final message) => message,
+          _ => null,
+        };
+        if (message != null) _showMessage(context, message);
+      },
       child: Scaffold(
         appBar: AppBar(title: const Text('Cài đặt')),
         body: BlocBuilder<SettingsBloc, SettingsState>(
@@ -110,13 +94,10 @@ class _SettingsView extends StatelessWidget {
                       _EncryptedSyncSection(
                         currentUser: currentUser,
                         isSupported: encryptedSyncSupported,
+                        unavailableMessage: unavailableMessage,
                       ),
                       if (currentUser != null || encryptedSyncSupported) ...[
                         const Divider(height: 1),
-                        if (currentUser != null) ...[
-                          AuthenticatedDevicesTile(currentUser: currentUser),
-                          const Divider(height: 1),
-                        ],
                         BlocBuilder<SessionSecurityBloc, SessionSecurityState>(
                           builder: (context, sessionSecurityState) =>
                               AuthenticationSessionTile(
@@ -173,10 +154,12 @@ class _UserCard extends StatelessWidget {
 class _EncryptedSyncSection extends StatefulWidget {
   final UserEntity? currentUser;
   final bool isSupported;
+  final String unavailableMessage;
 
   const _EncryptedSyncSection({
     required this.currentUser,
     required this.isSupported,
+    required this.unavailableMessage,
   });
 
   @override
@@ -184,16 +167,9 @@ class _EncryptedSyncSection extends StatefulWidget {
 }
 
 class _EncryptedSyncSectionState extends State<_EncryptedSyncSection> {
-  StreamSubscription<AuthState>? _authSubscription;
-
   @override
   void initState() {
     super.initState();
-    _authSubscription = context.read<AuthBloc>().stream.listen((state) {
-      if (mounted && widget.isSupported && state is AuthAuthenticated) {
-        context.read<SyncBloc>().add(const CheckSyncStatus());
-      }
-    });
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted && widget.isSupported && widget.currentUser != null) {
         context.read<SyncBloc>().add(const CheckSyncStatus());
@@ -212,15 +188,9 @@ class _EncryptedSyncSectionState extends State<_EncryptedSyncSection> {
   }
 
   @override
-  void dispose() {
-    _authSubscription?.cancel();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
     if (!widget.isSupported) {
-      return const EncryptedSyncUnavailableTile();
+      return EncryptedSyncUnavailableTile(message: widget.unavailableMessage);
     }
 
     return BlocConsumer<SyncBloc, SyncState>(
@@ -247,11 +217,7 @@ class _EncryptedSyncSectionState extends State<_EncryptedSyncSection> {
           ScaffoldMessenger.of(context)
             ..hideCurrentSnackBar()
             ..showSnackBar(
-              SnackBar(
-                content: Text(
-                  'Đồng bộ mã hóa hoàn tất ở revision ${state.revision}.',
-                ),
-              ),
+              const SnackBar(content: Text('Backup cloud hoàn tất.')),
             );
         } else if (state is SyncFailure) {
           ScaffoldMessenger.of(context)
@@ -289,7 +255,7 @@ class _EncryptedSyncSectionState extends State<_EncryptedSyncSection> {
     if (state case SyncReady(:final isEnabled)) {
       return SwitchListTile(
         secondary: const Icon(Icons.enhanced_encryption),
-        title: const Text('Đồng bộ cloud mã hóa đầu cuối'),
+        title: const Text('Backup cloud mã hóa đầu cuối'),
         subtitle: subtitle,
         value: isEnabled,
         onChanged: (enabled) =>
@@ -298,7 +264,7 @@ class _EncryptedSyncSectionState extends State<_EncryptedSyncSection> {
     }
     return ListTile(
       leading: const Icon(Icons.enhanced_encryption),
-      title: const Text('Đồng bộ cloud mã hóa đầu cuối'),
+      title: const Text('Backup cloud mã hóa đầu cuối'),
       subtitle: subtitle,
     );
   }
@@ -331,15 +297,15 @@ class _EncryptedSyncSectionState extends State<_EncryptedSyncSection> {
       SyncVaultKeyRotationReady() => const Text(
         'Đang chờ xác nhận vault key và recovery key mới.',
       ),
-      SyncReady(:final isEnabled, :final revision, :final updatedAt) => Text(
-        '${isEnabled ? 'Đang bật' : 'Đang tắt'} · revision $revision · ${_format(updatedAt)}',
+      SyncReady(:final isEnabled, :final updatedAt) => Text(
+        '${isEnabled ? 'Cho phép backup thủ công' : 'Đang tắt'} · Bản cloud gần nhất ${_format(updatedAt)}',
       ),
-      SyncConflict(:final remoteRevision) => Text(
-        'Phát hiện thay đổi đồng thời ở cloud revision $remoteRevision. Cần chọn dữ liệu giữ lại.',
+      SyncConflict() => Text(
+        'Bản cloud đã thay đổi trên thiết bị khác. Cần chọn dữ liệu giữ lại.',
         style: TextStyle(color: Theme.of(context).colorScheme.error),
       ),
-      SyncSuccess(:final revision, :final completedAt) => Text(
-        'Đã đồng bộ revision $revision · ${_format(completedAt)}',
+      SyncSuccess(:final completedAt) => Text(
+        'Backup cloud hoàn tất · ${_format(completedAt)}',
       ),
       SyncFailure(:final message) => Text(
         message,
@@ -398,32 +364,33 @@ class _EncryptedSyncSectionState extends State<_EncryptedSyncSection> {
       SyncSuccess() => true,
       _ => false,
     };
-    final canRotate = state is SyncReady || state is SyncSuccess;
-    if (!canSync && !canRotate) return const SizedBox.shrink();
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
+    final canManageRecovery = state is SyncReady || state is SyncSuccess;
+    if (!canSync && !canManageRecovery) return const SizedBox.shrink();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         if (canSync)
           FilledButton.icon(
             onPressed: () =>
                 context.read<SyncBloc>().add(const SyncNowRequested()),
             icon: const Icon(Icons.sync),
-            label: const Text('Đồng bộ ngay'),
+            label: const Text('Backup ngay'),
           ),
-        if (canRotate)
-          OutlinedButton.icon(
-            onPressed: () =>
-                context.read<SyncBloc>().add(const BeginRecoveryKeyRotation()),
-            icon: const Icon(Icons.key),
-            label: const Text('Đổi recovery key'),
-          ),
-        if (canRotate)
-          OutlinedButton.icon(
-            onPressed: () =>
-                context.read<SyncBloc>().add(const BeginVaultKeyRotation()),
-            icon: const Icon(Icons.security_update_warning),
-            label: const Text('Xoay vault key'),
+        if (canManageRecovery)
+          ExpansionTile(
+            tilePadding: EdgeInsets.zero,
+            childrenPadding: const EdgeInsets.only(bottom: 8),
+            title: const Text('Bảo mật nâng cao'),
+            subtitle: const Text('Chỉ dùng khi recovery key có nguy cơ bị lộ.'),
+            children: [
+              OutlinedButton.icon(
+                onPressed: () => context.read<SyncBloc>().add(
+                  const BeginRecoveryKeyRotation(),
+                ),
+                icon: const Icon(Icons.key),
+                label: const Text('Đổi recovery key'),
+              ),
+            ],
           ),
       ],
     );
@@ -478,7 +445,7 @@ class _EncryptedSyncSectionState extends State<_EncryptedSyncSection> {
       context,
       title: 'Ghi bản local lên cloud?',
       message:
-          'Một encrypted revision mới sẽ thay thế snapshot cloud hiện tại. Server sẽ từ chối nếu cloud tiếp tục thay đổi trước lúc commit.',
+          'Bản local sẽ thay thế snapshot cloud hiện tại. Thao tác dừng an toàn nếu bản cloud tiếp tục thay đổi trước lúc hoàn tất.',
       action: 'Giữ local',
     );
     if (confirmed && context.mounted) {

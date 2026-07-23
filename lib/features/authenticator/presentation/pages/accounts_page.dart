@@ -1,29 +1,18 @@
 import 'dart:async';
-// For FontFeature
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart'; // For Clipboard
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:flutter_slidable/flutter_slidable.dart'; // Import Slidable
-import 'package:provider/provider.dart'; // Import Provider
-import 'package:hyper_authenticator/core/theme/theme_provider.dart'; // Import ThemeProvider
-import 'package:qr_flutter/qr_flutter.dart'; // Import QR Flutter
-import 'package:hyper_authenticator/core/constants/app_colors.dart'; // Import AppColors (needed for Card)
-// For NoParams
+import 'package:go_router/go_router.dart';
+import 'package:hyper_authenticator/core/constants/app_colors.dart';
+import 'package:hyper_authenticator/core/router/app_router.dart';
+import 'package:hyper_authenticator/core/theme/theme_cubit.dart';
 import 'package:hyper_authenticator/features/authenticator/domain/entities/authenticator_account.dart';
 import 'package:hyper_authenticator/features/authenticator/domain/usecases/generate_totp_code.dart';
 import 'package:hyper_authenticator/features/authenticator/presentation/bloc/accounts_bloc.dart';
 import 'package:hyper_authenticator/features/authenticator/presentation/widgets/account_avatar.dart';
-import 'package:hyper_authenticator/features/authenticator/presentation/widgets/circular_countdown_timer.dart'; // Import Countdown Timer
+import 'package:hyper_authenticator/features/authenticator/presentation/widgets/account_code_tile.dart';
+import 'package:hyper_authenticator/features/authenticator/presentation/widgets/circular_countdown_timer.dart';
 import 'package:hyper_authenticator/injection_container.dart';
-import 'package:go_router/go_router.dart'; // Import GoRouter for navigation
-import 'package:hyper_authenticator/core/router/app_router.dart'; // Import AppRoutes
-// Import EditAccountPage
-
-// TODO: Define route for AddAccountPage
-// import 'add_account_page.dart'; // Will create this later
-// TODO: Define route for EditAccountPage
-// import 'edit_account_page.dart'; // Will create this later
 
 class AccountsPage extends StatefulWidget {
   const AccountsPage({
@@ -43,12 +32,9 @@ class _AccountsPageState extends State<AccountsPage>
     with WidgetsBindingObserver {
   Timer? _timer;
   late int _epochSeconds;
-  // Store current codes to avoid recalculating every build
   final Map<String, String> _currentCodes = {};
   final Map<String, _TotpCodeCacheEntry> _codeCache = {};
-  // Inject GenerateTotpCode use case
   late final GenerateTotpCode _generateTotpCode;
-  // Search state
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
 
@@ -58,9 +44,7 @@ class _AccountsPageState extends State<AccountsPage>
     WidgetsBinding.instance.addObserver(this);
     _generateTotpCode = widget.generateTotpCode ?? sl<GenerateTotpCode>();
     _epochSeconds = _readEpochSeconds();
-    _searchController.addListener(
-      _onSearchChanged,
-    ); // Add listener for search input
+    _searchController.addListener(_onSearchChanged);
     context.read<AccountsBloc>().add(LoadAccounts());
     _startTimer();
   }
@@ -69,8 +53,8 @@ class _AccountsPageState extends State<AccountsPage>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _timer?.cancel();
-    _searchController.removeListener(_onSearchChanged); // Remove listener
-    _searchController.dispose(); // Dispose controller
+    _searchController.removeListener(_onSearchChanged);
+    _searchController.dispose();
     super.dispose();
   }
 
@@ -112,7 +96,6 @@ class _AccountsPageState extends State<AccountsPage>
     }
   }
 
-  // Listener for search query changes
   void _onSearchChanged() {
     setState(() {
       _searchQuery = _searchController.text;
@@ -144,7 +127,6 @@ class _AccountsPageState extends State<AccountsPage>
     AuthenticatorAccount account,
     TotpTimeWindow timeWindow,
   ) async {
-    // Pass all necessary parameters from the account to the use case
     final result = await _generateTotpCode(
       GenerateTotpCodeParams(
         secretKey: account.secretKey,
@@ -157,81 +139,52 @@ class _AccountsPageState extends State<AccountsPage>
             Duration.millisecondsPerSecond,
       ),
     );
-    return result.fold(
-      (failure) => 'Lỗi', // Handle error display
-      (code) => code,
-    );
+    return result.fold((failure) => 'Lỗi', (code) => code);
   }
 
   @override
   Widget build(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final themeMode = context.watch<ThemeCubit>().state;
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: Theme.of(
-          context,
-        ).scaffoldBackgroundColor, // Set background color
-        elevation: 0, // Remove shadow for a flatter look if desired
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        elevation: 0,
         title: const Text('Mã xác thực'),
         actions: [
-          // Theme switcher icon
-          Consumer<ThemeProvider>(
-            builder: (context, themeProvider, _) {
-              IconData iconData;
-              switch (themeProvider.themeMode) {
-                case ThemeMode.light:
-                  iconData = Icons.light_mode_outlined;
-                  break;
-                case ThemeMode.dark:
-                  iconData = Icons.dark_mode_outlined;
-                  break;
-                case ThemeMode.system:
-                  iconData = Icons.brightness_auto_outlined;
-                  break;
-              }
-              return PopupMenuButton<ThemeMode>(
-                icon: Icon(
-                  iconData,
-                  color: isDarkMode ? Colors.white : Colors.black87,
+          PopupMenuButton<ThemeMode>(
+            icon: Icon(switch (themeMode) {
+              ThemeMode.light => Icons.light_mode_outlined,
+              ThemeMode.dark => Icons.dark_mode_outlined,
+              ThemeMode.system => Icons.brightness_auto_outlined,
+            }, color: isDarkMode ? Colors.white : Colors.black87),
+            tooltip: 'Đổi giao diện',
+            onSelected: context.read<ThemeCubit>().setThemeMode,
+            itemBuilder: (context) => const [
+              PopupMenuItem(
+                value: ThemeMode.system,
+                child: ListTile(
+                  leading: Icon(Icons.brightness_auto_outlined),
+                  title: Text('Theo hệ thống'),
                 ),
-                tooltip: 'Đổi giao diện',
-                onSelected: (ThemeMode result) {
-                  // Use ThemeProvider to set the theme
-                  Provider.of<ThemeProvider>(
-                    context,
-                    listen: false,
-                  ).setThemeMode(result);
-                },
-                itemBuilder: (BuildContext context) =>
-                    <PopupMenuEntry<ThemeMode>>[
-                      const PopupMenuItem<ThemeMode>(
-                        value: ThemeMode.system,
-                        child: ListTile(
-                          leading: Icon(Icons.brightness_auto_outlined),
-                          title: Text('Theo hệ thống'),
-                        ),
-                      ),
-                      const PopupMenuItem<ThemeMode>(
-                        value: ThemeMode.light,
-                        child: ListTile(
-                          leading: Icon(Icons.light_mode_outlined),
-                          title: Text('Sáng'),
-                        ),
-                      ),
-                      const PopupMenuItem<ThemeMode>(
-                        value: ThemeMode.dark,
-                        child: ListTile(
-                          leading: Icon(Icons.dark_mode_outlined),
-                          title: Text('Tối'),
-                        ),
-                      ),
-                    ],
-              );
-            },
+              ),
+              PopupMenuItem(
+                value: ThemeMode.light,
+                child: ListTile(
+                  leading: Icon(Icons.light_mode_outlined),
+                  title: Text('Sáng'),
+                ),
+              ),
+              PopupMenuItem(
+                value: ThemeMode.dark,
+                child: ListTile(
+                  leading: Icon(Icons.dark_mode_outlined),
+                  title: Text('Tối'),
+                ),
+              ),
+            ],
           ),
-          // Apply background color directly to IconButton using style
           Padding(
-            // Add padding to prevent button touching edge
             padding: const EdgeInsets.only(right: 8.0),
             child: IconButton(
               icon: const Icon(Icons.add, size: 20), // Reduced icon size
@@ -420,177 +373,45 @@ class _AccountsPageState extends State<AccountsPage>
                               epochSeconds: _epochSeconds,
                               periodSeconds: account.period,
                             );
-                            // --- Start Slidable Widget ---
-                            return Slidable(
-                              key: Key(account.id),
-                              groupTag:
-                                  '0', // For SlidableStrechAction animation
-                              endActionPane: ActionPane(
-                                motion:
-                                    const StretchMotion(), // Changed to StretchMotion for desired effect
-                                extentRatio:
-                                    0.6, // Show 1/2 of the slidable actions
-                                children: [
-                                  SlidableAction(
-                                    onPressed: (_) =>
-                                        _showQrCodeDialog(context, account),
-                                    backgroundColor: Colors.blue,
-                                    foregroundColor: Colors.white,
-                                    icon: Icons.qr_code,
-                                    label: 'QR',
-                                  ),
-                                  SlidableAction(
-                                    onPressed: (_) {
-                                      context.push(
-                                        AppRoutes.editAccount,
-                                        extra: account,
-                                      );
-                                    },
-                                    backgroundColor: Colors.orange,
-                                    foregroundColor: Colors.white,
-                                    icon: Icons.edit,
-                                    label: 'Sửa',
-                                  ),
-                                  SlidableAction(
-                                    onPressed: (_) =>
-                                        _showDeleteConfirmationDialog(
-                                          context,
-                                          account,
-                                        ),
-                                    backgroundColor: Colors.red,
-                                    foregroundColor: Colors.white,
-                                    icon: Icons.delete,
-                                    label: 'Xóa',
-                                  ),
-                                ],
-                              ),
-                              child: FutureBuilder<String>(
-                                // Use future builder to get the code asynchronously
-                                future: _getCodeForAccount(account, timeWindow),
-                                builder: (context, snapshot) {
-                                  String displayCode = "------"; // Placeholder
-                                  if (snapshot.connectionState ==
-                                          ConnectionState.done &&
-                                      snapshot.hasData) {
-                                    displayCode = snapshot.data!;
-                                    // Format code with space
-                                    if (displayCode.length == 6) {
-                                      displayCode =
-                                          '${displayCode.substring(0, 3)} ${displayCode.substring(3)}';
-                                    }
-                                    _currentCodes[account.id] =
-                                        displayCode; // Cache code
-                                  } else if (_currentCodes.containsKey(
-                                    account.id,
-                                  )) {
+                            return FutureBuilder<String>(
+                              // Use future builder to get the code asynchronously
+                              future: _getCodeForAccount(account, timeWindow),
+                              builder: (context, snapshot) {
+                                String displayCode = "------"; // Placeholder
+                                if (snapshot.connectionState ==
+                                        ConnectionState.done &&
+                                    snapshot.hasData) {
+                                  displayCode = snapshot.data!;
+                                  // Format code with space
+                                  if (displayCode.length == 6) {
                                     displayCode =
-                                        _currentCodes[account
-                                            .id]!; // Use cached code during refresh
+                                        '${displayCode.substring(0, 3)} ${displayCode.substring(3)}';
                                   }
+                                  _currentCodes[account.id] =
+                                      displayCode; // Cache code
+                                } else if (_currentCodes.containsKey(
+                                  account.id,
+                                )) {
+                                  displayCode =
+                                      _currentCodes[account
+                                          .id]!; // Use cached code during refresh
+                                }
 
-                                  final rawCode = displayCode.replaceAll(
-                                    ' ',
-                                    '',
-                                  );
-                                  final canCopy = RegExp(
-                                    r'^\d{6,8}$',
-                                  ).hasMatch(rawCode);
-                                  final semanticValue = canCopy
-                                      ? 'Mã ${rawCode.split('').join(' ')}, còn ${timeWindow.secondsRemaining} giây'
-                                      : 'Đang tạo mã';
-
-                                  // --- Start New Row Layout ---
-                                  return Semantics(
-                                    label:
-                                        'Sao chép mã TOTP của ${account.issuer}, ${account.accountName}',
-                                    value: semanticValue,
-                                    button: true,
-                                    enabled: canCopy,
-                                    excludeSemantics: true,
-                                    child: InkWell(
-                                      onTap: canCopy
-                                          ? () {
-                                              Clipboard.setData(
-                                                ClipboardData(text: rawCode),
-                                              );
-                                              ScaffoldMessenger.of(
-                                                context,
-                                              ).showSnackBar(
-                                                const SnackBar(
-                                                  content: Text(
-                                                    'Đã sao chép mã TOTP.',
-                                                  ),
-                                                  duration: Duration(
-                                                    seconds: 1,
-                                                  ),
-                                                ),
-                                              );
-                                            }
-                                          : null,
-                                      child: Padding(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 8.0,
-                                          vertical: 10.0,
-                                        ),
-                                        child: LayoutBuilder(
-                                          builder: (context, constraints) {
-                                            final useStackedLayout =
-                                                MediaQuery.textScalerOf(
-                                                  context,
-                                                ).scale(21) >
-                                                28;
-                                            final identity = _AccountIdentity(
-                                              account: account,
-                                            );
-                                            final codeAndCountdown =
-                                                _CodeAndCountdown(
-                                                  displayCode: displayCode,
-                                                  timeWindow: timeWindow,
-                                                  periodSeconds: account.period,
-                                                );
-                                            if (useStackedLayout) {
-                                              return Column(
-                                                crossAxisAlignment:
-                                                    CrossAxisAlignment.stretch,
-                                                children: [
-                                                  Row(
-                                                    children: [
-                                                      AccountAvatar(
-                                                        issuer: account.issuer,
-                                                      ),
-                                                      const SizedBox(width: 12),
-                                                      Expanded(child: identity),
-                                                    ],
-                                                  ),
-                                                  const SizedBox(height: 8),
-                                                  Align(
-                                                    alignment:
-                                                        Alignment.centerRight,
-                                                    child: codeAndCountdown,
-                                                  ),
-                                                ],
-                                              );
-                                            }
-                                            return Row(
-                                              children: [
-                                                AccountAvatar(
-                                                  issuer: account.issuer,
-                                                ),
-                                                const SizedBox(width: 12),
-                                                Expanded(child: identity),
-                                                const SizedBox(width: 8),
-                                                codeAndCountdown,
-                                              ],
-                                            );
-                                          },
-                                        ),
-                                      ),
-                                    ),
-                                  );
-                                  // --- End New Row Layout ---
-                                }, // End FutureBuilder builder
-                              ), // End FutureBuilder
-                            ); // --- End Slidable Widget ---
+                                return AccountCodeTile(
+                                  account: account,
+                                  displayCode: displayCode,
+                                  timeWindow: timeWindow,
+                                  onEdit: () => context.push(
+                                    AppRoutes.editAccount,
+                                    extra: account,
+                                  ),
+                                  onDelete: () => _showDeleteConfirmationDialog(
+                                    context,
+                                    account,
+                                  ),
+                                );
+                              }, // End FutureBuilder builder
+                            ); // End FutureBuilder
                           }, // End itemBuilder
                         ), // End ListView.separated
                       ), // End RefreshIndicator
@@ -608,78 +429,6 @@ class _AccountsPageState extends State<AccountsPage>
       ), // End GestureDetector
     ); // End Scaffold
   } // End build method
-
-  // --- Helper method to show QR Code Dialog ---
-  void _showQrCodeDialog(BuildContext context, AuthenticatorAccount account) {
-    // Construct the OTPAuth URI (Standard format for 2FA export)
-    // otpauth://TYPE/LABEL?PARAMETERS
-    // TYPE: totp or hotp
-    // LABEL: issuer:accountName or issuer (accountName)
-    // PARAMETERS: secret, issuer, algorithm, digits, period
-    const type = 'totp'; // Assuming all accounts are TOTP for now
-    final label = Uri.encodeComponent(
-      '${account.issuer}:${account.accountName}',
-    );
-    final secret = account.secretKey;
-    final issuer = Uri.encodeComponent(account.issuer);
-    final algorithm = account.algorithm.toUpperCase();
-    final digits = account.digits;
-    final period = account.period;
-
-    final qrData =
-        'otpauth://$type/$label?secret=$secret&issuer=$issuer&algorithm=$algorithm&digits=$digits&period=$period';
-
-    showDialog(
-      context: context,
-      builder: (BuildContext dialogContext) {
-        return AlertDialog(
-          title: const Text('Mã QR của tài khoản'),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Text('Nhà cung cấp: ${account.issuer}'),
-                Text('Tài khoản: ${account.accountName}'),
-                const SizedBox(height: 16),
-                Center(
-                  child: Container(
-                    // Add a white background container
-                    color: Colors.white,
-                    padding: const EdgeInsets.all(8.0), // Add padding around QR
-                    child: SizedBox(
-                      width: 200.0,
-                      height: 200.0,
-                      child: QrImageView(
-                        data: qrData,
-                        version: QrVersions.auto,
-                        size:
-                            200.0, // This size is for the QR code itself within the QrImageView
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                // Optional: Display raw QR data for debugging or manual entry
-                // SelectableText(
-                //   'Raw Data: $qrData',
-                //   style: TextStyle(fontSize: 10, color: Colors.grey),
-                // ),
-              ],
-            ),
-          ),
-          actions: <Widget>[
-            TextButton(
-              child: const Text('Đóng'),
-              onPressed: () {
-                Navigator.of(dialogContext).pop();
-              },
-            ),
-          ],
-        );
-      },
-    );
-  }
 
   // --- Helper method to show Delete Confirmation Dialog ---
   void _showDeleteConfirmationDialog(
@@ -739,74 +488,6 @@ class _AccountsPageState extends State<AccountsPage>
     );
   }
 } // End _AccountsPageState class
-
-class _AccountIdentity extends StatelessWidget {
-  const _AccountIdentity({required this.account});
-
-  final AuthenticatorAccount account;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          account.issuer,
-          style: Theme.of(
-            context,
-          ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500),
-          overflow: TextOverflow.ellipsis,
-        ),
-        Text(
-          account.accountName,
-          style: Theme.of(context).textTheme.bodySmall,
-          overflow: TextOverflow.ellipsis,
-          maxLines: 1,
-        ),
-      ],
-    );
-  }
-}
-
-class _CodeAndCountdown extends StatelessWidget {
-  const _CodeAndCountdown({
-    required this.displayCode,
-    required this.timeWindow,
-    required this.periodSeconds,
-  });
-
-  final String displayCode;
-  final TotpTimeWindow timeWindow;
-  final int periodSeconds;
-
-  @override
-  Widget build(BuildContext context) {
-    return Wrap(
-      alignment: WrapAlignment.end,
-      crossAxisAlignment: WrapCrossAlignment.center,
-      spacing: 8,
-      runSpacing: 8,
-      children: [
-        Text(
-          displayCode,
-          style: const TextStyle(
-            fontSize: 21,
-            fontWeight: FontWeight.bold,
-            letterSpacing: 1.3,
-            fontFeatures: [FontFeature.tabularFigures()],
-          ),
-        ),
-        CircularCountdownTimer(
-          secondsRemaining: timeWindow.secondsRemaining,
-          periodSeconds: periodSeconds,
-          size: 18,
-          backgroundColor: Colors.transparent,
-          progressColor: Colors.grey,
-        ),
-      ],
-    );
-  }
-}
 
 class _TotpCodeCacheEntry {
   const _TotpCodeCacheEntry({

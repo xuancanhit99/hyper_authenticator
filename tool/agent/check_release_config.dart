@@ -51,12 +51,17 @@ void main(List<String> arguments) {
       );
     }
 
-    PublicRuntimeConfig.validate(
+    final config = PublicRuntimeConfig.validate(
       supabaseUrl: values['SUPABASE_URL'] ?? '',
       supabasePublishableKey: publishableKey ?? legacyAnonKey ?? '',
       passwordRecoveryUrl: values['PASSWORD_RECOVERY_URL'] ?? '',
       allowInsecurePlaintextSync: plaintextFlag == 'true',
       releaseMode: true,
+    );
+    stdout.writeln(
+      config.cloudEnabled
+          ? 'Release config pass: cloud dùng public key, HTTPS URL và plaintext path đã retired.'
+          : 'Release config pass: local-only, không cấu hình cloud.',
     );
   } on FormatException catch (error) {
     stderr.writeln('Release config không hợp lệ: ${error.message}');
@@ -67,10 +72,6 @@ void main(List<String> arguments) {
     exitCode = 1;
     return;
   }
-
-  stdout.writeln(
-    'Release config pass: chỉ chứa public key, HTTPS URL và plaintext path đã retired.',
-  );
 }
 
 Map<String, String> _readValues(File file) {

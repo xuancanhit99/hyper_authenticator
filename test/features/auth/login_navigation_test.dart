@@ -13,7 +13,6 @@ import 'package:hyper_authenticator/features/auth/presentation/pages/forgot_pass
 import 'package:hyper_authenticator/features/auth/presentation/pages/login_page.dart';
 import 'package:hyper_authenticator/features/auth/presentation/pages/register_page.dart';
 import 'package:hyper_authenticator/features/auth/presentation/pages/update_password_page.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../support/focus_test_utils.dart';
 
@@ -40,11 +39,7 @@ void main() {
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
     }
-    SharedPreferences.setMockInitialValues({});
-    authBloc = AuthBloc(
-      const _SuccessfulAuthRepository(user),
-      await SharedPreferences.getInstance(),
-    );
+    authBloc = AuthBloc(const _SuccessfulAuthRepository(user));
     router = GoRouter(
       initialLocation: initialLocation,
       routes: [
@@ -97,7 +92,6 @@ void main() {
       const AuthSignInRequested(
         email: 'test-only@example.invalid',
         password: 'TEST_ONLY_PASSWORD',
-        rememberMe: false,
       ),
     );
   }
@@ -107,7 +101,7 @@ void main() {
 
     expect(find.text('Chào mừng bạn trở lại!'), findsOneWidget);
     expect(find.text('Đăng nhập để tiếp tục'), findsOneWidget);
-    expect(find.text('Ghi nhớ đăng nhập'), findsOneWidget);
+    expect(find.text('Ghi nhớ đăng nhập'), findsNothing);
     expect(find.text('Quên mật khẩu?'), findsOneWidget);
     expect(find.text('Welcome Back!'), findsNothing);
 
@@ -171,10 +165,6 @@ void main() {
     final emailField = find.widgetWithText(TextFormField, 'Email');
     final passwordField = find.widgetWithText(TextFormField, 'Mật khẩu');
     final passwordVisibility = find.byTooltip('Hiện mật khẩu');
-    final rememberMe = find.widgetWithText(
-      CheckboxListTile,
-      'Ghi nhớ đăng nhập',
-    );
     final forgotPassword = find.widgetWithText(TextButton, 'Quên mật khẩu?');
     final submit = find.widgetWithText(ElevatedButton, 'Đăng nhập');
 
@@ -191,12 +181,6 @@ void main() {
     await tester.sendKeyEvent(LogicalKeyboardKey.space);
     await tester.pump();
     expect(find.byTooltip('Ẩn mật khẩu'), findsOneWidget);
-
-    await pressTab(tester);
-    expectPrimaryFocusWithin(rememberMe);
-    await tester.sendKeyEvent(LogicalKeyboardKey.space);
-    await tester.pump();
-    expect(tester.widget<CheckboxListTile>(rememberMe).value, isTrue);
 
     await pressTab(tester);
     expectPrimaryFocusWithin(forgotPassword);
@@ -219,11 +203,9 @@ void main() {
     await pressTab(tester);
     expectPrimaryFocusWithin(registerFields.at(1));
     await pressTab(tester);
-    expectPrimaryFocusWithin(registerFields.at(2));
-    await pressTab(tester);
     expectPrimaryFocusWithin(find.byTooltip('Hiện mật khẩu').first);
     await pressTab(tester);
-    expectPrimaryFocusWithin(registerFields.at(3));
+    expectPrimaryFocusWithin(registerFields.at(2));
     await pressTab(tester);
     expectPrimaryFocusWithin(find.byTooltip('Hiện mật khẩu').last);
     await pressTab(tester);
@@ -270,19 +252,10 @@ void main() {
       name: 'TEST_ONLY Sensitive User',
     );
     final values = <Object>[
-      const AuthSignInRequested(
-        email: email,
-        password: password,
-        rememberMe: true,
-      ),
-      const AuthSignUpRequested(
-        name: 'TEST_ONLY Sensitive User',
-        email: email,
-        password: password,
-      ),
+      const AuthSignInRequested(email: email, password: password),
+      const AuthSignUpRequested(email: email, password: password),
       const AuthRecoverPasswordRequested(email),
       const AuthPasswordUpdateRequested(newPassword: password),
-      const AuthInitial(rememberedEmail: email, rememberedMeState: true),
       const AuthAuthenticated(sensitiveUser),
     ];
 
@@ -317,7 +290,6 @@ class _SuccessfulAuthRepository implements AuthRepository {
 
   @override
   Future<Either<Failure, UserEntity>> signUpWithPassword({
-    required String name,
     required String email,
     required String password,
   }) async => Right(user);

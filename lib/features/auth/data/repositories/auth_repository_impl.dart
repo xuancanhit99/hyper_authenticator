@@ -67,26 +67,14 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
-  // Updated signature (removed phone)
   Future<Either<Failure, UserEntity>> signUpWithPassword({
-    required String name,
     required String email,
     required String password,
-    // String? phone, // REMOVED phone
   }) async {
     try {
-      // Construct data map for user_metadata
-      final Map<String, dynamic> userData = {'name': name};
-      // If phone is provided and not empty, add it.
-      // Note: Supabase signUp might take phone at top level, adjust if remoteDataSource expects that.
-      // Assuming remoteDataSource handles phone separately or within data for now.
-      // Let's assume remoteDataSource.signUpWithPassword is updated to take name/phone or uses data map correctly.
-      // For simplicity, passing name in data. Phone handling might need adjustment in DataSource.
       final supabaseUser = await remoteDataSource.signUpWithPassword(
         email: email,
         password: password,
-        data: userData, // Pass name in data map
-        // phone: phone, // REMOVE phone from the call
       );
       return Right(UserEntity.fromSupabaseUser(supabaseUser));
     } on AuthServerException catch (e) {

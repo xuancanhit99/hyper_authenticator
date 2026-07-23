@@ -40,7 +40,9 @@ void main() {
       ),
     );
 
-    await tester.tap(find.text('Đăng xuất các phiên khác'));
+    await tester.tap(find.text('Bảo mật tài khoản nâng cao'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(ListTile, 'Đăng xuất các phiên khác'));
     await tester.pumpAndSettle();
 
     expect(find.text('Đăng xuất các phiên khác?'), findsOneWidget);
@@ -74,7 +76,10 @@ void main() {
       ),
     );
 
-    await tester.tap(find.text('Đăng xuất các phiên khác'));
+    await tester.tap(find.text('Bảo mật tài khoản nâng cao'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.tap(find.widgetWithText(ListTile, 'Đăng xuất các phiên khác'));
     await tester.pump();
 
     expect(find.text('Đăng xuất các phiên khác?'), findsNothing);
@@ -119,26 +124,37 @@ void main() {
           ),
         );
 
+        expect(find.bySemanticsLabel(RegExp('^Đăng xuất\n')), findsOneWidget);
         expect(
-          find.bySemanticsLabel(RegExp('^Đăng xuất các phiên khác')),
+          find.bySemanticsLabel(RegExp('^Bảo mật tài khoản nâng cao')),
           findsOneWidget,
         );
-        expect(find.bySemanticsLabel(RegExp('^Đăng xuất\n')), findsOneWidget);
         expect(tester.takeException(), isNull);
         await expectLater(tester, meetsGuideline(labeledTapTargetGuideline));
         await expectLater(tester, meetsGuideline(androidTapTargetGuideline));
         await expectLater(tester, meetsGuideline(textContrastGuideline));
 
+        final logout = find.widgetWithText(ListTile, 'Đăng xuất');
+        final advanced = find.widgetWithText(
+          ExpansionTile,
+          'Bảo mật tài khoản nâng cao',
+        );
+        await pressTab(tester);
+        expectPrimaryFocusWithin(logout);
+        await pressTab(tester);
+        expectPrimaryFocusWithin(advanced);
+        await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+        await tester.pumpAndSettle();
+
         final revoke = find.widgetWithText(
           ListTile,
           'Đăng xuất các phiên khác',
         );
-        final logout = find.widgetWithText(ListTile, 'Đăng xuất');
+        expect(
+          find.bySemanticsLabel(RegExp('^Đăng xuất các phiên khác')),
+          findsOneWidget,
+        );
         await pressTab(tester);
-        expectPrimaryFocusWithin(revoke);
-        await pressTab(tester);
-        expectPrimaryFocusWithin(logout);
-        await pressTab(tester, reverse: true);
         expectPrimaryFocusWithin(revoke);
         await tester.sendKeyEvent(LogicalKeyboardKey.enter);
         await tester.pumpAndSettle();
@@ -198,7 +214,6 @@ class _FakeAuthRepository implements AuthRepository {
 
   @override
   Future<Either<Failure, UserEntity>> signUpWithPassword({
-    required String name,
     required String email,
     required String password,
   }) async => throw UnimplementedError();

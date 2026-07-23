@@ -16,6 +16,12 @@ Chạy đầu tiên:
 
 ## Cấu hình client
 
+App local-only không cần `.env`:
+
+    flutter run
+
+Chỉ tạo config khi cần Auth và backup cloud:
+
     cp .env.example .env
 
 Điền public client config; không thêm service-role/server/SSH credential:
@@ -36,12 +42,11 @@ không bundle như asset.
 phải feature flag để bật legacy sync. Source plaintext bridge đã bị loại bỏ và
 validator/runtime từ chối giá trị `true` trong mọi build mode.
 
-Trong Android Studio, chọn shared Run Configuration
+Trong Android Studio, có thể chạy configuration mặc định để dùng local-only, hoặc
+chọn shared Run Configuration
 `Hyper Authenticator (local .env)` rồi Run/Debug. Configuration này chỉ tham
 chiếu file `.env` local qua `--dart-define-from-file=.env`; nó không chứa hoặc
-commit giá trị config. Run Configuration mặc định tự sinh tên `main.dart` không
-truyền flag này, nên app sẽ chủ động dừng ở startup vì thiếu Supabase client
-config.
+commit giá trị config.
 
 Validate theo đúng release contract mà không in key:
 
@@ -96,15 +101,28 @@ Dart/UI thông thường:
 
     scripts/agent/check.sh quick
 
-Auth/storage/sync/DI/plugin/platform:
+Toàn bộ app, gồm platform contract và Flutter test:
+
+    scripts/agent/check.sh app
+
+Backend migration contract:
+
+    scripts/agent/check.sh backend
+
+Release harness hoặc self-hosted infrastructure harness:
+
+    scripts/agent/check.sh release
+    scripts/agent/check.sh infra
+
+Tất cả scope:
 
     scripts/agent/check.sh full
 
-`full` chạy docs gate, generated-code drift, format, analyze, platform config,
-release/operations harness, Flutter tests, Supabase encrypted migration contract
-và plaintext-retirement migration contract local. Retirement contract chứng minh
-non-empty table fail closed/rollback nguyên vẹn, empty table được drop và reapply
-idempotent. Gate này không boot emulator/simulator hoặc Web browser runtime.
+`full` là alias tổng hợp `app + backend + release + infra`. Việc tách mode giúp
+thay đổi UI không phụ thuộc Docker/operations toolchain, nhưng thay đổi trước khi
+merge vẫn phải chọn gate phù hợp ma trận trong `AGENTS.md`. Retirement contract
+chứng minh non-empty table fail closed/rollback nguyên vẹn, empty table được drop
+và reapply idempotent. Các gate không boot emulator/simulator.
 
 Secret history gate cần Gitleaks 8.30.1 hoặc tương thích:
 
@@ -146,11 +164,12 @@ Flutter Web production-serving contract:
     web-deployment/test.sh
     web-deployment/build-image.sh hyper-authenticator-web:test
 
-`web_runtime_smoke.sh` cần Chrome/Chromium, chạy chính configured `build/web` bằng
+`web_runtime_smoke.sh` cần Chrome/Chromium, chạy chính `build/web` bằng
 headless browser và fail nếu engine/semantics local-vault shell không sẵn sàng hoặc
-startup fallback do thiếu config xuất hiện. Web CI tạo public config tổng hợp trên
-domain `.invalid`, không lấy credential production. `check.sh full` chỉ kiểm tra
-shell/Node syntax của harness; runtime browser thật nằm trong Web CI/build matrix.
+startup failure xuất hiện. Artifact có thể là local-only hoặc cloud-configured;
+production Web CI hiện tạo public config tổng hợp trên domain `.invalid`, không lấy
+credential production. `check.sh release` chỉ kiểm tra shell/Node syntax của
+harness; runtime browser thật nằm trong Web CI/build matrix.
 
 Runtime-configured build:
 

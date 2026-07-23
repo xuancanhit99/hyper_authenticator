@@ -109,7 +109,7 @@ class SyncBloc extends Bloc<SyncEvent, SyncState> {
     Emitter<SyncState> emit,
   ) async {
     if (!_supported(emit)) return;
-    emit(const SyncInProgress('Đang cập nhật trạng thái sync...'));
+    emit(const SyncInProgress('Đang cập nhật trạng thái backup...'));
     await _emitResult(await _sync.setEnabled(event.enabled), emit);
   }
 
@@ -118,7 +118,7 @@ class SyncBloc extends Bloc<SyncEvent, SyncState> {
     Emitter<SyncState> emit,
   ) async {
     if (!_supported(emit)) return;
-    emit(const SyncInProgress('Đang đồng bộ encrypted snapshot...'));
+    emit(const SyncInProgress('Đang backup encrypted snapshot...'));
     await _emitResult(await _sync.sync(), emit);
   }
 

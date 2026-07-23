@@ -1082,7 +1082,6 @@ class _MemoryAuthRepository implements AuthRepository {
 
   @override
   Future<Either<Failure, UserEntity>> signUpWithPassword({
-    required String name,
     required String email,
     required String password,
   }) async => throw UnimplementedError();

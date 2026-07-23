@@ -27,20 +27,54 @@ void main() {
         releaseMode: true,
       );
 
-      expect(config.supabaseUrl.host, 'supabase.example.com');
+      expect(config.cloudEnabled, isTrue);
+      expect(config.supabaseUrl?.host, 'supabase.example.com');
       expect(config.passwordRecoveryUrl?.path, '/reset-password/');
+    });
+
+    test('cho phép local-only khi toàn bộ cloud config để trống', () {
+      final config = PublicRuntimeConfig.validate(
+        supabaseUrl: '',
+        supabasePublishableKey: '',
+        passwordRecoveryUrl: '',
+        allowInsecurePlaintextSync: false,
+        releaseMode: true,
+      );
+
+      expect(config.cloudEnabled, isFalse);
+      expect(config.supabaseUrl, isNull);
+      expect(config.supabasePublishableKey, isNull);
+      expect(config.passwordRecoveryUrl, isNull);
+    });
+
+    test('từ chối cloud config thiếu URL hoặc publishable key', () {
+      for (final values in [
+        ('https://supabase.example.com', ''),
+        ('', publishableKey),
+      ]) {
+        expect(
+          () => PublicRuntimeConfig.validate(
+            supabaseUrl: values.$1,
+            supabasePublishableKey: values.$2,
+            passwordRecoveryUrl: '',
+            allowInsecurePlaintextSync: false,
+            releaseMode: false,
+          ),
+          throwsStateError,
+        );
+      }
     });
 
     test('giữ tương thích legacy anon JWT', () {
       final config = PublicRuntimeConfig.validate(
         supabaseUrl: 'https://supabase.example.com/',
         supabasePublishableKey: legacyKeyForRole('anon'),
-        passwordRecoveryUrl: '',
+        passwordRecoveryUrl: 'https://auth.example.com/reset-password/',
         allowInsecurePlaintextSync: false,
         releaseMode: false,
       );
 
-      expect(config.passwordRecoveryUrl, isNull);
+      expect(config.passwordRecoveryUrl?.host, 'auth.example.com');
     });
 
     test('từ chối HTTP và Supabase URL có path', () {
@@ -105,14 +139,29 @@ void main() {
       );
     });
 
-    test('release bắt buộc recovery URL', () {
+    test('cloud luôn bắt buộc recovery URL', () {
+      for (final releaseMode in [false, true]) {
+        expect(
+          () => PublicRuntimeConfig.validate(
+            supabaseUrl: 'https://supabase.example.com',
+            supabasePublishableKey: publishableKey,
+            passwordRecoveryUrl: '',
+            allowInsecurePlaintextSync: false,
+            releaseMode: releaseMode,
+          ),
+          throwsStateError,
+        );
+      }
+    });
+
+    test('recovery URL không được đứng riêng trong local-only mode', () {
       expect(
         () => PublicRuntimeConfig.validate(
-          supabaseUrl: 'https://supabase.example.com',
-          supabasePublishableKey: publishableKey,
-          passwordRecoveryUrl: '',
+          supabaseUrl: '',
+          supabasePublishableKey: '',
+          passwordRecoveryUrl: 'https://auth.example.com/reset-password/',
           allowInsecurePlaintextSync: false,
-          releaseMode: true,
+          releaseMode: false,
         ),
         throwsStateError,
       );

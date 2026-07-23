@@ -21,8 +21,8 @@ class AuthenticationSessionTile extends StatelessWidget {
     if (currentUser == null) {
       return ListTile(
         leading: const Icon(Icons.login),
-        title: const Text('Đăng nhập để dùng encrypted cloud sync'),
-        subtitle: const Text('Local vault vẫn hoạt động khi offline.'),
+        title: const Text('Đăng nhập để dùng backup cloud'),
+        subtitle: const Text('Mã TOTP local vẫn hoạt động khi offline.'),
         onTap: () => context.push(
           Uri(
             path: AppRoutes.login,
@@ -35,24 +35,32 @@ class AuthenticationSessionTile extends StatelessWidget {
     return Column(
       children: [
         ListTile(
-          leading: revoking
-              ? const SizedBox.square(
-                  dimension: 24,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : const Icon(Icons.phonelink_erase),
-          title: const Text('Đăng xuất các phiên khác'),
-          subtitle: const Text(
-            'Giữ phiên này; thu hồi quyền truy cập encrypted vault của các phiên khác.',
-          ),
-          onTap: revoking ? null : () => _confirmRevokeOtherSessions(context),
-        ),
-        const Divider(height: 1),
-        ListTile(
           leading: const Icon(Icons.logout, color: Colors.red),
           title: const Text('Đăng xuất', style: TextStyle(color: Colors.red)),
-          subtitle: const Text('Local vault và app lock được giữ nguyên.'),
+          subtitle: const Text('Mã TOTP local và app lock được giữ nguyên.'),
           onTap: () => _confirmLogout(context),
+        ),
+        ExpansionTile(
+          leading: const Icon(Icons.admin_panel_settings_outlined),
+          title: const Text('Bảo mật tài khoản nâng cao'),
+          subtitle: const Text('Quản lý phiên đăng nhập Supabase.'),
+          children: [
+            ListTile(
+              leading: revoking
+                  ? const SizedBox.square(
+                      dimension: 24,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.phonelink_erase),
+              title: const Text('Đăng xuất các phiên khác'),
+              subtitle: const Text(
+                'Giữ phiên này và thu hồi quyền cloud của các phiên khác.',
+              ),
+              onTap: revoking
+                  ? null
+                  : () => _confirmRevokeOtherSessions(context),
+            ),
+          ],
         ),
       ],
     );

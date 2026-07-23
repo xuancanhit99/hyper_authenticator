@@ -100,10 +100,12 @@ không bao giờ được đặt trong Flutter `.env`, asset, build log hoặc b
 
 ### Build và supply chain
 
-- Bootstrap chỉ nhận HTTPS Supabase origin và public `sb_publishable_*`/legacy
-  `anon`; server key bị từ chối mà không xuất hiện trong error.
-- Release bắt buộc HTTPS recovery URL. `ALLOW_INSECURE_PLAINTEXT_SYNC` chỉ còn là
-  poison sentinel; giá trị `true` bị từ chối ở mọi build, không chỉ Release.
+- Local-only bootstrap không khởi tạo Supabase. Cloud-enabled bootstrap chỉ nhận
+  HTTPS Supabase origin và public `sb_publishable_*`/legacy `anon`; server key bị
+  từ chối mà không xuất hiện trong error.
+- Cloud-enabled Release bắt buộc HTTPS recovery URL; partial config fail closed.
+  `ALLOW_INSECURE_PLAINTEXT_SYNC` chỉ còn là poison sentinel; giá trị `true` bị
+  từ chối ở mọi build, không chỉ Release.
 - Android release manifest có INTERNET, cấm cleartext và tắt OS backup.
 - Cả Debug/Release entitlement iOS/macOS đều khai báo Keychain Sharing; platform
   gate chống regression khi runner được regenerate.
@@ -155,6 +157,11 @@ autocorrect/suggestion và vẫn hỗ trợ keyboard submit.
 Copy là hành động chủ động đưa key vào clipboard do OS quản lý. App không log hoặc
 persist clipboard content; người dùng phải xóa clipboard theo threat model của
 thiết bị nếu clipboard history/sync đang bật.
+
+Primary account list không còn export một account thành `otpauth` QR. Flow cũ có
+thể hiển thị full TOTP secret mà không reauthenticate hoặc giới hạn thời gian.
+Portability/export tương lai phải có reauthentication, cảnh báo rõ, timeout,
+format/version contract và test không log/semantics credential.
 
 ## Screenshot và screen capture
 
