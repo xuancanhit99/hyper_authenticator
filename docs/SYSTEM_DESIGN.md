@@ -35,17 +35,20 @@ hiểu browser profile compromise nằm ngoài native trust boundary.
    Hai vault khác nhau làm bootstrap fail closed; nguồn không bị xóa.
 3. Injectable/GetIt đăng ký dependency và pre-resolve SharedPreferences.
 4. `AppConfig` đọc compile-time define; `.env` không được bundle làm asset.
-   Validator chỉ nhận HTTPS Supabase origin cùng `sb_publishable_*` hoặc legacy
-   JWT có role `anon`; release bắt buộc recovery URL. Plaintext flag chỉ còn là
+   Không có cả ba cloud define là local-only hợp lệ. Nếu bật cloud, validator
+   yêu cầu đủ HTTPS Supabase origin, `sb_publishable_*` hoặc legacy JWT role
+   `anon`, và recovery URL. Partial config bị từ chối. Plaintext flag chỉ còn là
    poison sentinel và mọi build đều từ chối giá trị `true`.
-5. Khởi tạo Supabase client.
+5. Chỉ khởi tạo Supabase client khi capability cloud đã cấu hình.
 6. Cấp shared `AuthBloc`, `AccountsBloc`, `LocalAuthBloc`, `SettingsBloc`; tạo
    `SyncBloc` dùng chính `AccountsBloc` đó.
 7. Router kết hợp Auth và local-lock state để chọn public route, startup, lock
    hoặc main navigation.
 
-Thiếu/sai URL hoặc key gây bootstrap error rõ ràng, không fallback tới server
-khác. `sb_secret_*` và legacy `service_role` bị từ chối mà không đưa key vào error.
+Cloud config dở dang hoặc sai gây bootstrap error rõ ràng, không fallback tới
+server khác. `sb_secret_*` và legacy `service_role` bị từ chối mà không đưa key
+vào error. Local-only route policy chặn public auth route và đưa người dùng về
+local app.
 
 ## Kiến trúc feature
 
@@ -157,22 +160,18 @@ transition, spinner hoặc ticker nên frame che đầu tiên không chờ anima
 privacy control cho background/app-switcher, không phải active
 screenshot-prevention API.
 
-Settings có `SessionSecurityBloc` riêng để revoke mọi Supabase session khác mà
-không đưa `AuthBloc` ra khỏi trạng thái authenticated. Action này giữ session,
-local vault và DEK của thiết bị hiện tại. Targeted/bulk revoke chỉ thu hồi
-Supabase authorization: nó không remote-wipe local vault, không làm target quên
-DEK đã giữ và không loại device key khỏi lần xoay vault key kế tiếp.
+Session-security, device-registry và targeted revoke contract vẫn tồn tại trong
+domain/data/backend nhưng không còn được render trong primary Settings. Chúng là
+advanced security capability chưa có UX đủ rõ để người dùng phân biệt session
+revoke, remote wipe và cryptographic device exclusion. Backend tiếp tục bind
+registry row với JWT `session_id`; các contract test vẫn bắt buộc.
 
-`DeviceSessionBloc` đăng ký rồi list các phiên chạy client có device registry.
-Backend tự bind registry row với JWT `session_id`; client chỉ giữ installation UUID
-không phải credential. Targeted revoke cấm current row và xóa đúng target
-`auth.sessions`, vì vậy active-session guard chặn cloud access ngay. Local vault
-trên target không bị xóa, target có thể đăng nhập lại và session cũ chưa đăng ký
-vẫn chỉ xử lý được bằng bulk revoke. Backend có contract loại device key trong
-atomic rotation, nhưng Settings/generic rotation hiện chưa cung cấp lựa chọn thiết
-bị: client gửi danh sách exclusion rỗng.
+## Backup cloud mã hóa đầu cuối
 
-## Encrypted sync
+UI gọi capability này là **backup cloud mã hóa đầu cuối** và chỉ hiển thị khi
+native platform hỗ trợ cùng public cloud config đầy đủ. Revision, protocol và key
+generation không được đưa vào trạng thái thành công phổ thông. Các mục dưới dùng
+thuật ngữ sync/revision vì mô tả data contract nội bộ.
 
 ### Setup
 
@@ -209,8 +208,8 @@ cloud, UI yêu cầu chọn:
 
 Nếu cloud đổi tiếp trong lúc chọn, thao tác dừng và yêu cầu review lại.
 Dialog conflict và sensitive operation mặc định keyboard focus vào **Hủy**; content
-scroll được ở viewport hẹp hoặc text scale lớn. Sync status progress/conflict/
-success/failure là live region, còn switch sinh trắc học/encrypted sync gắn trực
+scroll được ở viewport hẹp hoặc text scale lớn. Backup status progress/conflict/
+success/failure là live region, còn switch sinh trắc học/backup E2EE gắn trực
 tiếp accessible name với title của setting.
 
 Light/dark theme dùng primary/on-primary token riêng để giữ brand blue nhưng đạt
@@ -232,7 +231,7 @@ cũ. User phải lưu key mới trước commit vì nếu publish thành công n
 read-after-write lỗi thì key mới có thể đã hiệu lực. Flow này không revoke thiết
 bị vì DEK không đổi.
 
-### Xoay vault key
+### Xoay vault key — capability nội bộ, chưa có primary UI
 
 Client tạo DEK và recovery key mới sau khi xác thực DEK hiện tại với current remote
 snapshot. Khi user xác nhận đã lưu key, client re-download đúng revision, decrypt
@@ -290,7 +289,8 @@ nó không thay thế E2EE recovery key.
 Login được mở từ Settings với `returnTo=/settings`. Redirect policy chỉ nhận `/`
 hoặc `/settings`; URL ngoài allowlist fallback `/`. Login listener chủ động `go()`
 tới destination này sau `AuthAuthenticated`, không phụ thuộc timing của router
-refresh hoặc navigator stack.
+refresh hoặc navigator stack. Trong local-only build, auth route luôn redirect về
+local app.
 
 ## Platform capability
 

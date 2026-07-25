@@ -8,20 +8,7 @@ abstract class AuthState extends Equatable {
   List<Object?> get props => [];
 }
 
-// Initial state before checking
-class AuthInitial extends AuthState {
-  final String? rememberedEmail; // Email loaded from prefs
-  final bool? rememberedMeState; // Remember me checkbox state loaded from prefs
-
-  const AuthInitial({this.rememberedEmail, this.rememberedMeState});
-
-  @override
-  List<Object?> get props => [rememberedEmail, rememberedMeState];
-
-  @override
-  String toString() =>
-      'AuthInitial(rememberedEmail: [REDACTED], rememberedMeState: $rememberedMeState)';
-}
+class AuthInitial extends AuthState {}
 
 // When checking auth status or performing login/signup/logout
 class AuthLoading extends AuthState {}

@@ -5,8 +5,8 @@ import 'package:hyper_authenticator/core/config/public_runtime_config.dart';
 
 @lazySingleton
 class AppConfig {
-  final String supabaseUrl;
-  final String supabasePublishableKey;
+  final String? supabaseUrl;
+  final String? supabasePublishableKey;
   final String? passwordRecoveryUrl;
 
   const AppConfig({
@@ -14,6 +14,9 @@ class AppConfig {
     required this.supabasePublishableKey,
     this.passwordRecoveryUrl,
   });
+
+  bool get cloudEnabled =>
+      supabaseUrl != null && supabasePublishableKey != null;
 
   @factoryMethod
   static AppConfig fromEnvironment() {
@@ -39,7 +42,7 @@ class AppConfig {
     );
 
     return AppConfig(
-      supabaseUrl: validated.supabaseUrl.toString(),
+      supabaseUrl: validated.supabaseUrl?.toString(),
       supabasePublishableKey: validated.supabasePublishableKey,
       passwordRecoveryUrl: validated.passwordRecoveryUrl?.toString(),
     );

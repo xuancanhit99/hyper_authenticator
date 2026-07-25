@@ -14,10 +14,8 @@ abstract class AuthRemoteDataSource {
   });
 
   Future<User> signUpWithPassword({
-    required String email, // Keep email
+    required String email,
     required String password,
-    // String? phone, // REMOVE phone from initial sign up interface
-    Map<String, dynamic>? data, // Keep data for metadata like name
   });
 
   Future<void> recoverPassword(String email);
@@ -68,19 +66,14 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   }
 
   @override
-  // Updated signature (removed phone)
   Future<User> signUpWithPassword({
     required String email,
     required String password,
-    // String? phone, // REMOVED phone
-    Map<String, dynamic>? data,
   }) async {
     try {
       final response = await _supabaseClient.auth.signUp(
         email: email,
         password: password,
-        // phone: phone, // REMOVE phone from the call
-        data: data,
       );
 
       if (response.user == null && response.session == null) {

@@ -14,7 +14,6 @@ class RegisterPage extends StatefulWidget {
 
 class _RegisterPageState extends State<RegisterPage> {
   final _formKey = GlobalKey<FormState>();
-  final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
@@ -24,7 +23,6 @@ class _RegisterPageState extends State<RegisterPage> {
 
   @override
   void dispose() {
-    _nameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
@@ -37,19 +35,11 @@ class _RegisterPageState extends State<RegisterPage> {
       // Dispatch event to Bloc
       context.read<AuthBloc>().add(
         AuthSignUpRequested(
-          name: _nameController.text.trim(),
           email: _emailController.text.trim(),
           password: _passwordController.text.trim(),
         ),
       );
     }
-  }
-
-  String? _validateName(String? value) {
-    if (value == null || value.trim().isEmpty) {
-      return 'Vui lòng nhập tên.';
-    }
-    return null;
   }
 
   String? _validateEmail(String? value) {
@@ -125,17 +115,6 @@ class _RegisterPageState extends State<RegisterPage> {
                       title: 'Tạo tài khoản',
                       subtitle: 'Đăng ký để bắt đầu',
                     ),
-                    TextFormField(
-                      controller: _nameController,
-                      keyboardType: TextInputType.name,
-                      decoration: const InputDecoration(
-                        labelText: 'Tên',
-                        prefixIcon: Icon(Icons.person_outline),
-                      ),
-                      validator: _validateName,
-                      textInputAction: TextInputAction.next,
-                    ),
-                    const SizedBox(height: 16),
                     TextFormField(
                       controller: _emailController,
                       decoration: const InputDecoration(

@@ -5,13 +5,11 @@ import 'package:hyper_authenticator/app.dart';
 import 'package:hyper_authenticator/core/config/app_config.dart';
 import 'package:hyper_authenticator/core/router/app_url_strategy.dart';
 import 'package:hyper_authenticator/core/storage/windows_storage_migrator.dart';
-import 'package:hyper_authenticator/core/theme/theme_provider.dart';
+import 'package:hyper_authenticator/core/theme/theme_cubit.dart';
 import 'package:hyper_authenticator/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:hyper_authenticator/features/authenticator/presentation/bloc/accounts_bloc.dart';
 import 'package:hyper_authenticator/features/authenticator/presentation/bloc/local_auth_bloc.dart';
-import 'package:hyper_authenticator/features/settings/presentation/bloc/settings_bloc.dart';
 import 'package:hyper_authenticator/injection_container.dart' as di;
-import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -23,19 +21,19 @@ Future<void> main() async {
     await migrateWindowsStorageLayout();
     await di.configureDependencies();
     final appConfig = di.sl<AppConfig>();
-    await Supabase.initialize(
-      url: appConfig.supabaseUrl,
-      publishableKey: appConfig.supabasePublishableKey,
-    );
+    if (appConfig.cloudEnabled) {
+      await Supabase.initialize(
+        url: appConfig.supabaseUrl!,
+        publishableKey: appConfig.supabasePublishableKey!,
+      );
+    }
 
     final sharedPreferences = di.sl<SharedPreferences>();
 
     runApp(
-      MultiProvider(
+      MultiBlocProvider(
         providers: [
-          ChangeNotifierProvider(
-            create: (_) => ThemeProvider(sharedPreferences),
-          ),
+          BlocProvider(create: (_) => ThemeCubit(sharedPreferences)),
           BlocProvider<AuthBloc>.value(
             value: di.sl<AuthBloc>()..add(AuthCheckRequested()),
           ),
@@ -43,9 +41,6 @@ Future<void> main() async {
             value: di.sl<LocalAuthBloc>()..add(CheckLocalAuth()),
           ),
           BlocProvider<AccountsBloc>.value(value: di.sl<AccountsBloc>()),
-          BlocProvider<SettingsBloc>(
-            create: (_) => di.sl<SettingsBloc>()..add(LoadSettings()),
-          ),
         ],
         child: const MyApp(),
       ),

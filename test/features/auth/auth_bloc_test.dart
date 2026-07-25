@@ -15,7 +15,7 @@ void main() {
   setUp(() async {
     SharedPreferences.setMockInitialValues({});
     repository = _FakeAuthRepository();
-    bloc = AuthBloc(repository, await SharedPreferences.getInstance());
+    bloc = AuthBloc(repository);
   });
 
   tearDown(() async {
@@ -35,7 +35,6 @@ void main() {
         const AuthSignInRequested(
           email: 'user@example.invalid',
           password: 'TEST_ONLY_password',
-          rememberMe: false,
         ),
       );
 
@@ -48,7 +47,6 @@ void main() {
       const AuthSignInRequested(
         email: 'user@example.invalid',
         password: 'TEST_ONLY_password',
-        rememberMe: false,
       ),
     );
     await bloc.stream.firstWhere((state) => state is AuthAuthenticated);
@@ -68,7 +66,6 @@ void main() {
 
     bloc.add(
       const AuthSignUpRequested(
-        name: 'Test User',
         email: 'user@example.invalid',
         password: 'TEST_ONLY_password',
       ),
@@ -131,7 +128,6 @@ class _FakeAuthRepository implements AuthRepository {
 
   @override
   Future<Either<Failure, UserEntity>> signUpWithPassword({
-    required String name,
     required String email,
     required String password,
   }) async {

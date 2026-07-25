@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hyper_authenticator/app.dart';
-import 'package:hyper_authenticator/core/theme/theme_provider.dart';
-import 'package:provider/provider.dart';
+import 'package:hyper_authenticator/core/theme/theme_cubit.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
@@ -24,8 +24,8 @@ void main() {
     addTearDown(router.dispose);
 
     await tester.pumpWidget(
-      ChangeNotifierProvider(
-        create: (_) => ThemeProvider(preferences),
+      BlocProvider(
+        create: (_) => ThemeCubit(preferences),
         child: MyApp(
           routerConfig: router,
           lightTheme: ThemeData.light(),

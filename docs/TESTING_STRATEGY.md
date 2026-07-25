@@ -5,8 +5,9 @@
 Ưu tiên chống lộ TOTP credential, mất vault, bypass app lock, cross-tenant access
 và cloud overwrite khi conflict. Build pass không thay thế runtime/data contract test.
 
-`scripts/agent/build.sh <target> <env-file>` chạy release-config validator trước
-build. Bỏ `<env-file>` chỉ chứng minh compile, không chứng minh bootstrap config.
+`scripts/agent/build.sh <target> <env-file>` chạy cloud release-config validator
+trước build. Bỏ `<env-file>` tạo local-only build hợp lệ; release signing/runtime
+evidence vẫn phải ghi rõ artifact thuộc local-only hay cloud-enabled.
 
 ## Gate canonical
 
@@ -14,17 +15,24 @@ build. Bỏ `<env-file>` chỉ chứng minh compile, không chứng minh bootstr
 |---|---|
 | Docs | `scripts/agent/check.sh docs` |
 | Dart/UI | `scripts/agent/check.sh quick` |
-| Auth/storage/sync/DI/platform | `scripts/agent/check.sh full` |
+| App + platform contract + Flutter test | `scripts/agent/check.sh app` |
+| Supabase migration contract | `scripts/agent/check.sh backend` |
+| GitHub/package/Web release harness | `scripts/agent/check.sh release` |
+| Self-hosted operations harness | `scripts/agent/check.sh infra` |
+| Tất cả scope | `scripts/agent/check.sh full` |
 
-`full` phải pass generated-code drift, format (gồm source `integration_test`),
-analyze, platform manifest/entitlement contract, release/operations harness,
-Flutter test, encrypted PostgreSQL migration contract và plaintext-retirement
-migration contract. Contract hiện gồm device-wrap two-phase enrollment, membership
+`full` tổng hợp bốn boundary `app`, `backend`, `release`, `infra`. App gate phải
+pass generated-code drift, format (gồm source `integration_test`), analyze,
+platform manifest/entitlement contract và Flutter test. Backend contract hiện gồm
+device-wrap two-phase enrollment, membership
 proof của mọi active device trước rotation, legacy update/protocol-0 cutoff,
 server-only DEK verifier chống fake self-wrap, active-device binding, row lock
 `FOR UPDATE` với concurrent confirm/publish regression, exact-set rotation, atomic
 crypto revoke và `ACCESS EXCLUSIVE` plaintext retirement với concurrent-writer
 regression. Nó không tự boot emulator/simulator hoặc Web browser runtime.
+
+CI chạy `pull_request`, push vào `master` và tag `v*`. Feature-branch push đã có
+PR không chạy thêm một workflow trùng; PR event là gate review canonical.
 
 ## Coverage hiện tại
 
@@ -33,8 +41,11 @@ unwrap/proof trước confirm, generation-aware publish và exact-set rotation
 preparation, cùng các nhóm sau:
 
 - router/auth/logout/offline-local-vault boundary;
+- local-only bootstrap không khởi tạo cloud, partial config fail closed và auth
+  deep link quay về local app;
 - post-login navigation trực tiếp hoặc return an toàn về Settings, stale null auth
-  event không ghi đè session hiện tại và auth log redaction;
+  event không ghi đè session hiện tại, auth log redaction và không lưu lại
+  email/password qua Remember Me;
 - repository/BLoC/widget flow revoke session khác: typed failure, confirmation,
   loading chống submit lại và không làm mất authenticated state;
 - device registry model/identity-store/BLoC/widget: installation UUID round-trip,
@@ -46,6 +57,8 @@ preparation, cùng các nhóm sau:
   khi bootstrap trực tiếp từ `/settings`; device integration lifecycle smoke
   cũng khóa shell không phát sinh duplicate `GlobalKey` khi lock redirect liên tiếp;
 - TOTP URI/validator, countdown nhiều period và lifecycle resume;
+- account action dùng menu Material có keyboard/semantics; primary UI không còn
+  xuất raw `otpauth` QR chưa được tái xác thực;
 - local vault migration, concurrent mutation, corruption rollback, atomic replace
   và generation compaction;
 - local-auth startup lock, relock và plugin-error fail closed;
@@ -62,7 +75,8 @@ preparation, cùng các nhóm sau:
 - plaintext retirement: không còn client bridge, poison sentinel từ chối `true`
   ở mọi build mode và terminal migration fail closed khi table còn row;
 - public runtime config: HTTPS-only, key role, recovery URL và plaintext poison sentinel;
-- Web unavailable tile không hứa đăng nhập/cloud sync khi capability bị tắt.
+- Web/local-only unavailable tile không hứa đăng nhập/backup cloud khi capability
+  bị tắt hoặc chưa cấu hình.
 - Primary auth/accounts UI dùng label tiếng Việt và không quay lại các label tiếng Anh
   cũ; app locale runtime bị khóa ở `vi` với Material/Widgets/Cupertino delegate,
   Web source cũng khai báo document language `vi`.
@@ -267,11 +281,11 @@ post-probe current image/health/hash và 5/5 public SPA route pass.
   Gitleaks; CI tải binary đã pin sau khi xác minh SHA-256.
 - `web-deployment/test.sh` build image từ tar allowlist rồi kiểm tra CSP/cache/SPA,
   read-only, dotfile, no-log và không chứa `.env`.
-- `scripts/agent/web_runtime_smoke.sh` chạy chính configured `build/web` trong
+- `scripts/agent/web_runtime_smoke.sh` chạy chính `build/web` trong
   Chrome/Chromium headless, yêu cầu engine/semantics local-vault shell và từ chối
-  startup fallback. Web CI dùng public config tổng hợp `.invalid`; local positive
-  và negative build thiếu config đã chứng minh harness phân biệt đúng. `full` chỉ
-  chạy syntax/Node parse gate; browser runtime thật thuộc Web CI/build matrix.
+  startup failure. Artifact local-only và cloud-configured đều hợp lệ; Web CI dùng
+  public config tổng hợp `.invalid`. `release` chỉ chạy syntax/Node parse gate;
+  browser runtime thật thuộc Web CI/build matrix.
 - `test-production-rollback-contract.sh` không dùng Docker/network thật; fake live
   state bao phủ rollback/forward và failure auto-restore trong full gate.
 - `scripts/agent/build_linux_container.sh` archive committed ref vào Ubuntu 22.04

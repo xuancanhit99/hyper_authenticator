@@ -65,8 +65,8 @@ run_release_harness() {
   web-deployment/test-production-rollback-contract.sh
 }
 
-run_operations_harness() {
-  printf '\n%s\n' "== Supabase operations harness gate =="
+run_infra_harness() {
+  printf '\n%s\n' "== Self-hosted infrastructure harness gate =="
   bash -n \
     scripts/agent/linux_e2ee_operator.sh \
     scripts/agent/mobile_e2ee_integration.sh \
@@ -105,18 +105,30 @@ run_quick() {
   return "$status"
 }
 
-run_full() {
+run_app() {
   local status=0
   run_quick || status=1
   run_platform || status=1
-  run_release_harness || status=1
-  run_operations_harness || status=1
   printf '\n%s\n' "== Flutter test gate =="
   flutter test || status=1
+  return "$status"
+}
+
+run_backend() {
+  local status=0
   printf '\n%s\n' "== Supabase encrypted migration gate =="
   scripts/supabase/test_encrypted_vault_migration.sh || status=1
   printf '\n%s\n' "== Supabase plaintext retirement gate =="
   scripts/supabase/test_plaintext_retirement_migration.sh || status=1
+  return "$status"
+}
+
+run_full() {
+  local status=0
+  run_app || status=1
+  run_backend || status=1
+  run_release_harness || status=1
+  run_infra_harness || status=1
   return "$status"
 }
 
@@ -127,11 +139,23 @@ case "$MODE" in
   quick)
     run_quick
     ;;
+  app)
+    run_app
+    ;;
+  backend)
+    run_backend
+    ;;
+  release)
+    run_release_harness
+    ;;
+  infra)
+    run_infra_harness
+    ;;
   full)
     run_full
     ;;
   *)
-    printf 'Usage: %s [docs|quick|full]\n' "$0" >&2
+    printf 'Usage: %s [docs|quick|app|backend|release|infra|full]\n' "$0" >&2
     exit 64
     ;;
 esac

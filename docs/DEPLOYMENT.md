@@ -14,7 +14,9 @@ vì đã xuất hiện trên GitHub.
 
 - Version hiện tại: `1.1.0+10`.
 - Flutter: 3.44.6 stable.
-- Public config qua `--dart-define-from-file=<protected-file>`.
+- Public cloud config qua `--dart-define-from-file=<protected-file>` khi artifact
+  bật Auth/backup. Local-only artifact được phép bỏ file nhưng phải ghi rõ
+  capability trong release note.
 - Supabase migration E2EE + active-session/device-registry/device-wrap hardening đã
   deploy; encrypted contract 36/36 và targeted registry contract 25/25 pass.
 - Client plaintext bridge đã bị loại bỏ. `ALLOW_INSECURE_PLAINTEXT_SYNC=false`
@@ -27,11 +29,17 @@ vì đã xuất hiện trên GitHub.
 ## Preflight chung
 
     git status --short --branch
-    scripts/agent/check.sh full
+    scripts/agent/check.sh app
+    scripts/agent/check.sh backend
+    scripts/agent/check.sh release
+    scripts/agent/check.sh infra
     scripts/agent/check_secrets.sh
     dart run tool/agent/check_release_config.dart .env.production
     flutter pub outdated
     git diff --check
+
+`scripts/agent/check.sh full` là alias cho bốn gate trên. Nếu phát hành local-only,
+bỏ bước validate `.env.production`; không được dùng partial cloud config.
 
 Sau đó:
 
@@ -203,15 +211,14 @@ artifact đó chỉ chứng minh compile và không được chạy/phân phối
     web-deployment/test.sh
     web-deployment/build-image.sh hyper-authenticator-web:1.1.0-<commit> linux/amd64
 
-Runtime smoke phải chạy trên chính configured release artifact trước khi đóng image.
+Runtime smoke phải chạy trên chính release artifact trước khi đóng image.
 Nó boot artifact bằng Chrome/Chromium headless, yêu cầu Flutter engine + semantics
-local-vault shell và fail nếu startup fallback do thiếu public config xuất hiện.
-Web CI dùng public config tổng hợp trên domain `.invalid`; không dùng credential
-production. Cặp kiểm tra positive configured build và negative build thiếu config
-đã chứng minh harness phát hiện đúng startup failure. Đây chưa phải login/camera
-smoke trên production browser.
+local-vault shell và fail nếu startup failure xuất hiện. Artifact local-only và
+cloud-configured đều là input hợp lệ; Web CI production hiện dùng public config
+tổng hợp trên domain `.invalid`, không dùng credential production. Đây chưa phải
+login/camera smoke trên production browser.
 
-E2EE sync bị tắt theo capability. Deploy immutable artifact qua HTTPS với CSP,
+Backup cloud E2EE bị tắt theo capability. Deploy immutable artifact qua HTTPS với CSP,
 `nosniff`, referrer/permissions policy phù hợp; smoke login/local TOTP/camera trên
 browser hỗ trợ. Edge reverse proxy kết thúc TLS là lớp duy nhất phát HSTS; không
 đồng thời bật HSTS trong container HTTP nội bộ. Không cache HTML/config lâu hơn

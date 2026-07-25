@@ -3,6 +3,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:hyper_authenticator/core/config/app_config.dart';
 import 'package:hyper_authenticator/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:hyper_authenticator/features/authenticator/presentation/bloc/local_auth_bloc.dart'; // Import LocalAuthBloc
 import 'package:hyper_authenticator/features/auth/presentation/pages/login_page.dart'; // Renamed auth_page to login_page
@@ -41,6 +42,7 @@ class AppRedirectPolicy {
     required LocalAuthState localAuthState,
     required String location,
     String? returnTo,
+    bool cloudEnabled = true,
   }) {
     final isLogin = location == AppRoutes.login;
     final isRegister = location == AppRoutes.register;
@@ -52,6 +54,9 @@ class AppRedirectPolicy {
         isLogin || isRegister || isForgotPassword || isUpdatePassword;
 
     if (isPublicAuthRoute) {
+      if (!cloudEnabled) {
+        return authenticatedDestination(returnTo: returnTo);
+      }
       if (authState is AuthAuthenticated && (isLogin || isRegister)) {
         return authenticatedDestination(returnTo: returnTo);
       }
@@ -72,9 +77,7 @@ class AppRedirectPolicy {
             );
     }
 
-    if ((localAuthState is LocalAuthSuccess ||
-            localAuthState is LocalAuthUnavailable) &&
-        (isStartup || isLockScreen)) {
+    if (localAuthState is LocalAuthSuccess && (isStartup || isLockScreen)) {
       return _safeMainReturnTo(returnTo) ?? AppRoutes.main;
     }
 
@@ -130,10 +133,11 @@ class CombinedAuthRefreshStream extends ChangeNotifier {
 
 class AppRouter {
   final AuthBloc authBloc;
-  final LocalAuthBloc localAuthBloc; // Add LocalAuthBloc dependency
+  final LocalAuthBloc localAuthBloc;
+  final AppConfig appConfig;
   final _rootNavigatorKey = GlobalKey<NavigatorState>();
 
-  AppRouter(this.authBloc, this.localAuthBloc); // Update constructor
+  AppRouter(this.authBloc, this.localAuthBloc, this.appConfig);
 
   late final GoRouter _router = _buildRouter();
 
@@ -275,6 +279,7 @@ class AppRouter {
           localAuthState: localAuthBloc.state,
           location: state.matchedLocation,
           returnTo: state.uri.queryParameters['returnTo'],
+          cloudEnabled: appConfig.cloudEnabled,
         );
       },
       errorBuilder: (context, state) => Scaffold(

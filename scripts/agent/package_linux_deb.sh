@@ -152,7 +152,7 @@ printf '%s\n' \
   'Homepage: https://authenticator.hyperz.xyz/' \
   'Description: Ứng dụng xác thực TOTP local-first đa nền tảng' \
   ' Hyper Authenticator lưu local vault trong platform secure storage và hỗ trợ' \
-  ' encrypted cloud sync trên native platform.' \
+  ' backup cloud mã hóa đầu cuối trên native platform.' \
   > "$PACKAGE_ROOT/DEBIAN/control"
 chmod 0644 "$PACKAGE_ROOT/DEBIAN/control"
 

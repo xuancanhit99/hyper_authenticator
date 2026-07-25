@@ -13,7 +13,7 @@ void main() {
     );
     final settingsRedirect = AppRedirectPolicy.redirect(
       authState: AuthUnauthenticated(),
-      localAuthState: LocalAuthUnavailable(),
+      localAuthState: LocalAuthSuccess(),
       location: AppRoutes.startup,
       returnTo: AppRoutes.settings,
     );
@@ -38,7 +38,7 @@ void main() {
     () {
       final redirect = AppRedirectPolicy.redirect(
         authState: AuthUnauthenticated(),
-        localAuthState: LocalAuthUnavailable(),
+        localAuthState: LocalAuthSuccess(),
         location: AppRoutes.main,
       );
 
@@ -70,6 +70,18 @@ void main() {
     );
 
     expect(redirect, isNull);
+  });
+
+  test('local-only build không mở auth route cloud', () {
+    final redirect = AppRedirectPolicy.redirect(
+      authState: AuthUnauthenticated(),
+      localAuthState: LocalAuthSuccess(),
+      location: AppRoutes.login,
+      returnTo: AppRoutes.settings,
+      cloudEnabled: false,
+    );
+
+    expect(redirect, AppRoutes.settings);
   });
 
   test('authenticated user không quay lại login', () {

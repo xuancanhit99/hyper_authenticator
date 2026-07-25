@@ -29,9 +29,9 @@ Bắt buộc:
 
 ## Tính sẵn sàng
 
-Cần quyết định sản phẩm: offline-only access hay Supabase authentication bắt buộc.
-
-Nếu chấp nhận offline core use, việc xem TOTP phải tiếp tục được khi mất network sau local unlock. Nếu vẫn bắt buộc auth, dependency và outage behavior phải được công bố.
+**Đã quyết định:** TOTP local hoạt động không cần Supabase configuration, tài khoản
+hoặc network. Auth/backend outage không được chặn xem mã sau local unlock. Backup
+cloud là capability tùy chọn và phải fail độc lập với local vault.
 
 ## Hiệu năng
 
@@ -66,7 +66,7 @@ Mục tiêu ban đầu đề xuất trên thiết bị mobile tầm trung đại
 Bắt buộc:
 
 - Data inventory khớp privacy policy.
-- Cloud sync do user kích hoạt được phân biệt rõ với local storage.
+- Backup cloud do user kích hoạt được phân biệt rõ với local storage.
 - Hành vi xóa account và retention được ghi lại.
 - Giảm tối đa dữ liệu cá nhân trong log và support workflow.
 - Công bố third-party service và hosted dependency.
@@ -141,7 +141,7 @@ Bắt buộc trước production:
 - recovery khi local storage không nhất quán;
 - rollback remote snapshot;
 - policy key loss và E2EE recovery;
-- quyết định account export hoặc backup;
+- account export/import có format, reauthentication và rollback policy;
 - incident response khi credential hoặc backend bị compromise.
 
 ## Cách enforce

@@ -8,11 +8,11 @@ Tài liệu này lập chỉ mục quyết định bền vững. Quyết định
 |---|---|---|---|
 | A-001 | Flutter/Dart cho client đa nền tảng | Đã áp dụng | `pubspec.yaml`, sáu platform runner và Web |
 | A-002 | Presentation/Domain/Data theo feature | Đã áp dụng, chưa tuyệt đối | `lib/features` |
-| A-003 | BLoC cho feature state, Provider cho theme | Đã áp dụng | `flutter_bloc`, `ThemeProvider` |
+| A-003 | BLoC/Cubit cho presentation state, một owner cho mỗi resource | Đã áp dụng | `flutter_bloc`, `ThemeCubit`, [ADR-0014](adr/0014-local-first-optional-cloud-and-support-tiers.md) |
 | A-004 | GetIt/Injectable cho dependency | Đã áp dụng | `injection_container*` |
 | A-005 | FlutterSecureStorage cho TOTP record | Đã áp dụng | Authenticator local data source |
-| A-006 | SharedPreferences cho preference không phải secret | Đã áp dụng | Theme, lock, sync, Remember Me |
-| A-007 | Supabase cho authentication và remote sync | Đã áp dụng | Auth/sync data source |
+| A-006 | SharedPreferences chỉ cho preference không phải secret có giá trị runtime | Đã áp dụng | Theme, lock và backup metadata; [ADR-0014](adr/0014-local-first-optional-cloud-and-support-tiers.md) |
+| A-007 | Supabase Auth/E2EE backup là capability tùy chọn, không chặn TOTP local | Đã áp dụng | Auth/sync data source, [ADR-0014](adr/0014-local-first-optional-cloud-and-support-tiers.md) |
 | A-008 | fpdart `Either` tại repository/use-case boundary | Đã áp dụng | Domain/data layer |
 | A-009 | GoRouter redirect từ auth và app-lock state | Đã áp dụng | `AppRouter` |
 | A-010 | Supabase client config qua compile-time `dart-define` | Đã áp dụng | `AppConfig`, `.env.example` |
@@ -33,6 +33,7 @@ Tài liệu này lập chỉ mục quyết định bền vững. Quyết định
 | A-025 | Device registry bind server-side với auth session; targeted revoke không được mô tả là cryptographic device ban | Chấp nhận | [ADR-0011](adr/0011-bind-device-registry-to-auth-session.md) |
 | A-026 | Device-specific DEK wrap dùng HPKE, DEK-derived membership proof và atomic key-generation rotation | Đã áp dụng | [ADR-0012](adr/0012-device-specific-hpke-key-wrap.md) |
 | A-027 | Drop plaintext sync fail-closed và bắt buộc device-bound publish sau revision đầu tiên | Đã áp dụng trong source và migration; bằng chứng production theo `PROJECT_STATUS.md` | [ADR-0013](adr/0013-retire-plaintext-and-require-device-bound-publish.md) |
+| A-028 | Local-first bootstrap, cloud tùy chọn và support tier theo platform | Chấp nhận | [ADR-0014](adr/0014-local-first-optional-cloud-and-support-tiers.md) |
 
 Đã áp dụng không đồng nghĩa production-ready; defect/risk nằm trong `PROJECT_STATUS.md`.
 
@@ -40,7 +41,6 @@ Tài liệu này lập chỉ mục quyết định bền vững. Quyết định
 
 | ID đề xuất | Quyết định cần có | Lý do |
 |---|---|---|
-| P-006 | Platform support/SLA chính thức | Build matrix chưa phải product commitment |
 | P-007 | Tên identifier dài hạn | Display name đã thống nhất, bundle ID cũ được giữ để bảo toàn install identity |
 | P-009 | Web security/support level | Browser storage khác native secure storage |
 

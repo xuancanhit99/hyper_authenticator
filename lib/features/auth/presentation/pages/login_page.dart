@@ -16,16 +16,7 @@ class _LoginPageState extends State<LoginPage> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  // bool _isLoading = false; // Replaced by Bloc state
   bool _obscurePassword = true;
-  bool _rememberMe = false; // State for Remember Me checkbox
-
-  @override
-  void initState() {
-    super.initState();
-    // Dispatch event to load remembered user when the page initializes
-    context.read<AuthBloc>().add(LoadRememberedUser());
-  }
 
   @override
   void dispose() {
@@ -42,7 +33,6 @@ class _LoginPageState extends State<LoginPage> {
         AuthSignInRequested(
           email: _emailController.text.trim(),
           password: _passwordController.text.trim(),
-          rememberMe: _rememberMe, // Pass rememberMe value
         ),
       );
     }
@@ -73,9 +63,7 @@ class _LoginPageState extends State<LoginPage> {
     return BlocListener<AuthBloc, AuthState>(
       // Listen for AuthInitial state to pre-fill email
       listenWhen: (previous, current) =>
-          current is AuthInitial ||
-          current is AuthFailure ||
-          current is AuthAuthenticated,
+          current is AuthFailure || current is AuthAuthenticated,
       listener: (context, state) {
         if (state is AuthAuthenticated) {
           context.go(
@@ -85,17 +73,6 @@ class _LoginPageState extends State<LoginPage> {
               ).uri.queryParameters['returnTo'],
             ),
           );
-        } else if (state is AuthInitial) {
-          // Pre-fill email if available
-          if (state.rememberedEmail != null) {
-            _emailController.text = state.rememberedEmail!;
-          }
-          // Set remember me checkbox state if available
-          if (state.rememberedMeState != null) {
-            setState(() {
-              _rememberMe = state.rememberedMeState!;
-            });
-          }
         } else if (state is AuthFailure) {
           ScaffoldMessenger.of(context)
             ..hideCurrentSnackBar()
@@ -158,17 +135,6 @@ class _LoginPageState extends State<LoginPage> {
                       onFieldSubmitted: (_) => _login(context),
                     ),
                     const SizedBox(height: 16),
-                    CheckboxListTile(
-                      contentPadding: EdgeInsets.zero,
-                      controlAffinity: ListTileControlAffinity.leading,
-                      value: _rememberMe,
-                      onChanged: (newValue) {
-                        setState(() {
-                          _rememberMe = newValue ?? false;
-                        });
-                      },
-                      title: const Text('Ghi nhớ đăng nhập'),
-                    ),
                     Align(
                       alignment: Alignment.centerRight,
                       child: TextButton(

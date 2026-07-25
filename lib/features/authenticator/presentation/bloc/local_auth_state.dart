@@ -16,9 +16,6 @@ class LocalAuthRequired extends LocalAuthState {}
 /// State indicating local authentication has been successfully passed.
 class LocalAuthSuccess extends LocalAuthState {}
 
-/// State indicating local authentication is not available or not configured on the device.
-class LocalAuthUnavailable extends LocalAuthState {}
-
 /// State when an error occurs during local authentication.
 class LocalAuthError extends LocalAuthState {
   final String message;

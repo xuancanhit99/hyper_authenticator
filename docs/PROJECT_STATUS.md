@@ -1,235 +1,116 @@
 # Trạng thái dự án
 
-Baseline được xác minh đến ngày **22 tháng 7 năm 2026** trên macOS 26.5.1.
+Baseline được cập nhật ngày **23 tháng 7 năm 2026** trên macOS 26.5.1. File này
+chỉ giữ trạng thái hiện tại; log rollout/CI/backup theo từng lần chạy nằm trong
+Git history và `docs/operations`.
 
-## Kết luận hiện tại
+## Kết luận
 
-Hyper Authenticator là ứng dụng Flutter TOTP local-first cho Android, iOS,
-macOS, Windows, Linux và Web. Native client đã có encrypted cloud sync dùng
-AES-256-GCM, recovery key do người dùng giữ, optimistic revision và atomic
-publication qua Supabase RPC. Web vẫn chủ động tắt cloud sync vì browser storage
-không có trust boundary tương đương platform secure storage.
+Hyper Authenticator là ứng dụng TOTP Flutter đa nền tảng, local-first:
 
-Source, local data path, E2EE client/server contract, backup và backend health
-harness đã đạt baseline kỹ thuật. GitHub Releases là kênh phân phối binary ưu tiên:
-Windows/Linux unsigned và Android signed APK chỉ được public dưới dạng pre-release
-có checksum, tag CI provenance và cảnh báo rõ ràng. macOS notarized package có thể
-bổ sung theo gate riêng mà không cần chờ app store; iOS vẫn phụ thuộc kênh Apple.
-Store/SMTP được hoãn; signed stable vẫn cần credential thuộc owner và không
-mô tả preview là stable production release.
+- TOTP local không cần tài khoản, network hoặc Supabase configuration.
+- Android, iOS, macOS, Windows, Linux và Web có platform runner.
+- Supabase Auth và backup cloud E2EE là capability tùy chọn trên native.
+- Web không bật E2EE backup vì browser storage không có trust boundary tương
+  đương Keychain/Keystore.
+- GitHub Releases là kênh binary hiện tại; stable/store release còn gate signing,
+  legal/support metadata và physical-device evidence.
 
-## Toolchain và dependency
+Source và production backend đã có baseline bảo mật cao hơn một app TOTP tối
+thiểu: local vault copy-on-write, Privacy Shield, encrypted snapshot, RLS/RPC,
+device-bound HPKE wrap, backup/restore và release harness. Phần phức tạp này được
+giữ ở data/security boundary; primary UI không yêu cầu người dùng hiểu revision,
+session registry hoặc vault-key generation.
 
-- Flutter 3.44.6 stable; Dart 3.12.2; constraint `^3.12.0`.
-- Phiên bản ứng dụng `1.1.0+10`.
-- `flutter pub outdated` ngày 22-07-2026 còn hai bản nâng được trong resolution
-  hiện tại: `mobile_scanner` 7.3.0 → 7.4.0 và dev dependency
-  `injectable_generator` 3.1.0 → 3.1.1. Chúng không được trộn vào change set P0
-  security/docs này và cần một PR dependency riêng cùng platform regression.
-- `intl` giữ ở 0.20.2 dù upstream có 0.20.3; `build_runner` giữ ở 2.15.1 dù
-  upstream có 2.15.2 vì solver/toolchain hiện tại chưa resolve các bản mới hơn.
-- `mobile_scanner` 7.3.0 vẫn phát cảnh báo upstream về Kotlin Gradle Plugin
-  legacy; build hiện pass nhưng phải theo dõi trước Flutter breaking release kế.
-- `local_auth_windows` 2.0.1 vẫn dùng coroutine experimental; MSVC 14.51 cần
-  `_SILENCE_EXPERIMENTAL_COROUTINE_DEPRECATION_WARNINGS`. Platform gate giữ shim
-  tạm thời cho tới khi upstream chuyển sang coroutine chuẩn.
-- Apple runner dùng Swift Package Manager.
+## Runtime đã triển khai
 
-## Bằng chứng client
+### TOTP và local vault
 
-| Kiểm tra | Kết quả |
+- Parse `otpauth://totp`; validate Base32, SHA1/SHA256/SHA512, digits 6–8 và
+  period dương; persisted field round-trip không tự về default.
+- Thêm account bằng camera, ảnh QR hoặc thủ công theo platform capability.
+- Tìm kiếm, sửa, xóa, sao chép TOTP và countdown theo period.
+- Account actions dùng menu Material. Primary UI không còn xuất raw `otpauth` QR
+  chưa được tái xác thực.
+- FlutterSecureStorage dùng versioned copy-on-write generation, commit marker,
+  rollback generation và compaction giữ hai generation hợp lệ gần nhất.
+- Logout không xóa local vault. Windows giữ storage identity tương thích
+  `1.0.0+9`; migration conflict fail closed.
+
+### Bootstrap, navigation và state
+
+- Không có toàn bộ cloud define là local-only hợp lệ; Supabase không được khởi
+  tạo và auth deep link quay về local app.
+- Cloud-enabled build yêu cầu đủ HTTPS Supabase URL, publishable/legacy `anon`
+  key và recovery URL. Partial config, service-role/secret key hoặc
+  `ALLOW_INSECURE_PLAINTEXT_SYNC=true` đều fail closed.
+- Accounts và Settings dùng `StatefulShellRoute.indexedStack`; đổi tab giữ state,
+  không chạy full-page transition.
+- Feature state dùng BLoC/Cubit; theme có một `ThemeCubit`. Root không tạo trùng
+  `SettingsBloc`.
+- Remember Me đã bỏ; Supabase sở hữu session persistence, app không lưu lại
+  email/password preference.
+
+### App lock, privacy và accessibility
+
+- App lock dùng OS local authentication ở platform hỗ trợ; plugin error không
+  bypass lock. Lifecycle rời foreground kích hoạt relock theo policy.
+- Root Privacy Shield render surface Material 3 opaque ở
+  `inactive/hidden/paused/detached`, bỏ focus, chặn interaction/ticker và loại
+  nội dung bên dưới khỏi semantics.
+- UI chính dùng tiếng Việt; thuật ngữ TOTP, Base32, cloud, recovery key giữ khi
+  cần chính xác.
+- Widget regression có light/dark, text scale 200%, tap target, text contrast,
+  keyboard focus và credential redaction trên các luồng cốt lõi.
+
+Privacy Shield không phải active screenshot/recording prevention. TalkBack,
+VoiceOver và native app-switcher snapshot vẫn cần thiết bị thật.
+
+### Backup cloud E2EE
+
+- UI gọi tính năng là **backup cloud mã hóa đầu cuối**, chỉ hiện khi cloud config
+  đầy đủ và platform hỗ trợ.
+- AES-256-GCM versioned snapshot, recovery key do người dùng giữ, optimistic
+  revision, conflict review và atomic publish đã triển khai.
+- Recovery decrypt/validate trước khi atomic replace local vault.
+- Recovery-key rotation nằm trong **Bảo mật nâng cao**.
+- Session registry, targeted revoke và generic vault-key rotation code/backend
+  contract vẫn tồn tại nhưng không còn trong primary Settings.
+- Plaintext sync client path đã xóa. Terminal migration chỉ drop legacy
+  `synced_accounts` dưới `ACCESS EXCLUSIVE` lock khi bảng rỗng; có row thì rollback
+  nguyên transaction.
+- Device-bound update dùng HPKE wrap, active-session check, all-active membership
+  proof và exact revision/generation row lock.
+
+Targeted/bulk session revoke không remote-wipe local TOTP hoặc DEK đã lưu. Generic
+key rotation hiện vẫn cấp wrap cho mọi active device có proof hợp lệ; chưa có
+user-facing cryptographic device exclusion.
+
+## Bằng chứng gần nhất
+
+| Gate | Kết quả |
 |---|---|
-| `flutter doctor -v` | Pass, không có lỗi toolchain |
-| `flutter analyze` | Pass, 0 diagnostic |
-| `flutter test` | 187 test pass trong full gate ngày 22-07-2026, gồm Privacy Shield, all-active membership proof, no-RPC-on-invalid-plan và storage/auth/sync regression |
-| Vietnamese UI contract | Primary auth/accounts/settings/add-edit surface đã dùng tiếng Việt; app khóa `Locale('vi')` cùng Material/Widgets/Cupertino localization delegate và widget test xác minh locale runtime, vẫn giữ thuật ngữ technical cần thiết |
-| Main navigation shell | Accounts `/` và Settings `/settings` dùng `StatefulShellRoute.indexedStack`: đổi tab không thay shell route/full-page transition, giữ state từng branch và chỉ animate NavigationBar 200 ms; route phân cấp vẫn dùng transition native theo platform |
-| Core accessibility automation | Auth/accounts/add-account và Settings recovery/conflict/session dialog pass labeled tap target + Android 48×48 + WCAG text-contrast guideline trên light/dark theme ở viewport 320×640/text scale 200%; keyboard regression bao phủ Auth forms, theme/add/search/copy, manual add-account và sensitive dialog Tab/Shift+Tab/Enter/Space/Escape; TOTP secret key/raw recovery key không vào semantics tree |
-| Lifecycle privacy shield | Widget regression che toàn bộ router ở `inactive/hidden/paused/detached`, bỏ focus, chặn interaction/ticker và loại nội dung bên dưới khỏi semantics; `resumed` khôi phục state hiện có. Overlay mới là màn Material 3 tĩnh, opaque ngay frame đầu, responsive, hỗ trợ light/dark và text scale 200%; không dùng blur/animation làm lộ hoặc kéo dài nội dung nhạy cảm. Đây không phải bằng chứng active screenshot prevention hoặc native app-switcher snapshot trên thiết bị thật |
-| Platform configuration gate | Pass network/backup/signing/Keychain/ID |
-| Release config validator | Pass với `.env` public hiện tại, không in key |
-| Gitleaks full history | Pass sau exact allowlist RFC 6238 test vector |
-| Android debug + Pixel AVD runtime | Pass build/install, Supabase auth, hai session/device key active, xóa primary private key rồi HA1 replacement, exact wrap rotation và secondary stale-DEK auto-unwrap generation 2, revision 1→4 + cleanup 404; bulk revoke 2→1 và local-vault smoke với direct secure-storage preflight/fail-safe cleanup cũng pass |
-| Web release + hardened Nginx image | `1.1.0-ae1ab36` `linux/amd64` đang healthy trên production; local/public `main.dart.js` SHA-256 `1a0d63a6…f66ea6` khớp, 5 SPA route và TLS/HSTS/CSP/cache/Permissions-Policy pass; browser xác minh runtime `lang=vi`, Flutter render và console sạch; live rollback về `1.1.0-12fce73` rồi forward lại current pass exact image/hash/route. Change set P0 còn thêm local configured-release artifact smoke bằng headless Chrome: engine mount + semantics + local-vault shell pass, còn build thiếu config bị phát hiện đúng; harness này chưa phải evidence production deploy mới |
-| macOS debug compile unsigned | Pass; không phải runtime/signing evidence |
-| iOS 26.5 simulator debug | Pass Supabase init; hai session/device key active, lost-primary-key HA1 replacement, exact wrap rotation và secondary stale-DEK auto-unwrap generation 2, revision 1→4 + cleanup 404; local-vault smoke với direct Keychain preflight/fail-safe cleanup cũng pass |
-| Android release | Signed APK `1.1.0+10` build pass với public config, `apksigner` xác minh đúng một signer và SHA-256 pin; Pixel 10 Pro XL AVD API 37 clean install/cold launch/Vietnamese semantics/crash=0 pass. Test candidate cùng key nâng `1.1.0+10`→`1.1.1+11`, giữ `firstInstallTime` và TEST_ONLY encrypted-vault fixture. Owner đã backup key; tag CI `29761935925`, public download/signature gate và hosted verifier `29762712975` pass. Còn physical camera/biometric gate |
-| macOS release | Bị chặn vì chưa có development/distribution certificate |
-| Linux release + Debian artifact | Pass configured `linux/x64`, historical `1.0.0+9` vault upgrade, private-keyring UI smoke và `.deb` `1.1.0+10` amd64; hosted amd64 pass clean transition/retention + X11/Wayland trên Ubuntu 22.04/24.04 và Debian 12/13 |
-| Linux authenticated E2EE runtime | Pass trên Ubuntu 24.04 arm64 container tạm: client thật đăng nhập production Supabase, setup revision 1, sync revision 2, fresh-device recovery, recovery-key rotation revision 3, reject key cũ, vault-key rotation revision 4 và recovery cuối; operator xóa user/row và admin probe xác nhận 404 |
-| Windows release + installer | Pass upgrade vault thật từ source `1.0.0+9`/plugin 3.1.2 sang current COW v2, configured x64 bundle, local-vault runtime và NSIS 3.12 unsigned candidate; install/launch/metadata-upgrade/uninstall giữ AppData pass, bundle + installer/checksum giữ 14 ngày |
-| GitHub Preview | `v1.1.0-preview.4` public pre-release tại commit `7f17cce`; Android signed APK, Windows x64 NSIS và Linux amd64 `.deb` tạo đúng bảy asset. Public unauthenticated re-download khớp GitHub digest/checksum/manifest; Android signer fingerprint, Debian và PE32 signature pass |
-| Device registry client | Model/identity store/repository/BLoC/widget regression pass: stable installation UUID, server-bound load, current-session protection, targeted confirmation, double-submit guard và identifier redaction |
-| Device-specific HPKE wrap | **Server production + client runtime hiện có đã xác minh:** HPKE Base X25519/HKDF-SHA256/AES-256-GCM; server-only DEK verifier; enrollment, lost-device-key HA1 recovery, publish-v2, exact wrap rotation và surviving-session auto-unwrap pass trên Linux/Android/iOS. Generic client rotation cấp wrap mới cho mọi active device có membership proof hợp lệ; UI chưa có cryptographic exclusion theo từng device. P0 all-active proof validation, protocol-0/NULL cutoff và exact-row lock đã deploy production; remote 36-check device-bound contract pass |
+| `flutter analyze` | Pass, 0 diagnostic ngày 23-07-2026 trên nhánh đơn giản hóa |
+| `scripts/agent/check.sh full` | Pass trạng thái cuối ngày 23-07-2026; tổng hợp bốn boundary dưới đây |
+| `scripts/agent/check.sh app` | Pass ngày 23-07-2026: docs/generated/format/analyze/platform và 189 Flutter test |
+| `scripts/agent/check.sh backend` | Pass ngày 23-07-2026: encrypted/device-wrap và plaintext-retirement PostgreSQL contract |
+| `scripts/agent/check.sh release` | Pass ngày 23-07-2026: GitHub Preview asset/public contract và Web rollback harness |
+| `scripts/agent/check.sh infra` | Pass ngày 23-07-2026: NPM secret/backup/deploy/route/rollback, Auth load pacing và restore drill contract |
+| Local-only release smoke | Web release build + Chrome engine/semantics/local-vault shell pass; Android debug APK build pass |
+| Android Pixel AVD | Signed build, clean install, vault-retaining upgrade và E2EE flows đã pass; physical camera/biometric còn thiếu |
+| iOS Simulator | Local vault và authenticated E2EE flows đã pass; device/signing còn thiếu |
+| macOS | Unsigned compile pass; signing/Keychain release runtime còn thiếu |
+| Windows hosted | Historical vault upgrade, local-vault runtime, release bundle và unsigned NSIS pass |
+| Linux hosted/container | Historical upgrade, private keyring, `.deb`, distro matrix và authenticated E2EE debug runtime pass |
+| Flutter Web production | HTTPS/Nginx/runtime/rollback smoke đã pass; E2EE backup tắt |
+| GitHub Preview | `v1.1.0-preview.4`: signed Android APK, unsigned Windows NSIS và Linux `.deb`, checksum/public verification pass |
 
-Build không có `--dart-define-from-file` chỉ chứng minh compile. Runtime/release
-verification phải inject `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY` và
-`PASSWORD_RECOVERY_URL` bằng compile-time define.
+Current change set chỉ đổi bootstrap/UI/state/docs; không đổi local-vault format,
+encrypted envelope, Supabase schema/RPC hoặc production data.
 
-## Data và security path đã triển khai
+## Capability matrix
 
-- TOTP URI chỉ nhận `otpauth://totp`; validate Base32, SHA1/SHA256/SHA512,
-  digits 6–8 và period dương.
-- Local vault dùng versioned copy-on-write generation, commit marker, rollback
-  generation và compaction giữ hai generation hợp lệ gần nhất.
-- Windows khóa AppData identity tương thích `1.0.0+9`; startup migrator nhập
-  atomic layout pre-release, giữ source và fail closed khi hai vault khác nhau.
-- Logout không xóa vault; app lock fail closed và relock khi rời foreground.
-- Root privacy shield che TOTP/recovery/user content sau lifecycle signal không
-  còn `resumed`, không dispose hoặc mutate state/vault bên dưới. Initial
-  `detached` được phép bootstrap để Linux/headless không tự khóa UI. Màn che dùng
-  Material 3 opaque, light/dark responsive và copy tiếng Việt; không blur hoặc
-  animation nội dung nhạy cảm bên dưới.
-- Client plaintext sync source, mapper, repository và use case đã được loại bỏ.
-  `ALLOW_INSECURE_PLAINTEXT_SYNC=true` là poison value bị từ chối ở mọi build.
-  Terminal migration lấy `ACCESS EXCLUSIVE` lock, chỉ drop `synced_accounts` khi
-  bảng rỗng và abort/rollback nguyên trạng nếu concurrent/đã có row. Migration đã
-  deploy production sau backup + zero-row preflight; public/service-role đều nhận
-  table-absent và final data audit vẫn bằng 0.
-- Setup sync chỉ persist DEK sau khi recovery key được xác nhận, encrypted
-  snapshot publish thành công và read-after-write verification pass.
-- Recovery decrypt/validate trước rồi atomic `replaceAccounts`; key sai hoặc
-  payload lỗi không ghi đè vault local.
-- Conflict buộc người dùng chọn cloud hoặc local. Giữ local tạo revision mới;
-  dùng cloud chỉ replace khi revision vẫn đúng revision đã review.
-- Recovery key có thể xoay bằng re-wrap cùng DEK và atomic publish revision mới;
-  cancel/conflict giữ key cũ, ambiguous verification cảnh báo giữ key mới.
-- Vault key có thể xoay bằng DEK + recovery key mới; current snapshot được
-  re-encrypt atomically, DEK local chỉ thay sau verify và thiết bị giữ DEK cũ phải
-  verify exact current-device HPKE wrap/proof rồi tự unwrap generation mới. Trước
-  khi tạo bất kỳ wrap generation kế tiếp nào, client P0 fail closed nếu một active
-  device thiếu/sai current-generation membership proof. Generic rotation giữ toàn
-  bộ active device đã verify; nó không tự exclude device. Mất private key hoặc
-  wrap sai mới phải dùng HA1.
-- Remote request bind với Supabase user ID hiện tại để chặn race đổi session.
-- Settings có bulk revoke mọi Supabase session khác; session hiện tại, local vault
-  và DEK được giữ. Backend đối chiếu JWT `session_id` với `auth.sessions` trong cả
-  RLS/RPC nên session đã revoke mất quyền encrypted vault ngay.
-- Settings có device registry cho phiên chạy client mới. Backend tự bind owner và
-  current `session_id`, không trả raw session/IP/user-agent; targeted revoke cấm
-  current/cross-tenant row và xóa đúng auth session. Local TOTP trên target vẫn
-  được giữ và re-login được phép; bulk revoke vẫn là fallback cho phiên chưa register.
-- HPKE/device-key client đã inject; hai migration additive nền tảng đã deploy
-  production. Generation/protocol guard, server-only DEK membership verifier,
-  two-phase enrollment, lost-key replacement và atomic exact wrap-set rotation
-  pass focused, PostgreSQL 17, backup/restore, remote regression và Linux client
-  runtime. P0 hardening yêu cầu device protocol cho update, khóa exact row bằng
-  `FOR UPDATE` trước publish và kiểm tra proof của toàn bộ active set. Production
-  apply, health, 36-check remote contract, post-backup/restore/off-host copy đều
-  pass. Client đã phát hành trong GitHub Preview; chưa có physical two-device hoặc
-  independent review.
-- Web Settings không mời đăng nhập để dùng cloud sync khi capability bị tắt.
-- Primary UI đã dùng tiếng Việt nhất quán cho auth, navigation, accounts,
-  add/edit, settings và user-facing failure; Web document khai báo `lang="vi"`.
-  Tên sản phẩm cùng thuật ngữ technical như TOTP, secret key, Base32, cloud,
-  revision và session được giữ khi cần độ chính xác.
-- Scanner hiển thị trạng thái đang chờ quyền camera và lỗi permission/unsupported
-  bằng tiếng Việt, có retry hoặc quay lại nhập thủ công thay vì nền đen không rõ trạng thái.
-- Add/edit-account completion dùng state riêng không chứa secret, chống submit
-  lặp và không coi `AccountsLoaded` do reload/lifecycle là mutation thành công.
-  Edit success còn bind bằng opaque operation token để không nhận nhầm update
-  chồng thời gian; account entity, use-case param và mutation event/state redact
-  credential khi stringify. Khi GoRouter không còn back stack, completion về `/`
-  thay vì pop page cuối.
-- Logo dịch vụ và font Averta không rõ license đã bị loại khỏi release; UI dùng
-  avatar ký tự render bằng code. Data contract không thay đổi vì logo không persist.
-
-## Supabase production đã xác minh
-
-- Pin upstream self-hosted nằm trong `supabase/UPSTREAM_PIN`; stack có 11 core
-  container healthy và PostgreSQL 17.6.1.136.
-- Public API qua HTTPS; Studio qua HTTPS + Basic Auth; Kong/Supavisor không mở
-  trực tiếp ra Internet.
-- `encrypted_vault_snapshots` chỉ cấp SELECT cho authenticated owner có active
-  session, bật và force RLS. Atomic RPC kiểm tra `auth.uid()` + `session_id` và trả
-  `PT409` khi revision lệch hoặc `session_revoked` khi phiên đã bị thu hồi.
-- Remote encrypted contract: 36/36 pass; recovery contract: 8/8 pass; Studio
-  proxy/DNS/upstream/Basic Auth contract pass.
-- Device registry migration đã deploy production. Remote isolated-user contract
-  25/25 pass: direct table/anonymous/cross-tenant bị chặn, current marker đúng,
-  self-revoke bị từ chối, targeted refresh/JWT mất quyền ngay và current session
-  tiếp tục hoạt động; cleanup còn 0 test user và 0 orphan registry row.
-- Device-wrap + lost-key replacement migration đã deploy production. Full gate
-  187 test, PostgreSQL verifier/rotation contract, remote regression,
-  post-migration backup/full restore/off-host copy và Linux client revision 1→4
-  đều pass; cleanup còn 0 user/snapshot/device/verifier.
-- Hai migration P0 ngày 22-07-2026 (`harden_device_wrap_publish` và
-  `retire_plaintext_synced_accounts`) đã deploy production sau zero-row preflight
-  và pre-backup/off-host `supabase-20260722T153421Z`. Post-backup
-  `supabase-20260722T155219Z`, full restore rehearsal, encrypted off-host copy,
-  health, table-absent, lượt rollout ban đầu encrypted 35/35, registry 25/25 và
-  recovery 8/8 đều pass.
-  Sau adversarial review, canonical SQL thêm explicit `NULL` guard, RLS-safe count
-  và guarded DROP; production được re-apply sau pre-backup/off-host
-  `supabase-20260722T161217Z`. Post-backup `supabase-20260722T161534Z`, full
-  restore/off-host, health và encrypted 36/36 đều pass; final zero-data audit cùng
-  table-absent/NULL-guard probe bằng true.
-  Final audit: 0 user/session/snapshot/device/wrap/registry row; plaintext table
-  absent, legacy RPC initial-only và v2 exact-row lock cùng bằng true.
-- Auth load budget dùng public key: 100/100 HTTP 200 ở concurrency 10; p95 578 ms,
-  max 862 ms, dưới ngưỡng 1.000/2.000 ms. Negative path 1 ms bị từ chối đúng;
-  gate không tạo user/payload. Bounded soak 900 request tuần tự trong 1.134 giây
-  đạt 900/900 HTTP 200 và p95 292 ms nhưng fail strict gate vì một outlier
-  3.648 ms; release baseline chạy lại ngay sau đó pass 100/100, p95 402 ms,
-  max 406 ms. Sau khi thêm NPM timing allowlist, lượt correlated soak cùng pacing
-  pass 900/900, p95 289 ms và max 590 ms. Request chậm nhất có DNS 3/TCP 88/
-  TLS 200/TTFB 589 ms trong khi NPM request/upstream chỉ 70/67 ms; toàn cửa sổ
-  proxy có p95 28/25 ms, max 244/244 ms và 0 non-200. Lượt baseline cuối tiếp tục
-  pass 100/100 sau canary, p95 365 ms, max 374 ms. Post-P0 lượt đầu ngày 22-07
-  vẫn 100/100 nhưng fail p95 1.829 giây do TLS/TTFB transient; lượt lặp ngay sau
-  pass 100/100, p95 285 ms và max 293 ms. Giữ gate vì một lượt xanh không xóa
-  evidence transient trước đó.
-- NPM production đã nâng từ `2.14.0` lên stable `2.15.1`; MariaDB giữ `10.5.29`,
-  cả hai pin exact digest. Compose, `.env` và application key giữ mode `0600`.
-  Fresh backup `npm-20260719T200634Z`, isolated restore, no-port cloned
-  app/database/certificate canary và maintenance bundle
-  `maintenance-npm-20260719T200758Z` đều pass trước deploy. Deploy harness chỉ
-  recreate app service, tự rollback exact Compose/image khi post-gate fail và giữ
-  rollback Compose 2.14.0 mode 0600. Runtime 2.15.1 sau deploy có restart count 0,
-  internal API 200, `nginx -t` pass và exact image/Compose digest khớp. Auth load
-  hậu kiểm đạt 100/100 HTTP 200, p95 337 ms, max 395 ms dưới budget 1.000/2.000 ms.
-- Repository backup/route harness đã hỗ trợ cả password env hiện tại và Docker
-  `*_PASSWORD_FILE`; helper resolve credential trong container, từ chối file
-  relative/symlink hoặc credential rỗng mà không log. Read-only production route
-  matrix bằng helper mới pass 26 domain, 6 critical, 10/10 exception. Fresh backup
-  `npm-20260719T211623Z`, isolated restore và exact NPM/MariaDB file-secret canary
-  còn pass DB root/app + NPM `__FILE`, API/Nginx/DB 4/4, internal/no-port và cleanup.
-  Renderer/preparation/deploy source hiện có contract cho private candidate,
-  checksum/drift guard, DB-first recreate, post-gate và automatic rollback.
-  Production migration đã dùng fresh backup `npm-20260720T050813Z` và private
-  bundle `file-secrets-npm-20260720T050952Z`; DB-first/app recreate, exact image,
-  API/Nginx/DB 4/4, route/timer và automatic transaction gate đều pass. App/DB
-  `Config.Env` có plaintext/file-key count `0/1` và `0/2`; ba secret mount tồn tại,
-  host directory/file giữ `0700/0400`. Post-backup `npm-20260720T052216Z` có
-  metadata `file-secrets`, exact ba secret archive path và đã restore 4/4 core
-  table trong MariaDB cô lập. Restore harness hiện chờ init-complete cùng ba
-  authenticated probe liên tiếp để không race temporary bootstrap server.
-- Full NPM matrix tự khám phá 26 HTTPS domain/0 stream: sáu route trọng yếu pass;
-  10 route của stack khác trả pre-existing 502 và được khóa bằng hash/status
-  exception. `radar.vnpay.dev` đã phục hồi 200 nên exception tương ứng bị xóa.
-  `store.hyperz.xyz` từng lộ lỗi DNS nội bộ sau recreate vì upstream thiếu
-  `proxy-network`; network-only Compose override đã thêm lại kết nối và route
-  trở về 200 trước lần deploy thành công.
-- Hourly persistent NPM route timer đã enable; systemd service chạy trong sandbox,
-  output chỉ chứa hash domain và lượt production đầu pass 26/26, 6 critical,
-  10/10 exception. Bốn certificate Let’s Encrypt orphan không còn route reference
-  và domain đang NXDOMAIN vẫn renew fail; current route/certificate đang phục vụ
-  không bị ảnh hưởng, nhưng cần xóa qua NPM API/UI hoặc khôi phục DNS trước expiry.
-- Health timer chạy mỗi 5 phút. Backup timer chạy hằng ngày, giữ 7 bản local.
-- Backup gồm logical database, globals, quiesced Storage và sensitive config;
-  có SHA-256, permission 0700/0600 và validation catalog/tar.
-- Full restore rehearsal đã pass vào database tạm rồi tự động drop; xác minh
-  `auth.users`, encrypted/device-registry table, `FORCE RLS`, privilege và RPC guard.
-- Restore drill timer đã enable: trigger hằng ngày, thực thi tối đa mỗi 7 ngày và
-  retry ngày sau khi fail. Lượt production 19-07-2026 restore backup
-  `supabase-20260718T100222Z` pass; evidence 0600/checksum khớp, health kiểm tra
-  freshness 9 ngày và probe xác nhận không còn database tạm.
-- Encrypted off-host copy qua `age` chạy bằng macOS LaunchAgent, giữ 14 bản;
-  stream không tạo plaintext archive trên máy nhận.
-
-## Ma trận capability
-
-| Platform | TOTP local | QR camera | QR từ ảnh | App lock | E2EE sync |
+| Platform | TOTP local | QR camera | QR từ ảnh | App lock | Backup cloud E2EE |
 |---|---:|---:|---:|---:|---:|
 | Android | Có | Có | Có | Có | Có |
 | iOS | Có | Có | Có | Có | Có |
@@ -238,144 +119,72 @@ verification phải inject `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY` và
 | Linux | Có | Không | Không | Không | Có |
 | Web | Có | Có | Không | Không | Không |
 
-Capability là hành vi source hiện tại, không thay thế device test và store review.
+Đây là source capability, không thay thế physical-device/store evidence.
 
-## Khoảng trống đã biết
+## Support và phân phối
 
-1. Android app signing key đã do owner tạo/backup ngoài repository, local config
-   mode `0600`, public fingerprint đã pin; signed build và emulator vault-retaining
-   upgrade pass. GitHub có đủ bốn encrypted signing secrets; tag CI và public
-   Android APK/signature verification pass. Còn physical camera/biometric evidence.
-   Apple/Windows signing credential chưa
-   có; app store được hoãn.
-2. SMTP được hoãn. Endpoint chấp nhận recovery flow và token contract pass, nhưng delivery
-   tới mailbox thật cùng expired-token E2E chưa được chứng minh.
-3. Monitoring mới ghi journal/exit status; chưa có alert channel ngoài host.
-4. Off-host backup hiện phụ thuộc máy Mac/LaunchAgent đang hoạt động; cần đích
-   object storage hoặc backup host độc lập nếu yêu cầu SLA cao.
-5. Low-concurrency Auth budget đã enforce. Lượt correlated soak gần 19 phút đã
-   pass strict gate 900/900, p95 289 ms, max 590 ms; timing cho thấy request chậm
-   nhất chủ yếu nằm trước reverse proxy/Auth backend. Đây chỉ đóng outlier của lần
-   lặp có kiểm soát, chưa phải production-scale workload test hoặc SLA dài hạn.
-6. E2EE v1 đã có DEK rotation, bulk revoke và targeted revoke cho registered auth
-   session với server-side enforcement. Đây là session revocation, không remote
-   wipe local vault và không tự loại device khỏi wrap generation kế tiếp. Backend
-   có primitive publish wrap-set với exclusion, nhưng generic client rotation hiện
-   gửi exclusion rỗng và cấp wrap mới cho mọi active device có proof hợp lệ; chưa
-   có user-facing cryptographic device exclusion. Device-specific HPKE wrap đã
-   deploy server; Linux client runtime pass cả mất device private key, HA1 recovery
-   và rotation; Android/iOS two-session survivor auto-unwrap cũng pass. Còn
-   physical two-device, independent review, tombstone/history và Web E2EE trust
-   model. Backup cũ vẫn dùng key generation cũ.
-7. Local-vault integration smoke đã pass Android emulator, iOS Simulator và
-   GitHub-hosted Windows Server 2025; Android/iOS còn pass direct secure-storage
-   preflight cùng cleanup vault/storage/preferences trong mọi failure path.
-   Biometric/camera và secure-storage behavior trên thiết bị thật vẫn chưa được
-   chứng minh. Mobile harness chủ động từ chối target thật/macOS vì nó reset toàn
-   bộ local vault; Windows harness chỉ nhận hosted runner tạm.
-8. Windows đã có unsigned NSIS candidate, hosted-runner package transition và
-   upgrade thật từ source `1.0.0+9`; còn code signing và physical-device/Windows Hello.
-   Linux đã có `.deb` candidate, hosted amd64 historical upgrade, clean-container
-   package transition, X11/Wayland distro matrix và authenticated E2EE client runtime;
-   hai package đã public trong `v1.1.0-preview.3` với nhãn unsigned. Trước stable còn KDE
-   login/unlock/physical desktop, release signing và maintainer/support metadata.
-   E2EE evidence hiện là
-   debug arm64 container, không phải signed amd64 package runtime.
-9. Privacy policy cần được host tại URL công khai và điền kênh support trước store submission.
-10. Flutter Web đã pass TLS/reverse proxy và runtime smoke trên production domain.
-    P0 harness còn boot exact configured `build/web` bằng headless Chrome, kiểm
-    tra engine/semantics/local-vault shell và chứng minh build thiếu config bị fail;
-    chưa có evidence production deploy mới từ change set này. Permission
-    pending/error UX đã có regression test trên VM và Chrome test platform, nhưng
-    camera/QR decode vẫn cần browser-device smoke thực tế.
-11. Accessibility automation đã bao phủ Auth, account list, form thêm account và
-    Settings recovery/conflict/session dialog với WCAG text-contrast gate trên
-    light/dark theme cùng core keyboard traversal. Lifecycle privacy shield mới
-    dùng Material 3 opaque responsive và có widget regression cả light/dark,
-    text scale 200%; chưa có TalkBack/VoiceOver runtime, keyboard audit toàn bộ
-    Settings/main navigation, active screenshot/recording control, native
-    app-switcher snapshot test hoặc audit focus visualization trên từng OS đại diện.
-12. NPM còn 10 enabled proxy domain trả 502 vì upstream/container của ứng dụng
-    khác đã dừng hoặc không còn TCP/DNS. Chúng không thuộc sáu route trọng yếu của
-    Hyper Authenticator/Supabase và không bị thay đổi; hash exception chỉ khóa
-    baseline, không sửa outage. Owner cần chọn khôi phục stack hoặc disable route.
-    Ngoài ra bốn certificate orphan không còn route reference đang renew fail vì
-    NXDOMAIN; chúng phải được cleanup bằng API/UI hoặc phục hồi DNS trước expiry.
+| Platform | Kênh hiện tại | Gate còn lại trước stable |
+|---|---|---|
+| Android | Signed APK qua GitHub Preview | Camera, biometric và upgrade trên thiết bị thật; Play Store để sau |
+| iOS | Chưa phân phối | Apple credential, physical device, TestFlight/App Store |
+| macOS | Chưa phân phối | Developer ID, hardened runtime, notarization, staple, runtime smoke |
+| Windows | Unsigned NSIS Preview | Code signing và Windows Hello/physical-device |
+| Linux | Unsigned `.deb` Preview | KDE/physical desktop, signed repository/channel |
+| Web | Production HTTPS | Browser camera smoke; Web E2EE không nằm trong support tier |
 
-## Automation
+## Production backend/operations
 
-- `.github/workflows/ci.yml` chạy secret history, docs/generated-code/format/
-  analyze/test và compile Android, iOS simulator, macOS unsigned, Web, Windows,
-  Linux. Web job tạo synthetic public config, build release artifact và boot bằng
-  headless Chrome để fail nếu engine/semantics/local-vault shell không sẵn sàng
-  hoặc rơi vào startup-failure UI, sau đó mới chạy Nginx serving contract. Android
-  branch/PR build debug; tag mới yêu cầu bốn encrypted signing
-  secret, build configured APK, xác minh exact certificate pin rồi lưu APK/checksum
-  14 ngày và xóa keystore tạm trong bước `always()`. Linux job build configured
-  x64 trên Ubuntu 22.04, chạy private-keyring
-  integration, tạo `.deb`, smoke package transition và bốn distro container rồi
-  lưu checksum + artifact 14 ngày;
-  Windows chạy historical `1.0.0+9` vault upgrade và local-vault integration,
-  build configured bundle, tạo NSIS candidate,
-  smoke install/launch/metadata-upgrade/uninstall giữ AppData và lưu hai artifact
-  theo commit 14 ngày. Các gate này không thay signed runtime hoặc
-  representative-device/distro matrix.
-- GitHub Actions run `29652820428` tại `ae1ab36` pass 7/7; locale fix được xác
-  minh cùng Linux hosted historical/package/distro, Windows historical/runtime/
-  installer, Apple, Android, Web, quality và secret history gate.
-- GitHub Actions run `29661712630` tại `e36018b` pass 7/7; core accessibility
-  regression được xác minh cùng Windows/Linux artifact runtime, Android, Apple,
-  Web, quality và secret history gate.
-- GitHub Actions run `29664167631` tại merge commit `7a49109` pass 7/7; sensitive
-  Settings dialog accessibility/fail-safe keyboard regression được xác minh trên
-  default branch.
-- GitHub Actions run `29664983856` tại merge commit `900f9fc` pass 7/7; WCAG
-  text-contrast light/dark regression được xác minh trên default branch.
-- GitHub Actions run `29675120583` tại merge commit `37619f7` pass 7/7; edit
-  operation-completion fix được xác minh cùng Windows/Linux artifact runtime,
-  Android, Apple, Web, quality và secret history gate.
-- GitHub Actions run `29702816811` tại merge commit `6634cf8` pass 7/7; source
-  HPKE/device-wrap, NPM deploy/timer contract và toàn bộ platform/quality/secret
-  gate được xác minh trên default branch sau PR #13.
-- GitHub Actions run `29721415906` tại merge commit `8ed7900` pass 7/7; NPM
-  Docker file-secret rollout, backup/restore fix và toàn bộ platform/quality/
-  secret gate được xác minh trên default branch sau PR #15.
-- Tag CI run `29693607103` tại `v1.1.0-preview.3`/`87d546c` pass 7/7. Release
-  public có pre-release flag, không phải draft, đúng năm asset; Windows SHA-256
-  `7b303749…c4c8332`, Linux SHA-256 `4b0f09c1…fd838f2` đã được tải lại không auth
-  và xác minh bằng manifest công khai.
-- PR #16 merge commit `7f17cce` bổ sung Android signed release contract. Tag CI
-  `29761935925` tại `v1.1.0-preview.4` pass 7/7, gồm signed APK/checksum, exact
-  fingerprint pin và cleanup keystore tạm. Publisher run `29762594069` pass.
-- `v1.1.0-preview.4` public có đúng bảy asset. Public verifier local và hosted run
-  `29762712975` tải không Authorization, xác minh GitHub digest, checksum/manifest,
-  Android signer fingerprint, Debian và PE32 signature đều pass.
-- `.github/dependabot.yml` kiểm tra Pub và GitHub Actions hằng tuần.
-- `release-preview.yml` cùng `github_preview_release.sh` fail closed theo
-  tag/version/successful tag CI. Ba preview lịch sử giữ Windows/Linux allowlist;
-  source mới bắt buộc thêm signed Android APK/checksum và exact certificate pin.
-  Workflow gốc đã có trên default branch từ merge commit `893b5be`; Android
-  extension đã merge tại `7f17cce` và pass tag/public evidence ở Preview 4.
-- `verify-release.yml` và `verify_github_preview_release.sh` đóng gate sau upload
-  bằng public API/download không Authorization. Lượt hiện tại xác minh
-  `v1.1.0-preview.4`, exact commit/run/bảy asset, API digest, checksum/manifest,
-  Android signer pin và Debian/PE32 signature. Manual hosted run `29762712975`
-  pass; sai expected commit/tag fail closed.
-- GitHub Private Vulnerability Reporting đã bật; `.github/SECURITY.md` hướng dẫn
-  gửi báo cáo riêng tư và cấm đưa credential vào public issue.
-- `scripts/agent/check.sh full` là quality gate canonical; change set P0 pass 187
-  test cùng generated/format/analyzer/platform/release/operations và hai PostgreSQL
-  contract. Retirement còn có concurrent writer regression; protocol cutoff có
-  concurrent row-lock/confirm regression.
-  Gate analyze/format cả device integration source nhưng không tự boot virtual device.
-- `scripts/supabase/` giữ remote contract, backup, health, restore và off-host harness.
-- Scheduled restore contract nằm trong full gate; production systemd timer/health
-  đã pass với atomic evidence và shared backup lock.
-- Web rollback regression nằm trong full gate; production live drill đã preflight
-  shadow, rollback→forward và giữ current image healthy với evidence 0600.
-- `scripts/agent/linux_e2ee_operator.sh` giữ service-role key ngoài repository và
-  ngoài client process, tạo isolated user, chạy Flutter E2EE trong Ubuntu/private
-  keyring rồi xóa user và xác minh cleanup. Đây là protected operator gate, không
-  đưa production service-role key vào GitHub Actions.
+- Self-hosted Supabase pin có 11 core container và PostgreSQL 17; public HTTPS,
+  Studio Basic Auth, RLS/RPC/device-wrap/active-session contract đã deploy.
+- Final data audit sau terminal migration: legacy plaintext table absent; test
+  user/snapshot/device rows đã cleanup.
+- Backup có checksum, full restore rehearsal, encrypted off-host copy, health và
+  scheduled restore timer.
+- Nginx Proxy Manager đã dùng file secrets và pinned images; Hyper
+  Authenticator/Supabase critical route matrix pass.
 
-Chỉ đổi trạng thái ở file này khi có test hoặc runtime evidence tái hiện được.
+Chi tiết command, rollback và evidence retention:
+
+- [Supabase production operations](operations/SUPABASE_PRODUCTION_OPERATIONS.md)
+- [Supabase E2EE rollout](operations/SUPABASE_E2EE_ROLLOUT.md)
+- [Supabase recovery rollout](operations/SUPABASE_RECOVERY_ROLLOUT.md)
+- [Legacy backup/restore note](operations/SUPABASE_LEGACY_BACKUP.md)
+- [Web deployment](../web-deployment/README.md)
+
+## Khoảng trống ưu tiên
+
+1. **Portability:** chưa import Google Authenticator migration QR, multi-account
+   export hoặc encrypted backup file. Đây là P0 product tiếp theo.
+2. **Device exclusion:** session revoke chưa phải cryptographic exclusion hoặc
+   remote wipe; cần UX và independent security review.
+3. **Thiết bị thật:** camera, biometric, secure storage, TalkBack/VoiceOver,
+   two-device conflict/recovery chưa có đủ representative evidence.
+4. **Signing:** Apple và Windows credential chưa có; macOS/iOS/Windows stable bị
+   chặn tương ứng.
+5. **Recovery email:** SMTP mailbox delivery và expired/reused link E2E chưa xác
+   minh.
+6. **Legal/support:** privacy policy/support/security contact cần URL công khai
+   trước stable/store.
+7. **Operations SLA:** alert ngoài host chưa có; off-host backup còn phụ thuộc máy
+   Mac; load check hiện tại chưa phải production SLA.
+8. **Web trust boundary:** browser local storage yếu hơn native; không bật E2EE
+   backup cho tới khi có threat model riêng.
+9. **Infrastructure ownership:** Supabase/NPM operations harness còn cùng
+   repository. Gate đã tách `infra`; physical move sang repository vận hành được
+   hoãn tới khi owner có lifecycle/deployment repository riêng.
+
+## Gate canonical
+
+    scripts/agent/check.sh docs
+    scripts/agent/check.sh quick
+    scripts/agent/check.sh app
+    scripts/agent/check.sh backend
+    scripts/agent/check.sh release
+    scripts/agent/check.sh infra
+    scripts/agent/check.sh full
+
+`full` tổng hợp `app + backend + release + infra`. Emulator/simulator, browser
+runtime, protected production operator test và signing gate vẫn chạy riêng theo
+platform/runbook.
+
+Chỉ cập nhật trạng thái khi có source hoặc test/runtime evidence tái hiện được.

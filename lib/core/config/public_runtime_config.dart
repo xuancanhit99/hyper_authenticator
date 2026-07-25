@@ -5,8 +5,8 @@ import 'dart:convert';
 /// This validator deliberately accepts only Supabase publishable keys or the
 /// legacy `anon` JWT. It never includes a key value in an error message.
 class PublicRuntimeConfig {
-  final Uri supabaseUrl;
-  final String supabasePublishableKey;
+  final Uri? supabaseUrl;
+  final String? supabasePublishableKey;
   final Uri? passwordRecoveryUrl;
 
   const PublicRuntimeConfig._({
@@ -15,6 +15,9 @@ class PublicRuntimeConfig {
     required this.passwordRecoveryUrl,
   });
 
+  bool get cloudEnabled =>
+      supabaseUrl != null && supabasePublishableKey != null;
+
   static PublicRuntimeConfig validate({
     required String supabaseUrl,
     required String supabasePublishableKey,
@@ -22,6 +25,33 @@ class PublicRuntimeConfig {
     required bool allowInsecurePlaintextSync,
     required bool releaseMode,
   }) {
+    if (allowInsecurePlaintextSync) {
+      throw StateError(
+        'ALLOW_INSECURE_PLAINTEXT_SYNC đã bị loại bỏ và phải luôn là false',
+      );
+    }
+
+    final hasSupabaseUrl = supabaseUrl.isNotEmpty;
+    final hasPublishableKey = supabasePublishableKey.isNotEmpty;
+    final hasRecoveryUrl = passwordRecoveryUrl.isNotEmpty;
+    if (!hasSupabaseUrl && !hasPublishableKey && !hasRecoveryUrl) {
+      return const PublicRuntimeConfig._(
+        supabaseUrl: null,
+        supabasePublishableKey: null,
+        passwordRecoveryUrl: null,
+      );
+    }
+    if (hasSupabaseUrl != hasPublishableKey) {
+      throw StateError(
+        'SUPABASE_URL và SUPABASE_PUBLISHABLE_KEY phải được cấu hình cùng nhau',
+      );
+    }
+    if (!hasSupabaseUrl && hasRecoveryUrl) {
+      throw StateError(
+        'PASSWORD_RECOVERY_URL chỉ hợp lệ khi cloud được cấu hình',
+      );
+    }
+
     final parsedSupabaseUrl = _parseHttpsUrl(
       name: 'SUPABASE_URL',
       value: supabaseUrl,
@@ -43,15 +73,10 @@ class PublicRuntimeConfig {
             originOnly: false,
           );
 
-    if (releaseMode && parsedRecoveryUrl == null) {
-      throw StateError('Release bắt buộc cấu hình PASSWORD_RECOVERY_URL');
+    if (parsedRecoveryUrl == null) {
+      final environment = releaseMode ? 'Release cloud' : 'Cloud';
+      throw StateError('$environment bắt buộc cấu hình PASSWORD_RECOVERY_URL');
     }
-    if (allowInsecurePlaintextSync) {
-      throw StateError(
-        'ALLOW_INSECURE_PLAINTEXT_SYNC đã bị loại bỏ và phải luôn là false',
-      );
-    }
-
     return PublicRuntimeConfig._(
       supabaseUrl: parsedSupabaseUrl,
       supabasePublishableKey: supabasePublishableKey,

@@ -16,10 +16,8 @@ abstract class AuthRepository {
   });
 
   Future<Either<Failure, UserEntity>> signUpWithPassword({
-    required String name, // Keep name for metadata
     required String email,
     required String password,
-    // String? phone, // REMOVE phone from initial sign up
   });
 
   Future<Either<Failure, void>> recoverPassword(String email);

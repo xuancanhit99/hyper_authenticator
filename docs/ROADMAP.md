@@ -1,132 +1,97 @@
 # Roadmap
 
-Roadmap ưu tiên theo rủi ro. Checkbox chỉ được đánh dấu khi có source/runtime evidence.
+Roadmap ưu tiên theo giá trị của một ứng dụng authenticator và mức rủi ro dữ liệu.
+Checkbox chỉ được đánh dấu khi có source/runtime evidence. Chi tiết lịch sử nằm
+trong Git, không lặp lại ở tài liệu active.
 
-## Baseline đã hoàn thành
+## Product core đã có
 
-- [x] Flutter/Dart/dependency/native toolchain hiện đại hóa.
-- [x] Compile-time public config; `.env` không bundle.
-- [x] CI đa nền tảng, docs/generated/format/analyze/test gate.
-- [x] Apache-2.0 cho source.
-- [x] Loại font/logo bên thứ ba không rõ provenance khỏi artifact.
-- [x] Local vault versioned copy-on-write, rollback và compaction.
-- [x] TOTP field round-trip, validation, countdown theo period.
-- [x] Logout giữ data; app lock fail closed/relock.
-- [x] Supabase self-hosted pin, HTTPS/proxy/Studio/RLS hardening.
-- [x] Recovery Web token-hash contract.
-- [x] AES-256-GCM encrypted snapshot, recovery key onboarding/import.
-- [x] Atomic optimistic revision RPC và explicit conflict UX.
-- [x] Client plaintext sync source/runtime path bị loại bỏ; poison config bị từ
-  chối ở mọi build.
-- [x] Daily verified backup, restore rehearsal, encrypted off-host copy và health timer.
-- [x] Primary UI tiếng Việt và Web document language `vi`; giữ thuật ngữ technical
-  khi cần độ chính xác.
+- [x] TOTP local không cần tài khoản, network hoặc Supabase configuration.
+- [x] Parse/validate `otpauth://totp`, Base32, SHA1/SHA256/SHA512, 6–8 chữ số và
+  period tùy chỉnh.
+- [x] Thêm bằng camera, ảnh QR hoặc thủ công theo capability platform.
+- [x] Tìm kiếm, sửa, xóa, sao chép mã và countdown theo period.
+- [x] Local vault versioned copy-on-write, rollback, compaction và logout giữ data.
+- [x] App lock fail closed, relock theo lifecycle và Privacy Shield opaque.
+- [x] UI tiếng Việt, theme system/light/dark, shell navigation giữ state.
+- [x] Backup cloud E2EE tùy chọn trên native, recovery key và conflict resolution.
+- [x] GitHub Preview cho signed Android APK, Windows installer và Linux package.
 
-## Ưu tiên P0 — Duy trì GitHub Releases làm kênh phân phối chính
+## P0 — Portability an toàn
 
-- [x] Chấp nhận contract GitHub Preview unsigned cho Windows x64/Linux amd64.
-- [x] Harness bắt buộc tag/version/tag-CI/checksum/asset allowlist và pre-release flag.
-- [x] Publish `v1.1.0-preview.1` và xác minh lại public download/checksum.
-- [x] Công bố private security reporting trên GitHub.
-- [x] Chốt app store và SMTP là milestone hoãn, không chặn GitHub Preview.
-- [x] Phát hành `v1.1.0-preview.4` từ tested tag và xác minh public download.
-- [x] Chốt Android app-signing key dùng lâu dài và pin public certificate SHA-256.
-- [x] Thêm signed APK vào GitHub Releases sau signed build/runtime/upgrade gate;
-  không cần chờ Play Store.
-- [ ] Thêm macOS package sau Developer ID/notarization/runtime gate; không phát
-  hành unsigned compile artifact.
+Đây là khoảng trống sản phẩm lớn nhất so với Google Authenticator.
 
-Exit criteria: GitHub pre-release public có Android/Windows/Linux artifact đúng
-contract, tag CI xanh, checksum tải lại khớp và release note nêu signing/SMTP/platform risk.
+- [ ] Import Google Authenticator migration QR, gồm multi-part batch, duplicate
+  detection và preview trước commit.
+- [ ] Export nhiều account theo format có version; yêu cầu local reauthentication,
+  cảnh báo secret exposure và timeout.
+- [ ] Import/export chuẩn `otpauth` phổ biến mà không log, đưa secret vào semantics
+  hoặc ghi đè vault khi một record lỗi.
+- [ ] Backup file encrypted có password/KDF, schema version, integrity check và
+  atomic import rollback.
+- [ ] Regression interoperability với Google Authenticator fixtures
+  `TEST_ONLY`, không dùng credential thật.
 
-## Ưu tiên P0 — Đóng security/data-contract gap
+Exit criteria: round-trip giữ đủ issuer/name/algorithm/digits/period; cancel hoặc
+payload lỗi không mutate vault; export chỉ mở sau reauthentication.
 
-- [x] Thêm fail-closed terminal migration: chỉ drop legacy `synced_accounts` khi
-  bảng rỗng, abort và giữ nguyên row/table nếu còn data.
-- [x] Chặn update encrypted snapshot qua protocol 0; device protocol publish khóa
-  exact revision/generation row bằng `FOR UPDATE` trước khi commit.
-- [x] Xác minh current-generation membership proof cho toàn bộ active device trước
-  khi tạo bất kỳ wrap generation mới nào.
-- [x] Thêm configured Flutter Web release artifact smoke bằng headless Chrome và
-  negative gate cho build thiếu runtime config.
-- [x] Làm lại Privacy Shield bằng Material 3 opaque, responsive light/dark và có
-  regression ở viewport nhỏ/text scale 200%.
-- [x] Deploy hai terminal P0 migration lên production sau fresh full backup,
-  zero-row preflight, remote contract/health và restore evidence.
+## P0 — Bảo toàn dữ liệu và security
 
-Exit criteria: full client/SQL/docs gate pass; production chỉ được đánh dấu hoàn
-tất sau backup + apply + post-gate có evidence, không suy ra từ local migration.
+- [ ] Independent application/cryptography review cho E2EE/device-wrap.
+- [ ] User-facing cryptographic device exclusion. Session revoke hiện không phải
+  remote wipe và generic rotation vẫn giữ active device có proof hợp lệ.
+- [ ] Physical two-device conflict/recovery test trên Android/iOS đại diện.
+- [ ] Threat model và native runtime evidence cho app-switcher snapshot, active
+  screenshot/recording và clipboard history.
+- [ ] Formal retention/delete-all contract cho local account, cloud snapshot và
+  Supabase identity.
 
-## Ưu tiên P1 — Reliability và operations
+## P1 — UX authenticator
 
-- [ ] Đưa encrypted off-host backup lên backup host/object storage độc lập Mac cá nhân.
-- [ ] Alerting + dashboard/SLO cho Auth latency, container health, disk, backup age.
-- [ ] Staging upgrade rehearsal định kỳ theo official Supabase pin.
-- [x] Scheduled restore drill với retry, shared backup lock, atomic evidence và
-  health freshness gate.
-- [x] Low-concurrency public Auth load có budget và acceptance threshold.
-- [ ] Long-duration soak và production-scale workload có budget riêng.
-- [x] Flutter Web live rollback→forward drill với auto-restore và exact artifact gate.
-- [ ] Incident response exercise và non-Web release rollback drill; periodic
-  database restore và Web rollback đã tự động hóa riêng.
+- [ ] Account grouping, pin/favorite và reorder không làm đổi TOTP identity.
+- [ ] Batch select cho delete/export với destructive confirmation an toàn.
+- [ ] QR scan quality: torch, zoom, duplicate feedback và permission recovery trên
+  thiết bị thật.
+- [ ] TalkBack/VoiceOver, reduced-motion và full keyboard/focus audit trên platform
+  đại diện.
+- [ ] Performance benchmark cho 100/500 account; không regenerate mã ngoài time
+  window cần thiết.
+- [ ] Optional issuer icon chỉ khi provenance/license rõ ràng; không network-track
+  dịch vụ người dùng.
 
-## Ưu tiên P1 — Product/security
+Không ưu tiên push approval, password manager hoặc proprietary MFA protocol trong
+giai đoạn này; chúng làm đổi product/security boundary vượt khỏi TOTP authenticator.
 
-- [x] Device registry bind server-side và targeted auth-session revocation.
-- [x] Device-specific HPKE key wrap và exact wrap-set publication primitive đã
-  deploy production; physical two-device và independent review vẫn là gate riêng.
-- [ ] Thêm user-facing cryptographic device exclusion. Targeted/bulk revoke hiện
-  chỉ thu hồi Supabase session; generic key rotation vẫn giữ mọi active device có
-  membership proof hợp lệ và không phải remote wipe.
-- [ ] Trusted-device hoặc QR recovery transfer.
-- [ ] Export/delete account/data UX và retention policy.
-- [ ] Localization đa ngôn ngữ.
-- [x] Automated accessibility baseline cho Auth/accounts/add-account và Settings
-  recovery/conflict/session dialog; TOTP secret key/raw recovery key không vào
-  semantics tree.
-- [x] Automated WCAG text contrast light/dark và core keyboard traversal cho
-  Auth/accounts/add-account/sensitive Settings dialog.
-- [x] Lifecycle privacy shield che router ở mọi trạng thái khác `resumed`, dùng
-  Material 3 opaque responsive và có regression cho focus, interaction, semantics,
-  light/dark cùng text scale 200%.
-- [ ] TalkBack/VoiceOver runtime, full Settings/main-navigation keyboard audit,
-  reduced-motion, native app-switcher snapshot và active screenshot/recording
-  review trên platform đại diện.
-- [ ] Independent cryptographic/application security review.
+## P1 — Phát hành
 
-## Ưu tiên P2 — Platform expansion
+- [ ] macOS Developer ID, hardened runtime, notarization, staple và runtime smoke.
+- [ ] iOS distribution certificate/profile và TestFlight/App Store khi owner sẵn
+  sàng.
+- [ ] Windows code signing và Windows Hello physical-device evidence.
+- [ ] Linux KDE/physical desktop và signed package channel.
+- [ ] Host privacy policy, support contact và security contact ở URL công khai.
+- [ ] SMTP mailbox delivery cùng expired/reused recovery-link E2E.
 
-- [x] Windows NSIS unsigned candidate + hosted install/launch/metadata-upgrade/
-  uninstall data-retention smoke.
-- [x] Windows historical-release upgrade từ source `1.0.0+9` sang current COW v2.
-- [ ] Windows code signing và physical-device/Windows Hello.
-- [x] Linux configured release + private libsecret/keyring headless smoke.
-- [x] Linux `.deb` dependency/checksum + clean-container package transition smoke.
-- [x] Linux authenticated E2EE debug runtime với isolated production test user.
-- [x] Linux hosted amd64 historical upgrade + Ubuntu/Debian X11/Wayland matrix.
-- [ ] Linux KDE login-unlock/physical desktop, signed package runtime và release channel.
-- [ ] Quyết định Web encrypted sync sau browser threat model; mặc định vẫn tắt.
-- [ ] Đánh giá alternative scanner nếu upstream Built-in Kotlin migration chậm.
+## P1 — Reliability/operations
 
-## Ưu tiên P2 — Signed GitHub Release và app store (đang hoãn)
+- [ ] Off-host backup không phụ thuộc máy Mac cá nhân.
+- [ ] External alerting cho Auth latency, disk, container health, backup age và
+  restore drill.
+- [ ] Staging Supabase upgrade rehearsal theo upstream stable pin.
+- [ ] Incident-response exercise và non-Web release rollback drill.
+- [ ] Long-duration workload budget; current low-concurrency check chưa phải SLA.
 
-- [x] Owner tạo Android app-signing keystore ngoài repository; source pin public
-  fingerprint và có local/CI signing harness fail closed.
-- [x] Build signed APK, xác minh signer và pass clean-install/vault-retaining
-  upgrade trên Android AVD.
-- [x] Upload đủ bốn GitHub encrypted signing secrets sau khi owner xác nhận backup.
-- [x] Chạy tag CI và public signed APK; public verifier xác minh đúng signer. Nếu mở
-  Play Store, reuse app signing key để giữ cross-channel upgrade rồi tách upload
-  key cho AAB/internal track.
-- [ ] Owner cung cấp Apple certificate/profile; macOS GitHub package cần
-  notarization, còn iOS TestFlight/App Store là milestone riêng.
-- [ ] Windows code-signing certificate và signed installer verification.
-- [ ] Host privacy policy + support contact ở URL công khai.
-- [ ] Mailbox test SMTP delivery và expired recovery link.
-- [ ] Device smoke: Keychain/Keystore, biometric, camera, recovery, two-device conflict.
-- [ ] Cấu hình external alert channel cho systemd health/backup failure.
+## P2 — Cloud và Web
+
+- [ ] Tách rõ advanced device/session administration khỏi Settings phổ thông; chỉ
+  đưa lại UI khi semantics revoke/exclusion đủ chính xác.
+- [ ] Đánh giá trusted-device transfer sau portability P0.
+- [ ] Chỉ xem xét Web E2EE sau browser key-storage threat model; mặc định vẫn tắt.
+- [ ] Tách self-hosted infrastructure harness/runbook sang repository vận hành khi
+  owner đã có nơi chứa secret rotation, monitoring và deployment lifecycle riêng.
 
 ## Quy tắc chọn việc
 
-Credential exposure, data loss, auth bypass và unrecoverable backup luôn ưu tiên
-trước convenience. Mọi storage/schema/crypto change phải có migration, rollback và test.
+Credential exposure, mất dữ liệu, auth bypass và backup không thể khôi phục luôn
+ưu tiên trước convenience. Storage/schema/crypto change phải có migration,
+rollback và regression test. Tính năng dự kiến không được mô tả như đã triển khai.

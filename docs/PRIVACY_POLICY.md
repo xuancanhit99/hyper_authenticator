@@ -20,10 +20,10 @@ TOTP account được lưu trong platform secure storage của thiết bị/brow
 Ứng dụng không gửi plaintext TOTP secret tới analytics hoặc log. Logout Supabase
 không tự động xóa local authenticator vault.
 
-## Encrypted cloud sync tùy chọn
+## Backup cloud mã hóa đầu cuối tùy chọn
 
-Trên Android, iOS, macOS, Windows và Linux, người dùng có thể bật encrypted cloud
-sync. Trước khi rời thiết bị, account snapshot được mã hóa AES-256-GCM. Backend lưu
+Trên Android, iOS, macOS, Windows và Linux, người dùng có thể bật backup cloud
+E2EE. Trước khi rời thiết bị, account snapshot được mã hóa AES-256-GCM. Backend lưu
 ciphertext, wrapped key, revision và timestamp; backend không nhận recovery key
 hoặc DEK plaintext.
 
@@ -32,7 +32,7 @@ Client hiện tại không còn source/runtime path để upload hoặc download
 production sau backup và zero-row preflight; migration lấy exclusive lock và fail
 closed nếu còn row, nên không có PostgREST plaintext table trong schema hiện tại.
 
-Cloud sync hiện tắt trên Web. Password reset không khôi phục E2EE vault; người dùng
+Backup cloud hiện tắt trên Web. Password reset không khôi phục E2EE vault; người dùng
 phải giữ recovery key hoặc thiết bị còn key. Mất cả hai có thể làm mất quyền khôi phục.
 
 Revoke một hoặc nhiều Supabase session chỉ thu hồi quyền truy cập server của phiên
@@ -45,7 +45,7 @@ user-facing cryptographic exclusion theo từng device.
 - tạo mã TOTP theo yêu cầu người dùng;
 - bảo vệ local access bằng OS authentication khi được bật;
 - đăng ký/đăng nhập/khôi phục Supabase account;
-- đồng bộ encrypted snapshot khi người dùng chủ động bật;
+- backup encrypted snapshot khi người dùng chủ động bật;
 - bảo mật, chống lạm dụng, backup và vận hành dịch vụ.
 
 ## Chia sẻ và bên xử lý

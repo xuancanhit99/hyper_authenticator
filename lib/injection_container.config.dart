@@ -93,7 +93,6 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i828.AppConfig>(() => _i828.AppConfig.fromEnvironment());
     gh.lazySingleton<_i364.DeviceKeyCipher>(() => _i364.DeviceKeyCipher());
     gh.lazySingleton<_i981.VaultCipher>(() => _i981.VaultCipher());
-    gh.lazySingleton<_i454.SupabaseClient>(() => registerModule.supabaseClient);
     gh.lazySingleton<_i152.LocalAuthentication>(
       () => registerModule.localAuthentication,
     );
@@ -124,6 +123,9 @@ extension GetItInjectableX on _i174.GetIt {
         gh<_i558.FlutterSecureStorage>(),
         gh<_i981.VaultCipher>(),
       ),
+    );
+    gh.lazySingleton<_i454.SupabaseClient>(
+      () => registerModule.supabaseClient(gh<_i828.AppConfig>()),
     );
     gh.lazySingleton<_i534.LocalAuthBloc>(
       () => _i534.LocalAuthBloc(
@@ -207,6 +209,9 @@ extension GetItInjectableX on _i174.GetIt {
     gh.factory<_i469.SessionSecurityBloc>(
       () => _i469.SessionSecurityBloc(gh<_i1015.AuthRepository>()),
     );
+    gh.lazySingleton<_i363.AuthBloc>(
+      () => _i363.AuthBloc(gh<_i1015.AuthRepository>()),
+    );
     gh.lazySingleton<_i467.AccountsBloc>(
       () => _i467.AccountsBloc(
         getAccounts: gh<_i572.GetAccounts>(),
@@ -222,12 +227,6 @@ extension GetItInjectableX on _i174.GetIt {
         gh<_i815.DeviceKeyMaterialStore>(),
         gh<_i7.DeviceKeyRepository>(),
         gh<_i364.DeviceKeyCipher>(),
-      ),
-    );
-    gh.lazySingleton<_i363.AuthBloc>(
-      () => _i363.AuthBloc(
-        gh<_i1015.AuthRepository>(),
-        gh<_i460.SharedPreferences>(),
       ),
     );
     gh.lazySingleton<_i564.EncryptedVaultSyncUseCase>(

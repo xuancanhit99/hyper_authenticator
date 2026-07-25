@@ -20,7 +20,6 @@ class LocalAuthBloc extends Bloc<LocalAuthEvent, LocalAuthState> {
     : super(LocalAuthInitial()) {
     on<CheckLocalAuth>(_onCheckLocalAuth);
     on<Authenticate>(_onAuthenticate);
-    on<RelockAppRequested>(_onRelockAppRequested);
     on<ResetAuthStatus>(_onResetAuthStatus);
   }
 
@@ -86,34 +85,6 @@ class LocalAuthBloc extends Bloc<LocalAuthEvent, LocalAuthState> {
       );
     } catch (e) {
       emit(LocalAuthError('Đã xảy ra lỗi không mong muốn khi xác thực.'));
-    }
-  }
-
-  // Handler for the new event to force re-locking
-  Future<void> _onRelockAppRequested(
-    RelockAppRequested event,
-    Emitter<LocalAuthState> emit,
-  ) async {
-    if (!PlatformCapabilities.supportsLocalAuthentication) {
-      emit(LocalAuthSuccess());
-      return;
-    }
-
-    try {
-      final bool canAuthenticateWithBiometrics = await auth.canCheckBiometrics;
-      final bool canAuthenticate =
-          canAuthenticateWithBiometrics || await auth.isDeviceSupported();
-
-      final bool isBiometricEnabled =
-          sharedPreferences.getBool(_biometricPrefKey) ?? false;
-
-      if (canAuthenticate && isBiometricEnabled) {
-        emit(LocalAuthRequired());
-      } else {
-        emit(LocalAuthSuccess());
-      }
-    } catch (e) {
-      emit(LocalAuthError('Không thể khóa lại ứng dụng: ${e.toString()}'));
     }
   }
 
