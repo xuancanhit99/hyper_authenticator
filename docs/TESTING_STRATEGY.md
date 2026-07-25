@@ -57,6 +57,12 @@ preparation, cùng các nhóm sau:
   khi bootstrap trực tiếp từ `/settings`; device integration lifecycle smoke
   cũng khóa shell không phát sinh duplicate `GlobalKey` khi lock redirect liên tiếp;
 - TOTP URI/validator, countdown nhiều period và lifecycle resume;
+- Google migration version 1 wire fixture `TEST_ONLY`, SHA1/SHA256, 6/8 digits,
+  label normalization, multi-part out-of-order/duplicate/mixed batch, scalar
+  proto3 default, signed batch ID, account limit và HOTP fail-closed;
+- Google import preview confirm/cancel, progress, secret không render/semantics,
+  default focus Hủy, viewport 320×640/text scale 200%; storage regression khóa
+  exact duplicate, một COW commit và commit-failure không partial import;
 - account action dùng menu Material có keyboard/semantics; primary UI không còn
   xuất raw `otpauth` QR chưa được tái xác thực;
 - local vault migration, concurrent mutation, corruption rollback, atomic replace

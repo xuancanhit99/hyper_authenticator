@@ -111,6 +111,13 @@ dừng trước DI để không tự chọn hoặc ghi đè dữ liệu.
 
 - Manual entry dùng default SHA1/6 digits/30 giây.
 - QR parser giữ algorithm, digits và period không mặc định.
+- Google Authenticator migration parser đọc bounded protobuf version 1, thu
+  multi-part theo batch metadata kể cả out-of-order, reject batch trộn/HOTP/MD5
+  hoặc enum lạ. Collector chỉ ở memory và giới hạn 100 account.
+- Khi đủ batch, dialog preview chỉ hiển thị issuer/account name cùng tham số TOTP;
+  Hủy không mutate. Xác nhận phát một batch import đã validate; local data source
+  dedupe trong critical section và append bằng đúng một COW commit, không replace
+  account hiện có.
 - Camera scanner render loading state có hướng dẫn permission; lỗi permission hoặc
   unsupported được localize, cho retry hoặc quay lại manual entry. Không hiển thị
   raw plugin error cho người dùng.

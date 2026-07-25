@@ -4,6 +4,7 @@ import 'package:hyper_authenticator/core/error/failures.dart';
 import 'package:hyper_authenticator/features/auth/domain/entities/user_entity.dart';
 import 'package:hyper_authenticator/features/auth/domain/repositories/auth_repository.dart';
 import 'package:hyper_authenticator/features/authenticator/domain/entities/authenticator_account.dart';
+import 'package:hyper_authenticator/features/authenticator/domain/entities/account_import_summary.dart';
 import 'package:hyper_authenticator/features/authenticator/domain/repositories/authenticator_repository.dart';
 import 'package:hyper_authenticator/features/sync/domain/entities/authenticator_device_key.dart';
 import 'package:hyper_authenticator/features/sync/domain/entities/encrypted_sync_result.dart';
@@ -1043,6 +1044,11 @@ class _MemoryAuthenticatorRepository implements AuthenticatorRepository {
     required int digits,
     required int period,
   }) async => throw UnimplementedError();
+
+  @override
+  Future<Either<Failure, AccountImportSummary>> importAccounts(
+    List<AuthenticatorAccount> accounts,
+  ) async => throw UnimplementedError();
 
   @override
   Future<Either<Failure, Unit>> deleteAccount(String id) async =>

@@ -33,6 +33,7 @@ import 'features/authenticator/domain/usecases/delete_account.dart' as _i523;
 import 'features/authenticator/domain/usecases/generate_totp_code.dart'
     as _i216;
 import 'features/authenticator/domain/usecases/get_accounts.dart' as _i572;
+import 'features/authenticator/domain/usecases/import_accounts.dart' as _i125;
 import 'features/authenticator/domain/usecases/update_account.dart' as _i827;
 import 'features/authenticator/presentation/bloc/accounts_bloc.dart' as _i467;
 import 'features/authenticator/presentation/bloc/local_auth_bloc.dart' as _i534;
@@ -187,8 +188,20 @@ extension GetItInjectableX on _i174.GetIt {
     gh.factory<_i572.GetAccounts>(
       () => _i572.GetAccounts(gh<_i608.AuthenticatorRepository>()),
     );
+    gh.factory<_i125.ImportAccounts>(
+      () => _i125.ImportAccounts(gh<_i608.AuthenticatorRepository>()),
+    );
     gh.lazySingleton<_i827.UpdateAccount>(
       () => _i827.UpdateAccount(gh<_i608.AuthenticatorRepository>()),
+    );
+    gh.lazySingleton<_i467.AccountsBloc>(
+      () => _i467.AccountsBloc(
+        getAccounts: gh<_i572.GetAccounts>(),
+        addAccount: gh<_i356.AddAccount>(),
+        deleteAccount: gh<_i523.DeleteAccount>(),
+        updateAccount: gh<_i827.UpdateAccount>(),
+        importAccounts: gh<_i125.ImportAccounts>(),
+      ),
     );
     gh.lazySingleton<_i1015.AuthRepository>(
       () => _i111.AuthRepositoryImpl(
@@ -211,14 +224,6 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i363.AuthBloc>(
       () => _i363.AuthBloc(gh<_i1015.AuthRepository>()),
-    );
-    gh.lazySingleton<_i467.AccountsBloc>(
-      () => _i467.AccountsBloc(
-        getAccounts: gh<_i572.GetAccounts>(),
-        addAccount: gh<_i356.AddAccount>(),
-        deleteAccount: gh<_i523.DeleteAccount>(),
-        updateAccount: gh<_i827.UpdateAccount>(),
-      ),
     );
     gh.lazySingleton<_i274.DeviceKeyCoordinator>(
       () => _i274.DeviceKeyEnrollmentUseCase(

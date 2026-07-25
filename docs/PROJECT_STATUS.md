@@ -29,6 +29,9 @@ session registry hoặc vault-key generation.
 - Parse `otpauth://totp`; validate Base32, SHA1/SHA256/SHA512, digits 6–8 và
   period dương; persisted field round-trip không tự về default.
 - Thêm account bằng camera, ảnh QR hoặc thủ công theo platform capability.
+- Import Google Authenticator migration QR version 1, gồm multi-part out-of-order,
+  preview, duplicate detection và một atomic append commit. HOTP/MD5/version lạ
+  fail closed.
 - Tìm kiếm, sửa, xóa, sao chép TOTP và countdown theo period.
 - Account actions dùng menu Material. Primary UI không còn xuất raw `otpauth` QR
   chưa được tái xác thực.
@@ -90,12 +93,12 @@ user-facing cryptographic device exclusion.
 
 | Gate | Kết quả |
 |---|---|
-| `flutter analyze` | Pass, 0 diagnostic ngày 23-07-2026 trên nhánh đơn giản hóa |
-| `scripts/agent/check.sh full` | Pass trạng thái cuối ngày 23-07-2026; tổng hợp bốn boundary dưới đây |
-| `scripts/agent/check.sh app` | Pass ngày 23-07-2026: docs/generated/format/analyze/platform và 189 Flutter test |
-| `scripts/agent/check.sh backend` | Pass ngày 23-07-2026: encrypted/device-wrap và plaintext-retirement PostgreSQL contract |
-| `scripts/agent/check.sh release` | Pass ngày 23-07-2026: GitHub Preview asset/public contract và Web rollback harness |
-| `scripts/agent/check.sh infra` | Pass ngày 23-07-2026: NPM secret/backup/deploy/route/rollback, Auth load pacing và restore drill contract |
+| `flutter analyze` | Pass, 0 diagnostic ngày 25-07-2026 trên nhánh import Google Authenticator |
+| `scripts/agent/check.sh full` | Pass ngày 25-07-2026; tổng hợp bốn boundary dưới đây |
+| `scripts/agent/check.sh app` | Pass ngày 25-07-2026: docs/generated/format/analyze/platform và 207 Flutter test |
+| `scripts/agent/check.sh backend` | Pass ngày 25-07-2026: encrypted/device-wrap và plaintext-retirement PostgreSQL contract |
+| `scripts/agent/check.sh release` | Pass ngày 25-07-2026: GitHub Preview asset/public contract và Web rollback harness |
+| `scripts/agent/check.sh infra` | Pass ngày 25-07-2026: NPM secret/backup/deploy/route/rollback, Auth load pacing và restore drill contract |
 | Local-only release smoke | Web release build + Chrome engine/semantics/local-vault shell pass; Android debug APK build pass |
 | Android Pixel AVD | Signed build, clean install, vault-retaining upgrade và E2EE flows đã pass; physical camera/biometric còn thiếu |
 | iOS Simulator | Local vault và authenticated E2EE flows đã pass; device/signing còn thiếu |
@@ -153,8 +156,9 @@ Chi tiết command, rollback và evidence retention:
 
 ## Khoảng trống ưu tiên
 
-1. **Portability:** chưa import Google Authenticator migration QR, multi-account
-   export hoặc encrypted backup file. Đây là P0 product tiếp theo.
+1. **Portability:** import Google Authenticator migration QR đã có source/fixture;
+   còn physical interoperability với Google Authenticator current, multi-account
+   export và encrypted backup file.
 2. **Device exclusion:** session revoke chưa phải cryptographic exclusion hoặc
    remote wipe; cần UX và independent security review.
 3. **Thiết bị thật:** camera, biometric, secure storage, TalkBack/VoiceOver,

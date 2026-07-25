@@ -5,9 +5,11 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hyper_authenticator/core/platform/platform_capabilities.dart';
 import 'package:hyper_authenticator/core/router/app_router.dart';
+import 'package:hyper_authenticator/features/authenticator/domain/services/google_authenticator_migration_parser.dart';
 import 'package:hyper_authenticator/features/authenticator/domain/services/totp_uri_parser.dart';
 import 'package:hyper_authenticator/features/authenticator/presentation/bloc/accounts_bloc.dart';
 import 'package:hyper_authenticator/features/authenticator/presentation/widgets/account_avatar.dart';
+import 'package:hyper_authenticator/features/authenticator/presentation/widgets/google_authenticator_import_preview_dialog.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 
@@ -22,6 +24,9 @@ class AddAccountPage extends StatefulWidget {
   static const scannerErrorKey = ValueKey<String>('scanner-error');
   static const scannerRetryKey = ValueKey<String>('scanner-retry');
   static const scannerManualEntryKey = ValueKey<String>('scanner-manual-entry');
+  static const migrationBatchProgressKey = ValueKey<String>(
+    'google-migration-batch-progress',
+  );
 
   @visibleForTesting
   final MobileScannerController? scannerController;
@@ -38,7 +43,10 @@ class _AddAccountPageState extends State<AddAccountPage> {
 
   bool _isScanning = false;
   bool _isSubmitting = false;
+  bool _isProcessingBarcode = false;
   late final MobileScannerController _scannerController;
+  final GoogleAuthenticatorMigrationBatchCollector _migrationCollector =
+      GoogleAuthenticatorMigrationBatchCollector();
 
   @override
   void initState() {
@@ -57,6 +65,7 @@ class _AddAccountPageState extends State<AddAccountPage> {
     _issuerController.dispose();
     _accountNameController.dispose();
     _secretController.dispose();
+    _migrationCollector.clear();
     unawaited(_scannerController.dispose());
     super.dispose();
   }
@@ -79,6 +88,7 @@ class _AddAccountPageState extends State<AddAccountPage> {
 
   void _showManualEntry() {
     unawaited(_scannerController.stop());
+    _migrationCollector.clear();
     if (!mounted) {
       return;
     }
@@ -95,24 +105,62 @@ class _AddAccountPageState extends State<AddAccountPage> {
   }
 
   void _handleBarcode(BarcodeCapture capture) {
-    unawaited(_scannerController.stop());
-    if (!mounted) {
+    unawaited(_processBarcode(capture));
+  }
+
+  Future<void> _processBarcode(BarcodeCapture capture) async {
+    if (_isProcessingBarcode || _isSubmitting) {
       return;
     }
-    setState(() {
-      _isScanning = false;
-    });
-
-    final String? code = capture.barcodes.isEmpty
-        ? null
-        : capture.barcodes.first.rawValue;
-    if (code == null || code.isEmpty) {
-      _showError('Không thể đọc dữ liệu trong mã QR.');
-      return;
-    }
-
+    _isProcessingBarcode = true;
     try {
+      await _scannerController.stop();
+      if (!mounted) {
+        return;
+      }
+      final String? code = capture.barcodes.isEmpty
+          ? null
+          : capture.barcodes.first.rawValue;
+      if (code == null || code.isEmpty) {
+        _showError('Không thể đọc dữ liệu trong mã QR.');
+        await _restartScannerAfterFeedback();
+        return;
+      }
+
+      if (GoogleAuthenticatorMigrationParser.isMigrationUri(code)) {
+        final payload = GoogleAuthenticatorMigrationParser.parse(code);
+        final progress = _migrationCollector.add(payload);
+        if (!progress.isComplete) {
+          if (mounted) {
+            setState(() {});
+            _showInfo(
+              'Đã quét ${progress.scannedParts}/${progress.totalParts} mã QR '
+              'trong đợt export.',
+            );
+          }
+          await _restartScannerAfterFeedback();
+          return;
+        }
+
+        if (mounted) {
+          setState(() => _isScanning = false);
+          final confirmed = await GoogleAuthenticatorImportPreviewDialog.show(
+            context,
+            progress.accounts!,
+          );
+          if (confirmed && mounted) {
+            _requestImport(progress.accounts!);
+          }
+        }
+        return;
+      }
+
       final account = TotpUriParser.parse(code);
+      _migrationCollector.clear();
+      if (!mounted) {
+        return;
+      }
+      setState(() => _isScanning = false);
       _requestAdd(
         AddAccountRequested(
           issuer: account.issuer,
@@ -123,13 +171,21 @@ class _AddAccountPageState extends State<AddAccountPage> {
           period: account.period,
         ),
       );
-      _issuerController.text = account.issuer;
-      _accountNameController.text = account.accountName;
-      _secretController.text = account.secretKey;
     } on FormatException catch (e) {
       _showError(e.message);
+      await _restartScannerAfterFeedback();
     } catch (_) {
       _showError('Đã xảy ra lỗi khi xử lý mã QR.');
+      await _restartScannerAfterFeedback();
+    } finally {
+      _isProcessingBarcode = false;
+    }
+  }
+
+  Future<void> _restartScannerAfterFeedback() async {
+    await Future<void>.delayed(const Duration(milliseconds: 400));
+    if (mounted && _isScanning && !_isSubmitting) {
+      await _scannerController.start();
     }
   }
 
@@ -159,7 +215,15 @@ class _AddAccountPageState extends State<AddAccountPage> {
     context.read<AccountsBloc>().add(event);
   }
 
-  void _finishSuccessfulAdd() {
+  void _requestImport(List<ParsedTotpAccount> accounts) {
+    if (_isSubmitting) {
+      return;
+    }
+    setState(() => _isSubmitting = true);
+    context.read<AccountsBloc>().add(ImportAccountsRequested(accounts));
+  }
+
+  void _finishSuccessfulOperation(String message) {
     if (!mounted) {
       return;
     }
@@ -179,7 +243,7 @@ class _AddAccountPageState extends State<AddAccountPage> {
     } else {
       Navigator.of(context).maybePop();
     }
-    messenger.showSnackBar(const SnackBar(content: Text('Đã thêm tài khoản.')));
+    messenger.showSnackBar(SnackBar(content: Text(message)));
   }
 
   void _showError(String message) {
@@ -187,6 +251,14 @@ class _AddAccountPageState extends State<AddAccountPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(message), backgroundColor: Colors.red),
       );
+    }
+  }
+
+  void _showInfo(String message) {
+    if (mounted) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(message)));
     }
   }
 
@@ -241,7 +313,14 @@ class _AddAccountPageState extends State<AddAccountPage> {
       body: BlocListener<AccountsBloc, AccountsState>(
         listener: (context, state) {
           if (state is AccountAddSuccess) {
-            _finishSuccessfulAdd();
+            _finishSuccessfulOperation('Đã thêm tài khoản.');
+          } else if (state is AccountImportSuccess) {
+            final duplicateCopy = state.duplicateCount == 0
+                ? ''
+                : ' Bỏ qua ${state.duplicateCount} tài khoản trùng.';
+            _finishSuccessfulOperation(
+              'Đã import ${state.importedCount} tài khoản.$duplicateCopy',
+            );
           } else if (state is AccountsError && _isSubmitting) {
             if (mounted) {
               setState(() => _isSubmitting = false);
@@ -260,15 +339,42 @@ class _AddAccountPageState extends State<AddAccountPage> {
   }
 
   Widget _buildScannerView() {
-    return MobileScanner(
-      controller: _scannerController,
-      onDetect: _handleBarcode,
-      placeholderBuilder: (_) => const _ScannerLoadingView(),
-      errorBuilder: (_, error) => _ScannerErrorView(
-        message: _scannerErrorMessage(error.errorCode),
-        onRetry: _retryScanner,
-        onManualEntry: _showManualEntry,
-      ),
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        MobileScanner(
+          controller: _scannerController,
+          onDetect: _handleBarcode,
+          placeholderBuilder: (_) => const _ScannerLoadingView(),
+          errorBuilder: (_, error) => _ScannerErrorView(
+            message: _scannerErrorMessage(error.errorCode),
+            onRetry: _retryScanner,
+            onManualEntry: _showManualEntry,
+          ),
+        ),
+        if (_migrationCollector.hasPendingBatch)
+          SafeArea(
+            child: Align(
+              alignment: Alignment.topCenter,
+              child: Card(
+                key: AddAccountPage.migrationBatchProgressKey,
+                margin: const EdgeInsets.all(16),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
+                  child: Text(
+                    'Google Authenticator: đã quét '
+                    '${_migrationCollector.scannedParts}/'
+                    '${_migrationCollector.totalParts} mã QR',
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              ),
+            ),
+          ),
+      ],
     );
   }
 

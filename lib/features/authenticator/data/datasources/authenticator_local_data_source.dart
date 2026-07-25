@@ -2,9 +2,19 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:hyper_authenticator/features/authenticator/domain/entities/account_import_summary.dart';
 import 'package:hyper_authenticator/features/authenticator/domain/entities/authenticator_account.dart';
 import 'package:injectable/injectable.dart';
 import 'package:uuid/uuid.dart';
+
+typedef _AccountFingerprint = ({
+  String issuer,
+  String accountName,
+  String secretKey,
+  String algorithm,
+  int digits,
+  int period,
+});
 
 abstract class AuthenticatorLocalDataSourceException implements Exception {}
 
@@ -20,6 +30,10 @@ abstract class AuthenticatorLocalDataSource {
   Future<List<AuthenticatorAccount>> getAccounts();
 
   Future<AuthenticatorAccount> saveAccount(AuthenticatorAccount account);
+
+  Future<AccountImportSummary> importAccounts(
+    List<AuthenticatorAccount> accounts,
+  );
 
   Future<void> deleteAccount(String id);
 
@@ -100,6 +114,64 @@ class AuthenticatorLocalDataSourceImpl implements AuthenticatorLocalDataSource {
           throw StorageWriteException();
         }
       });
+
+  @override
+  Future<AccountImportSummary> importAccounts(
+    List<AuthenticatorAccount> accounts,
+  ) => _serialized(() async {
+    try {
+      if (accounts.isEmpty ||
+          accounts.any((account) => account.id.isNotEmpty)) {
+        throw const FormatException('Import batch không hợp lệ.');
+      }
+
+      final current = await _ensureV2Snapshot();
+      final merged = List<AuthenticatorAccount>.from(current.accounts);
+      final fingerprints = current.accounts.map(_accountFingerprint).toSet();
+      final usedIds = current.accounts.map((account) => account.id).toSet();
+      final importedIds = <String>{};
+      var duplicateCount = 0;
+
+      for (final account in accounts) {
+        final fingerprint = _accountFingerprint(account);
+        if (!fingerprints.add(fingerprint)) {
+          duplicateCount++;
+          continue;
+        }
+
+        String id;
+        do {
+          id = uuid.v4();
+        } while (!usedIds.add(id));
+        importedIds.add(id);
+        merged.add(
+          AuthenticatorAccount(
+            id: id,
+            issuer: account.issuer,
+            accountName: account.accountName,
+            secretKey: account.secretKey,
+            algorithm: account.algorithm,
+            digits: account.digits,
+            period: account.period,
+          ),
+        );
+      }
+
+      if (importedIds.isNotEmpty) {
+        await _commitSnapshot(
+          previous: current,
+          accounts: merged,
+          changedAccountIds: importedIds,
+        );
+      }
+      return AccountImportSummary(
+        importedCount: importedIds.length,
+        duplicateCount: duplicateCount,
+      );
+    } catch (_) {
+      throw StorageWriteException();
+    }
+  });
 
   @override
   Future<void> deleteAccount(String id) => _serialized(() async {
@@ -185,6 +257,15 @@ class AuthenticatorLocalDataSourceImpl implements AuthenticatorLocalDataSource {
       changedAccountIds: legacyAccounts.map((account) => account.id).toSet(),
     );
   }
+
+  _AccountFingerprint _accountFingerprint(AuthenticatorAccount account) => (
+    issuer: account.issuer.trim(),
+    accountName: account.accountName.trim(),
+    secretKey: account.secretKey.replaceAll('=', '').toUpperCase(),
+    algorithm: account.algorithm.toUpperCase(),
+    digits: account.digits,
+    period: account.period,
+  );
 
   _V2Snapshot? _loadLatestCommittedSnapshot(Map<String, String> storedValues) {
     final commitEntries = storedValues.entries

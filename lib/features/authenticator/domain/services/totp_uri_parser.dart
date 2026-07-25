@@ -1,6 +1,7 @@
+import 'package:equatable/equatable.dart';
 import 'package:hyper_authenticator/features/authenticator/domain/services/totp_validator.dart';
 
-class ParsedTotpAccount {
+class ParsedTotpAccount extends Equatable {
   const ParsedTotpAccount({
     required this.issuer,
     required this.accountName,
@@ -16,6 +17,23 @@ class ParsedTotpAccount {
   final String algorithm;
   final int digits;
   final int period;
+
+  @override
+  List<Object?> get props => [
+    issuer,
+    accountName,
+    secretKey,
+    algorithm,
+    digits,
+    period,
+  ];
+
+  @override
+  String toString() =>
+      'ParsedTotpAccount('
+      'issuer: [REDACTED], accountName: [REDACTED], '
+      'secretKey: [REDACTED], algorithm: $algorithm, '
+      'digits: $digits, period: $period)';
 }
 
 abstract final class TotpUriParser {

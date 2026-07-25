@@ -35,6 +35,25 @@ asset không cần migration data.
 `toJson` vẫn giữ đủ field cho domain/persistence, vì vậy control log này không đổi
 serialized shape hoặc round-trip contract.
 
+## Google Authenticator migration payload — transient
+
+`otpauth-migration://offline?data=...` là Base64 của protobuf schema version 1
+được tái dựng, không phải persisted format hoặc API Google được công bố:
+
+- `MigrationPayload`: repeated OTP parameters, version, batch size/index/id;
+- OTP parameters: secret bytes, name, issuer, algorithm, digits, type và counter.
+
+Parser chỉ nhận TOTP, SHA1/SHA256/SHA512 và 6/8 digits. Secret bytes được chuyển
+sang Base32; period là 30 giây vì payload không có period. Prefix
+`issuer:account` trong name được normalize; issuer thực sự trống dùng nhãn hiển
+thị `Không xác định` và được user nhìn thấy trong preview.
+
+Payload và batch collector chỉ tồn tại trong memory. Sau preview/confirm, account
+được validate lại, nhận UUID mới và append vào local vault bằng một COW commit.
+Exact duplicate dùng issuer, account name, secret không padding, algorithm,
+digits và period canonical để bỏ qua. Summary chỉ chứa `importedCount` và
+`duplicateCount`, không mang account hoặc secret.
+
 ## Local vault v2
 
 Secure storage chứa immutable generation:

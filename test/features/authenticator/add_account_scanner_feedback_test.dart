@@ -5,17 +5,34 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:fpdart/fpdart.dart';
 import 'package:hyper_authenticator/core/error/failures.dart';
 import 'package:hyper_authenticator/core/theme/app_theme.dart';
+import 'package:hyper_authenticator/features/authenticator/domain/entities/account_import_summary.dart';
 import 'package:hyper_authenticator/features/authenticator/domain/entities/authenticator_account.dart';
 import 'package:hyper_authenticator/features/authenticator/domain/repositories/authenticator_repository.dart';
 import 'package:hyper_authenticator/features/authenticator/domain/usecases/add_account.dart';
 import 'package:hyper_authenticator/features/authenticator/domain/usecases/delete_account.dart';
 import 'package:hyper_authenticator/features/authenticator/domain/usecases/get_accounts.dart';
+import 'package:hyper_authenticator/features/authenticator/domain/usecases/import_accounts.dart';
 import 'package:hyper_authenticator/features/authenticator/domain/usecases/update_account.dart';
 import 'package:hyper_authenticator/features/authenticator/presentation/bloc/accounts_bloc.dart';
 import 'package:hyper_authenticator/features/authenticator/presentation/pages/add_account_page.dart';
+import 'package:hyper_authenticator/features/authenticator/presentation/widgets/google_authenticator_import_preview_dialog.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 
 import '../../support/focus_test_utils.dart';
+
+const _googleSingleBatchUri =
+    'otpauth-migration://offline?data='
+    'CkIKElRFU1RfT05MWV9TRUNSRVRfQRIdRXhhbXBsZTphbGljZUBleGFtcGxlLmludm'
+    'FsaWQaB0V4YW1wbGUgASgBMAIKPQoSVEVTVF9PTkxZX1NFQ1JFVF9CEhNib2JAZXhh'
+    'bXBsZS5pbnZhbGlkGgxFeGFtcGxlIExhYnMgAigCMAIQARgBIAAokiE%3D';
+const _googleBatchPartZeroUri =
+    'otpauth-migration://offline?data='
+    'CkIKElRFU1RfT05MWV9TRUNSRVRfQRIdRXhhbXBsZTphbGljZUBleGFtcGxlLmludm'
+    'FsaWQaB0V4YW1wbGUgASgBMAIQARgCIAAokyE%3D';
+const _googleBatchPartOneUri =
+    'otpauth-migration://offline?data='
+    'Cj0KElRFU1RfT05MWV9TRUNSRVRfQhITYm9iQGV4YW1wbGUuaW52YWxpZBoMRXhhbX'
+    'BsZSBMYWJzIAIoAjACEAEYAiABKJMh';
 
 void main() {
   testWidgets(
@@ -203,6 +220,158 @@ void main() {
     expect(find.text('Mở form test'), findsOneWidget);
     expect(find.text('Đã thêm tài khoản.'), findsOneWidget);
   });
+
+  testWidgets(
+    'Google migration chỉ import sau preview confirm và không render secret',
+    (tester) async {
+      final controller = _FakeScannerController();
+      final repository = _MemoryAuthenticatorRepository();
+      final accountsBloc = _accountsBloc(repository);
+      addTearDown(accountsBloc.close);
+
+      await _pumpPage(tester, accountsBloc, controller);
+      await tester.tap(find.byTooltip('Quét mã QR'));
+      await tester.pump();
+      _scan(tester, _googleSingleBatchUri);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Import tài khoản'), findsOneWidget);
+      expect(find.text('Example'), findsOneWidget);
+      expect(find.textContaining('alice@example.invalid'), findsOneWidget);
+      expect(find.textContaining('KRCVGVC7'), findsNothing);
+      expect(find.textContaining('otpauth-migration'), findsNothing);
+      expect(repository.importCallCount, 0);
+
+      await tester.drag(
+        find.byKey(GoogleAuthenticatorImportPreviewDialog.accountListKey),
+        const Offset(0, -500),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Example Labs'), findsOneWidget);
+      expect(find.textContaining('bob@example.invalid'), findsOneWidget);
+
+      await tester.tap(
+        find.byKey(GoogleAuthenticatorImportPreviewDialog.confirmButtonKey),
+      );
+      await tester.pumpAndSettle();
+
+      expect(repository.importCallCount, 1);
+      expect(repository.importedAccounts, hasLength(2));
+      expect(find.text('Đã import 2 tài khoản.'), findsOneWidget);
+    },
+  );
+
+  testWidgets('hủy Google migration preview không mutate repository', (
+    tester,
+  ) async {
+    final controller = _FakeScannerController();
+    final repository = _MemoryAuthenticatorRepository();
+    final accountsBloc = _accountsBloc(repository);
+    addTearDown(accountsBloc.close);
+
+    await _pumpPage(tester, accountsBloc, controller);
+    await tester.tap(find.byTooltip('Quét mã QR'));
+    await tester.pump();
+    _scan(tester, _googleSingleBatchUri);
+    await tester.pumpAndSettle();
+
+    await tester.tap(
+      find.byKey(GoogleAuthenticatorImportPreviewDialog.cancelButtonKey),
+    );
+    await tester.pumpAndSettle();
+
+    expect(repository.importCallCount, 0);
+    expect(repository.importedAccounts, isEmpty);
+    expect(find.byType(AddAccountPage), findsOneWidget);
+  });
+
+  testWidgets(
+    'Google import preview không overflow và mặc định focus Hủy ở text scale 200%',
+    (tester) async {
+      final semantics = tester.ensureSemantics();
+      tester.view.devicePixelRatio = 1;
+      tester.view.physicalSize = const Size(320, 640);
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final controller = _FakeScannerController();
+      final repository = _MemoryAuthenticatorRepository();
+      final accountsBloc = _accountsBloc(repository);
+      addTearDown(accountsBloc.close);
+
+      await _pumpPage(
+        tester,
+        accountsBloc,
+        controller,
+        textScaler: const TextScaler.linear(2),
+      );
+      await tester.tap(find.byTooltip('Quét mã QR'));
+      await tester.pump();
+      _scan(tester, _googleSingleBatchUri);
+      await tester.pumpAndSettle();
+
+      final layoutException = tester.takeException();
+      expect(
+        layoutException is FlutterError
+            ? layoutException.toStringDeep()
+            : layoutException,
+        isNull,
+      );
+      expectPrimaryFocusWithin(
+        find.byKey(GoogleAuthenticatorImportPreviewDialog.cancelButtonKey),
+      );
+      final dialogSemantics = tester.getSemantics(find.byType(AlertDialog));
+      expect(dialogSemantics.toStringDeep(), isNot(contains('KRCVGVC7')));
+      expect(
+        dialogSemantics.toStringDeep(),
+        isNot(contains('TEST_ONLY_SECRET')),
+      );
+      semantics.dispose();
+    },
+  );
+
+  testWidgets('Google multi-part hiển thị progress và import đúng thứ tự', (
+    tester,
+  ) async {
+    final controller = _FakeScannerController();
+    final repository = _MemoryAuthenticatorRepository();
+    final accountsBloc = _accountsBloc(repository);
+    addTearDown(accountsBloc.close);
+
+    await _pumpPage(tester, accountsBloc, controller);
+    await tester.tap(find.byTooltip('Quét mã QR'));
+    await tester.pump();
+
+    _scan(tester, _googleBatchPartOneUri);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+    await tester.pump();
+    expect(
+      find.byKey(AddAccountPage.migrationBatchProgressKey),
+      findsOneWidget,
+    );
+    expect(find.textContaining('đã quét 1/2'), findsOneWidget);
+    expect(repository.importCallCount, 0);
+
+    _scan(tester, _googleBatchPartZeroUri);
+    await tester.pumpAndSettle();
+    expect(find.text('Import tài khoản'), findsOneWidget);
+    await tester.tap(
+      find.byKey(GoogleAuthenticatorImportPreviewDialog.confirmButtonKey),
+    );
+    await tester.pumpAndSettle();
+
+    expect(repository.importedAccounts.map((account) => account.accountName), [
+      'alice@example.invalid',
+      'bob@example.invalid',
+    ]);
+  });
+}
+
+void _scan(WidgetTester tester, String rawValue) {
+  tester
+      .widget<MobileScanner>(find.byType(MobileScanner))
+      .onDetect!
+      .call(BarcodeCapture(barcodes: <Barcode>[Barcode(rawValue: rawValue)]));
 }
 
 Future<void> _pumpPage(
@@ -238,6 +407,7 @@ AccountsBloc _accountsBloc([AuthenticatorRepository? repository]) {
     addAccount: AddAccount(repository),
     deleteAccount: DeleteAccount(repository),
     updateAccount: UpdateAccount(repository),
+    importAccounts: ImportAccounts(repository),
   );
 }
 
@@ -288,6 +458,8 @@ class _FakeScannerController extends MobileScannerController {
 
 class _MemoryAuthenticatorRepository implements AuthenticatorRepository {
   AuthenticatorAccount? addedAccount;
+  final List<AuthenticatorAccount> importedAccounts = [];
+  int importCallCount = 0;
 
   @override
   Future<Either<Failure, List<AuthenticatorAccount>>> getAccounts() async =>
@@ -312,6 +484,19 @@ class _MemoryAuthenticatorRepository implements AuthenticatorRepository {
       period: period,
     );
     return Right(addedAccount!);
+  }
+
+  @override
+  Future<Either<Failure, AccountImportSummary>> importAccounts(
+    List<AuthenticatorAccount> accounts,
+  ) async {
+    importCallCount++;
+    importedAccounts
+      ..clear()
+      ..addAll(accounts);
+    return Right(
+      AccountImportSummary(importedCount: accounts.length, duplicateCount: 0),
+    );
   }
 
   @override

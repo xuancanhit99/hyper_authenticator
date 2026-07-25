@@ -7,11 +7,13 @@ import 'package:fpdart/fpdart.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hyper_authenticator/core/error/failures.dart';
 import 'package:hyper_authenticator/core/router/app_router.dart';
+import 'package:hyper_authenticator/features/authenticator/domain/entities/account_import_summary.dart';
 import 'package:hyper_authenticator/features/authenticator/domain/entities/authenticator_account.dart';
 import 'package:hyper_authenticator/features/authenticator/domain/repositories/authenticator_repository.dart';
 import 'package:hyper_authenticator/features/authenticator/domain/usecases/add_account.dart';
 import 'package:hyper_authenticator/features/authenticator/domain/usecases/delete_account.dart';
 import 'package:hyper_authenticator/features/authenticator/domain/usecases/get_accounts.dart';
+import 'package:hyper_authenticator/features/authenticator/domain/usecases/import_accounts.dart';
 import 'package:hyper_authenticator/features/authenticator/domain/usecases/update_account.dart';
 import 'package:hyper_authenticator/features/authenticator/presentation/bloc/accounts_bloc.dart';
 import 'package:hyper_authenticator/features/authenticator/presentation/pages/edit_account_page.dart';
@@ -313,6 +315,7 @@ AccountsBloc _accountsBloc(AuthenticatorRepository repository) => AccountsBloc(
   addAccount: AddAccount(repository),
   deleteAccount: DeleteAccount(repository),
   updateAccount: UpdateAccount(repository),
+  importAccounts: ImportAccounts(repository),
 );
 
 class _ControllableAccountsBloc extends AccountsBloc {
@@ -322,6 +325,7 @@ class _ControllableAccountsBloc extends AccountsBloc {
         addAccount: AddAccount(repository),
         deleteAccount: DeleteAccount(repository),
         updateAccount: UpdateAccount(repository),
+        importAccounts: ImportAccounts(repository),
       );
 
   Object? lastUpdateOperationToken;
@@ -371,6 +375,13 @@ class _MemoryAuthenticatorRepository implements AuthenticatorRepository {
     required int digits,
     required int period,
   }) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<Either<Failure, AccountImportSummary>> importAccounts(
+    List<AuthenticatorAccount> accounts,
+  ) {
     throw UnimplementedError();
   }
 

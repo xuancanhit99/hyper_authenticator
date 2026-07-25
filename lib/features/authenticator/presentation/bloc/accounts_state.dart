@@ -20,6 +20,20 @@ class AccountAddSuccess extends AccountsState {
   const AccountAddSuccess();
 }
 
+/// Batch import đã commit thành công; chỉ giữ count, không mang credential.
+class AccountImportSuccess extends AccountsState {
+  const AccountImportSuccess({
+    required this.importedCount,
+    required this.duplicateCount,
+  });
+
+  final int importedCount;
+  final int duplicateCount;
+
+  @override
+  List<Object?> get props => [importedCount, duplicateCount];
+}
+
 /// Update operation đã persist thành công; không chứa account để tránh đưa secret
 /// vào state/log ngoài nhu cầu của UI.
 class AccountUpdateSuccess extends AccountsState {

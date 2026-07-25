@@ -77,6 +77,78 @@ void main() {
     expect(accounts.map((account) => account.id).toSet(), hasLength(2));
   });
 
+  test(
+    'importAccounts append một commit và bỏ duplicate existing/nội batch',
+    () async {
+      final existing = await dataSource.saveAccount(
+        _account(id: '', issuer: 'Existing'),
+      );
+      final candidate = _account(id: '', issuer: 'Imported');
+
+      final summary = await dataSource.importAccounts(<AuthenticatorAccount>[
+        AuthenticatorAccount(
+          id: '',
+          issuer: existing.issuer,
+          accountName: existing.accountName,
+          secretKey: existing.secretKey,
+          algorithm: existing.algorithm,
+          digits: existing.digits,
+          period: existing.period,
+        ),
+        candidate,
+        candidate,
+      ]);
+
+      expect(summary.importedCount, 1);
+      expect(summary.duplicateCount, 2);
+      final accounts = await dataSource.getAccounts();
+      expect(accounts.map((account) => account.issuer), [
+        'Existing',
+        'Imported',
+      ]);
+      expect(accounts.last.id, isNotEmpty);
+      expect(accounts.map((account) => account.id).toSet(), hasLength(2));
+    },
+  );
+
+  test(
+    'importAccounts commit lỗi giữ nguyên snapshot, không partial import',
+    () async {
+      final existing = await dataSource.saveAccount(
+        _account(id: '', issuer: 'Existing'),
+      );
+      storage.failNextWriteWithPrefix = 'ha:v2:commit:';
+
+      await expectLater(
+        dataSource.importAccounts(<AuthenticatorAccount>[
+          _account(id: '', issuer: 'Import A'),
+          _account(id: '', issuer: 'Import B'),
+        ]),
+        throwsA(isA<StorageWriteException>()),
+      );
+
+      final afterRestart = AuthenticatorLocalDataSourceImpl(
+        secureStorage: storage,
+        uuid: const Uuid(),
+      );
+      expect(await afterRestart.getAccounts(), [existing]);
+    },
+  );
+
+  test(
+    'importAccounts không collision khi label chứa ký tự phân tách',
+    () async {
+      final summary = await dataSource.importAccounts(<AuthenticatorAccount>[
+        _account(id: '', issuer: 'A', accountName: 'B\u0000C'),
+        _account(id: '', issuer: 'A\u0000B', accountName: 'C'),
+      ]);
+
+      expect(summary.importedCount, 2);
+      expect(summary.duplicateCount, 0);
+      expect(await dataSource.getAccounts(), hasLength(2));
+    },
+  );
+
   test('legacy index hoặc record hỏng không che các record hợp lệ', () async {
     final valid = _account(
       id: '00000000-0000-4000-8000-000000000004',
@@ -216,11 +288,15 @@ void main() {
   });
 }
 
-AuthenticatorAccount _account({required String id, required String issuer}) {
+AuthenticatorAccount _account({
+  required String id,
+  required String issuer,
+  String accountName = 'user@example.invalid',
+}) {
   return AuthenticatorAccount(
     id: id,
     issuer: issuer,
-    accountName: 'user@example.invalid',
+    accountName: accountName,
     secretKey: 'TEST_ONLY_NOT_A_SECRET',
     algorithm: 'SHA256',
     digits: 8,

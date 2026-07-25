@@ -21,7 +21,7 @@ trong Git, không lặp lại ở tài liệu active.
 
 Đây là khoảng trống sản phẩm lớn nhất so với Google Authenticator.
 
-- [ ] Import Google Authenticator migration QR, gồm multi-part batch, duplicate
+- [x] Import Google Authenticator migration QR, gồm multi-part batch, duplicate
   detection và preview trước commit.
 - [ ] Export nhiều account theo format có version; yêu cầu local reauthentication,
   cảnh báo secret exposure và timeout.
@@ -29,8 +29,10 @@ trong Git, không lặp lại ở tài liệu active.
   hoặc ghi đè vault khi một record lỗi.
 - [ ] Backup file encrypted có password/KDF, schema version, integrity check và
   atomic import rollback.
-- [ ] Regression interoperability với Google Authenticator fixtures
+- [x] Regression wire-format với reconstructed Google Authenticator fixture
   `TEST_ONLY`, không dùng credential thật.
+- [ ] Physical interoperability với export current từ Google Authenticator trên
+  Android/iOS đại diện; không lưu hoặc đưa raw payload vào evidence.
 
 Exit criteria: round-trip giữ đủ issuer/name/algorithm/digits/period; cancel hoặc
 payload lỗi không mutate vault; export chỉ mở sau reauthentication.
