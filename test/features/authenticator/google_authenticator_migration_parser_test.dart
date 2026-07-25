@@ -40,7 +40,10 @@ void main() {
     expect(payload.accounts.first.accountName, 'alice@example.invalid');
     expect(
       payload.accounts.first.secretKey,
-      'KRCVGVC7' 'J5HEYWK7' 'KNCUGUSF' 'KRPUC',
+      'KRCVGVC7'
+      'J5HEYWK7'
+      'KNCUGUSF'
+      'KRPUC',
     );
     expect(payload.accounts.first.algorithm, 'SHA1');
     expect(payload.accounts.first.digits, 6);
@@ -49,7 +52,10 @@ void main() {
     expect(payload.accounts.last.accountName, 'bob@example.invalid');
     expect(
       payload.accounts.last.secretKey,
-      'KRCVGVC7' 'J5HEYWK7' 'KNCUGUSF' 'KRPUE',
+      'KRCVGVC7'
+      'J5HEYWK7'
+      'KNCUGUSF'
+      'KRPUE',
     );
     expect(payload.accounts.last.algorithm, 'SHA256');
     expect(payload.accounts.last.digits, 8);
