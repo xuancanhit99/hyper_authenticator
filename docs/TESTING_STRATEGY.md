@@ -60,11 +60,16 @@ preparation, cùng các nhóm sau:
 - Google migration version 1 wire fixture `TEST_ONLY`, SHA1/SHA256, 6/8 digits,
   label normalization, multi-part out-of-order/duplicate/mixed batch, scalar
   proto3 default, signed batch ID, account limit và HOTP fail-closed;
+- Google migration export encoder → parser/collector round-trip, bounded
+  multi-part, invalid period/digits fail closed và diagnostic redaction; fresh
+  sensitive OS auth không persist qua background, cancel/unavailable không
+  success; widget chỉ render QR sau auth khi app còn foreground, khóa selection
+  đang xác thực rồi xóa QR khi lifecycle rời foreground;
 - Google import preview confirm/cancel, progress, secret không render/semantics,
   default focus Hủy, viewport 320×640/text scale 200%; storage regression khóa
   exact duplicate, một COW commit và commit-failure không partial import;
-- account action dùng menu Material có keyboard/semantics; primary UI không còn
-  xuất raw `otpauth` QR chưa được tái xác thực;
+- account action dùng menu Material có keyboard/semantics; primary UI không xuất
+  raw `otpauth` QR và Google transfer action đi qua fresh-auth boundary riêng;
 - local vault migration, concurrent mutation, corruption rollback, atomic replace
   và generation compaction;
 - local-auth startup lock, relock và plugin-error fail closed;

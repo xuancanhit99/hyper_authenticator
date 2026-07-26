@@ -184,6 +184,11 @@ class _AccountsPageState extends State<AccountsPage>
               ),
             ],
           ),
+          IconButton(
+            icon: const Icon(Icons.ios_share_outlined),
+            tooltip: 'Xuất tài khoản',
+            onPressed: () => context.push(AppRoutes.exportAccounts),
+          ),
           Padding(
             padding: const EdgeInsets.only(right: 8.0),
             child: IconButton(

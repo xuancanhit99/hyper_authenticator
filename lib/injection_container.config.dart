@@ -26,8 +26,12 @@ import 'features/authenticator/data/datasources/authenticator_local_data_source.
     as _i674;
 import 'features/authenticator/data/repositories/authenticator_repository_impl.dart'
     as _i166;
+import 'features/authenticator/data/services/local_sensitive_action_authenticator.dart'
+    as _i387;
 import 'features/authenticator/domain/repositories/authenticator_repository.dart'
     as _i608;
+import 'features/authenticator/domain/services/sensitive_action_authenticator.dart'
+    as _i217;
 import 'features/authenticator/domain/usecases/add_account.dart' as _i356;
 import 'features/authenticator/domain/usecases/delete_account.dart' as _i523;
 import 'features/authenticator/domain/usecases/generate_totp_code.dart'
@@ -173,6 +177,11 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i776.VaultKeyRepository>(
       () => _i733.VaultKeyRepositoryImpl(gh<_i493.VaultKeyStore>()),
+    );
+    gh.lazySingleton<_i217.SensitiveActionAuthenticator>(
+      () => _i387.LocalSensitiveActionAuthenticator(
+        gh<_i152.LocalAuthentication>(),
+      ),
     );
     gh.lazySingleton<_i949.EncryptedVaultRepository>(
       () => _i32.EncryptedVaultRepositoryImpl(

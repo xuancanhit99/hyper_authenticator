@@ -35,6 +35,7 @@ Tài liệu này lập chỉ mục quyết định bền vững. Quyết định
 | A-027 | Drop plaintext sync fail-closed và bắt buộc device-bound publish sau revision đầu tiên | Đã áp dụng trong source và migration; bằng chứng production theo `PROJECT_STATUS.md` | [ADR-0013](adr/0013-retire-plaintext-and-require-device-bound-publish.md) |
 | A-028 | Local-first bootstrap, cloud tùy chọn và support tier theo platform | Chấp nhận | [ADR-0014](adr/0014-local-first-optional-cloud-and-support-tiers.md) |
 | A-029 | Google Authenticator migration import là bounded/fail-closed parser, preview rồi atomic append | Chấp nhận | [ADR-0015](adr/0015-google-authenticator-migration-import-boundary.md) |
+| A-030 | Google Authenticator export yêu cầu fresh OS auth, bounded multi-part QR và timeout/lifecycle cleanup | Chấp nhận | [ADR-0016](adr/0016-google-authenticator-export-boundary.md) |
 
 Đã áp dụng không đồng nghĩa production-ready; defect/risk nằm trong `PROJECT_STATUS.md`.
 

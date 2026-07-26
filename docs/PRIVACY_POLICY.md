@@ -1,6 +1,6 @@
 # Chính sách quyền riêng tư — bản dự thảo phát hành
 
-Cập nhật: 25 tháng 7 năm 2026.
+Cập nhật: 27 tháng 7 năm 2026.
 
 Tài liệu này phản ánh behavior đã triển khai. Trước store submission, owner phải
 điền tên pháp nhân/nhà phát hành, kênh support và host nội dung tại URL HTTPS công khai.
@@ -24,6 +24,12 @@ Khi người dùng import QR từ Google Authenticator, QR payload và TOTP secr
 được xử lý trong memory để parse/preview. Preview không hiển thị secret; dữ liệu
 chỉ được append vào local vault sau xác nhận. Cancel, batch chưa đủ hoặc payload
 lỗi không ghi account.
+
+Khi người dùng export sang Google Authenticator, ứng dụng yêu cầu xác thực lại
+bằng cơ chế hệ điều hành rồi tạo QR chứa TOTP secret trong memory. QR tự đóng sau
+60 giây hoặc khi ứng dụng rời foreground; ứng dụng không tự lưu, upload, copy hay
+chia sẻ QR. Người dùng phải tránh screenshot, screen sharing và camera ngoài vì
+người quét được QR có thể tạo mã xác thực tương ứng.
 
 ## Backup cloud mã hóa đầu cuối tùy chọn
 
