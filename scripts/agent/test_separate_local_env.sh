@@ -9,6 +9,23 @@ cleanup() {
 }
 trap cleanup EXIT INT TERM
 
+read_file_mode() {
+  local path=$1
+  local candidate
+
+  if candidate=$(stat -f '%Lp' "$path" 2>/dev/null) &&
+    [[ "$candidate" =~ ^[0-7]{3,4}$ ]]; then
+    printf '%s\n' "$candidate"
+    return 0
+  fi
+  if candidate=$(stat -c '%a' "$path" 2>/dev/null) &&
+    [[ "$candidate" =~ ^[0-7]{3,4}$ ]]; then
+    printf '%s\n' "$candidate"
+    return 0
+  fi
+  return 1
+}
+
 client_env="$WORK_DIR/client.env"
 server_env="$WORK_DIR/server.env"
 cat >"$client_env" <<'EOF'
@@ -35,8 +52,8 @@ if ! grep -qx 'ALLOW_INSECURE_PLAINTEXT_SYNC=false' "$client_env"; then
   printf '%s\n' 'Client env không có plaintext-sync guard an toàn.' >&2
   exit 1
 fi
-if [[ $(stat -f '%Lp' "$client_env" 2>/dev/null || stat -c '%a' "$client_env") != 600 ||
-  $(stat -f '%Lp' "$server_env" 2>/dev/null || stat -c '%a' "$server_env") != 600 ]]; then
+if [[ $(read_file_mode "$client_env") != 600 ||
+  $(read_file_mode "$server_env") != 600 ]]; then
   printf '%s\n' 'Env sau khi tách không giữ mode 0600.' >&2
   exit 1
 fi

@@ -1,6 +1,7 @@
 import 'package:fpdart/fpdart.dart';
 import 'package:hyper_authenticator/core/error/failures.dart'; // Assuming Failure and specific subtypes like StorageFailure exist
 import 'package:hyper_authenticator/features/authenticator/data/datasources/authenticator_local_data_source.dart';
+import 'package:hyper_authenticator/features/authenticator/domain/entities/account_import_summary.dart';
 import 'package:hyper_authenticator/features/authenticator/domain/entities/authenticator_account.dart';
 import 'package:hyper_authenticator/features/authenticator/domain/repositories/authenticator_repository.dart';
 
@@ -86,6 +87,27 @@ class AuthenticatorRepositoryImpl implements AuthenticatorRepository {
     } catch (_) {
       return const Left(
         StorageFailure('Đã xảy ra lỗi không mong đợi khi lưu tài khoản.'),
+      );
+    }
+  }
+
+  @override
+  Future<Either<Failure, AccountImportSummary>> importAccounts(
+    List<AuthenticatorAccount> accounts,
+  ) async {
+    try {
+      return Right(await localDataSource.importAccounts(accounts));
+    } on StorageWriteException {
+      return const Left(
+        StorageFailure(
+          'Không thể import tài khoản; local vault được giữ nguyên.',
+        ),
+      );
+    } catch (_) {
+      return const Left(
+        StorageFailure(
+          'Import tài khoản thất bại an toàn; không có partial import.',
+        ),
       );
     }
   }

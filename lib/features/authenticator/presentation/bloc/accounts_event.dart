@@ -47,6 +47,22 @@ class AddAccountRequested extends AccountsEvent {
       'algorithm: $algorithm, digits: $digits, period: $period)';
 }
 
+/// Imports a previewed batch. Sensitive account fields are always redacted from
+/// diagnostics and are not copied into the success state.
+class ImportAccountsRequested extends AccountsEvent {
+  ImportAccountsRequested(List<ParsedTotpAccount> accounts)
+    : accounts = List<ParsedTotpAccount>.unmodifiable(accounts);
+
+  final List<ParsedTotpAccount> accounts;
+
+  @override
+  List<Object?> get props => [accounts];
+
+  @override
+  String toString() =>
+      'ImportAccountsRequested(accounts: [${accounts.length} REDACTED])';
+}
+
 /// Event to delete an existing account by its ID.
 class DeleteAccountRequested extends AccountsEvent {
   final String accountId;

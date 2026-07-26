@@ -21,6 +21,23 @@ usage() {
     "Confirmation bắt buộc: $EXPECTED_CONFIRMATION" >&2
 }
 
+read_file_mode() {
+  local path=$1
+  local candidate
+
+  if candidate=$(stat -f '%Lp' "$path" 2>/dev/null) &&
+    [[ "$candidate" =~ ^[0-7]{3,4}$ ]]; then
+    printf '%s\n' "$candidate"
+    return 0
+  fi
+  if candidate=$(stat -c '%a' "$path" 2>/dev/null) &&
+    [[ "$candidate" =~ ^[0-7]{3,4}$ ]]; then
+    printf '%s\n' "$candidate"
+    return 0
+  fi
+  return 1
+}
+
 if [[ "$CONFIRMATION" != "$EXPECTED_CONFIRMATION" ]]; then
   usage
   exit 64
@@ -34,7 +51,10 @@ if [[ -e "$SERVER_ENV" || -L "$SERVER_ENV" ]]; then
   exit 73
 fi
 
-file_mode=$(stat -f '%Lp' "$CLIENT_ENV" 2>/dev/null || stat -c '%a' "$CLIENT_ENV")
+if ! file_mode=$(read_file_mode "$CLIENT_ENV"); then
+  printf '%s\n' 'Không thể xác minh permission của client env.' >&2
+  exit 69
+fi
 if (( (8#$file_mode & 077) != 0 )); then
   printf 'Client env phải có mode 0600 hoặc chặt hơn; hiện tại là %s.\n' \
     "$file_mode" >&2

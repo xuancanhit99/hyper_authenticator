@@ -3,9 +3,11 @@ import 'package:equatable/equatable.dart';
 import 'package:hyper_authenticator/core/error/failures.dart';
 import 'package:hyper_authenticator/core/usecases/usecase.dart';
 import 'package:hyper_authenticator/features/authenticator/domain/entities/authenticator_account.dart';
+import 'package:hyper_authenticator/features/authenticator/domain/services/totp_uri_parser.dart';
 import 'package:hyper_authenticator/features/authenticator/domain/usecases/add_account.dart';
 import 'package:hyper_authenticator/features/authenticator/domain/usecases/delete_account.dart';
 import 'package:hyper_authenticator/features/authenticator/domain/usecases/get_accounts.dart';
+import 'package:hyper_authenticator/features/authenticator/domain/usecases/import_accounts.dart';
 import 'package:hyper_authenticator/features/authenticator/domain/usecases/update_account.dart'; // Import UpdateAccount use case
 import 'package:injectable/injectable.dart'; // Moved import here
 
@@ -18,6 +20,7 @@ class AccountsBloc extends Bloc<AccountsEvent, AccountsState> {
   final AddAccount addAccount;
   final DeleteAccount deleteAccount;
   final UpdateAccount updateAccount; // Added UpdateAccount use case
+  final ImportAccounts importAccounts;
   // Note: GenerateTotpCode use case is not needed directly in the Bloc state management.
   // It will be called directly from the UI when displaying codes.
 
@@ -26,13 +29,34 @@ class AccountsBloc extends Bloc<AccountsEvent, AccountsState> {
     required this.addAccount,
     required this.deleteAccount,
     required this.updateAccount, // Added to constructor
+    required this.importAccounts,
   }) : super(AccountsInitial()) {
     on<LoadAccounts>(_onLoadAccounts);
     on<AddAccountRequested>(_onAddAccountRequested);
     on<DeleteAccountRequested>(_onDeleteAccountRequested);
+    on<ImportAccountsRequested>(_onImportAccountsRequested);
     on<UpdateAccountRequested>(
       _onUpdateAccountRequested,
     ); // Added handler for update
+  }
+
+  Future<void> _onImportAccountsRequested(
+    ImportAccountsRequested event,
+    Emitter<AccountsState> emit,
+  ) async {
+    final result = await importAccounts(ImportAccountsParams(event.accounts));
+    result.fold(
+      (failure) => emit(AccountsError(_mapFailureToMessage(failure))),
+      (summary) {
+        emit(
+          AccountImportSuccess(
+            importedCount: summary.importedCount,
+            duplicateCount: summary.duplicateCount,
+          ),
+        );
+        add(LoadAccounts());
+      },
+    );
   }
 
   Future<void> _onLoadAccounts(

@@ -1,6 +1,6 @@
 # Chính sách quyền riêng tư — bản dự thảo phát hành
 
-Cập nhật: 22 tháng 7 năm 2026.
+Cập nhật: 25 tháng 7 năm 2026.
 
 Tài liệu này phản ánh behavior đã triển khai. Trước store submission, owner phải
 điền tên pháp nhân/nhà phát hành, kênh support và host nội dung tại URL HTTPS công khai.
@@ -19,6 +19,11 @@ không trả raw session ID, IP hoặc user agent qua device registry.
 TOTP account được lưu trong platform secure storage của thiết bị/browser profile.
 Ứng dụng không gửi plaintext TOTP secret tới analytics hoặc log. Logout Supabase
 không tự động xóa local authenticator vault.
+
+Khi người dùng import QR từ Google Authenticator, QR payload và TOTP secret chỉ
+được xử lý trong memory để parse/preview. Preview không hiển thị secret; dữ liệu
+chỉ được append vào local vault sau xác nhận. Cancel, batch chưa đủ hoặc payload
+lỗi không ghi account.
 
 ## Backup cloud mã hóa đầu cuối tùy chọn
 

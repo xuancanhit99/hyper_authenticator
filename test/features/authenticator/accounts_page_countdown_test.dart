@@ -6,12 +6,14 @@ import 'package:fpdart/fpdart.dart';
 import 'package:hyper_authenticator/core/error/failures.dart';
 import 'package:hyper_authenticator/core/theme/app_theme.dart';
 import 'package:hyper_authenticator/core/theme/theme_cubit.dart';
+import 'package:hyper_authenticator/features/authenticator/domain/entities/account_import_summary.dart';
 import 'package:hyper_authenticator/features/authenticator/domain/entities/authenticator_account.dart';
 import 'package:hyper_authenticator/features/authenticator/domain/repositories/authenticator_repository.dart';
 import 'package:hyper_authenticator/features/authenticator/domain/usecases/add_account.dart';
 import 'package:hyper_authenticator/features/authenticator/domain/usecases/delete_account.dart';
 import 'package:hyper_authenticator/features/authenticator/domain/usecases/generate_totp_code.dart';
 import 'package:hyper_authenticator/features/authenticator/domain/usecases/get_accounts.dart';
+import 'package:hyper_authenticator/features/authenticator/domain/usecases/import_accounts.dart';
 import 'package:hyper_authenticator/features/authenticator/domain/usecases/update_account.dart';
 import 'package:hyper_authenticator/features/authenticator/presentation/bloc/accounts_bloc.dart';
 import 'package:hyper_authenticator/features/authenticator/presentation/pages/accounts_page.dart';
@@ -42,6 +44,7 @@ void main() {
         addAccount: AddAccount(repository),
         deleteAccount: DeleteAccount(repository),
         updateAccount: UpdateAccount(repository),
+        importAccounts: ImportAccounts(repository),
       );
       final generator = _CountingGenerateTotpCode();
       var now = DateTime.fromMillisecondsSinceEpoch(121000, isUtc: true);
@@ -150,6 +153,7 @@ void main() {
           addAccount: AddAccount(repository),
           deleteAccount: DeleteAccount(repository),
           updateAccount: UpdateAccount(repository),
+          importAccounts: ImportAccounts(repository),
         );
         addTearDown(accountsBloc.close);
         final loaded = accountsBloc.stream.firstWhere(
@@ -273,6 +277,13 @@ class _MemoryAuthenticatorRepository implements AuthenticatorRepository {
     required int digits,
     required int period,
   }) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<Either<Failure, AccountImportSummary>> importAccounts(
+    List<AuthenticatorAccount> accounts,
+  ) {
     throw UnimplementedError();
   }
 

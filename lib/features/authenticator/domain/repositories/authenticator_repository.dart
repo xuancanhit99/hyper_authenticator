@@ -1,5 +1,6 @@
 import 'package:fpdart/fpdart.dart';
 import 'package:hyper_authenticator/core/error/failures.dart'; // Assuming a common Failure class exists
+import 'package:hyper_authenticator/features/authenticator/domain/entities/account_import_summary.dart';
 import 'package:hyper_authenticator/features/authenticator/domain/entities/authenticator_account.dart';
 
 abstract class AuthenticatorRepository {
@@ -27,6 +28,15 @@ abstract class AuthenticatorRepository {
   /// should continue to use [addAccount], which generates a new ID.
   Future<Either<Failure, AuthenticatorAccount>> saveAccount(
     AuthenticatorAccount account,
+  );
+
+  /// Appends a validated batch using one atomic local-vault commit.
+  ///
+  /// Input accounts must have an empty ID. Storage generates stable IDs and
+  /// skips exact duplicates already present in the vault or repeated in the
+  /// batch.
+  Future<Either<Failure, AccountImportSummary>> importAccounts(
+    List<AuthenticatorAccount> accounts,
   );
 
   /// Deletes an authenticator account by its ID.

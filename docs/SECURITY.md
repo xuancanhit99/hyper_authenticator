@@ -28,6 +28,13 @@ không bao giờ được đặt trong Flutter `.env`, asset, build log hoặc b
 - Versioned copy-on-write vault; commit marker ghi sau cùng; rollback generation.
 - Compaction giữ active và rollback generation.
 - TOTP validation tập trung; không log barcode payload/secret.
+- Google migration parser giới hạn URI/decoded payload/text/secret/account/batch,
+  chỉ nhận version 1 TOTP + thuật toán/digits đã allowlist. HOTP/MD5/enum/wire
+  type lạ fail closed; multi-part chỉ giữ trong memory.
+- Google import preview không render secret. Cancel/chưa đủ batch/parser failure
+  không gọi repository; confirm validate toàn batch rồi atomic append một COW
+  generation. `ImportAccountsRequested`/params và payload DTO redact diagnostics;
+  success chỉ mang imported/duplicate count.
 - `AccountAddSuccess` và `AccountUpdateSuccess` không mang account/secret trong
   BLoC state; UI chỉ dùng tín hiệu operation-specific tương ứng để hoàn tất
   navigation, không suy diễn mutation thành công từ một lần reload danh sách.
@@ -160,8 +167,10 @@ thiết bị nếu clipboard history/sync đang bật.
 
 Primary account list không còn export một account thành `otpauth` QR. Flow cũ có
 thể hiển thị full TOTP secret mà không reauthenticate hoặc giới hạn thời gian.
-Portability/export tương lai phải có reauthentication, cảnh báo rõ, timeout,
-format/version contract và test không log/semantics credential.
+Import Google Authenticator đã có preview/atomic append nhưng không làm QR nguồn
+bớt nhạy cảm; ảnh/export QR vẫn là credential. Export từ Hyper Authenticator
+tương lai phải có reauthentication, cảnh báo rõ, timeout, format/version contract
+và test không log/semantics credential.
 
 ## Screenshot và screen capture
 
