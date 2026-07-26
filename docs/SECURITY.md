@@ -168,9 +168,18 @@ thiết bị nếu clipboard history/sync đang bật.
 Primary account list không còn export một account thành `otpauth` QR. Flow cũ có
 thể hiển thị full TOTP secret mà không reauthenticate hoặc giới hạn thời gian.
 Import Google Authenticator đã có preview/atomic append nhưng không làm QR nguồn
-bớt nhạy cảm; ảnh/export QR vẫn là credential. Export từ Hyper Authenticator
-tương lai phải có reauthentication, cảnh báo rõ, timeout, format/version contract
-và test không log/semantics credential.
+bớt nhạy cảm; ảnh/export QR vẫn là credential.
+
+**Đã triển khai:** Google migration export dùng fresh OS reauthentication riêng,
+không tái dùng app-lock success. User chọn account trước; QR version 1 bounded chỉ
+được tạo trong memory sau auth, có cảnh báo, timeout 60 giây, nút đóng ngay và bị
+xóa khi app rời foreground. URI/secret không vào BLoC, route extra, clipboard,
+log hoặc semantics. Web/Linux fail closed vì chưa có OS auth boundary.
+
+**Khoảng trống đã biết:** reconstructed format chưa có physical interoperability
+hai chiều với Google Authenticator current. QR đang hiển thị vẫn có thể bị camera
+ngoài hoặc active screenshot/screen recording lấy; timeout/Privacy Shield không
+thay thế native capture prevention.
 
 ## Screenshot và screen capture
 

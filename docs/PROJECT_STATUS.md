@@ -1,6 +1,6 @@
 # Trạng thái dự án
 
-Baseline được cập nhật ngày **23 tháng 7 năm 2026** trên macOS 26.5.1. File này
+Baseline được cập nhật ngày **27 tháng 7 năm 2026** trên macOS 26.5.1. File này
 chỉ giữ trạng thái hiện tại; log rollout/CI/backup theo từng lần chạy nằm trong
 Git history và `docs/operations`.
 
@@ -32,9 +32,12 @@ session registry hoặc vault-key generation.
 - Import Google Authenticator migration QR version 1, gồm multi-part out-of-order,
   preview, duplicate detection và một atomic append commit. HOTP/MD5/version lạ
   fail closed.
+- Export nhiều account thành Google migration QR version 1 sau fresh OS auth.
+  Encoder fail closed với semantics Google không biểu diễn được, tự chia part;
+  QR có cảnh báo, timeout 60 giây và bị xóa khi app rời foreground.
 - Tìm kiếm, sửa, xóa, sao chép TOTP và countdown theo period.
-- Account actions dùng menu Material. Primary UI không còn xuất raw `otpauth` QR
-  chưa được tái xác thực.
+- Account actions dùng menu Material. Primary UI không xuất raw `otpauth` QR;
+  Google transfer là disclosure flow riêng, không tái dùng app-lock success.
 - FlutterSecureStorage dùng versioned copy-on-write generation, commit marker,
   rollback generation và compaction giữ hai generation hợp lệ gần nhất.
 - Logout không xóa local vault. Windows giữ storage identity tương thích
@@ -93,13 +96,13 @@ user-facing cryptographic device exclusion.
 
 | Gate | Kết quả |
 |---|---|
-| `flutter analyze` | Pass, 0 diagnostic ngày 25-07-2026 trên nhánh import Google Authenticator |
-| `scripts/agent/check.sh full` | Pass ngày 25-07-2026; tổng hợp bốn boundary dưới đây |
-| `scripts/agent/check.sh app` | Pass ngày 25-07-2026: docs/generated/format/analyze/platform và 207 Flutter test |
-| `scripts/agent/check.sh backend` | Pass ngày 25-07-2026: encrypted/device-wrap và plaintext-retirement PostgreSQL contract |
-| `scripts/agent/check.sh release` | Pass ngày 25-07-2026: GitHub Preview asset/public contract và Web rollback harness |
-| `scripts/agent/check.sh infra` | Pass ngày 25-07-2026: NPM secret/backup/deploy/route/rollback, Auth load pacing và restore drill contract |
-| Local-only release smoke | Web release build + Chrome engine/semantics/local-vault shell pass; Android debug APK build pass |
+| `flutter analyze` | Pass, 0 diagnostic ngày 27-07-2026 trên nhánh export Google Authenticator |
+| `scripts/agent/check.sh full` | Pass ngày 27-07-2026; tổng hợp bốn boundary dưới đây |
+| `scripts/agent/check.sh app` | Pass ngày 27-07-2026: docs/generated/format/analyze/platform và 220 Flutter test |
+| `scripts/agent/check.sh backend` | Pass ngày 27-07-2026: encrypted/device-wrap và plaintext-retirement PostgreSQL contract |
+| `scripts/agent/check.sh release` | Pass ngày 27-07-2026: GitHub Preview asset/public contract và Web rollback harness |
+| `scripts/agent/check.sh infra` | Pass ngày 27-07-2026: NPM secret/backup/deploy/route/rollback, Auth load pacing và restore drill contract |
+| Local-only release smoke | Android debug APK, Web release, iOS Simulator và macOS unsigned compile pass ngày 27-07-2026; Chrome engine/semantics/local-vault shell đã pass baseline trước |
 | Android Pixel AVD | Signed build, clean install, vault-retaining upgrade và E2EE flows đã pass; physical camera/biometric còn thiếu |
 | iOS Simulator | Local vault và authenticated E2EE flows đã pass; device/signing còn thiếu |
 | macOS | Unsigned compile pass; signing/Keychain release runtime còn thiếu |
@@ -108,19 +111,20 @@ user-facing cryptographic device exclusion.
 | Flutter Web production | HTTPS/Nginx/runtime/rollback smoke đã pass; E2EE backup tắt |
 | GitHub Preview | `v1.1.0-preview.4`: signed Android APK, unsigned Windows NSIS và Linux `.deb`, checksum/public verification pass |
 
-Current change set chỉ đổi bootstrap/UI/state/docs; không đổi local-vault format,
-encrypted envelope, Supabase schema/RPC hoặc production data.
+Google portability change set chỉ thêm transient encoder/auth/UI/test/docs; không
+đổi local-vault format, encrypted envelope, Supabase schema/RPC hoặc production
+data.
 
 ## Capability matrix
 
-| Platform | TOTP local | QR camera | QR từ ảnh | App lock | Backup cloud E2EE |
-|---|---:|---:|---:|---:|---:|
-| Android | Có | Có | Có | Có | Có |
-| iOS | Có | Có | Có | Có | Có |
-| macOS | Có | Có | Có | Có | Có |
-| Windows | Có | Không | Không | Có | Có |
-| Linux | Có | Không | Không | Không | Có |
-| Web | Có | Có | Không | Không | Không |
+| Platform | TOTP local | QR camera | QR từ ảnh | App lock | Google export | Backup cloud E2EE |
+|---|---:|---:|---:|---:|---:|---:|
+| Android | Có | Có | Có | Có | Có | Có |
+| iOS | Có | Có | Có | Có | Có | Có |
+| macOS | Có | Có | Có | Có | Có | Có |
+| Windows | Có | Không | Không | Có | Có | Có |
+| Linux | Có | Không | Không | Không | Không | Có |
+| Web | Có | Có | Không | Không | Không | Không |
 
 Đây là source capability, không thay thế physical-device/store evidence.
 
@@ -156,9 +160,9 @@ Chi tiết command, rollback và evidence retention:
 
 ## Khoảng trống ưu tiên
 
-1. **Portability:** import Google Authenticator migration QR đã có source/fixture;
-   còn physical interoperability với Google Authenticator current, multi-account
-   export và encrypted backup file.
+1. **Portability:** import/export Google Authenticator migration QR đã có
+   source/fixture; còn physical interoperability hai chiều với Google
+   Authenticator current, standard `otpauth` portability và encrypted backup file.
 2. **Device exclusion:** session revoke chưa phải cryptographic exclusion hoặc
    remote wipe; cần UX và independent security review.
 3. **Thiết bị thật:** camera, biometric, secure storage, TalkBack/VoiceOver,

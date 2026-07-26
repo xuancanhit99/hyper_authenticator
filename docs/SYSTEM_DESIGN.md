@@ -118,6 +118,13 @@ dừng trước DI để không tự chọn hoặc ghi đè dữ liệu.
   Hủy không mutate. Xác nhận phát một batch import đã validate; local data source
   dedupe trong critical section và append bằng đúng một COW commit, không replace
   account hiện có.
+- Google export là read-only disclosure flow tách khỏi `LocalAuthBloc`. User chọn
+  account, fresh-authenticate qua OS rồi bounded encoder tạo migration payload v1
+  trong memory. Encoder chỉ nhận period 30 giây và 6/8 digits, tự chia QR theo
+  batch metadata; QR tự xóa sau 60 giây hoặc ngay khi app rời foreground.
+- Export route không gọi repository/sync. Web/Linux fail closed vì chưa có OS
+  reauthentication boundary; Android/iOS/macOS/Windows dùng sensitive local auth
+  không persist qua background.
 - Camera scanner render loading state có hướng dẫn permission; lỗi permission hoặc
   unsupported được localize, cho retry hoặc quay lại manual entry. Không hiển thị
   raw plugin error cho người dùng.

@@ -32,6 +32,8 @@ vault-retaining upgrade; camera/biometric trên thiết bị thật vẫn là ga
 - Thêm tài khoản bằng camera, ảnh QR hoặc nhập thủ công.
 - Import QR chuyển dữ liệu do Google Authenticator xuất, gồm multi-part batch,
   preview và duplicate detection trước một atomic local-vault commit.
+- Export nhiều tài khoản sang Google Authenticator sau fresh OS authentication;
+  QR multi-part có cảnh báo, tự hết hạn và đóng khi ứng dụng rời foreground.
 - Parse URI `otpauth://totp` và validate Base32, SHA1/SHA256/SHA512, 6–8 chữ số cùng chu kỳ tùy chỉnh.
 - Lưu TOTP bằng FlutterSecureStorage; tìm kiếm, sửa, xóa và sao chép.
 - Khóa ứng dụng bằng sinh trắc học hoặc credential của OS trên platform được hỗ trợ.

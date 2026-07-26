@@ -23,7 +23,8 @@ trong Git, không lặp lại ở tài liệu active.
 
 - [x] Import Google Authenticator migration QR, gồm multi-part batch, duplicate
   detection và preview trước commit.
-- [ ] Export nhiều account theo format có version; yêu cầu local reauthentication,
+- [x] Export nhiều account theo Google migration format version 1; yêu cầu fresh
+  OS reauthentication,
   cảnh báo secret exposure và timeout.
 - [ ] Import/export chuẩn `otpauth` phổ biến mà không log, đưa secret vào semantics
   hoặc ghi đè vault khi một record lỗi.

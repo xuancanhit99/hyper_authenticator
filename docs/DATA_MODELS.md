@@ -54,6 +54,15 @@ Exact duplicate dùng issuer, account name, secret không padding, algorithm,
 digits và period canonical để bỏ qua. Summary chỉ chứa `importedCount` và
 `duplicateCount`, không mang account hoặc secret.
 
+Encoder export dùng cùng version/field mapping, positive random `int32` batch ID
+và giữ thứ tự account. Mỗi đợt tối đa 100 account/100 part; từng URI giới hạn
+1.800 ký tự, text 2 KiB và secret decoded 1 KiB. TOTP period khác 30 giây hoặc
+digits khác 6/8 bị từ chối vì schema Google không round-trip được semantics đó.
+`GoogleAuthenticatorMigrationExportPart.toString()` redact URI.
+
+Export part chỉ tồn tại trong state nội bộ của page sau fresh OS auth, tối đa 60
+giây; không serialize vào vault, BLoC, route extra, clipboard, file hoặc Supabase.
+
 ## Local vault v2
 
 Secure storage chứa immutable generation:
