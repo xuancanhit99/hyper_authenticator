@@ -17,10 +17,17 @@ QR chứa raw TOTP secret. Luồng cũ của Hyper Authenticator chỉ parse m�
 `otpauth://totp` rồi persist ngay, không đủ cho multi-part, preview, duplicate
 detection hoặc all-or-nothing import.
 
+Runtime với Google Authenticator 7.2 trên Android AVD cho thấy app hiện phát
+`MigrationPayload` version 2 và thêm một opaque identifier ở OTP field 8. Raw
+payload/identifier không được đưa vào fixture hoặc evidence; test chỉ tái dựng
+wire shape và độ dài đã quan sát.
+
 ## Quyết định
 
-1. Hỗ trợ migration version 1 qua một Dart parser bounded, chỉ đọc field cần
-   thiết và bỏ qua unknown protobuf field có wire type an toàn.
+1. Hỗ trợ migration version 1 và wire shape version 2 đã quan sát qua một Dart
+   parser bounded. V2 chỉ nhận đúng một OTP field 8 length-delimited,
+   bounded/non-empty rồi bỏ khỏi domain. Unknown top-level/account field đều fail
+   closed; không đoán ý nghĩa metadata.
 2. Chỉ nhận TOTP, SHA1/SHA256/SHA512 và 6/8 digits. HOTP, MD5, version/enum/wire
    type lạ, payload quá giới hạn hoặc version/batch size không hợp lệ đều fail
    closed.
@@ -71,7 +78,8 @@ Import phải append/dedupe; destructive replace chỉ dành cho recovery đã r
 ### Rủi ro
 
 - Google đổi schema: version/enum lạ bị từ chối thay vì import sai; cần fixture và
-  physical interoperability mới trước khi mở rộng.
+  app-to-app evidence mới trước khi mở rộng. Android AVD v7.2 đã pass; physical
+  Android/iOS vẫn là gate riêng.
 - QR từ export khác bị trộn: collector từ chối và giữ batch đang quét.
 - Account lặp: fingerprint canonical trong critical section loại exact duplicate.
 
@@ -91,7 +99,8 @@ và thứ tự. Rollback app không cần data migration.
 
 ## Xác minh
 
-- Wire fixture `TEST_ONLY` cho version/algorithm/digits/label.
+- Wire fixture `TEST_ONLY` cho version 1/2, algorithm/digits/label, v2 field 8
+  bounded và unknown metadata fail-closed.
 - Multi-part out-of-order, duplicate part, mixed batch, proto3 default/signed
   batch ID, account limit và HOTP fail-closed.
 - Preview confirm/cancel, no-secret rendering, default focus Hủy và text scale
@@ -102,8 +111,8 @@ và thứ tự. Rollback app không cần data migration.
 ## Rollout
 
 1. Phát hành import trong Add account scanner hiện có.
-2. Xác minh QR export thật từ Google Authenticator current trên Android/iOS mà
-   không đưa payload vào log/issue.
+2. Google Authenticator 7.2 trên Android AVD đã pass app-to-app mà không giữ raw
+   payload; tiếp tục xác minh trên physical Android/iOS đại diện.
 3. Nếu schema thay đổi, thêm version support bằng fixture mới; không nới parser
    hiện tại để đoán.
 4. Revert client nếu có lỗi; persisted format không đổi.

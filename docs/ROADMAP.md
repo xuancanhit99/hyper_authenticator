@@ -30,8 +30,10 @@ trong Git, không lặp lại ở tài liệu active.
   hoặc ghi đè vault khi một record lỗi.
 - [ ] Backup file encrypted có password/KDF, schema version, integrity check và
   atomic import rollback.
-- [x] Regression wire-format với reconstructed Google Authenticator fixture
+- [x] Regression wire-format v1/v2 với reconstructed Google Authenticator fixture
   `TEST_ONLY`, không dùng credential thật.
+- [x] App-to-app hai chiều với Google Authenticator 7.2 trên Android AVD: Google
+  v2 → Hyper và Hyper v1 → Google, TOTP được đối chiếu mà không lưu raw evidence.
 - [ ] Physical interoperability với export current từ Google Authenticator trên
   Android/iOS đại diện; không lưu hoặc đưa raw payload vào evidence.
 

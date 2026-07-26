@@ -37,11 +37,15 @@ serialized shape hoặc round-trip contract.
 
 ## Google Authenticator migration payload — transient
 
-`otpauth-migration://offline?data=...` là Base64 của protobuf schema version 1
-được tái dựng, không phải persisted format hoặc API Google được công bố:
+`otpauth-migration://offline?data=...` là Base64 của protobuf schema được tái
+dựng, không phải persisted format hoặc API Google được công bố. Import nhận
+version 1 và wire shape version 2 đã quan sát từ Google Authenticator 7.2:
 
 - `MigrationPayload`: repeated OTP parameters, version, batch size/index/id;
-- OTP parameters: secret bytes, name, issuer, algorithm, digits, type và counter.
+- OTP parameters chung: secret bytes, name, issuer, algorithm, digits, type và
+  counter;
+- version 2 có thêm một opaque identifier ở field 8. Parser chỉ kiểm tra
+  bounded/non-empty rồi bỏ field này, không persist hoặc dùng làm identity.
 
 Parser chỉ nhận TOTP, SHA1/SHA256/SHA512 và 6/8 digits. Secret bytes được chuyển
 sang Base32; period là 30 giây vì payload không có period. Prefix
@@ -54,10 +58,11 @@ Exact duplicate dùng issuer, account name, secret không padding, algorithm,
 digits và period canonical để bỏ qua. Summary chỉ chứa `importedCount` và
 `duplicateCount`, không mang account hoặc secret.
 
-Encoder export dùng cùng version/field mapping, positive random `int32` batch ID
-và giữ thứ tự account. Mỗi đợt tối đa 100 account/100 part; từng URI giới hạn
-1.800 ký tự, text 2 KiB và secret decoded 1 KiB. TOTP period khác 30 giây hoặc
-digits khác 6/8 bị từ chối vì schema Google không round-trip được semantics đó.
+Encoder export vẫn phát version 1 với field mapping chung, positive random
+`int32` batch ID và giữ thứ tự account; Google Authenticator 7.2 trên Android AVD
+đã nhận format này. Mỗi đợt tối đa 100 account/100 part; từng URI giới hạn 1.800
+ký tự, text 2 KiB và secret decoded 1 KiB. TOTP period khác 30 giây hoặc digits
+khác 6/8 bị từ chối vì schema Google không round-trip được semantics đó.
 `GoogleAuthenticatorMigrationExportPart.toString()` redact URI.
 
 Export part chỉ tồn tại trong state nội bộ của page sau fresh OS auth, tối đa 60

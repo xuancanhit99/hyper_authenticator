@@ -140,13 +140,14 @@ class GoogleAuthenticatorMigrationBatchCollector {
 }
 
 abstract final class GoogleAuthenticatorMigrationParser {
-  static const _supportedVersion = 1;
+  static const _supportedVersions = {1, 2};
   static const _maxEncodedUriLength = 96 * 1024;
   static const _maxPayloadBytes = 64 * 1024;
   static const _maxAccounts = 100;
   static const _maxBatchParts = 100;
   static const _maxSecretBytes = 1024;
   static const _maxTextBytes = 2048;
+  static const _maxVersionTwoIdentifierBytes = 256;
 
   static bool isMigrationUri(String value) {
     final uri = Uri.tryParse(value.trim());
@@ -207,7 +208,7 @@ abstract final class GoogleAuthenticatorMigrationParser {
 
   static GoogleAuthenticatorMigrationPayload _parsePayload(Uint8List bytes) {
     final reader = _ProtoReader(bytes);
-    final accounts = <ParsedTotpAccount>[];
+    final encodedAccounts = <Uint8List>[];
     int? version;
     int? batchSize;
     // Proto3 omits scalar fields whose value is the default. The first batch
@@ -222,15 +223,13 @@ abstract final class GoogleAuthenticatorMigrationParser {
       switch (field) {
         case 1:
           _requireWireType(wireType, 2);
-          if (accounts.length >= _maxAccounts) {
+          if (encodedAccounts.length >= _maxAccounts) {
             throw const FormatException(
               'Export Google Authenticator chứa quá nhiều tài khoản.',
             );
           }
-          accounts.add(
-            _parseOtpParameters(
-              reader.readLengthDelimited(maxLength: _maxPayloadBytes),
-            ),
+          encodedAccounts.add(
+            reader.readLengthDelimited(maxLength: _maxPayloadBytes),
           );
         case 2:
           _requireWireType(wireType, 0);
@@ -245,16 +244,18 @@ abstract final class GoogleAuthenticatorMigrationParser {
           _requireWireType(wireType, 0);
           batchId = _readInt32(reader, fieldName: 'batch_id');
         default:
-          reader.skipField(wireType);
+          throw const FormatException(
+            'Google Authenticator export chứa metadata chưa được hỗ trợ.',
+          );
       }
     }
 
-    if (accounts.isEmpty) {
+    if (encodedAccounts.isEmpty) {
       throw const FormatException(
         'Export Google Authenticator không chứa tài khoản.',
       );
     }
-    if (version != _supportedVersion) {
+    if (!_supportedVersions.contains(version)) {
       throw const FormatException(
         'Version export Google Authenticator chưa được hỗ trợ.',
       );
@@ -267,6 +268,10 @@ abstract final class GoogleAuthenticatorMigrationParser {
       );
     }
 
+    final accounts = [
+      for (final encodedAccount in encodedAccounts)
+        _parseOtpParameters(encodedAccount, version: version!),
+    ];
     return GoogleAuthenticatorMigrationPayload(
       accounts: accounts,
       version: version!,
@@ -276,7 +281,10 @@ abstract final class GoogleAuthenticatorMigrationParser {
     );
   }
 
-  static ParsedTotpAccount _parseOtpParameters(Uint8List bytes) {
+  static ParsedTotpAccount _parseOtpParameters(
+    Uint8List bytes, {
+    required int version,
+  }) {
     final reader = _ProtoReader(bytes);
     Uint8List? secretBytes;
     String name = '';
@@ -284,6 +292,7 @@ abstract final class GoogleAuthenticatorMigrationParser {
     var algorithmValue = 0;
     var digitsValue = 0;
     var typeValue = 0;
+    var hasVersionTwoIdentifier = false;
 
     while (!reader.isAtEnd) {
       final tag = reader.readTag();
@@ -318,8 +327,26 @@ abstract final class GoogleAuthenticatorMigrationParser {
         case 7:
           _requireWireType(wireType, 0);
           reader.readVarint();
+        case 8:
+          if (version != 2 || hasVersionTwoIdentifier) {
+            throw const FormatException(
+              'Google Authenticator export chứa metadata tài khoản chưa được hỗ trợ.',
+            );
+          }
+          _requireWireType(wireType, 2);
+          final identifier = reader.readLengthDelimited(
+            maxLength: _maxVersionTwoIdentifierBytes,
+          );
+          if (identifier.isEmpty) {
+            throw const FormatException(
+              'Google Authenticator export chứa identifier không hợp lệ.',
+            );
+          }
+          hasVersionTwoIdentifier = true;
         default:
-          reader.skipField(wireType);
+          throw const FormatException(
+            'Google Authenticator export chứa metadata tài khoản chưa được hỗ trợ.',
+          );
       }
     }
 

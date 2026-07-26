@@ -111,9 +111,12 @@ dừng trước DI để không tự chọn hoặc ghi đè dữ liệu.
 
 - Manual entry dùng default SHA1/6 digits/30 giây.
 - QR parser giữ algorithm, digits và period không mặc định.
-- Google Authenticator migration parser đọc bounded protobuf version 1, thu
-  multi-part theo batch metadata kể cả out-of-order, reject batch trộn/HOTP/MD5
-  hoặc enum lạ. Collector chỉ ở memory và giới hạn 100 account.
+- Google Authenticator migration parser đọc bounded protobuf version 1 và wire
+  shape version 2 đã quan sát từ Google Authenticator 7.2. V2 chỉ chấp nhận một
+  opaque identifier field 8 bounded/non-empty rồi loại khỏi domain; top-level
+  hoặc account metadata khác đều fail closed. Collector thu multi-part theo batch
+  metadata kể cả out-of-order, reject batch trộn/HOTP/MD5 hoặc enum lạ, chỉ ở
+  memory và giới hạn 100 account.
 - Khi đủ batch, dialog preview chỉ hiển thị issuer/account name cùng tham số TOTP;
   Hủy không mutate. Xác nhận phát một batch import đã validate; local data source
   dedupe trong critical section và append bằng đúng một COW commit, không replace
@@ -121,7 +124,9 @@ dừng trước DI để không tự chọn hoặc ghi đè dữ liệu.
 - Google export là read-only disclosure flow tách khỏi `LocalAuthBloc`. User chọn
   account, fresh-authenticate qua OS rồi bounded encoder tạo migration payload v1
   trong memory. Encoder chỉ nhận period 30 giây và 6/8 digits, tự chia QR theo
-  batch metadata; QR tự xóa sau 60 giây hoặc ngay khi app rời foreground.
+  batch metadata; QR tự xóa sau 60 giây hoặc ngay khi app rời foreground. Khi
+  native auth sheet trả success trước lifecycle `resumed`, page chờ bounded 2
+  giây; timeout hoặc không trở lại foreground thì không tạo QR.
 - Export route không gọi repository/sync. Web/Linux fail closed vì chưa có OS
   reauthentication boundary; Android/iOS/macOS/Windows dùng sensitive local auth
   không persist qua background.
