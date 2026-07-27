@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:hyper_authenticator/core/config/app_config.dart';
 import 'package:hyper_authenticator/core/platform/platform_capabilities.dart';
+import 'package:hyper_authenticator/core/router/app_router.dart';
 import 'package:hyper_authenticator/features/auth/domain/entities/user_entity.dart';
 import 'package:hyper_authenticator/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:hyper_authenticator/features/settings/presentation/bloc/settings_bloc.dart';
@@ -14,6 +15,7 @@ import 'package:hyper_authenticator/features/settings/presentation/widgets/sync_
 import 'package:hyper_authenticator/features/sync/presentation/bloc/sync_bloc.dart';
 import 'package:hyper_authenticator/injection_container.dart';
 import 'package:intl/intl.dart';
+import 'package:go_router/go_router.dart';
 
 class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key});
@@ -107,6 +109,19 @@ class _SettingsView extends StatelessWidget {
                         ),
                       ],
                     ],
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Card(
+                  child: ListTile(
+                    key: const Key('encrypted-backup-file-settings'),
+                    leading: const Icon(Icons.folder_zip_outlined),
+                    title: const Text('Backup file mã hóa'),
+                    subtitle: const Text(
+                      'Portable offline bằng Argon2id + AES-256-GCM; không cần Supabase.',
+                    ),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => context.push(AppRoutes.encryptedBackup),
                   ),
                 ),
               ],

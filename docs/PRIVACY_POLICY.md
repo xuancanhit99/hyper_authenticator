@@ -32,6 +32,20 @@ QR tự đóng sau 60 giây hoặc khi ứng dụng rời foreground; ứng dụ
 upload, copy hay chia sẻ QR. Người dùng phải tránh screenshot, screen sharing và
 camera ngoài vì người quét được QR có thể tạo mã xác thực tương ứng.
 
+## Backup file mã hóa do người dùng quản lý
+
+Người dùng có thể chủ động tạo file `.hyauth` chứa toàn bộ local vault đã được
+mã hóa bằng Argon2id và AES-256-GCM. Password không được lưu, gửi tới Supabase
+hoặc có cơ chế lấy lại. File chỉ được chuyển tới system download/save/share
+boundary sau khi mã hóa; ứng dụng không tự upload hoặc quản lý retention của file.
+
+Khi restore, ứng dụng đọc file được chọn, xác thực integrity và giải mã trong
+memory. Preview không chứa TOTP secret; local vault chỉ bị full replacement sau
+khi người dùng gõ cụm xác nhận phá hủy. Cancel, sai password, file bị sửa hoặc
+validation lỗi không ghi vault. Decrypted candidate bị bỏ khi app rời foreground
+hoặc preview hết hạn. Người dùng phải giữ encrypted file và password ở các vị trí
+tách biệt, đồng thời xóa bản copy khỏi share/download provider nếu không còn cần.
+
 ## Backup cloud mã hóa đầu cuối tùy chọn
 
 Trên Android, iOS, macOS, Windows và Linux, người dùng có thể bật backup cloud
@@ -55,6 +69,7 @@ user-facing cryptographic exclusion theo từng device.
 ## Mục đích xử lý
 
 - tạo mã TOTP theo yêu cầu người dùng;
+- tạo/khôi phục encrypted backup file theo thao tác explicit của người dùng;
 - bảo vệ local access bằng OS authentication khi được bật;
 - đăng ký/đăng nhập/khôi phục Supabase account;
 - backup encrypted snapshot khi người dùng chủ động bật;
@@ -72,6 +87,8 @@ Không bán TOTP secret hoặc encrypted vault. Không dùng TOTP secret cho qu�
 
 Local data tồn tại tới khi người dùng xóa account/app data theo platform. Remote
 encrypted snapshot gắn với Supabase user và được xóa khi backend account bị xóa.
+File `.hyauth` nằm ngoài app sau save/share và chỉ bị xóa theo thao tác/retention
+của người dùng hoặc storage provider; xóa app không bảo đảm xóa các file đó.
 Backup vận hành có retention giới hạn; bản production hiện giữ 7 local backup và
 14 encrypted off-host copy, sau đó được rotation tự động.
 

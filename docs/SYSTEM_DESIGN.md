@@ -15,6 +15,8 @@ flowchart LR
   App --> Lock["OS local authentication"]
   App --> Vault["Platform secure storage\nversioned local vault"]
   App --> Prefs["SharedPreferences\nkhông chứa secret"]
+  App --> FileCipher["Argon2id + AES-256-GCM\nportable backup"]
+  FileCipher --> UserFile["File .hyauth\ndo người dùng quản lý"]
   App --> Cipher["AES-256-GCM + recovery key"]
   Cipher --> HTTPS["Reverse proxy HTTPS"]
   HTTPS --> Auth["Supabase Auth"]
@@ -97,7 +99,8 @@ router redirect, không được phát lại chỉ vì người dùng đổi tab
 
 Nếu generation mới hỏng, reader fallback generation trước. Legacy index/record
 được dual-read và repair nhưng không bị xóa ngay, giúp rollback. `replaceAccounts`
-dùng cùng transaction copy-on-write và là primitive duy nhất cho cloud recovery.
+dùng cùng transaction copy-on-write và là primitive duy nhất cho cloud recovery
+cùng encrypted file restore.
 
 Trên Windows, `CompanyName=app.hyperz.authenticator` và
 `ProductName=hyper_authenticator` là storage identity canonical từ bản lịch sử
@@ -191,6 +194,48 @@ domain/data/backend nhưng không còn được render trong primary Settings. C
 advanced security capability chưa có UX đủ rõ để người dùng phân biệt session
 revoke, remote wipe và cryptographic device exclusion. Backend tiếp tục bind
 registry row với JWT `session_id`; các contract test vẫn bắt buộc.
+
+## Backup file mã hóa portable
+
+`/encrypted-backup` được mở từ Settings và không phụ thuộc Supabase session.
+`EncryptedBackupBloc` điều phối repository, codec và file gateway; UI chỉ phát
+event/render state, không tự đọc hoặc replace persistence.
+
+### Export
+
+1. User nhập password hai lần; password dùng nguyên văn, tối thiểu 12 code point
+   và tối đa 1.024 UTF-8 byte.
+2. Repository đọc một snapshot local. Codec validate account count, stable ID,
+   field bound và toàn bộ TOTP semantics trước encryption.
+3. Argon2id v19 dùng salt 16 byte, 19 MiB, 2 iteration, parallelism 1 để derive
+   key 256-bit. Parameter được persist trong bounded envelope để decoder tương lai
+   tiếp tục mở file v1 và có thể nâng encoder cost.
+4. Plaintext payload v1 gồm UTC `created_at` cùng account theo local order.
+   AES-256-GCM dùng nonce 12 byte/tag 16 byte; canonical AAD bind purpose, file
+   version, KDF metadata/salt, cipher và nonce.
+5. Chỉ compact JSON ciphertext được chuyển cho system boundary: Web khởi tạo
+   download, desktop dùng system save dialog, Android/iOS dùng system share sheet.
+   Cancel save không mutate vault.
+
+### Restore
+
+1. System file picker chỉ nhận một file, kiểm tra size tối đa 8 MiB rồi mới đọc.
+2. Codec kiểm tra exact envelope/version/KDF resource bound trước Argon2id. Sai
+   password hoặc tamper làm AEAD verification thất bại với cùng thông báo.
+3. Plaintext chỉ được trả sau authentication; decoder exact-validate payload,
+   unique stable ID và tối đa 10.000 account.
+4. BLoC giữ decrypted account private, chỉ public metadata preview. Candidate bị
+   bỏ khi cancel, lifecycle rời foreground, timeout hai phút, restore/failure hoặc
+   BLoC đóng.
+5. Dialog hiển thị số account hiện tại và từ file, yêu cầu gõ `KHOI PHUC`.
+   Confirm gọi `replaceAccounts()` đúng một lần; COW commit marker được đổi sau
+   record/manifest verification nên write failure giữ snapshot active trước đó.
+
+File restore là exact full replacement, không merge/dedupe và không tự gọi cloud
+sync. Generation cũ được local vault giữ như internal rollback candidate nhưng
+chưa có nút undo user-facing. `file_selector` là open/save boundary chính thức;
+`share_plus` chỉ dùng trên mobile vì Android/iOS không có save-location API tương
+đương desktop.
 
 ## Backup cloud mã hóa đầu cuối
 

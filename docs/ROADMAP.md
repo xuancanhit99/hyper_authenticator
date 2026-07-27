@@ -29,8 +29,9 @@ trong Git, không lặp lại ở tài liệu active.
 - [x] Import/export chuẩn `otpauth` phổ biến: preview rồi atomic append/dedupe;
   một QR mỗi account sau fresh OS auth; không đưa URI/secret vào log, semantics
   hoặc persisted state.
-- [ ] Backup file encrypted có password/KDF, schema version, integrity check và
-  atomic import rollback.
+- [x] Backup file encrypted `.hyauth`: Argon2id + AES-256-GCM, versioned
+  envelope/payload, header AAD, integrity verification, preview và atomic COW
+  replacement; cancel/tamper/wrong password không mutate vault.
 - [x] Regression wire-format v1/v2 với reconstructed Google Authenticator fixture
   `TEST_ONLY`, không dùng credential thật.
 - [x] App-to-app hai chiều với Google Authenticator 7.2 trên Android AVD: Google
@@ -38,8 +39,10 @@ trong Git, không lặp lại ở tài liệu active.
 - [ ] Physical interoperability với export current từ Google Authenticator trên
   Android/iOS đại diện; không lưu hoặc đưa raw payload vào evidence.
 
-Exit criteria: round-trip giữ đủ issuer/name/algorithm/digits/period; cancel hoặc
-payload lỗi không mutate vault; export chỉ mở sau reauthentication.
+Exit criteria source: round-trip giữ đủ issuer/name/algorithm/digits/period;
+cancel hoặc payload lỗi không mutate vault; QR export chỉ mở sau
+reauthentication, còn file export yêu cầu password nhập lại và chỉ ghi
+ciphertext. Physical interoperability/restore rehearsal vẫn là gate riêng.
 
 ## P0 — Bảo toàn dữ liệu và security
 

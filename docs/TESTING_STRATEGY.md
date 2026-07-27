@@ -79,6 +79,15 @@ preparation, cùng các nhóm sau:
   Google transfer cùng đi qua fresh-auth boundary, format switch loại selection
   không tương thích và standard multi-account export render tuần tự một QR/account
   mà không đưa URI/secret vào semantics;
+- portable backup codec v1 giữ stable ID/order/Unicode/custom TOTP semantics;
+  production Argon2id 19 MiB/2/1 round-trip, wrong password/tamper/header AAD,
+  future version, KDF resource bound, canonical JSON, file/password/account limit
+  và diagnostic redaction đều fail closed;
+- encrypted backup BLoC khóa file/save cancel, wrong password, preview timeout,
+  single replacement, replacement failure, không retry stale candidate và
+  file-picker trả muộn sau khi BLoC đóng; widget khóa password confirmation,
+  no-secret preview/semantics, typed `KHOI PHUC`, lifecycle rời foreground loại
+  dialog/candidate, reload sau restore và viewport 320×640/text scale 200%;
 - local vault migration, concurrent mutation, corruption rollback, atomic replace
   và generation compaction;
 - local-auth startup lock, relock và plugin-error fail closed;

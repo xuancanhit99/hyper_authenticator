@@ -48,6 +48,9 @@ Sau đó:
 - xác nhận backup mới, checksum và restore rehearsal;
 - rà secret/Cyrillic/asset license;
 - xác nhận platform configuration gate có INTERNET/cleartext/backup/Keychain/ID;
+- với release chứa backup file, chạy backup → clean test profile → restore trên
+  platform target; wrong password/tamper/cancel phải giữ vault và evidence không
+  chứa raw secret/OTP/password;
 - cập nhật release note và security reporting channel; privacy/support URL là gate
   bắt buộc trước stable/store release;
 - tag đúng tested commit và tạo SHA-256 cho artifact.
