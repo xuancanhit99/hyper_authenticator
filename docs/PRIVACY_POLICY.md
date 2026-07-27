@@ -20,16 +20,17 @@ TOTP account được lưu trong platform secure storage của thiết bị/brow
 Ứng dụng không gửi plaintext TOTP secret tới analytics hoặc log. Logout Supabase
 không tự động xóa local authenticator vault.
 
-Khi người dùng import QR từ Google Authenticator, QR payload và TOTP secret chỉ
-được xử lý trong memory để parse/preview. Preview không hiển thị secret; dữ liệu
-chỉ được append vào local vault sau xác nhận. Cancel, batch chưa đủ hoặc payload
-lỗi không ghi account.
+Khi người dùng import standard `otpauth` hoặc Google Authenticator migration QR,
+QR payload và TOTP secret chỉ được xử lý trong memory để parse/preview. Preview
+không hiển thị secret; dữ liệu chỉ được append vào local vault sau xác nhận.
+Cancel, batch chưa đủ hoặc payload lỗi không ghi account.
 
-Khi người dùng export sang Google Authenticator, ứng dụng yêu cầu xác thực lại
-bằng cơ chế hệ điều hành rồi tạo QR chứa TOTP secret trong memory. QR tự đóng sau
-60 giây hoặc khi ứng dụng rời foreground; ứng dụng không tự lưu, upload, copy hay
-chia sẻ QR. Người dùng phải tránh screenshot, screen sharing và camera ngoài vì
-người quét được QR có thể tạo mã xác thực tương ứng.
+Khi người dùng export standard `otpauth` hoặc Google transfer, ứng dụng yêu cầu
+xác thực lại bằng cơ chế hệ điều hành rồi tạo QR chứa TOTP secret trong memory.
+Standard format tạo một QR cho mỗi account; Google format có thể gộp/chia batch.
+QR tự đóng sau 60 giây hoặc khi ứng dụng rời foreground; ứng dụng không tự lưu,
+upload, copy hay chia sẻ QR. Người dùng phải tránh screenshot, screen sharing và
+camera ngoài vì người quét được QR có thể tạo mã xác thực tương ứng.
 
 ## Backup cloud mã hóa đầu cuối tùy chọn
 

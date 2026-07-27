@@ -28,6 +28,11 @@ không bao giờ được đặt trong Flutter `.env`, asset, build log hoặc b
 - Versioned copy-on-write vault; commit marker ghi sau cùng; rollback generation.
 - Compaction giữ active và rollback generation.
 - TOTP validation tập trung; không log barcode payload/secret.
+- Standard `otpauth` parser giới hạn URI, shape và security parameter cardinality;
+  chỉ nhận TOTP cùng algorithm/digits/period đã allowlist. Import luôn preview
+  không chứa secret; cancel/parser failure không mutate, confirm dùng atomic
+  append/exact dedupe. Exporter validate toàn selection trước khi tạo một bounded
+  URI/QR cho mỗi account.
 - Google migration parser giới hạn URI/decoded payload/text/secret/account/batch,
   chỉ nhận version 1 hoặc wire shape version 2 đã quan sát, TOTP cùng
   thuật toán/digits đã allowlist. V2 chỉ nhận một opaque field 8 bounded/non-empty
@@ -167,16 +172,19 @@ Copy là hành động chủ động đưa key vào clipboard do OS quản lý. 
 persist clipboard content; người dùng phải xóa clipboard theo threat model của
 thiết bị nếu clipboard history/sync đang bật.
 
-Primary account list không còn export một account thành `otpauth` QR. Flow cũ có
-thể hiển thị full TOTP secret mà không reauthenticate hoặc giới hạn thời gian.
-Import Google Authenticator đã có preview/atomic append nhưng không làm QR nguồn
-bớt nhạy cảm; ảnh/export QR vẫn là credential.
+Flow cũ từng export một account thành `otpauth` QR mà không reauthenticate hoặc
+giới hạn thời gian đã bị loại bỏ. Standard format chỉ được đưa lại trong cùng
+protected disclosure boundary với Google transfer. Import standard/Google đều có
+preview/atomic append nhưng không làm QR nguồn bớt nhạy cảm; ảnh/export QR vẫn là
+credential.
 
-**Đã triển khai:** Google migration export dùng fresh OS reauthentication riêng,
-không tái dùng app-lock success. User chọn account trước; QR version 1 bounded chỉ
-được tạo trong memory sau auth, có cảnh báo, timeout 60 giây, nút đóng ngay và bị
-xóa khi app rời foreground. URI/secret không vào BLoC, route extra, clipboard,
-log hoặc semantics. Native auth success khi app chưa `resumed` chỉ được chờ
+**Đã triển khai:** protected export page dùng fresh OS reauthentication riêng,
+không tái dùng app-lock success. User chọn format/account trước; Google migration
+QR version 1 hoặc một standard `otpauth` QR cho mỗi account chỉ được tạo trong
+memory sau auth, có cảnh báo, timeout 60 giây, nút đóng ngay và bị xóa khi app rời
+foreground. Standard format giữ algorithm/digits/period và validate toàn bộ
+selection trước khi trả list. URI/secret không vào BLoC, route extra, clipboard,
+file, log hoặc semantics. Native auth success khi app chưa `resumed` chỉ được chờ
 bounded 2 giây; timeout fail closed và lifecycle resume muộn không tự tạo QR.
 Web/Linux fail closed vì chưa có OS auth boundary.
 
@@ -187,7 +195,8 @@ payload, secret và OTP không được giữ trong repository/evidence; account
 file tạm đã cleanup sau test.
 
 **Khoảng trống đã biết:** evidence trên AVD không thay physical interoperability
-Android/iOS. QR đang hiển thị vẫn có thể bị camera ngoài hoặc active
+Android/iOS; standard format mới có source/widget round-trip, chưa có app-to-app
+physical evidence. QR đang hiển thị vẫn có thể bị camera ngoài hoặc active
 screenshot/screen recording lấy; timeout/Privacy Shield không thay thế native
 capture prevention.
 

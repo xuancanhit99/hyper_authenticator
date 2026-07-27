@@ -6,9 +6,12 @@ import 'package:hyper_authenticator/core/platform/platform_capabilities.dart';
 import 'package:hyper_authenticator/features/authenticator/domain/entities/authenticator_account.dart';
 import 'package:hyper_authenticator/features/authenticator/domain/services/google_authenticator_migration_exporter.dart';
 import 'package:hyper_authenticator/features/authenticator/domain/services/sensitive_action_authenticator.dart';
+import 'package:hyper_authenticator/features/authenticator/domain/services/totp_uri_exporter.dart';
 import 'package:hyper_authenticator/features/authenticator/presentation/bloc/accounts_bloc.dart';
 import 'package:hyper_authenticator/injection_container.dart';
 import 'package:qr_flutter/qr_flutter.dart';
+
+enum AccountExportFormat { googleAuthenticator, otpauth }
 
 class ExportAccountsPage extends StatefulWidget {
   const ExportAccountsPage({
@@ -17,12 +20,14 @@ class ExportAccountsPage extends StatefulWidget {
     this.platformSupported,
     this.sessionDuration = const Duration(seconds: 60),
     this.foregroundResumeTimeout = const Duration(seconds: 2),
+    this.initialFormat = AccountExportFormat.googleAuthenticator,
   });
 
   final SensitiveActionAuthenticator? authenticator;
   final bool? platformSupported;
   final Duration sessionDuration;
   final Duration foregroundResumeTimeout;
+  final AccountExportFormat initialFormat;
 
   @override
   State<ExportAccountsPage> createState() => _ExportAccountsPageState();
@@ -32,8 +37,9 @@ class _ExportAccountsPageState extends State<ExportAccountsPage>
     with WidgetsBindingObserver {
   late final SensitiveActionAuthenticator _authenticator;
   late final bool _platformSupported;
+  late AccountExportFormat _format;
   final Set<String> _selectedIds = <String>{};
-  List<GoogleAuthenticatorMigrationExportPart>? _parts;
+  List<_ProtectedQrExportPart>? _parts;
   Timer? _expiryTimer;
   Completer<void>? _foregroundResumeCompleter;
   int _partIndex = 0;
@@ -48,6 +54,7 @@ class _ExportAccountsPageState extends State<ExportAccountsPage>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _authenticator = widget.authenticator ?? sl<SensitiveActionAuthenticator>();
+    _format = widget.initialFormat;
     _platformSupported =
         widget.platformSupported ??
         PlatformCapabilities.supportsLocalAuthentication;
@@ -93,8 +100,34 @@ class _ExportAccountsPageState extends State<ExportAccountsPage>
     }
   }
 
-  bool _isCompatible(AuthenticatorAccount account) =>
-      account.period == 30 && (account.digits == 6 || account.digits == 8);
+  bool _isCompatible(AuthenticatorAccount account) {
+    try {
+      switch (_format) {
+        case AccountExportFormat.googleAuthenticator:
+          GoogleAuthenticatorMigrationExporter.validateAccounts([account]);
+        case AccountExportFormat.otpauth:
+          TotpUriExporter.validateAccounts([account]);
+      }
+      return true;
+    } on FormatException {
+      return false;
+    }
+  }
+
+  void _setFormat(
+    AccountExportFormat format,
+    List<AuthenticatorAccount> accounts,
+  ) {
+    if (_authenticating || format == _format) return;
+    setState(() {
+      _format = format;
+      _selectedIds.removeWhere((id) {
+        final index = accounts.indexWhere((item) => item.id == id);
+        return index == -1 || !_isCompatible(accounts[index]);
+      });
+      _statusMessage = null;
+    });
+  }
 
   void _toggleAll(List<AuthenticatorAccount> accounts) {
     final compatibleIds = accounts
@@ -117,8 +150,14 @@ class _ExportAccountsPageState extends State<ExportAccountsPage>
     final selected = accounts
         .where((account) => selectedIds.contains(account.id))
         .toList(growable: false);
+    final format = _format;
     try {
-      GoogleAuthenticatorMigrationExporter.validateAccounts(selected);
+      switch (format) {
+        case AccountExportFormat.googleAuthenticator:
+          GoogleAuthenticatorMigrationExporter.validateAccounts(selected);
+        case AccountExportFormat.otpauth:
+          TotpUriExporter.validateAccounts(selected);
+      }
     } on FormatException catch (error) {
       setState(() => _statusMessage = error.message.toString());
       return;
@@ -174,9 +213,7 @@ class _ExportAccountsPageState extends State<ExportAccountsPage>
           'Danh sách tài khoản vừa thay đổi. Hãy chọn lại trước khi export.',
         );
       }
-      final parts = GoogleAuthenticatorMigrationExporter.export(
-        currentAccounts,
-      );
+      final parts = _exportParts(format, currentAccounts);
       if (!mounted || generation != _authenticationGeneration) return;
       setState(() {
         _authenticating = false;
@@ -192,6 +229,34 @@ class _ExportAccountsPageState extends State<ExportAccountsPage>
         _statusMessage = error.message.toString();
       });
     }
+  }
+
+  List<_ProtectedQrExportPart> _exportParts(
+    AccountExportFormat format,
+    List<AuthenticatorAccount> accounts,
+  ) {
+    return switch (format) {
+      AccountExportFormat.googleAuthenticator => [
+        for (final part in GoogleAuthenticatorMigrationExporter.export(
+          accounts,
+        ))
+          _ProtectedQrExportPart(
+            format: format,
+            uri: part.uri,
+            index: part.index,
+            total: part.total,
+          ),
+      ],
+      AccountExportFormat.otpauth => [
+        for (final part in TotpUriExporter.export(accounts))
+          _ProtectedQrExportPart(
+            format: format,
+            uri: part.uri,
+            index: part.index,
+            total: part.total,
+          ),
+      ],
+    };
   }
 
   Future<bool> _waitForForegroundAfterAuthentication(int generation) async {
@@ -338,6 +403,64 @@ class _ExportAccountsPageState extends State<ExportAccountsPage>
             ),
           ),
         ),
+        SliverPadding(
+          padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+          sliver: SliverToBoxAdapter(
+            child: Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Định dạng export',
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    const SizedBox(height: 10),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        ChoiceChip(
+                          key: const Key('export-format-google'),
+                          label: const Text('Google transfer'),
+                          selected:
+                              _format ==
+                              AccountExportFormat.googleAuthenticator,
+                          onSelected: _authenticating
+                              ? null
+                              : (_) => _setFormat(
+                                  AccountExportFormat.googleAuthenticator,
+                                  accounts,
+                                ),
+                        ),
+                        ChoiceChip(
+                          key: const Key('export-format-otpauth'),
+                          label: const Text('Chuẩn otpauth'),
+                          selected: _format == AccountExportFormat.otpauth,
+                          onSelected: _authenticating
+                              ? null
+                              : (_) => _setFormat(
+                                  AccountExportFormat.otpauth,
+                                  accounts,
+                                ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      _format == AccountExportFormat.googleAuthenticator
+                          ? 'Có thể gộp nhiều tài khoản; chỉ hỗ trợ period '
+                                '30 giây và mã 6 hoặc 8 chữ số.'
+                          : 'Mỗi QR chứa một tài khoản và giữ nguyên algorithm, '
+                                'digits cùng period.',
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
         if (_statusMessage case final message?)
           SliverPadding(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
@@ -404,8 +527,7 @@ class _ExportAccountsPageState extends State<ExportAccountsPage>
                   compatible
                       ? account.accountName
                       : '${account.accountName} · Không tương thích: '
-                            'Google transfer yêu cầu period 30 giây và '
-                            '6 hoặc 8 chữ số.',
+                            '${_format == AccountExportFormat.googleAuthenticator ? 'Google transfer yêu cầu period 30 giây, mã 6 hoặc 8 chữ số và dữ liệu TOTP hợp lệ.' : 'dữ liệu TOTP không hợp lệ hoặc quá dài cho QR standard.'}',
                 ),
               );
             },
@@ -440,7 +562,7 @@ class _ExportAccountsPageState extends State<ExportAccountsPage>
 
   Widget _buildExportSession(
     BuildContext context,
-    List<GoogleAuthenticatorMigrationExportPart> parts,
+    List<_ProtectedQrExportPart> parts,
   ) {
     final part = parts[_partIndex];
     final qrSize = (MediaQuery.sizeOf(context).width - 48)
@@ -460,16 +582,20 @@ class _ExportAccountsPageState extends State<ExportAccountsPage>
               ),
             ),
             const SizedBox(height: 12),
-            Text(
-              parts.length == 1
-                  ? 'Quét QR này trong Google Authenticator'
-                  : 'Quét lần lượt đủ ${parts.length} QR trong cùng một phiên',
-              textAlign: TextAlign.center,
-            ),
+            Text(switch (part.format) {
+              AccountExportFormat.googleAuthenticator =>
+                parts.length == 1
+                    ? 'Quét QR này trong Google Authenticator'
+                    : 'Quét lần lượt đủ ${parts.length} QR trong cùng một phiên',
+              AccountExportFormat.otpauth =>
+                parts.length == 1
+                    ? 'Quét QR này bằng ứng dụng hỗ trợ chuẩn otpauth'
+                    : 'Quét lần lượt ${parts.length} QR; mỗi QR là một tài khoản',
+            }, textAlign: TextAlign.center),
             const SizedBox(height: 20),
             Semantics(
               label:
-                  'Mã QR export Google Authenticator, phần '
+                  '${part.format == AccountExportFormat.googleAuthenticator ? 'Mã QR export Google Authenticator, phần' : 'Mã QR export chuẩn otpauth, tài khoản'} '
                   '${part.index + 1} trên ${part.total}',
               image: true,
               child: ExcludeSemantics(
@@ -479,7 +605,9 @@ class _ExportAccountsPageState extends State<ExportAccountsPage>
                     borderRadius: BorderRadius.circular(16),
                   ),
                   child: QrImageView(
-                    key: ValueKey('export-qr-${part.index}'),
+                    key: ValueKey(
+                      'export-qr-${part.format.name}-${part.index}',
+                    ),
                     data: part.uri,
                     size: qrSize,
                     padding: const EdgeInsets.all(16),
@@ -496,7 +624,10 @@ class _ExportAccountsPageState extends State<ExportAccountsPage>
               ),
             ),
             const SizedBox(height: 16),
-            Text('Phần ${part.index + 1}/${part.total}'),
+            Text(
+              '${part.format == AccountExportFormat.googleAuthenticator ? 'Phần' : 'Tài khoản'} '
+              '${part.index + 1}/${part.total}',
+            ),
             if (parts.length > 1)
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -530,4 +661,23 @@ class _ExportAccountsPageState extends State<ExportAccountsPage>
       ),
     );
   }
+}
+
+class _ProtectedQrExportPart {
+  const _ProtectedQrExportPart({
+    required this.format,
+    required this.uri,
+    required this.index,
+    required this.total,
+  });
+
+  final AccountExportFormat format;
+  final String uri;
+  final int index;
+  final int total;
+
+  @override
+  String toString() =>
+      '_ProtectedQrExportPart('
+      'format: $format, uri: [REDACTED], index: $index, total: $total)';
 }

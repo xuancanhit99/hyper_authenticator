@@ -9,7 +9,7 @@ import 'package:hyper_authenticator/features/authenticator/domain/services/googl
 import 'package:hyper_authenticator/features/authenticator/domain/services/totp_uri_parser.dart';
 import 'package:hyper_authenticator/features/authenticator/presentation/bloc/accounts_bloc.dart';
 import 'package:hyper_authenticator/features/authenticator/presentation/widgets/account_avatar.dart';
-import 'package:hyper_authenticator/features/authenticator/presentation/widgets/google_authenticator_import_preview_dialog.dart';
+import 'package:hyper_authenticator/features/authenticator/presentation/widgets/totp_import_preview_dialog.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 
@@ -144,9 +144,10 @@ class _AddAccountPageState extends State<AddAccountPage> {
 
         if (mounted) {
           setState(() => _isScanning = false);
-          final confirmed = await GoogleAuthenticatorImportPreviewDialog.show(
+          final confirmed = await TotpImportPreviewDialog.show(
             context,
             progress.accounts!,
+            TotpImportSource.googleAuthenticator,
           );
           if (confirmed && mounted) {
             _requestImport(progress.accounts!);
@@ -161,16 +162,12 @@ class _AddAccountPageState extends State<AddAccountPage> {
         return;
       }
       setState(() => _isScanning = false);
-      _requestAdd(
-        AddAccountRequested(
-          issuer: account.issuer,
-          accountName: account.accountName,
-          secretKey: account.secretKey,
-          algorithm: account.algorithm,
-          digits: account.digits,
-          period: account.period,
-        ),
-      );
+      final confirmed = await TotpImportPreviewDialog.show(context, [
+        account,
+      ], TotpImportSource.otpauth);
+      if (confirmed && mounted) {
+        _requestImport([account]);
+      }
     } on FormatException catch (e) {
       _showError(e.message);
       await _restartScannerAfterFeedback();

@@ -26,8 +26,9 @@ trong Git, không lặp lại ở tài liệu active.
 - [x] Export nhiều account theo Google migration format version 1; yêu cầu fresh
   OS reauthentication,
   cảnh báo secret exposure và timeout.
-- [ ] Import/export chuẩn `otpauth` phổ biến mà không log, đưa secret vào semantics
-  hoặc ghi đè vault khi một record lỗi.
+- [x] Import/export chuẩn `otpauth` phổ biến: preview rồi atomic append/dedupe;
+  một QR mỗi account sau fresh OS auth; không đưa URI/secret vào log, semantics
+  hoặc persisted state.
 - [ ] Backup file encrypted có password/KDF, schema version, integrity check và
   atomic import rollback.
 - [x] Regression wire-format v1/v2 với reconstructed Google Authenticator fixture

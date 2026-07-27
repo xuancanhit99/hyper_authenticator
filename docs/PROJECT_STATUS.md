@@ -26,9 +26,13 @@ session registry hoặc vault-key generation.
 
 ### TOTP và local vault
 
-- Parse `otpauth://totp`; validate Base32, SHA1/SHA256/SHA512, digits 6–8 và
-  period dương; persisted field round-trip không tự về default.
+- Parse bounded `otpauth://totp`; validate Base32, SHA1/SHA256/SHA512, digits
+  6–8, period dương và từ chối security parameter bị lặp. Persisted field
+  round-trip không tự về default.
 - Thêm account bằng camera, ảnh QR hoặc thủ công theo platform capability.
+- Import standard `otpauth` luôn preview issuer/account/parameter không chứa
+  secret; cancel không mutate, confirm dùng validate-all, exact dedupe và một
+  atomic COW append commit.
 - Import Google Authenticator migration QR version 1 và wire shape version 2 đã
   quan sát từ Google Authenticator 7.2, gồm multi-part out-of-order, preview,
   duplicate detection và một atomic append commit. HOTP/MD5/version hoặc metadata
@@ -38,9 +42,12 @@ session registry hoặc vault-key generation.
   QR có cảnh báo, timeout 60 giây và bị xóa khi app rời foreground. Nếu OS auth
   trả success trước lifecycle `resumed`, page chỉ chờ tối đa 2 giây rồi fail
   closed, không tạo QR ở background.
+- Cùng protected export page cho phép chọn standard `otpauth`: một QR cho mỗi
+  account, tối đa 100 account, giữ algorithm/digits/period và validate toàn bộ
+  trước khi tạo list. URI/secret chỉ nằm trong widget memory sau fresh OS auth.
 - Tìm kiếm, sửa, xóa, sao chép TOTP và countdown theo period.
-- Account actions dùng menu Material. Primary UI không xuất raw `otpauth` QR;
-  Google transfer là disclosure flow riêng, không tái dùng app-lock success.
+- Account actions dùng menu Material. Google transfer và standard `otpauth` chỉ
+  xuất qua disclosure flow riêng, không tái dùng app-lock success.
 - FlutterSecureStorage dùng versioned copy-on-write generation, commit marker,
   rollback generation và compaction giữ hai generation hợp lệ gần nhất.
 - Logout không xóa local vault. Windows giữ storage identity tương thích
@@ -99,9 +106,9 @@ user-facing cryptographic device exclusion.
 
 | Gate | Kết quả |
 |---|---|
-| `flutter analyze` | Pass, 0 diagnostic ngày 27-07-2026 trên nhánh Google Authenticator v2 interoperability |
+| `flutter analyze` | Pass, 0 diagnostic ngày 27-07-2026 trên nhánh standard otpauth portability |
 | `scripts/agent/check.sh full` | Pass ngày 27-07-2026; tổng hợp bốn boundary dưới đây |
-| `scripts/agent/check.sh app` | Pass ngày 27-07-2026: docs/generated/format/analyze/platform và 225 Flutter test |
+| `scripts/agent/check.sh app` | Pass ngày 27-07-2026: docs/generated/format/analyze/platform và 234 Flutter test |
 | `scripts/agent/check.sh backend` | Pass ngày 27-07-2026: encrypted/device-wrap và plaintext-retirement PostgreSQL contract |
 | `scripts/agent/check.sh release` | Pass ngày 27-07-2026: GitHub Preview asset/public contract và Web rollback harness |
 | `scripts/agent/check.sh infra` | Pass ngày 27-07-2026: NPM secret/backup/deploy/route/rollback, Auth load pacing và restore drill contract |
@@ -114,13 +121,13 @@ user-facing cryptographic device exclusion.
 | Flutter Web production | HTTPS/Nginx/runtime/rollback smoke đã pass; E2EE backup tắt |
 | GitHub Preview | `v1.1.0-preview.4`: signed Android APK, unsigned Windows NSIS và Linux `.deb`, checksum/public verification pass |
 
-Google portability change set chỉ thêm transient encoder/auth/UI/test/docs; không
+Portability change set chỉ thêm transient parser/encoder/auth/UI/test/docs; không
 đổi local-vault format, encrypted envelope, Supabase schema/RPC hoặc production
 data.
 
 ## Capability matrix
 
-| Platform | TOTP local | QR camera | QR từ ảnh | App lock | Google export | Backup cloud E2EE |
+| Platform | TOTP local | QR camera | QR từ ảnh | App lock | Protected QR export | Backup cloud E2EE |
 |---|---:|---:|---:|---:|---:|---:|
 | Android | Có | Có | Có | Có | Có | Có |
 | iOS | Có | Có | Có | Có | Có | Có |
@@ -163,10 +170,10 @@ Chi tiết command, rollback và evidence retention:
 
 ## Khoảng trống ưu tiên
 
-1. **Portability:** import/export Google Authenticator migration QR đã pass
-   app-to-app hai chiều với Google Authenticator 7.2 trên Android AVD; còn
-   physical interoperability Android/iOS, standard `otpauth` portability và
-   encrypted backup file.
+1. **Portability:** Google migration QR đã pass app-to-app hai chiều với Google
+   Authenticator 7.2 trên Android AVD; standard `otpauth` đã có bounded
+   round-trip/preview/protected export regression. Còn physical interoperability
+   Android/iOS cho standard/current Google export và encrypted backup file.
 2. **Device exclusion:** session revoke chưa phải cryptographic exclusion hoặc
    remote wipe; cần UX và independent security review.
 3. **Thiết bị thật:** camera, biometric, secure storage, TalkBack/VoiceOver,
