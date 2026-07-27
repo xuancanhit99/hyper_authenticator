@@ -35,6 +35,30 @@ asset không cần migration data.
 `toJson` vẫn giữ đủ field cho domain/persistence, vì vậy control log này không đổi
 serialized shape hoặc round-trip contract.
 
+## Standard otpauth URI — transient
+
+Mỗi standard Key URI Format payload mô tả đúng một TOTP account. Parser chỉ nhận
+scheme/type TOTP canonical, một label path và các query field `secret`, `issuer`,
+`algorithm`, `digits`, `period`; mỗi security-relevant field xuất hiện tối đa một
+lần. Unknown query field không được persist. Import URI tối đa 16 KiB.
+
+Label encode `issuer:accountName`; query `issuer` là nguồn canonical khi có mặt để
+issuer hoặc account name chứa dấu hai chấm vẫn round-trip. Secret được normalize
+Base32 và bỏ padding khi export. Algorithm được normalize về
+SHA1/SHA256/SHA512; digits 6–8 và period nguyên dương giữ nguyên, không tự thay
+default.
+
+Import payload chỉ tồn tại trong scanner/parser memory. Preview chỉ nhận
+`ParsedTotpAccount`, không render secret; confirm dùng cùng atomic
+append/exact-dedupe contract với Google migration import. Account mới nhận UUID;
+exact duplicate giữ account hiện có.
+
+Exporter validate toàn bộ selection trước khi trả list, giới hạn 100 account và
+1.800 ký tự mỗi URI. `TotpUriExportPart` chứa URI, index và total nhưng
+`toString()` luôn redact URI. Mỗi part tương ứng một QR và chỉ tồn tại trong
+protected page state sau fresh OS auth, tối đa 60 giây; không serialize vào vault,
+BLoC, route, clipboard, file hoặc Supabase.
+
 ## Google Authenticator migration payload — transient
 
 `otpauth-migration://offline?data=...` là Base64 của protobuf schema được tái

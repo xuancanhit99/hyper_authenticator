@@ -26,6 +26,7 @@ void main() {
       expect(localAuth.lastSensitiveTransaction, isTrue);
       expect(localAuth.lastPersistAcrossBackgrounding, isFalse);
       expect(localAuth.lastBiometricOnly, isFalse);
+      expect(localAuth.lastLocalizedReason, 'Xác thực để xuất credential TOTP');
     },
   );
 
@@ -72,6 +73,7 @@ class _FakeLocalAuthentication extends LocalAuthentication {
   bool? lastBiometricOnly;
   bool? lastSensitiveTransaction;
   bool? lastPersistAcrossBackgrounding;
+  String? lastLocalizedReason;
 
   @override
   Future<bool> get canCheckBiometrics async => canCheck;
@@ -88,6 +90,7 @@ class _FakeLocalAuthentication extends LocalAuthentication {
     bool persistAcrossBackgrounding = false,
   }) async {
     authenticateCalls++;
+    lastLocalizedReason = localizedReason;
     lastBiometricOnly = biometricOnly;
     lastSensitiveTransaction = sensitiveTransaction;
     lastPersistAcrossBackgrounding = persistAcrossBackgrounding;

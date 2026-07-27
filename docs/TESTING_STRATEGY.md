@@ -56,7 +56,10 @@ preparation, cùng các nhóm sau:
   `ModalRoute`, không chạy full-page animation, giữ state branch và chọn đúng tab
   khi bootstrap trực tiếp từ `/settings`; device integration lifecycle smoke
   cũng khóa shell không phát sinh duplicate `GlobalKey` khi lock redirect liên tiếp;
-- TOTP URI/validator, countdown nhiều period và lifecycle resume;
+- TOTP URI/validator, countdown nhiều period và lifecycle resume; standard
+  exporter → parser round-trip giữ issuer/account có dấu hai chấm, Unicode,
+  SHA1/SHA256/SHA512, 6–8 digits và custom period; duplicate security parameter,
+  HOTP, invalid Base32, account/URI limit và partial-list fail closed;
 - Google migration version 1 cùng reconstructed version 2 wire shape `TEST_ONLY`,
   SHA1/SHA256, 6/8 digits, label normalization, multi-part
   out-of-order/duplicate/mixed batch, scalar proto3 default, signed batch ID,
@@ -68,11 +71,14 @@ preparation, cùng các nhóm sau:
   success; widget chỉ render QR sau auth khi app còn foreground, chờ bounded cho
   `resumed` sau native auth sheet, timeout/lifecycle muộn fail closed, khóa
   selection đang xác thực rồi xóa QR khi lifecycle rời foreground;
-- Google import preview confirm/cancel, progress, secret không render/semantics,
-  default focus Hủy, viewport 320×640/text scale 200%; storage regression khóa
-  exact duplicate, một COW commit và commit-failure không partial import;
-- account action dùng menu Material có keyboard/semantics; primary UI không xuất
-  raw `otpauth` QR và Google transfer action đi qua fresh-auth boundary riêng;
+- Standard/Google import preview confirm/cancel, progress, secret không
+  render/semantics, default focus Hủy, viewport 320×640/text scale 200%; standard
+  confirm giữ algorithm/digits/period và storage regression khóa exact duplicate,
+  một COW commit cùng commit-failure không partial import;
+- account action dùng menu Material có keyboard/semantics; standard `otpauth` và
+  Google transfer cùng đi qua fresh-auth boundary, format switch loại selection
+  không tương thích và standard multi-account export render tuần tự một QR/account
+  mà không đưa URI/secret vào semantics;
 - local vault migration, concurrent mutation, corruption rollback, atomic replace
   và generation compaction;
 - local-auth startup lock, relock và plugin-error fail closed;

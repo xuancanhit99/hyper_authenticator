@@ -37,31 +37,50 @@ class ParsedTotpAccount extends Equatable {
 }
 
 abstract final class TotpUriParser {
+  static const _maxUriLength = 16 * 1024;
+
   static ParsedTotpAccount parse(String value) {
-    final uri = Uri.tryParse(value.trim());
-    if (uri == null || uri.scheme != 'otpauth' || uri.host != 'totp') {
+    final trimmed = value.trim();
+    if (trimmed.length > _maxUriLength) {
+      throw const FormatException('Mã QR TOTP vượt quá giới hạn an toàn.');
+    }
+    final uri = Uri.tryParse(trimmed);
+    if (uri == null ||
+        uri.scheme != 'otpauth' ||
+        uri.host != 'totp' ||
+        uri.userInfo.isNotEmpty ||
+        uri.hasPort ||
+        uri.fragment.isNotEmpty ||
+        uri.pathSegments.length != 1) {
       throw const FormatException('Mã QR không phải tài khoản TOTP hợp lệ.');
     }
 
-    final rawLabel = uri.pathSegments.isEmpty ? '' : uri.pathSegments.last;
+    final rawLabel = uri.pathSegments.single.trim();
+    final issuerFromQuery = _singleQueryParameter(uri, 'issuer')?.trim() ?? '';
     final separatorIndex = rawLabel.indexOf(':');
+    final exactIssuerPrefix =
+        issuerFromQuery.isNotEmpty && rawLabel.startsWith('$issuerFromQuery:');
     final issuerFromLabel = separatorIndex > 0
         ? rawLabel.substring(0, separatorIndex).trim()
+        : exactIssuerPrefix
+        ? issuerFromQuery
         : '';
-    final accountName = separatorIndex >= 0
+    final accountName = exactIssuerPrefix
+        ? rawLabel.substring(issuerFromQuery.length + 1).trim()
+        : separatorIndex >= 0
         ? rawLabel.substring(separatorIndex + 1).trim()
         : rawLabel.trim();
-    final issuer = (uri.queryParameters['issuer']?.trim().isNotEmpty ?? false)
-        ? uri.queryParameters['issuer']!.trim()
+    final issuer = issuerFromQuery.isNotEmpty
+        ? issuerFromQuery
         : issuerFromLabel;
     final secret = TotpValidator.normalizeSecret(
-      uri.queryParameters['secret'] ?? '',
+      _singleQueryParameter(uri, 'secret') ?? '',
     );
     final algorithm = TotpValidator.normalizeAlgorithm(
-      uri.queryParameters['algorithm'] ?? 'SHA1',
+      _singleQueryParameter(uri, 'algorithm') ?? 'SHA1',
     );
-    final digits = int.tryParse(uri.queryParameters['digits'] ?? '6');
-    final period = int.tryParse(uri.queryParameters['period'] ?? '30');
+    final digits = int.tryParse(_singleQueryParameter(uri, 'digits') ?? '6');
+    final period = int.tryParse(_singleQueryParameter(uri, 'period') ?? '30');
 
     if (issuer.isEmpty || accountName.isEmpty) {
       throw const FormatException('Mã QR thiếu issuer hoặc tên tài khoản.');
@@ -81,5 +100,16 @@ abstract final class TotpUriParser {
       digits: digits,
       period: period,
     );
+  }
+
+  static String? _singleQueryParameter(Uri uri, String name) {
+    final values = uri.queryParametersAll[name];
+    if (values == null) {
+      return null;
+    }
+    if (values.length != 1) {
+      throw const FormatException('Mã QR TOTP chứa tham số lặp không an toàn.');
+    }
+    return values.single;
   }
 }

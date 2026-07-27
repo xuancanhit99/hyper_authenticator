@@ -27,6 +27,37 @@ void main() {
       expect(account.accountName, 'user');
     });
 
+    test(
+      'issuer và account name chứa dấu hai chấm vẫn round-trip chính xác',
+      () {
+        final account = TotpUriParser.parse(
+          'otpauth://totp/TEST_ONLY%3ANh%C3%B3m%3Auser%3Aphone'
+          '?secret=JBSWY3DPEHPK3PXP&issuer=TEST_ONLY%3ANh%C3%B3m',
+        );
+
+        expect(account.issuer, 'TEST_ONLY:Nhóm');
+        expect(account.accountName, 'user:phone');
+      },
+    );
+
+    test('từ chối query bảo mật bị lặp và URI vượt giới hạn', () {
+      expect(
+        () => TotpUriParser.parse(
+          'otpauth://totp/Example:user'
+          '?secret=JBSWY3DPEHPK3PXP&secret=JBSWY3DPEHPK3PXP'
+          '&issuer=Example',
+        ),
+        throwsFormatException,
+      );
+      expect(
+        () => TotpUriParser.parse(
+          'otpauth://totp/Example:${'x' * (16 * 1024)}'
+          '?secret=JBSWY3DPEHPK3PXP&issuer=Example',
+        ),
+        throwsFormatException,
+      );
+    });
+
     test('từ chối HOTP và secret không phải Base32', () {
       expect(
         () => TotpUriParser.parse(

@@ -25,6 +25,15 @@ void main() {
     accountName: 'user@example.invalid',
     secretKey: 'JBSWY3DPEHPK3PXP',
   );
+  const customAccount = AuthenticatorAccount(
+    id: 'custom-account',
+    issuer: 'TEST_ONLY Custom',
+    accountName: 'custom@example.invalid',
+    secretKey: 'JBSWY3DPEHPK3PXP',
+    algorithm: 'SHA512',
+    digits: 7,
+    period: 45,
+  );
 
   testWidgets('chỉ hiện QR sau fresh auth và xóa khi app vào background', (
     tester,
@@ -51,19 +60,11 @@ void main() {
     await tester.pump();
 
     expect(find.byType(QrImageView), findsNothing);
-    await tester.scrollUntilVisible(
-      find.byKey(const Key('export-account-export-account')),
-      200,
-      scrollable: find.byType(Scrollable).first,
-    );
-    await tester.tap(find.byKey(const Key('export-account-export-account')));
+    final accountTile = find.byKey(const Key('export-account-export-account'));
+    await tester.tap(accountTile);
     await tester.pump();
-    await tester.scrollUntilVisible(
-      find.byKey(const Key('authenticate-and-export')),
-      200,
-      scrollable: find.byType(Scrollable).first,
-    );
-    await tester.tap(find.byKey(const Key('authenticate-and-export')));
+    final exportButton = find.byKey(const Key('authenticate-and-export'));
+    await tester.tap(exportButton);
     await tester.pump();
 
     expect(authenticator.calls, 1);
@@ -121,6 +122,114 @@ void main() {
 
     expect(find.byType(QrImageView), findsNothing);
     expect(find.textContaining('chưa có QR nào được tạo'), findsOneWidget);
+  });
+
+  testWidgets('otpauth export tạo một QR mỗi account và giữ custom semantics', (
+    tester,
+  ) async {
+    final bloc = _createBloc([account, customAccount]);
+    addTearDown(bloc.close);
+
+    await tester.pumpWidget(
+      BlocProvider.value(
+        value: bloc,
+        child: MaterialApp(
+          home: ExportAccountsPage(
+            authenticator: _FakeSensitiveActionAuthenticator(
+              SensitiveActionAuthenticationResult.success,
+            ),
+            platformSupported: true,
+            initialFormat: AccountExportFormat.otpauth,
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+
+    for (final id in [account.id, customAccount.id]) {
+      final finder = find.byKey(Key('export-account-$id'));
+      await tester.scrollUntilVisible(
+        finder,
+        200,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.tap(finder);
+      await tester.pump();
+    }
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('authenticate-and-export')),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.tap(find.byKey(const Key('authenticate-and-export')));
+    await tester.pump();
+
+    expect(find.byType(QrImageView), findsOneWidget);
+    expect(
+      find.bySemanticsLabel('Mã QR export chuẩn otpauth, tài khoản 1 trên 2'),
+      findsOneWidget,
+    );
+
+    await tester.tap(find.byTooltip('QR tiếp theo'));
+    await tester.pump();
+    expect(
+      find.bySemanticsLabel('Mã QR export chuẩn otpauth, tài khoản 2 trên 2'),
+      findsOneWidget,
+    );
+    expect(
+      tester.getSemantics(find.byType(Scaffold)).toString(),
+      isNot(contains(customAccount.secretKey)),
+    );
+  });
+
+  testWidgets('đổi sang Google bỏ chọn account không tương thích', (
+    tester,
+  ) async {
+    final bloc = _createBloc([customAccount]);
+    addTearDown(bloc.close);
+
+    await tester.pumpWidget(
+      BlocProvider.value(
+        value: bloc,
+        child: MaterialApp(
+          home: ExportAccountsPage(
+            authenticator: _FakeSensitiveActionAuthenticator(
+              SensitiveActionAuthenticationResult.success,
+            ),
+            platformSupported: true,
+            initialFormat: AccountExportFormat.otpauth,
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+    final accountFinder = find.byKey(
+      const Key('export-account-custom-account'),
+    );
+    await tester.scrollUntilVisible(
+      accountFinder,
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.tap(accountFinder);
+    await tester.pump();
+    expect(find.text('1 đã chọn'), findsOneWidget);
+
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('export-format-google')),
+      -200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.tap(find.byKey(const Key('export-format-google')));
+    await tester.pump();
+
+    expect(find.text('0 đã chọn'), findsOneWidget);
+    expect(
+      find.textContaining('Google transfer yêu cầu period 30 giây'),
+      findsOneWidget,
+    );
   });
 
   testWidgets('auth success sau khi app vào background vẫn không tạo QR', (
@@ -312,19 +421,21 @@ void main() {
     await tester.pump();
     expect(tester.takeException(), isNull);
 
+    final accountTile = find.byKey(const Key('export-account-export-account'));
     await tester.scrollUntilVisible(
-      find.byKey(const Key('export-account-export-account')),
+      accountTile,
       200,
       scrollable: find.byType(Scrollable).first,
     );
-    await tester.tap(find.byKey(const Key('export-account-export-account')));
+    tester.widget<CheckboxListTile>(accountTile).onChanged!(true);
     await tester.pump();
+    final exportButton = find.byKey(const Key('authenticate-and-export'));
     await tester.scrollUntilVisible(
-      find.byKey(const Key('authenticate-and-export')),
+      exportButton,
       200,
       scrollable: find.byType(Scrollable).first,
     );
-    await tester.tap(find.byKey(const Key('authenticate-and-export')));
+    tester.widget<FilledButton>(exportButton).onPressed!();
     await tester.pump();
 
     expect(find.byType(QrImageView), findsOneWidget);

@@ -2,33 +2,43 @@ import 'package:flutter/material.dart';
 import 'package:hyper_authenticator/features/authenticator/domain/services/totp_uri_parser.dart';
 import 'package:hyper_authenticator/features/authenticator/presentation/widgets/account_avatar.dart';
 
-class GoogleAuthenticatorImportPreviewDialog extends StatelessWidget {
-  const GoogleAuthenticatorImportPreviewDialog({
+enum TotpImportSource {
+  googleAuthenticator('Google Authenticator'),
+  otpauth('Chuẩn otpauth');
+
+  const TotpImportSource(this.label);
+
+  final String label;
+}
+
+class TotpImportPreviewDialog extends StatelessWidget {
+  const TotpImportPreviewDialog({
     required this.accounts,
+    required this.source,
     super.key,
   });
 
-  static const cancelButtonKey = ValueKey<String>(
-    'google-import-preview-cancel',
-  );
+  static const cancelButtonKey = ValueKey<String>('totp-import-preview-cancel');
   static const confirmButtonKey = ValueKey<String>(
-    'google-import-preview-confirm',
+    'totp-import-preview-confirm',
   );
   static const accountListKey = ValueKey<String>(
-    'google-import-preview-accounts',
+    'totp-import-preview-accounts',
   );
 
   final List<ParsedTotpAccount> accounts;
+  final TotpImportSource source;
 
   static Future<bool> show(
     BuildContext context,
     List<ParsedTotpAccount> accounts,
+    TotpImportSource source,
   ) async {
     return await showDialog<bool>(
           context: context,
           barrierDismissible: false,
           builder: (_) =>
-              GoogleAuthenticatorImportPreviewDialog(accounts: accounts),
+              TotpImportPreviewDialog(accounts: accounts, source: source),
         ) ??
         false;
   }
@@ -51,7 +61,7 @@ class GoogleAuthenticatorImportPreviewDialog extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Google Authenticator: đã đọc ${accounts.length} tài '
+                    '${source.label}: đã đọc ${accounts.length} tài '
                     'khoản. Kiểm tra danh sách trước khi lưu vào thiết bị này.',
                   ),
                   const SizedBox(height: 12),
