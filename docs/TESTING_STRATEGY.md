@@ -57,14 +57,17 @@ preparation, cùng các nhóm sau:
   khi bootstrap trực tiếp từ `/settings`; device integration lifecycle smoke
   cũng khóa shell không phát sinh duplicate `GlobalKey` khi lock redirect liên tiếp;
 - TOTP URI/validator, countdown nhiều period và lifecycle resume;
-- Google migration version 1 wire fixture `TEST_ONLY`, SHA1/SHA256, 6/8 digits,
-  label normalization, multi-part out-of-order/duplicate/mixed batch, scalar
-  proto3 default, signed batch ID, account limit và HOTP fail-closed;
+- Google migration version 1 cùng reconstructed version 2 wire shape `TEST_ONLY`,
+  SHA1/SHA256, 6/8 digits, label normalization, multi-part
+  out-of-order/duplicate/mixed batch, scalar proto3 default, signed batch ID,
+  account limit, HOTP/version/metadata lạ fail-closed và v2 opaque identifier
+  bounded;
 - Google migration export encoder → parser/collector round-trip, bounded
   multi-part, invalid period/digits fail closed và diagnostic redaction; fresh
   sensitive OS auth không persist qua background, cancel/unavailable không
-  success; widget chỉ render QR sau auth khi app còn foreground, khóa selection
-  đang xác thực rồi xóa QR khi lifecycle rời foreground;
+  success; widget chỉ render QR sau auth khi app còn foreground, chờ bounded cho
+  `resumed` sau native auth sheet, timeout/lifecycle muộn fail closed, khóa
+  selection đang xác thực rồi xóa QR khi lifecycle rời foreground;
 - Google import preview confirm/cancel, progress, secret không render/semantics,
   default focus Hủy, viewport 320×640/text scale 200%; storage regression khóa
   exact duplicate, một COW commit và commit-failure không partial import;
@@ -374,7 +377,9 @@ post-probe current image/health/hash và 5/5 public SPA route pass.
 1. Device integration bao phủ local vault/navigation/lifecycle trên Android
    emulator, iOS Simulator và GitHub-hosted Windows Server 2025; Android/iOS còn
    pass direct secure-storage preflight và fail-safe cleanup. Biometric/camera
-   và secure-storage behavior trên thiết bị thật chưa được chứng minh.
+   và secure-storage behavior trên thiết bị thật chưa được chứng minh. Google
+   Authenticator 7.2 app-to-app hai chiều đã pass trên Android AVD nhưng không
+   thay gate physical Android/iOS.
 2. Chưa có two-device physical E2EE test.
    Linux sandbox, Android AVD và iOS Simulator đã pass lost-device-key HA1
    replacement + rotation; Android/iOS còn pass two-session survivor auto-unwrap.

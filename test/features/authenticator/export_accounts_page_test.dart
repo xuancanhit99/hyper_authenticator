@@ -137,6 +137,7 @@ void main() {
           home: ExportAccountsPage(
             authenticator: authenticator,
             platformSupported: true,
+            foregroundResumeTimeout: const Duration(seconds: 1),
           ),
         ),
       ),
@@ -155,9 +156,54 @@ void main() {
     tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
     authenticator.complete(SensitiveActionAuthenticationResult.success);
     await tester.pump();
+    await tester.pump(const Duration(seconds: 2));
+    await tester.pump();
 
     expect(find.byType(QrImageView), findsNothing);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    await tester.pump();
+    expect(find.byType(QrImageView), findsNothing);
     expect(find.textContaining('không còn ở foreground'), findsOneWidget);
+  });
+
+  testWidgets('auth hệ điều hành chờ lifecycle resumed trước khi tạo QR', (
+    tester,
+  ) async {
+    final authenticator = _CompletingSensitiveActionAuthenticator();
+    final bloc = _createBloc([account]);
+    addTearDown(bloc.close);
+
+    await tester.pumpWidget(
+      BlocProvider.value(
+        value: bloc,
+        child: MaterialApp(
+          home: ExportAccountsPage(
+            authenticator: authenticator,
+            platformSupported: true,
+            foregroundResumeTimeout: const Duration(seconds: 2),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('export-account-export-account')));
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('authenticate-and-export')));
+    await tester.pump();
+
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+    authenticator.complete(SensitiveActionAuthenticationResult.success);
+    await tester.pump();
+    expect(find.byType(QrImageView), findsNothing);
+
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    await tester.pump();
+    expect(find.byType(QrImageView), findsOneWidget);
+
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+    await tester.pump();
+    expect(find.byType(QrImageView), findsNothing);
     tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
   });
 

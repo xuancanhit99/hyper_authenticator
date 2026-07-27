@@ -28,7 +28,9 @@ quanh cùng URI sẽ tái tạo rủi ro cũ.
 3. Batch có random positive `int32` ID. Encoder chia tuần tự thành nhiều QR và
    giữ thứ tự account; mỗi part có cùng version/size/ID và index riêng.
 4. Người dùng phải chọn rõ account và fresh-authenticate qua OS ngay trước khi
-   encoder tạo QR. Trạng thái app-lock thành công không được tái sử dụng.
+   encoder tạo QR. Trạng thái app-lock thành công không được tái sử dụng. Nếu
+   native auth trả success khi Flutter lifecycle chưa `resumed`, page chỉ chờ tối
+   đa 2 giây; timeout fail closed và không tạo QR khi resume muộn.
 5. QR chỉ sống trong widget memory 60 giây, tự xóa khi hết hạn, đóng thủ công
    hoặc app rời foreground. UI cảnh báo QR là credential và loại full URI/secret
    khỏi semantics/diagnostics.
@@ -75,8 +77,9 @@ và không đạt exit criteria của portability P0.
 
 ### Rủi ro
 
-- Format Google thay đổi: encoder hiện chỉ có reconstructed fixture; phải giữ
-  physical interoperability là gate riêng và fail closed khi schema đổi.
+- Format Google thay đổi: Google Authenticator 7.2 trên Android AVD đã nhận
+  encoder v1, nhưng physical interoperability vẫn là gate riêng và parser/encoder
+  tiếp tục fail closed khi schema đổi.
 - QR quá dày: giới hạn URI 1.800 ký tự với error correction M và chia batch; test
   QR thật vẫn cần thiết bị đại diện.
 - OS auth plugin khác nhau theo platform: physical biometric/PIN/Windows Hello
@@ -100,14 +103,16 @@ Rollback code không cần data migration.
 - Encoder → parser/collector round-trip cho SHA1/SHA256 và 6/8 digits.
 - Multi-part out-of-order, URI bounded, invalid period/digits fail closed.
 - Fresh auth options, user cancel và unavailable device fail closed.
-- Widget: chưa auth không có QR, success mới render, semantics redaction,
-  background cleanup và unsupported platform.
+- Widget: chưa auth không có QR, success + lifecycle resumed mới render, bounded
+  resume timeout, semantics redaction, background cleanup và unsupported
+  platform.
 - `scripts/agent/check.sh full` cùng Android/Web build smoke.
 
 ## Rollout
 
 1. Mở action từ account list trên source-supported platform.
-2. Xác minh Hyper → Google trên Android/iOS current mà không lưu raw payload.
+2. Hyper → Google Authenticator 7.2 đã pass trên Android AVD mà không lưu raw
+   payload; tiếp tục physical Android/iOS đại diện.
 3. Nếu Google không nhận fixture, giữ feature khỏi stable release và sửa encoder
    bằng fixture `TEST_ONLY`; không nới parser để đoán.
 4. Revert route/UI/encoder nếu cần; vault và cloud data không đổi.

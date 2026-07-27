@@ -29,8 +29,10 @@ không bao giờ được đặt trong Flutter `.env`, asset, build log hoặc b
 - Compaction giữ active và rollback generation.
 - TOTP validation tập trung; không log barcode payload/secret.
 - Google migration parser giới hạn URI/decoded payload/text/secret/account/batch,
-  chỉ nhận version 1 TOTP + thuật toán/digits đã allowlist. HOTP/MD5/enum/wire
-  type lạ fail closed; multi-part chỉ giữ trong memory.
+  chỉ nhận version 1 hoặc wire shape version 2 đã quan sát, TOTP cùng
+  thuật toán/digits đã allowlist. V2 chỉ nhận một opaque field 8 bounded/non-empty
+  và không persist; HOTP/MD5/version/enum/wire/metadata lạ fail closed; multi-part
+  chỉ giữ trong memory.
 - Google import preview không render secret. Cancel/chưa đủ batch/parser failure
   không gọi repository; confirm validate toàn batch rồi atomic append một COW
   generation. `ImportAccountsRequested`/params và payload DTO redact diagnostics;
@@ -174,12 +176,20 @@ bớt nhạy cảm; ảnh/export QR vẫn là credential.
 không tái dùng app-lock success. User chọn account trước; QR version 1 bounded chỉ
 được tạo trong memory sau auth, có cảnh báo, timeout 60 giây, nút đóng ngay và bị
 xóa khi app rời foreground. URI/secret không vào BLoC, route extra, clipboard,
-log hoặc semantics. Web/Linux fail closed vì chưa có OS auth boundary.
+log hoặc semantics. Native auth success khi app chưa `resumed` chỉ được chờ
+bounded 2 giây; timeout fail closed và lifecycle resume muộn không tự tạo QR.
+Web/Linux fail closed vì chưa có OS auth boundary.
 
-**Khoảng trống đã biết:** reconstructed format chưa có physical interoperability
-hai chiều với Google Authenticator current. QR đang hiển thị vẫn có thể bị camera
-ngoài hoặc active screenshot/screen recording lấy; timeout/Privacy Shield không
-thay thế native capture prevention.
+**Đã xác minh trên emulator:** Google Authenticator 7.2 trên Android 17 AVD đã
+export wire shape v2 để Hyper preview/import atomically; Google cũng nhận QR v1
+do Hyper tạo sau Android device-credential prompt. Hai phía tạo cùng TOTP. Raw
+payload, secret và OTP không được giữ trong repository/evidence; account, PIN và
+file tạm đã cleanup sau test.
+
+**Khoảng trống đã biết:** evidence trên AVD không thay physical interoperability
+Android/iOS. QR đang hiển thị vẫn có thể bị camera ngoài hoặc active
+screenshot/screen recording lấy; timeout/Privacy Shield không thay thế native
+capture prevention.
 
 ## Screenshot và screen capture
 

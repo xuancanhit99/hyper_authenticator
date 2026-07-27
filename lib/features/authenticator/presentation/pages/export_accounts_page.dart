@@ -16,11 +16,13 @@ class ExportAccountsPage extends StatefulWidget {
     this.authenticator,
     this.platformSupported,
     this.sessionDuration = const Duration(seconds: 60),
+    this.foregroundResumeTimeout = const Duration(seconds: 2),
   });
 
   final SensitiveActionAuthenticator? authenticator;
   final bool? platformSupported;
   final Duration sessionDuration;
+  final Duration foregroundResumeTimeout;
 
   @override
   State<ExportAccountsPage> createState() => _ExportAccountsPageState();
@@ -33,6 +35,7 @@ class _ExportAccountsPageState extends State<ExportAccountsPage>
   final Set<String> _selectedIds = <String>{};
   List<GoogleAuthenticatorMigrationExportPart>? _parts;
   Timer? _expiryTimer;
+  Completer<void>? _foregroundResumeCompleter;
   int _partIndex = 0;
   int _secondsRemaining = 0;
   int _authenticationGeneration = 0;
@@ -65,6 +68,8 @@ class _ExportAccountsPageState extends State<ExportAccountsPage>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _expiryTimer?.cancel();
+    _foregroundResumeCompleter?.complete();
+    _foregroundResumeCompleter = null;
     _parts = null;
     super.dispose();
   }
@@ -72,6 +77,10 @@ class _ExportAccountsPageState extends State<ExportAccountsPage>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     _applicationIsResumed = state == AppLifecycleState.resumed;
+    if (_applicationIsResumed) {
+      _foregroundResumeCompleter?.complete();
+      _foregroundResumeCompleter = null;
+    }
     if (state == AppLifecycleState.inactive ||
         state == AppLifecycleState.paused ||
         state == AppLifecycleState.hidden ||
@@ -123,21 +132,29 @@ class _ExportAccountsPageState extends State<ExportAccountsPage>
     final result = await _authenticator.authenticateForExport();
     if (!mounted || generation != _authenticationGeneration) return;
 
-    if (result != SensitiveActionAuthenticationResult.success ||
-        !_applicationIsResumed) {
+    if (result != SensitiveActionAuthenticationResult.success) {
       setState(() {
         _authenticating = false;
-        _statusMessage = !_applicationIsResumed
-            ? 'Ứng dụng không còn ở foreground; chưa có QR nào được tạo.'
-            : switch (result) {
-                SensitiveActionAuthenticationResult.canceled =>
-                  'Bạn đã hủy xác thực; chưa có QR nào được tạo.',
-                SensitiveActionAuthenticationResult.unavailable =>
-                  'Thiết bị chưa cấu hình phương thức xác thực hệ điều hành.',
-                SensitiveActionAuthenticationResult.failed =>
-                  'Không thể xác thực an toàn. Hãy thử lại.',
-                SensitiveActionAuthenticationResult.success => null,
-              };
+        _statusMessage = switch (result) {
+          SensitiveActionAuthenticationResult.canceled =>
+            'Bạn đã hủy xác thực; chưa có QR nào được tạo.',
+          SensitiveActionAuthenticationResult.unavailable =>
+            'Thiết bị chưa cấu hình phương thức xác thực hệ điều hành.',
+          SensitiveActionAuthenticationResult.failed =>
+            'Không thể xác thực an toàn. Hãy thử lại.',
+          SensitiveActionAuthenticationResult.success => null,
+        };
+      });
+      return;
+    }
+
+    final resumed = await _waitForForegroundAfterAuthentication(generation);
+    if (!mounted || generation != _authenticationGeneration) return;
+    if (!resumed) {
+      setState(() {
+        _authenticating = false;
+        _statusMessage =
+            'Ứng dụng không còn ở foreground; chưa có QR nào được tạo.';
       });
       return;
     }
@@ -175,6 +192,25 @@ class _ExportAccountsPageState extends State<ExportAccountsPage>
         _statusMessage = error.message.toString();
       });
     }
+  }
+
+  Future<bool> _waitForForegroundAfterAuthentication(int generation) async {
+    if (_applicationIsResumed) return true;
+
+    final completer = Completer<void>();
+    _foregroundResumeCompleter = completer;
+    try {
+      await completer.future.timeout(widget.foregroundResumeTimeout);
+    } on TimeoutException {
+      return false;
+    } finally {
+      if (identical(_foregroundResumeCompleter, completer)) {
+        _foregroundResumeCompleter = null;
+      }
+    }
+    return mounted &&
+        generation == _authenticationGeneration &&
+        _applicationIsResumed;
   }
 
   void _startExpiryTimer() {

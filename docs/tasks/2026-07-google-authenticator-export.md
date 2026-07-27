@@ -1,6 +1,6 @@
 # Task: Export Google Authenticator an toàn
 
-- Trạng thái: Hoàn thành source; còn physical interoperability gate riêng
+- Trạng thái: Hoàn thành source và Android AVD app-to-app; còn physical gate riêng
 - Bắt đầu: 2026-07-27
 - Owner: HyperZ
 - Issue hoặc ADR liên quan: ADR-0016
@@ -14,7 +14,7 @@ quét một hoặc nhiều QR migration bằng Google Authenticator mà không m
 
 - Encrypted backup file và export `otpauth` độc lập.
 - HOTP hoặc TOTP có period khác 30 giây.
-- Khẳng định physical interoperability trước khi có test app-to-app thật.
+- Khẳng định physical-device interoperability từ evidence Android AVD.
 
 ## Acceptance criteria
 
@@ -23,14 +23,17 @@ quét một hoặc nhiều QR migration bằng Google Authenticator mà không m
 - [x] Multi-part round-trip qua parser version 1 giữ issuer/name/algorithm/digits.
 - [x] Secret/full URI không xuất hiện trong log representation hoặc semantics.
 - [x] Cancel, auth lỗi hoặc dữ liệu không biểu diễn được không mutate vault.
+- [x] Google Authenticator 7.2 trên Android AVD nhận QR v1 và tạo cùng TOTP.
+- [x] Native auth success chỉ tạo QR sau lifecycle trở lại `resumed`.
 
 ## Bằng chứng hiện tại
 
 - Source path: `lib/features/authenticator/domain/services/`
 - Baseline trước thay đổi: account list không có action export.
 - Test nền: parser reconstructed fixture và import atomic.
-- Giả định: Google migration schema version 1 tiếp tục tương thích với field TOTP
-  đã tái dựng; physical test vẫn là gate độc lập.
+- Evidence: Google Authenticator 7.2 trên Android 17 AVD nhận migration v1 do
+  Hyper tạo; TOTP match được kiểm tra dạng boolean/redacted.
+- Giả định: physical Android/iOS vẫn là gate độc lập.
 
 ## Đánh giá rủi ro
 
@@ -60,6 +63,8 @@ quét một hoặc nhiều QR migration bằng Google Authenticator mà không m
 | `scripts/agent/check.sh full` | Pass, gồm 220 Flutter test và backend/release/infra contract | 2026-07-27 |
 | `scripts/agent/build.sh host` | Pass Android debug, Web release, macOS unsigned compile | 2026-07-27 |
 | `scripts/agent/build.sh ios` | Pass iOS Simulator debug compile | 2026-07-27 |
+| Android AVD + Google Authenticator 7.2 | Pass Hyper v1 → Google; TOTP match; test account/file tạm đã cleanup | 2026-07-27 |
+| Android AVD device credential | Pass fresh auth → lifecycle resumed → QR; timeout không resumed fail closed | 2026-07-27 |
 
 ## Tác động tài liệu
 
@@ -73,6 +78,6 @@ quét một hoặc nhiều QR migration bằng Google Authenticator mà không m
 
 ## Bàn giao
 
-Source P0 export đã hoàn tất mà không đổi data contract persisted. Physical
-Hyper → Google trên Android/iOS current vẫn phải chạy riêng trước khi coi format
-reconstructed là evidence app-to-app hoặc đưa feature vào stable release.
+Source P0 export và app-to-app Android AVD đã hoàn tất mà không đổi persisted data
+contract. Physical Hyper → Google trên Android/iOS current vẫn phải chạy riêng
+trước stable release.
