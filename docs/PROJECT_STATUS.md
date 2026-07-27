@@ -50,6 +50,12 @@ session registry hoặc vault-key generation.
   xuất qua disclosure flow riêng, không tái dùng app-lock success.
 - FlutterSecureStorage dùng versioned copy-on-write generation, commit marker,
   rollback generation và compaction giữ hai generation hợp lệ gần nhất.
+- Settings có backup file portable `.hyauth` trên cả sáu target: Argon2id v19
+  derive key từ password, AES-256-GCM xác thực ciphertext/header, envelope và
+  plaintext schema version 1. Restore decrypt/validate toàn bộ, preview metadata,
+  bắt gõ xác nhận phá hủy rồi mới replace local vault bằng một COW commit.
+- File/password cancel, wrong password, tamper, future version, oversized input,
+  lifecycle rời foreground hoặc preview timeout đều không mutate vault.
 - Logout không xóa local vault. Windows giữ storage identity tương thích
   `1.0.0+9`; migration conflict fail closed.
 
@@ -106,9 +112,9 @@ user-facing cryptographic device exclusion.
 
 | Gate | Kết quả |
 |---|---|
-| `flutter analyze` | Pass, 0 diagnostic ngày 27-07-2026 trên nhánh standard otpauth portability |
+| `flutter analyze` | Pass, 0 diagnostic ngày 27-07-2026 trên nhánh encrypted backup file |
 | `scripts/agent/check.sh full` | Pass ngày 27-07-2026; tổng hợp bốn boundary dưới đây |
-| `scripts/agent/check.sh app` | Pass ngày 27-07-2026: docs/generated/format/analyze/platform và 234 Flutter test |
+| `scripts/agent/check.sh app` | Pass ngày 27-07-2026: docs/generated/format/analyze/platform và 252 Flutter test |
 | `scripts/agent/check.sh backend` | Pass ngày 27-07-2026: encrypted/device-wrap và plaintext-retirement PostgreSQL contract |
 | `scripts/agent/check.sh release` | Pass ngày 27-07-2026: GitHub Preview asset/public contract và Web rollback harness |
 | `scripts/agent/check.sh infra` | Pass ngày 27-07-2026: NPM secret/backup/deploy/route/rollback, Auth load pacing và restore drill contract |
@@ -121,20 +127,20 @@ user-facing cryptographic device exclusion.
 | Flutter Web production | HTTPS/Nginx/runtime/rollback smoke đã pass; E2EE backup tắt |
 | GitHub Preview | `v1.1.0-preview.4`: signed Android APK, unsigned Windows NSIS và Linux `.deb`, checksum/public verification pass |
 
-Portability change set chỉ thêm transient parser/encoder/auth/UI/test/docs; không
-đổi local-vault format, encrypted envelope, Supabase schema/RPC hoặc production
-data.
+Encrypted backup file change set thêm portable envelope riêng và system
+file/share gateway; không đổi local-vault v2, cloud encrypted envelope, Supabase
+schema/RPC hoặc production data.
 
 ## Capability matrix
 
-| Platform | TOTP local | QR camera | QR từ ảnh | App lock | Protected QR export | Backup cloud E2EE |
-|---|---:|---:|---:|---:|---:|---:|
-| Android | Có | Có | Có | Có | Có | Có |
-| iOS | Có | Có | Có | Có | Có | Có |
-| macOS | Có | Có | Có | Có | Có | Có |
-| Windows | Có | Không | Không | Có | Có | Có |
-| Linux | Có | Không | Không | Không | Không | Có |
-| Web | Có | Có | Không | Không | Không | Không |
+| Platform | TOTP local | QR camera | QR từ ảnh | App lock | Protected QR export | Backup file mã hóa | Backup cloud E2EE |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| Android | Có | Có | Có | Có | Có | Có | Có |
+| iOS | Có | Có | Có | Có | Có | Có | Có |
+| macOS | Có | Có | Có | Có | Có | Có | Có |
+| Windows | Có | Không | Không | Có | Có | Có | Có |
+| Linux | Có | Không | Không | Không | Không | Có | Có |
+| Web | Có | Có | Không | Không | Không | Có | Không |
 
 Đây là source capability, không thay thế physical-device/store evidence.
 
@@ -172,8 +178,10 @@ Chi tiết command, rollback và evidence retention:
 
 1. **Portability:** Google migration QR đã pass app-to-app hai chiều với Google
    Authenticator 7.2 trên Android AVD; standard `otpauth` đã có bounded
-   round-trip/preview/protected export regression. Còn physical interoperability
-   Android/iOS cho standard/current Google export và encrypted backup file.
+   round-trip/preview/protected export regression. Backup file v1 đã có
+   codec/BLoC/widget regression nhưng chưa có backup → clean install → restore
+   evidence trên physical Android/iOS hoặc packaged desktop. Còn physical
+   interoperability Android/iOS cho standard/current Google export.
 2. **Device exclusion:** session revoke chưa phải cryptographic exclusion hoặc
    remote wipe; cần UX và independent security review.
 3. **Thiết bị thật:** camera, biometric, secure storage, TalkBack/VoiceOver,

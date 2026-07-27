@@ -28,8 +28,14 @@ import 'features/authenticator/data/repositories/authenticator_repository_impl.d
     as _i166;
 import 'features/authenticator/data/services/local_sensitive_action_authenticator.dart'
     as _i387;
+import 'features/authenticator/data/services/system_encrypted_backup_file_gateway.dart'
+    as _i188;
 import 'features/authenticator/domain/repositories/authenticator_repository.dart'
     as _i608;
+import 'features/authenticator/domain/repositories/encrypted_backup_file_gateway.dart'
+    as _i99;
+import 'features/authenticator/domain/services/encrypted_backup_file_codec.dart'
+    as _i560;
 import 'features/authenticator/domain/services/sensitive_action_authenticator.dart'
     as _i217;
 import 'features/authenticator/domain/usecases/add_account.dart' as _i356;
@@ -40,6 +46,8 @@ import 'features/authenticator/domain/usecases/get_accounts.dart' as _i572;
 import 'features/authenticator/domain/usecases/import_accounts.dart' as _i125;
 import 'features/authenticator/domain/usecases/update_account.dart' as _i827;
 import 'features/authenticator/presentation/bloc/accounts_bloc.dart' as _i467;
+import 'features/authenticator/presentation/bloc/encrypted_backup_bloc.dart'
+    as _i463;
 import 'features/authenticator/presentation/bloc/local_auth_bloc.dart' as _i534;
 import 'features/settings/data/datasources/authenticator_device_session_remote_data_source.dart'
     as _i506;
@@ -96,6 +104,9 @@ extension GetItInjectableX on _i174.GetIt {
       preResolve: true,
     );
     gh.lazySingleton<_i828.AppConfig>(() => _i828.AppConfig.fromEnvironment());
+    gh.lazySingleton<_i560.EncryptedBackupFileCodec>(
+      () => _i560.EncryptedBackupFileCodec(),
+    );
     gh.lazySingleton<_i364.DeviceKeyCipher>(() => _i364.DeviceKeyCipher());
     gh.lazySingleton<_i981.VaultCipher>(() => _i981.VaultCipher());
     gh.lazySingleton<_i152.LocalAuthentication>(
@@ -122,6 +133,9 @@ extension GetItInjectableX on _i174.GetIt {
         secureStorage: gh<_i558.FlutterSecureStorage>(),
         uuid: gh<_i706.Uuid>(),
       ),
+    );
+    gh.lazySingleton<_i99.EncryptedBackupFileGateway>(
+      () => const _i188.SystemEncryptedBackupFileGateway(),
     );
     gh.lazySingleton<_i493.VaultKeyStore>(
       () => _i493.VaultKeyStore(
@@ -221,6 +235,13 @@ extension GetItInjectableX on _i174.GetIt {
       () => _i207.AuthenticatorDeviceSessionRepositoryImpl(
         gh<_i506.AuthenticatorDeviceSessionRemoteDataSource>(),
         gh<_i116.AuthenticatorInstallationIdentityStore>(),
+      ),
+    );
+    gh.factory<_i463.EncryptedBackupBloc>(
+      () => _i463.EncryptedBackupBloc(
+        gh<_i608.AuthenticatorRepository>(),
+        gh<_i560.EncryptedBackupFileCodec>(),
+        gh<_i99.EncryptedBackupFileGateway>(),
       ),
     );
     gh.factory<_i904.DeviceSessionBloc>(

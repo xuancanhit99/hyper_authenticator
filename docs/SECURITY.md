@@ -6,7 +6,8 @@
 - E2EE DEK và recovery key.
 - Supabase session/refresh token.
 - Service-role key, database password, SMTP credential, SSH key và signing key.
-- Local vault, database/Storage backup và decrypted restore artifact.
+- Local vault, user-managed `.hyauth`, database/Storage backup và decrypted
+  restore artifact.
 
 Publishable key không phải secret nhưng chỉ được dùng ở client; service-role key
 không bao giờ được đặt trong Flutter `.env`, asset, build log hoặc binary.
@@ -63,6 +64,33 @@ không bao giờ được đặt trong Flutter `.env`, asset, build log hoặc b
 - Windows đóng băng AppData identity tương thích `1.0.0+9`. Layout migrator chạy
   trước DI, chỉ copy atomic allowlist, không theo symlink/không xóa nguồn và dừng
   bootstrap nếu hai vault khác nhau.
+
+### Backup file mã hóa
+
+- Argon2id v19 derive AES key từ password với salt ngẫu nhiên 16 byte. Production
+  encoder pin 19 MiB/2 iteration/parallelism 1 theo OWASP minimum; decoder chỉ
+  nhận bounded 19–64 MiB, 2–5 iteration và parallelism 1–4 trước cấp phát.
+- AES-256-GCM dùng nonce ngẫu nhiên 12 byte và tag 16 byte. AAD bind purpose,
+  format version, KDF name/version/parameter/salt, cipher name và nonce; header
+  hoặc ciphertext bị sửa không vượt integrity verification.
+- File/envelope/plaintext yêu cầu compact canonical JSON, exact key set,
+  Base64URL không padding và explicit version. Future version, unknown algorithm,
+  duplicate ID, invalid TOTP field hoặc file lớn hơn 8 MiB fail trước mutation.
+- Sai password và AEAD tamper dùng cùng `BackupIntegrityException`, không tạo
+  password oracle chi tiết. Password không trim/normalize, không persist/log và
+  chỉ nằm trong redacted BLoC event; Dart `String`/GC vẫn không có cam kết
+  zeroization tuyệt đối.
+- Decrypted snapshot nằm trong private BLoC memory tối đa hai phút và bị bỏ khi
+  cancel, lifecycle rời foreground, restore/failure hoặc close. State/semantics
+  chỉ có metadata preview, không có secret/full payload/password.
+- Restore bắt typed destructive confirmation và chỉ gọi một
+  `replaceAccounts()` COW commit sau decrypt + validation toàn bộ. File/password/
+  preview/save cancel, parse/auth failure hoặc commit failure giữ vault active
+  trước đó.
+- File chỉ rời app sau explicit action: system download/save dialog trên
+  Web/desktop hoặc system share sheet trên Android/iOS. App không tự upload,
+  clipboard, analytics, preference hoặc Supabase. Người dùng chịu trách nhiệm
+  retention/vị trí chia sẻ của encrypted file và password.
 
 ### Encrypted sync
 
@@ -391,6 +419,8 @@ mode 0600. Hourly route service không inject credential, dùng `ProtectSystem`,
 
 - Lockfile được commit; CI pin Flutter và secret scanner checksum.
 - Direct package được review bằng `flutter pub outdated`; advisory flag phải bằng false.
+- Backup file pin `file_selector 1.1.0` và `share_plus 13.3.0`; dependency
+  resolution không hạ `flutter_secure_storage_windows 4.2.2` hoặc `win32 6.3.0`.
 - Averta thương mại và 1.047 logo dịch vụ không rõ provenance đã bị loại.
 - Release chỉ bundle branding do owner kiểm soát và icon Material/Cupertino từ Flutter.
 - Thêm asset bên thứ ba mới cần source URL, exact license, attribution/NOTICE và

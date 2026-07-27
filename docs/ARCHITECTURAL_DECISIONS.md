@@ -37,6 +37,7 @@ Tài liệu này lập chỉ mục quyết định bền vững. Quyết định
 | A-029 | Google Authenticator migration import là bounded/fail-closed parser, preview rồi atomic append | Chấp nhận | [ADR-0015](adr/0015-google-authenticator-migration-import-boundary.md) |
 | A-030 | Google Authenticator export yêu cầu fresh OS auth, bounded multi-part QR và timeout/lifecycle cleanup | Chấp nhận | [ADR-0016](adr/0016-google-authenticator-export-boundary.md) |
 | A-031 | Standard `otpauth` import dùng preview/atomic append; export dùng một QR mỗi account trong protected disclosure boundary | Chấp nhận | [ADR-0017](adr/0017-standard-otpauth-portability-boundary.md) |
+| A-032 | Backup file portable dùng Argon2id/AES-256-GCM, versioned schema, private preview state và atomic full replacement | Chấp nhận | [ADR-0018](adr/0018-password-encrypted-backup-file-boundary.md) |
 
 Đã áp dụng không đồng nghĩa production-ready; defect/risk nằm trong `PROJECT_STATUS.md`.
 

@@ -207,8 +207,24 @@ chạy lại upload secrets chỉ để build local.
     flutter test test/features/sync/vault_cipher_test.dart
     flutter test test/features/authenticator/authenticator_local_data_source_test.dart
     flutter test test/features/authenticator/local_auth_bloc_test.dart
+    flutter test test/features/authenticator/encrypted_backup_file_codec_test.dart
+    flutter test test/features/authenticator/encrypted_backup_bloc_test.dart
+    flutter test test/features/authenticator/encrypted_backup_page_test.dart
 
 Không thêm secret thật vào fixture. Dùng `TEST_ONLY_*` và UUID/email isolated.
+
+Manual platform smoke cho backup file phải dùng account test, không dùng
+credential thật:
+
+1. tạo `.hyauth`, hủy một lần ở save/share boundary và xác nhận vault không đổi;
+2. dùng sai password và một bản copy bị sửa byte, xác nhận không có preview/write;
+3. dùng file đúng, review count/identity rồi hủy, xác nhận vault không đổi;
+4. trên clean test profile, gõ `KHOI PHUC`, restore và đối chiếu TOTP semantics;
+5. xóa account/file/password test và không lưu raw secret/OTP vào evidence.
+
+Android/iOS dùng system share sheet để người dùng chọn nơi giữ encrypted file;
+desktop dùng save dialog, Web khởi tạo browser download. Đây là manual runtime
+evidence riêng, không được suy ra chỉ từ widget test.
 
 ## Device integration smoke
 
@@ -364,6 +380,9 @@ revision 4; bắt secondary và primary stale-DEK path tự unwrap generation m�
 
 Chỉ nâng package resolvable, đọc changelog plugin/platform và chạy `full` + build
 matrix. `build_runner` 2.15.2 hiện không resolvable do Flutter test SDK pin `meta`.
+Backup file dùng direct `file_selector 1.1.0` và `share_plus 13.3.0`; lockfile giữ
+`flutter_secure_storage_windows 4.2.2` và `win32 6.3.0`. Không đổi sang plugin
+buộc hạ hai package storage/platform này nếu chưa có compatibility review riêng.
 
 ## Backend operator boundary
 

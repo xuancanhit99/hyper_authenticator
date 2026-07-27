@@ -125,7 +125,71 @@ plugin đọc cả hai dạng và local datasource publish logical account sang 
 Các field `algorithm`, `digits`, `period` phải round-trip; source ở sibling không
 bị app layout migrator xóa.
 
-## Encrypted plaintext snapshot trước khi mã hóa
+## Portable encrypted backup file v1
+
+File `.hyauth` là canonical compact JSON, tối đa 8 MiB:
+
+~~~json
+{
+  "format": "hyper-authenticator-encrypted-backup",
+  "format_version": 1,
+  "kdf": {
+    "name": "argon2id",
+    "version": 19,
+    "memory_kib": 19456,
+    "iterations": 2,
+    "parallelism": 1,
+    "salt": "base64url-no-padding"
+  },
+  "cipher": {
+    "name": "aes-256-gcm",
+    "nonce": "base64url-no-padding",
+    "ciphertext": "base64url-no-padding",
+    "auth_tag": "base64url-no-padding"
+  }
+}
+~~~
+
+Salt dài 16 byte, nonce 12 byte, auth tag 16 byte và Argon2id output 32 byte.
+Decoder chỉ nhận Argon2 v19, memory 19–64 MiB, iteration 2–5, parallelism 1–4 và
+`memory_kib >= 8 * parallelism` trước khi chạy KDF. Encoder v1 hiện dùng
+19 MiB/2/1. AAD canonical bind purpose, format/name/version, toàn bộ KDF
+metadata/salt, cipher name và nonce.
+
+Plaintext v1 chỉ tồn tại trong memory sau AEAD authentication:
+
+~~~json
+{
+  "payload_format_version": 1,
+  "created_at": "2026-07-27T10:30:00.000Z",
+  "accounts": [
+    {
+      "id": "uuid-stable",
+      "issuer": "Service",
+      "accountName": "user@example.invalid",
+      "secretKey": "TEST_ONLY_BASE32_PLACEHOLDER",
+      "algorithm": "SHA256",
+      "digits": 8,
+      "period": 45
+    }
+  ]
+}
+~~~
+
+Payload giữ đúng local order và stable ID, tối đa 10.000 account. Decoder yêu cầu
+exact key set/type, unique ID, issuer/account name canonical, Base32 normalized,
+algorithm SHA1/SHA256/SHA512, digits 6–8, period 1–86.400 giây cùng field-size
+bound. Restore là full replacement; không sinh UUID mới, merge hoặc dedupe.
+
+`EncryptedBackupRestorePreview` chỉ mang `createdAt`, count và issuer/account
+name/algorithm/digits/period; decrypted `AuthenticatorAccount` nằm trong private
+BLoC memory. Event password và snapshot/selection/preview đều redact
+`toString()`.
+
+Format này độc lập với cloud envelope bên dưới. Nó không chứa Supabase user,
+revision, DEK/wrapped key hoặc recovery key và không được upload tự động.
+
+## Cloud encrypted plaintext snapshot trước khi mã hóa
 
 Payload canonical là object versioned chứa danh sách account sort theo stable ID.
 Nó chỉ tồn tại trong memory trước/ sau AES-GCM và không được gửi tới backend.
@@ -147,7 +211,7 @@ Nó chỉ tồn tại trong memory trước/ sau AES-GCM và không được g�
 }
 ~~~
 
-## Encrypted envelope v1
+## Cloud encrypted envelope v1
 
 ~~~json
 {
