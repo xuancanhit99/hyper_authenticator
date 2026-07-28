@@ -196,10 +196,12 @@ Android signed GitHub APK dùng app signing key lâu dài nằm ngoài repositor
 Fingerprint public canonical nằm ở `android/app-signing-certificate.sha256`.
 Keystore và password cần ít nhất hai backup encrypted/offline do owner kiểm soát;
 mất app signing key đồng nghĩa không thể phát hành APK cập nhật tương thích.
-Signed APK `v1.1.0-preview.4` đã pass tag CI, public download/signature verifier,
-clean install/cold launch và vault-retaining upgrade trên Pixel AVD API 37. Camera,
-biometric và secure-storage trên thiết bị thật vẫn là gate trước stable; không cần
-chạy lại upload secrets chỉ để build local.
+Signed APK `v1.1.0-preview.5` đã pass tag CI và public download/signature
+verifier với cùng fingerprint đã pin. Preview 4 đã pass clean install/cold launch
+và vault-retaining upgrade trên Pixel AVD API 37; encrypted-backup runtime của
+Preview 5 đã pass trên Android 17/API 37.1 AVD. Camera, biometric và secure-storage
+trên thiết bị thật vẫn là gate trước stable; không cần chạy lại upload secrets chỉ
+để build local.
 
 ## Test chọn lọc
 

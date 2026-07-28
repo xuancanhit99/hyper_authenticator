@@ -131,7 +131,7 @@ user-facing cryptographic device exclusion.
 | Windows hosted | Historical vault upgrade, local-vault runtime, release bundle và unsigned NSIS pass |
 | Linux hosted/container | Historical upgrade, private keyring, `.deb`, distro matrix và authenticated E2EE debug runtime pass |
 | Flutter Web production | HTTPS/Nginx/runtime/rollback smoke đã pass; E2EE backup tắt |
-| GitHub Preview | `v1.1.0-preview.4`: signed Android APK, unsigned Windows NSIS và Linux `.deb`, checksum/public verification pass |
+| GitHub Preview | `v1.1.0-preview.5`: signed Android APK, unsigned Windows NSIS và Linux `.deb`; tag CI `30391446163` và public verifier `30392505826` pass exact seven-asset/checksum/signature contract |
 
 Encrypted backup runtime rehearsal phát hiện và đã sửa hai gap Android: share
 sheet không bảo đảm local save nên được thay bằng native document picker; app-lock

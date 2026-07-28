@@ -261,7 +261,7 @@ backup trước/sau migration có encrypted off-host copy.
 
 | Target | Gate |
 |---|---|
-| Android | Debug build mỗi CI; tag CI dùng encrypted secrets để build APK và bắt buộc `apksigner` khớp fingerprint; `v1.1.0-preview.4` đã pass runtime/upgrade/public signer gate; physical camera/biometric trước stable, AAB/internal track khi mở Play Store |
+| Android | Debug build mỗi CI; tag CI dùng encrypted secrets để build APK và bắt buộc `apksigner` khớp fingerprint; `v1.1.0-preview.5` đã pass tag/public signer gate, encrypted-backup AVD runtime đã pass, còn exact installed-APK upgrade evidence từ Preview 4; physical camera/biometric trước stable, AAB/internal track khi mở Play Store |
 | iOS | Simulator build mỗi CI; không public binary qua GitHub; signed archive + device/TestFlight trước phân phối |
 | macOS | Unsigned compile CI; Developer ID + signed runtime + notarized package trước GitHub Release hoặc phân phối khác |
 | Web | Configured release + Chrome headless local-vault semantics/startup-failure smoke + hardened image contract + CSP/runtime `lang=vi` production-browser smoke |
@@ -433,9 +433,10 @@ post-probe current image/health/hash và 5/5 public SPA route pass.
    Windows còn code signing và physical-device/Windows Hello. Linux còn KDE
    login-unlock/physical desktop và signed package E2EE runtime.
    Android app signing key đã được tạo/pin; signed build, clean install/cold launch,
-   vault-retaining upgrade 10→11 trên Pixel AVD API 37, tag CI và public
-   download/signature verifier của `v1.1.0-preview.4` đều pass. APK hiện là signed
-   pre-release; camera/biometric trên thiết bị thật vẫn còn trước stable.
+   vault-retaining upgrade 10→11 trên Pixel AVD API 37 đã pass với Preview 4.
+   Tag CI, public download/signature verifier và encrypted-backup Android AVD
+   runtime của `v1.1.0-preview.5` đều pass. APK hiện là signed pre-release;
+   camera/biometric trên thiết bị thật vẫn còn trước stable.
 6. Accessibility automation đã bao phủ Auth, account list, form thêm account và
    sensitive Settings recovery/conflict/session dialog với WCAG text-contrast
    gate light/dark cùng core keyboard traversal. Chưa thay TalkBack/VoiceOver

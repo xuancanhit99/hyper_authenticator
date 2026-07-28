@@ -102,11 +102,12 @@ local vault của người dùng đã cài.
 
 Owner đã backup Android app-signing key và cấu hình bốn encrypted Actions secrets.
 Contract hiện tại bắt buộc bảy asset cho tag mới: Windows installer/checksum,
-Linux package/checksum, signed Android APK/checksum và manifest tổng. Preview 4 đã
-pass tag CI, public unauthenticated re-download, checksum/GitHub digest và exact
-Android signer fingerprint. Các câu “hai installer”, “năm asset” và Android ở thì
-tương lai phía trên là snapshot của quyết định ban đầu; contract runtime hiện tại
-nằm trong `docs/DEPLOYMENT.md` và `docs/PROJECT_STATUS.md`.
+Linux package/checksum, signed Android APK/checksum và manifest tổng. Preview 5 đã
+pass tag CI `30391446163`, public unauthenticated re-download, checksum/GitHub
+digest, exact Android signer fingerprint và secondary public verifier
+`30392505826`. Các câu “hai installer”, “năm asset” và Android ở thì tương lai
+phía trên là snapshot của quyết định ban đầu; contract runtime hiện tại nằm trong
+`docs/DEPLOYMENT.md` và `docs/PROJECT_STATUS.md`.
 
 ## Rollout
 
