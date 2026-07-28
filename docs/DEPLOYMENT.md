@@ -67,12 +67,12 @@ store chưa nằm trên critical path. Mỗi platform vẫn phải vượt gate 
 |---|---|---|
 | Windows x64 | Unsigned pre-release | Đã đủ gate preview; code signing + device test trước stable |
 | Linux amd64 | Unsigned pre-release | Đã đủ gate preview; signed channel + physical desktop trước stable |
-| Android | Signed pre-release | `v1.1.0-preview.4` đã pass tag CI, public signer/download và emulator upgrade; camera/biometric trên thiết bị thật còn thiếu trước stable |
+| Android | Signed pre-release | `v1.1.0-preview.5` đã pass tag CI và public signer/download; Preview 4 đã pass emulator upgrade; camera/biometric trên thiết bị thật còn thiếu trước stable |
 | macOS | Chưa phát hành | Developer ID, hardened runtime, notarization, staple và runtime test |
 | iOS | Không phân phối public qua GitHub | Signing/provisioning và kênh Apple phù hợp |
 | Web | Production URL | Deploy image độc lập, không đóng gói vào GitHub Release |
 
-GitHub Preview hiện tại `v1.1.0-preview.4` gồm Android signed APK, Windows x64 NSIS
+GitHub Preview hiện tại `v1.1.0-preview.5` gồm Android signed APK, Windows x64 NSIS
 installer và Linux amd64 Debian package.
 Tag phải có dạng `vX.Y.Z-preview.N`, khớp app version và trỏ tới commit có workflow
 `CI` của chính tag pass toàn bộ. Android debug APK, Apple compile build và Windows
@@ -117,9 +117,11 @@ version mà không tin local tag content làm provenance:
     scripts/agent/verify_github_preview_release.sh \
       v1.1.0-preview.1 xuancanhit99/hyper_authenticator
 
-Publisher tự chạy public verifier trước khi kết thúc. Với Preview 4 được tạo bằng
-workflow token, secondary `release: published` không tự phát sinh; maintainer đã
-manual-dispatch `Verify Public GitHub Preview` và hosted run `29762712975` pass.
+Publisher tự chạy public verifier trước khi kết thúc. Preview 5 được publish bằng
+maintainer harness từ tag CI run `30391446163`; secondary `release: published`
+tự chạy và hosted verifier `30392505826` pass. Preview 4 được tạo bằng workflow
+token nên secondary event không tự phát sinh; maintainer đã manual-dispatch
+verifier `29762712975`.
 
 SMTP production chưa được cấu hình ở giai đoạn này và không chặn phát hành binary
 qua GitHub. Release note phải nói rõ email khôi phục mật khẩu có thể chưa tới
@@ -181,9 +183,11 @@ Build AAB riêng khi mở Play Store:
       --dart-define-from-file=.env.production \
       --split-debug-info=build/symbols/android
 
-Gate GitHub Preview đã pass cho `v1.1.0-preview.4`: app-signing keystore có backup,
-certificate fingerprint được pin, signed tag CI, clean install/cold launch,
-vault-retaining upgrade trên Pixel AVD API 37 và public download/signature verifier.
+Gate GitHub Preview đã pass cho `v1.1.0-preview.5`: app-signing keystore có backup,
+certificate fingerprint được pin, signed tag CI và public download/signature
+verifier. Preview 4 đã pass clean install/cold launch cùng vault-retaining upgrade
+trên Pixel AVD API 37; portable encrypted backup của Preview 5 đã pass
+export/clean-vault restore trên Android 17/API 37.1 AVD.
 Camera/biometric trên thiết bị thật vẫn là representative-device gate trước khi gọi
 kênh Android là stable; nó không phủ nhận provenance của APK pre-release hiện tại.
 Mọi GitHub APK update phải giữ cùng app signing key.
