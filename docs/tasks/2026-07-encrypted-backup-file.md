@@ -41,8 +41,9 @@ generation local-vault sau xác nhận phá hủy rõ ràng.
 
 - Source path: `EncryptedBackupFileCodec` sở hữu bounded schema/crypto;
   `EncryptedBackupBloc` sở hữu candidate/timeout/restore orchestration;
-  `SystemEncryptedBackupFileGateway` sở hữu system picker/share. Settings mở
-  route `/encrypted-backup`.
+  `SystemEncryptedBackupFileGateway` sở hữu system picker/share và Android
+  `MainActivity` sở hữu native document save. Settings mở route
+  `/encrypted-backup`.
 - Restore chỉ gọi `AuthenticatorLocalDataSource.replaceAccounts()` sau decrypt,
   validate, preview và typed confirmation. Data source publish snapshot bằng
   copy-on-write generation rồi mới đổi commit marker.
@@ -107,7 +108,7 @@ Supabase schema hoặc production data. File giữ stable ID, order và TOTP
 semantics; restore là full replacement có preview và một atomic COW commit.
 
 Rủi ro còn lại: Dart không bảo đảm zeroize `String`; Web có thể cấp phát browser
-blob trước khi Dart kiểm tra size; mobile share sheet không thể chứng minh người
-dùng đã lưu file; chưa có backup → clean install → restore runtime rehearsal trên
-thiết bị thật hoặc packaged desktop. Release sau phải tiếp tục decode v1 kể cả khi
-encoder nâng schema/KDF.
+blob trước khi Dart kiểm tra size; iOS share sheet không thể chứng minh retention
+lâu dài. Follow-up ngày 29-07 đã pass backup → clean profile → restore trên Android
+AVD và iOS Simulator; vẫn chưa có rehearsal trên thiết bị thật hoặc packaged
+desktop. Release sau phải tiếp tục decode v1 kể cả khi encoder nâng schema/KDF.

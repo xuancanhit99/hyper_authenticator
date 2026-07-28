@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
@@ -58,6 +59,10 @@ void main() {
       );
 
       await tester.tap(find.byKey(const Key('pick-encrypted-backup')));
+      await tester.pumpAndSettle();
+      expect(find.text('Mở file backup'), findsOneWidget);
+
+      await tester.tapAt(const Offset(1, 1));
       await tester.pumpAndSettle();
       expect(find.text('Mở file backup'), findsOneWidget);
 
@@ -194,6 +199,40 @@ void main() {
     },
   );
 
+  testWidgets(
+    'file picker trả kết quả khi paused chỉ mở password sau resumed',
+    (tester) async {
+      final encrypted = await codec.encrypt(
+        accounts: [_account(id: 'restored', issuer: 'Restored Service')],
+        password: 'TEST_ONLY-password-1',
+      );
+      final repository = _MemoryRepository(const []);
+      final gateway = _DeferredPickGateway();
+      final backupBloc = EncryptedBackupBloc(repository, codec, gateway);
+      final accountsBloc = _accountsBloc(repository);
+      addTearDown(backupBloc.close);
+      addTearDown(accountsBloc.close);
+
+      await tester.pumpWidget(
+        BlocProvider<AccountsBloc>.value(
+          value: accountsBloc,
+          child: MaterialApp(home: EncryptedBackupPage(bloc: backupBloc)),
+        ),
+      );
+      await tester.tap(find.byKey(const Key('pick-encrypted-backup')));
+      await tester.pump();
+
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+      gateway.complete(encrypted);
+      await tester.pump();
+      expect(find.text('Mở file backup'), findsNothing);
+
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      await tester.pumpAndSettle();
+      expect(find.text('Mở file backup'), findsOneWidget);
+    },
+  );
+
   testWidgets('layout không overflow ở viewport 320 và text scale 200%', (
     tester,
   ) async {
@@ -272,6 +311,28 @@ class _MemoryGateway implements EncryptedBackupFileGateway {
     savedBytes = Uint8List.fromList(bytes);
     return BackupFileSaveResult.saved;
   }
+}
+
+class _DeferredPickGateway implements EncryptedBackupFileGateway {
+  final _selection = Completer<EncryptedBackupFileSelection?>();
+
+  void complete(Uint8List bytes) {
+    _selection.complete(
+      EncryptedBackupFileSelection(
+        bytes: Uint8List.fromList(bytes),
+        displayName: 'test.hyauth',
+      ),
+    );
+  }
+
+  @override
+  Future<EncryptedBackupFileSelection?> pickBackup() => _selection.future;
+
+  @override
+  Future<BackupFileSaveResult> saveBackup({
+    required Uint8List bytes,
+    required String suggestedName,
+  }) => throw UnimplementedError();
 }
 
 class _MemoryRepository implements AuthenticatorRepository {

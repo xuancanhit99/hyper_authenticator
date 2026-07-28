@@ -2,6 +2,7 @@
 
 - Trạng thái: Chấp nhận
 - Ngày: 2026-07-27
+- Cập nhật runtime boundary: 2026-07-29
 - Owner: HyperZ
 - Thay thế:
 - Bị thay thế bởi:
@@ -46,11 +47,16 @@ tác phá hủy local data nên phải version, fail closed và có atomic resto
 8. File picker chỉ chạy sau explicit user gesture. Cancel open/save/password/
    preview là no-op. File không được tự upload, ghi clipboard, lưu trong
    preference, route hoặc Supabase.
-9. Dùng Flutter-maintained `file_selector` cho open cùng Web/desktop save.
-   Android/iOS không có save-location API trong package này nên dùng
-   `share_plus` để user chọn Files/Drive/provider qua system share sheet. Không
-   nhận downgrade `flutter_secure_storage_windows`/`win32` chỉ để dùng một file
-   picker khác.
+9. Dùng Flutter-maintained `file_selector` cho open cùng Web/desktop save. iOS
+   dùng `share_plus` để user chọn Files/provider qua system share sheet. Android
+   dùng MethodChannel hẹp tới Storage Access Framework
+   `ACTION_CREATE_DOCUMENT`; chỉ trả success sau khi ghi/flush document URI.
+   Không nhận downgrade `flutter_secure_storage_windows`/`win32` chỉ để dùng một
+   file picker khác.
+10. Open/save/share được bao trong in-process `SystemUiInteractionGuard`. Privacy
+    Shield vẫn che nội dung, nhưng app-lock không redirect/dispose route trong
+    lúc system UI do app chủ động mở còn chờ kết quả. Guard release bằng `finally`;
+    background ngoài operation vẫn relock theo policy cũ.
 
 ## Phương án đã cân nhắc
 
@@ -99,6 +105,9 @@ muốn thay vault hiện tại; preview và destructive confirmation là hai bư
 - Dart/Flutter không bảo đảm zeroize mọi bản sao `String` hoặc GC-managed memory.
 - Thành công save trên Web chỉ chứng minh download đã được browser khởi tạo, không
   chứng minh người dùng giữ file đến đâu.
+- iOS share result vẫn phụ thuộc semantics của provider được chọn; Android native
+  document save có stronger success boundary nhưng không chứng minh retention lâu
+  dài sau khi app đã ghi file.
 
 ### Rủi ro
 
@@ -153,4 +162,6 @@ cost trong bound mà không đổi schema.
 - [`file_selector` 1.1.0](https://pub.dev/packages/file_selector): system open
   trên sáu target, save location trên desktop và browser file abstraction.
 - [`share_plus` 13.3.0](https://pub.dev/packages/share_plus): system share sheet
-  cho encrypted file trên Android/iOS.
+  cho encrypted file trên iOS.
+- Android Storage Access Framework `ACTION_CREATE_DOCUMENT`: native local/provider
+  save boundary qua `MainActivity`.

@@ -55,6 +55,9 @@ không bao giờ được đặt trong Flutter `.env`, asset, build log hoặc b
   được gọi trong storage/encryption path, không dùng làm log payload.
 - Logout không xóa vault.
 - App lock fail closed và relock theo lifecycle.
+- System picker/share do app chủ động mở được đánh dấu bằng in-process guard để
+  app-lock không redirect/dispose operation đang chờ. Privacy Shield vẫn che và
+  chặn interaction; lifecycle ngoài guarded operation vẫn relock fail closed.
 - Root `PrivacyShield` che toàn bộ router ở mọi lifecycle khác `resumed`, bỏ
   keyboard focus, dừng ticker và loại cây nội dung khỏi semantics trong khi che.
   Lớp che dùng Material 3 static, có opaque base + gradient không sample route,
@@ -88,9 +91,11 @@ không bao giờ được đặt trong Flutter `.env`, asset, build log hoặc b
   preview/save cancel, parse/auth failure hoặc commit failure giữ vault active
   trước đó.
 - File chỉ rời app sau explicit action: system download/save dialog trên
-  Web/desktop hoặc system share sheet trên Android/iOS. App không tự upload,
-  clipboard, analytics, preference hoặc Supabase. Người dùng chịu trách nhiệm
-  retention/vị trí chia sẻ của encrypted file và password.
+  Web/desktop, Android Storage Access Framework document picker hoặc iOS system
+  share sheet. Android chỉ báo success sau khi ghi/flush document URI; cancel hoặc
+  write error fail closed. App không tự upload, clipboard, analytics, preference
+  hoặc Supabase. Người dùng chịu trách nhiệm retention/vị trí chia sẻ của
+  encrypted file và password.
 
 ### Encrypted sync
 
@@ -316,6 +321,10 @@ two-device test.
 - Device integration local-vault suite chỉ chạy trên Android emulator/iOS Simulator,
   cần opt-in rõ ràng và luôn cleanup fixture; runner từ chối máy thật/macOS để tránh
   thay vault người dùng.
+- Encrypted-backup two-phase suite dùng cùng target guard, yêu cầu operator điều
+  khiển system boundary và chỉ dùng fixture `TEST_ONLY`. Export/restore cleanup
+  vault/secure storage/preference trong `finally`; file test phải được xóa khỏi
+  local Files/Downloads sau rehearsal.
 - Linux local-vault suite chỉ chạy khi `CI=true`, dùng XDG sandbox mode 0700,
   private D-Bus Secret Service và Xvfb; nó probe keyring trước test rồi xóa sandbox
   bằng trap, không dùng keyring hoặc local vault của desktop user.

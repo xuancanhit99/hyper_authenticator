@@ -222,9 +222,10 @@ credential thật:
 4. trên clean test profile, gõ `KHOI PHUC`, restore và đối chiếu TOTP semantics;
 5. xóa account/file/password test và không lưu raw secret/OTP vào evidence.
 
-Android/iOS dùng system share sheet để người dùng chọn nơi giữ encrypted file;
-desktop dùng save dialog, Web khởi tạo browser download. Đây là manual runtime
-evidence riêng, không được suy ra chỉ từ widget test.
+Android dùng system document picker (`ACTION_CREATE_DOCUMENT`) để ghi local hoặc
+provider do người dùng chọn; iOS dùng system share sheet với action **Lưu vào
+Tệp**. Desktop dùng save dialog, Web khởi tạo browser download. Đây là manual
+runtime evidence riêng, không được suy ra chỉ từ widget test.
 
 ## Device integration smoke
 
@@ -246,6 +247,38 @@ Tham số đầu cũng có thể là UUID của iOS Simulator đang boot. Harnes
 
 Không nới guard để chạy trên thiết bị người dùng. Device test cho biometric/camera
 phải dùng flow riêng, dữ liệu isolated và không được reset vault ngầm.
+
+### Encrypted-backup device smoke
+
+Runner hai phase dùng full app/DI, secure storage thật và system picker/share
+thật. Chỉ chạy với fixture `TEST_ONLY` trên Android emulator hoặc iOS Simulator:
+
+    scripts/agent/encrypted_backup_device_smoke.sh \
+      emulator-5554 .env export --allow-test-vault-reset
+
+    scripts/agent/encrypted_backup_device_smoke.sh \
+      emulator-5554 .env restore --allow-test-vault-reset
+
+Với iOS, thay `emulator-5554` bằng UUID Simulator available. Operator phải:
+
+1. ở phase `export`, hủy system save lần đầu, lưu file hợp lệ lần hai và lưu file
+   tampered vào local Files/Downloads;
+2. gỡ app hoặc dùng clean test profile giữa export và restore nhưng giữ hai file;
+3. ở phase `restore`, lần lượt chọn tampered, file đúng với wrong password, file
+   đúng để hủy preview và file đúng để atomic restore;
+4. chỉ lưu local trên emulator/simulator, không chọn Drive/iCloud/provider bên
+   thứ ba;
+5. xóa file test sau khi suite pass.
+
+Harness từ chối thiết bị thật/macOS, thiếu confirmation, config sai hoặc phase
+không hợp lệ. Nó replace toàn bộ test vault rồi cleanup vault, secure storage và
+preferences trong `finally`. Phase log không chứa password, TOTP secret, OTP,
+file content hoặc full `otpauth`.
+
+Android gateway dùng native Storage Access Framework và chỉ trả `saved` sau khi
+document stream ghi/flush thành công; cancel trả no-op. Trong system UI session do
+app chủ động mở, app-lock không redirect phá route đang chờ, nhưng Privacy Shield
+vẫn che nội dung. Background không thuộc session này vẫn relock như cũ.
 
 Linux CI chạy cùng suite trong Xvfb và private D-Bus Secret Service:
 

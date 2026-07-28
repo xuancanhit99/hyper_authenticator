@@ -51,6 +51,9 @@ Sau đó:
 - với release chứa backup file, chạy backup → clean test profile → restore trên
   platform target; wrong password/tamper/cancel phải giữ vault và evidence không
   chứa raw secret/OTP/password;
+- entrypoint canonical cho Android/iOS emulator/simulator là hai phase
+  `scripts/agent/encrypted_backup_device_smoke.sh`; lưu file test local, không
+  upload Drive/iCloud và cleanup file sau run;
 - cập nhật release note và security reporting channel; privacy/support URL là gate
   bắt buộc trước stable/store release;
 - tag đúng tested commit và tạo SHA-256 cho artifact.
@@ -123,6 +126,11 @@ qua GitHub. Release note phải nói rõ email khôi phục mật khẩu có th�
 mailbox thật; credential SMTP chỉ được đặt trên server, không đưa vào Flutter
 `.env` hay GitHub Actions. Chỉ bỏ cảnh báo sau khi delivery và expired-link E2E
 đã pass với mailbox thật.
+
+Portable `.hyauth` runtime đã pass trên Android 17/API 37.1 AVD và iOS 26.3
+Simulator ngày 29-07-2026, gồm local save, clean-vault restore, tamper, wrong
+password và cancel. Gate này đủ cho source/Preview confidence nhưng chưa thay
+physical Android/iOS, packaged desktop hoặc Apple signing evidence.
 
 ## Android
 

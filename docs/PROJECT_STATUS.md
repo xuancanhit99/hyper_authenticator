@@ -1,6 +1,6 @@
 # Trạng thái dự án
 
-Baseline được cập nhật ngày **27 tháng 7 năm 2026** trên macOS 26.5.1. File này
+Baseline được cập nhật ngày **29 tháng 7 năm 2026** trên macOS 26.5.1. File này
 chỉ giữ trạng thái hiện tại; log rollout/CI/backup theo từng lần chạy nằm trong
 Git history và `docs/operations`.
 
@@ -54,6 +54,9 @@ session registry hoặc vault-key generation.
   derive key từ password, AES-256-GCM xác thực ciphertext/header, envelope và
   plaintext schema version 1. Restore decrypt/validate toàn bộ, preview metadata,
   bắt gõ xác nhận phá hủy rồi mới replace local vault bằng một COW commit.
+- Android lưu bằng Storage Access Framework `ACTION_CREATE_DOCUMENT`, chỉ báo
+  thành công sau khi ghi xong document URI. iOS dùng share sheet với Files;
+  Web/desktop giữ download/save dialog theo platform.
 - File/password cancel, wrong password, tamper, future version, oversized input,
   lifecycle rời foreground hoặc preview timeout đều không mutate vault.
 - Logout không xóa local vault. Windows giữ storage identity tương thích
@@ -76,7 +79,9 @@ session registry hoặc vault-key generation.
 ### App lock, privacy và accessibility
 
 - App lock dùng OS local authentication ở platform hỗ trợ; plugin error không
-  bypass lock. Lifecycle rời foreground kích hoạt relock theo policy.
+  bypass lock. Lifecycle rời foreground thông thường kích hoạt relock theo policy.
+  System picker/share do app chủ động mở giữ route trong lúc chờ kết quả; Privacy
+  Shield vẫn che toàn bộ nội dung và interaction.
 - Root Privacy Shield render surface Material 3 opaque ở
   `inactive/hidden/paused/detached`, bỏ focus, chặn interaction/ticker và loại
   nội dung bên dưới khỏi semantics.
@@ -112,24 +117,26 @@ user-facing cryptographic device exclusion.
 
 | Gate | Kết quả |
 |---|---|
-| `flutter analyze` | Pass, 0 diagnostic ngày 27-07-2026 trên nhánh encrypted backup file |
-| `scripts/agent/check.sh full` | Pass ngày 27-07-2026; tổng hợp bốn boundary dưới đây |
-| `scripts/agent/check.sh app` | Pass ngày 27-07-2026: docs/generated/format/analyze/platform và 252 Flutter test |
-| `scripts/agent/check.sh backend` | Pass ngày 27-07-2026: encrypted/device-wrap và plaintext-retirement PostgreSQL contract |
-| `scripts/agent/check.sh release` | Pass ngày 27-07-2026: GitHub Preview asset/public contract và Web rollback harness |
-| `scripts/agent/check.sh infra` | Pass ngày 27-07-2026: NPM secret/backup/deploy/route/rollback, Auth load pacing và restore drill contract |
+| `flutter analyze` | Pass, 0 diagnostic ngày 29-07-2026 |
+| `scripts/agent/check.sh full` | Pass ngày 29-07-2026; tổng hợp bốn boundary dưới đây |
+| `scripts/agent/check.sh app` | Pass ngày 29-07-2026: docs/generated/format/analyze/platform và 258 Flutter test |
+| `scripts/agent/check.sh backend` | Pass ngày 29-07-2026: encrypted/device-wrap và plaintext-retirement PostgreSQL contract |
+| `scripts/agent/check.sh release` | Pass ngày 29-07-2026: GitHub Preview asset/public contract và Web rollback harness |
+| `scripts/agent/check.sh infra` | Pass ngày 29-07-2026: NPM secret/backup/deploy/route/rollback, Auth load pacing và restore drill contract |
 | Local-only release smoke | Android debug APK, Web release, iOS Simulator và macOS unsigned compile pass ngày 27-07-2026; Chrome engine/semantics/local-vault shell đã pass baseline trước |
 | Android Pixel AVD | Signed build, clean install, vault-retaining upgrade, E2EE và Google Authenticator 7.2 app-to-app hai chiều đã pass; physical camera/biometric còn thiếu |
-| iOS Simulator | Local vault và authenticated E2EE flows đã pass; device/signing còn thiếu |
+| Encrypted backup Android AVD | Android 17/API 37.1 pass cancel/save vào Downloads, tamper, wrong password, preview cancel, clean-vault atomic restore và cleanup ngày 29-07-2026 |
+| iOS Simulator | iOS 26.3 pass local vault, encrypted backup export → clean install → tamper/wrong-password/cancel/atomic restore và authenticated E2EE flows; device/signing còn thiếu |
 | macOS | Unsigned compile pass; signing/Keychain release runtime còn thiếu |
 | Windows hosted | Historical vault upgrade, local-vault runtime, release bundle và unsigned NSIS pass |
 | Linux hosted/container | Historical upgrade, private keyring, `.deb`, distro matrix và authenticated E2EE debug runtime pass |
 | Flutter Web production | HTTPS/Nginx/runtime/rollback smoke đã pass; E2EE backup tắt |
 | GitHub Preview | `v1.1.0-preview.4`: signed Android APK, unsigned Windows NSIS và Linux `.deb`, checksum/public verification pass |
 
-Encrypted backup file change set thêm portable envelope riêng và system
-file/share gateway; không đổi local-vault v2, cloud encrypted envelope, Supabase
-schema/RPC hoặc production data.
+Encrypted backup runtime rehearsal phát hiện và đã sửa hai gap Android: share
+sheet không bảo đảm local save nên được thay bằng native document picker; app-lock
+không còn dispose route đang chờ trusted system UI. Không đổi local-vault v2,
+file schema v1, cloud encrypted envelope, Supabase schema/RPC hoặc production data.
 
 ## Capability matrix
 
@@ -178,9 +185,9 @@ Chi tiết command, rollback và evidence retention:
 
 1. **Portability:** Google migration QR đã pass app-to-app hai chiều với Google
    Authenticator 7.2 trên Android AVD; standard `otpauth` đã có bounded
-   round-trip/preview/protected export regression. Backup file v1 đã có
-   codec/BLoC/widget regression nhưng chưa có backup → clean install → restore
-   evidence trên physical Android/iOS hoặc packaged desktop. Còn physical
+   round-trip/preview/protected export regression. Backup file v1 đã pass
+   backup → clean install → restore trên Android AVD và iOS Simulator, nhưng chưa
+   có evidence trên physical Android/iOS hoặc packaged desktop. Còn physical
    interoperability Android/iOS cho standard/current Google export.
 2. **Device exclusion:** session revoke chưa phải cryptographic exclusion hoặc
    remote wipe; cần UX và independent security review.

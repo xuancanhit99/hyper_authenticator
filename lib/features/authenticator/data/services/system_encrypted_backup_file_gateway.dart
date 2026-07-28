@@ -1,9 +1,8 @@
-import 'dart:typed_data';
-import 'dart:ui';
-
 import 'package:file_selector/file_selector.dart' as file_selector;
 import 'package:flutter/foundation.dart'
     show TargetPlatform, defaultTargetPlatform, kIsWeb;
+import 'package:flutter/services.dart';
+import 'package:hyper_authenticator/core/platform/system_ui_interaction_guard.dart';
 import 'package:hyper_authenticator/features/authenticator/domain/repositories/encrypted_backup_file_gateway.dart';
 import 'package:hyper_authenticator/features/authenticator/domain/services/encrypted_backup_file_codec.dart';
 import 'package:injectable/injectable.dart';
@@ -12,6 +11,9 @@ import 'package:share_plus/share_plus.dart';
 @LazySingleton(as: EncryptedBackupFileGateway)
 class SystemEncryptedBackupFileGateway implements EncryptedBackupFileGateway {
   const SystemEncryptedBackupFileGateway();
+
+  static const androidChannelName = 'app.hyperz.authenticator/encrypted_backup';
+  static const _androidChannel = MethodChannel(androidChannelName);
 
   static const _typeGroup = file_selector.XTypeGroup(
     label: 'Hyper Authenticator backup',
@@ -22,7 +24,10 @@ class SystemEncryptedBackupFileGateway implements EncryptedBackupFileGateway {
   );
 
   @override
-  Future<EncryptedBackupFileSelection?> pickBackup() async {
+  Future<EncryptedBackupFileSelection?> pickBackup() =>
+      SystemUiInteractionGuard.run(_pickBackup);
+
+  Future<EncryptedBackupFileSelection?> _pickBackup() async {
     try {
       final file = await file_selector.openFile(
         acceptedTypeGroups: const [_typeGroup],
@@ -54,6 +59,13 @@ class SystemEncryptedBackupFileGateway implements EncryptedBackupFileGateway {
   Future<BackupFileSaveResult> saveBackup({
     required Uint8List bytes,
     required String suggestedName,
+  }) => SystemUiInteractionGuard.run(
+    () => _saveBackup(bytes: bytes, suggestedName: suggestedName),
+  );
+
+  Future<BackupFileSaveResult> _saveBackup({
+    required Uint8List bytes,
+    required String suggestedName,
   }) async {
     if (bytes.isEmpty ||
         bytes.length > EncryptedBackupFileCodec.maximumFileBytes) {
@@ -71,8 +83,20 @@ class SystemEncryptedBackupFileGateway implements EncryptedBackupFileGateway {
         await file.saveTo(suggestedName);
         return BackupFileSaveResult.saved;
       }
-      if (defaultTargetPlatform == TargetPlatform.android ||
-          defaultTargetPlatform == TargetPlatform.iOS) {
+      if (defaultTargetPlatform == TargetPlatform.android) {
+        final status = await _androidChannel.invokeMethod<String>(
+          'saveEncryptedBackup',
+          <String, Object>{'bytes': bytes, 'suggestedName': suggestedName},
+        );
+        return switch (status) {
+          'saved' => BackupFileSaveResult.saved,
+          'cancelled' => BackupFileSaveResult.cancelled,
+          _ => throw const BackupFileIoException(
+            'Android document picker trả về trạng thái không hợp lệ.',
+          ),
+        };
+      }
+      if (defaultTargetPlatform == TargetPlatform.iOS) {
         final result = await SharePlus.instance.share(
           ShareParams(
             files: [file],

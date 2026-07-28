@@ -39,6 +39,7 @@ class _EncryptedBackupView extends StatefulWidget {
 class _EncryptedBackupViewState extends State<_EncryptedBackupView>
     with WidgetsBindingObserver {
   BuildContext? _activeSensitiveDialogContext;
+  Completer<void>? _resumeCompleter;
 
   @override
   void initState() {
@@ -49,12 +50,19 @@ class _EncryptedBackupViewState extends State<_EncryptedBackupView>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _resumeCompleter?.complete();
+    _resumeCompleter = null;
     super.dispose();
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) return;
+    if (state == AppLifecycleState.resumed) {
+      _resumeCompleter?.complete();
+      _resumeCompleter = null;
+      return;
+    }
+    if (_activeSensitiveDialogContext == null) return;
     final bloc = context.read<EncryptedBackupBloc>();
     if (bloc.state is EncryptedBackupPasswordRequired ||
         bloc.state is EncryptedBackupRestorePreview) {
@@ -172,6 +180,12 @@ class _EncryptedBackupViewState extends State<_EncryptedBackupView>
 
   Future<void> _handleState(BuildContext _, EncryptedBackupState state) async {
     if (state is EncryptedBackupPasswordRequired) {
+      await _waitUntilResumed();
+      if (!mounted ||
+          context.read<EncryptedBackupBloc>().state
+              is! EncryptedBackupPasswordRequired) {
+        return;
+      }
       final password = await _showSensitiveDialog<String>(
         (dialogContext) => _BackupPasswordDialog(
           title: 'Mở file backup',
@@ -179,6 +193,7 @@ class _EncryptedBackupViewState extends State<_EncryptedBackupView>
           confirmPassword: false,
           dialogContext: dialogContext,
         ),
+        barrierDismissible: false,
       );
       if (!mounted ||
           context.read<EncryptedBackupBloc>().state
@@ -195,6 +210,13 @@ class _EncryptedBackupViewState extends State<_EncryptedBackupView>
       return;
     }
     if (state is EncryptedBackupRestorePreview) {
+      await _waitUntilResumed();
+      if (!mounted) return;
+      final resumedState = context.read<EncryptedBackupBloc>().state;
+      if (resumedState is! EncryptedBackupRestorePreview ||
+          resumedState.token != state.token) {
+        return;
+      }
       final confirmed = await _showSensitiveDialog<bool>(
         (dialogContext) =>
             _RestoreBackupDialog(preview: state, dialogContext: dialogContext),
@@ -265,6 +287,16 @@ class _EncryptedBackupViewState extends State<_EncryptedBackupView>
     } finally {
       _activeSensitiveDialogContext = null;
     }
+  }
+
+  Future<void> _waitUntilResumed() async {
+    final lifecycleState = WidgetsBinding.instance.lifecycleState;
+    if (lifecycleState != null && lifecycleState != AppLifecycleState.resumed) {
+      _resumeCompleter ??= Completer<void>();
+      await _resumeCompleter!.future;
+    }
+    if (!mounted) return;
+    await WidgetsBinding.instance.endOfFrame;
   }
 
   void _closeSensitiveDialog() {
