@@ -171,6 +171,13 @@ Local-auth preference nằm trong SharedPreferences; OS challenge do `local_auth
 Khi lock đã bật, plugin error là locked state. App relock khi rời foreground.
 Logout chỉ kết thúc Supabase session hiện tại, giữ local vault và lock preference.
 
+System file picker/share sheet do app chủ động mở được bao trong
+`SystemUiInteractionGuard`. Trong khoảng Future platform còn chờ kết quả,
+`MyApp` không phát `ResetAuthStatus`, tránh GoRouter redirect/dispose route đang
+giữ operation. Privacy Shield vẫn che/chặn toàn bộ Flutter tree. Khi không có
+guard, lifecycle `paused/hidden/detached` vẫn kích hoạt relock như cũ. Guard dùng
+counter và luôn release trong `finally`, kể cả platform operation lỗi.
+
 `PrivacyShield` được đặt trong `MaterialApp.router.builder`, bao toàn bộ router.
 Sau bootstrap, mọi lifecycle signal khác `resumed` đều render một surface opaque
 không chứa account/user data, bỏ keyboard focus, chặn pointer, dừng ticker và loại
@@ -214,8 +221,10 @@ event/render state, không tự đọc hoặc replace persistence.
    AES-256-GCM dùng nonce 12 byte/tag 16 byte; canonical AAD bind purpose, file
    version, KDF metadata/salt, cipher và nonce.
 5. Chỉ compact JSON ciphertext được chuyển cho system boundary: Web khởi tạo
-   download, desktop dùng system save dialog, Android/iOS dùng system share sheet.
-   Cancel save không mutate vault.
+   download, desktop dùng system save dialog, Android dùng native Storage Access
+   Framework `ACTION_CREATE_DOCUMENT`, còn iOS dùng system share sheet với Files.
+   Android chỉ trả thành công sau khi document stream ghi/flush xong. Cancel save
+   không mutate vault.
 
 ### Restore
 
@@ -224,18 +233,20 @@ event/render state, không tự đọc hoặc replace persistence.
    password hoặc tamper làm AEAD verification thất bại với cùng thông báo.
 3. Plaintext chỉ được trả sau authentication; decoder exact-validate payload,
    unique stable ID và tối đa 10.000 account.
-4. BLoC giữ decrypted account private, chỉ public metadata preview. Candidate bị
-   bỏ khi cancel, lifecycle rời foreground, timeout hai phút, restore/failure hoặc
-   BLoC đóng.
+4. BLoC giữ decrypted account private, chỉ public metadata preview. Password/
+   preview dialog chỉ mở sau lifecycle `resumed`; tap ngoài không dismiss password
+   restore. Candidate bị bỏ khi user cancel, một active sensitive dialog rời
+   foreground, timeout hai phút, restore/failure hoặc BLoC đóng.
 5. Dialog hiển thị số account hiện tại và từ file, yêu cầu gõ `KHOI PHUC`.
    Confirm gọi `replaceAccounts()` đúng một lần; COW commit marker được đổi sau
    record/manifest verification nên write failure giữ snapshot active trước đó.
 
 File restore là exact full replacement, không merge/dedupe và không tự gọi cloud
 sync. Generation cũ được local vault giữ như internal rollback candidate nhưng
-chưa có nút undo user-facing. `file_selector` là open/save boundary chính thức;
-`share_plus` chỉ dùng trên mobile vì Android/iOS không có save-location API tương
-đương desktop.
+chưa có nút undo user-facing. `file_selector` là open boundary trên sáu target và
+save boundary trên desktop/Web. Android có MethodChannel hẹp tới
+`ACTION_CREATE_DOCUMENT`; `share_plus` chỉ còn là encrypted-file save boundary
+trên iOS.
 
 ## Backup cloud mã hóa đầu cuối
 

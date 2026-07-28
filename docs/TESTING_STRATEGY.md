@@ -87,7 +87,12 @@ preparation, cùng các nhóm sau:
   single replacement, replacement failure, không retry stale candidate và
   file-picker trả muộn sau khi BLoC đóng; widget khóa password confirmation,
   no-secret preview/semantics, typed `KHOI PHUC`, lifecycle rời foreground loại
-  dialog/candidate, reload sau restore và viewport 320×640/text scale 200%;
+  dialog/candidate, chỉ mở dialog sau lifecycle resumed, restore password không
+  dismiss bằng tap ngoài, reload sau restore và viewport 320×640/text scale 200%;
+- Android encrypted-file gateway gọi MethodChannel document picker thay vì share
+  sheet, giữ exact saved/cancelled mapping và từ chối native status lạ. System UI
+  guard regression khóa active counter/finally cleanup để app-lock chỉ bỏ qua
+  lifecycle reset trong operation do app chủ động mở;
 - local vault migration, concurrent mutation, corruption rollback, atomic replace
   và generation compaction;
 - local-auth startup lock, relock và plugin-error fail closed;
@@ -179,6 +184,23 @@ chuyển Settings/Accounts và cleanup vault/secure-storage/preferences trong
 `finally`, kể cả khi bootstrap hoặc seed fail.
 Runner chỉ chấp nhận Android emulator hoặc iOS Simulator; thiết bị thật và macOS
 bị từ chối để không chạm vault người dùng.
+
+Encrypted-backup two-phase runtime ngày 29-07-2026 đã pass trên Android 17/API
+37.1 AVD và iOS 26.3 Simulator. Cả hai target dùng full app/DI, secure storage thật
+và system boundary thật để chứng minh:
+
+- save/share cancel không đổi vault;
+- file hợp lệ được lưu local vào Downloads/On My iPhone;
+- tampered ciphertext và wrong password bị từ chối khi vault sạch;
+- cancel preview giữ vault sạch;
+- typed confirmation restore đúng stable ID, order, algorithm/digits/period bằng
+  một atomic replacement, rồi cleanup vault/secure storage/preferences.
+
+iOS restore chạy sau `simctl uninstall`; Android chạy sau explicit test-vault
+cleanup vì package-manager uninstall trên AVD test trả lỗi nội bộ. Hai file test
+được xóa sau rehearsal, không upload Drive/iCloud và phase log không chứa secret,
+password, OTP hoặc file content. Đây là emulator/simulator evidence, chưa thay
+physical-device hoặc packaged desktop backup restore.
 
 Authenticated E2EE smoke trên Android AVD và iOS Simulator còn tạo hai Supabase
 session, installation UUID và X25519 key độc lập. Sau khi cả hai active ở generation
@@ -394,7 +416,9 @@ post-probe current image/health/hash và 5/5 public SPA route pass.
    pass direct secure-storage preflight và fail-safe cleanup. Biometric/camera
    và secure-storage behavior trên thiết bị thật chưa được chứng minh. Google
    Authenticator 7.2 app-to-app hai chiều đã pass trên Android AVD nhưng không
-   thay gate physical Android/iOS.
+   thay gate physical Android/iOS. Portable `.hyauth` đã pass two-phase
+   export/restore trên Android AVD và iOS Simulator nhưng chưa có physical-device
+   hoặc packaged desktop evidence.
 2. Chưa có two-device physical E2EE test.
    Linux sandbox, Android AVD và iOS Simulator đã pass lost-device-key HA1
    replacement + rotation; Android/iOS còn pass two-session survivor auto-unwrap.

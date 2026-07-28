@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:hyper_authenticator/core/platform/system_ui_interaction_guard.dart';
 import 'package:hyper_authenticator/core/router/app_router.dart';
 import 'package:hyper_authenticator/core/security/privacy_shield.dart';
 import 'package:hyper_authenticator/core/theme/theme_cubit.dart';
@@ -44,7 +45,9 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     } else if (state == AppLifecycleState.paused ||
         state == AppLifecycleState.hidden ||
         state == AppLifecycleState.detached) {
-      localAuthBloc.add(ResetAuthStatus());
+      if (!SystemUiInteractionGuard.isActive) {
+        localAuthBloc.add(ResetAuthStatus());
+      }
     }
   }
 
