@@ -111,6 +111,7 @@ class _AccountCodeContent extends StatelessWidget {
   Widget build(BuildContext context) {
     final identity = _AccountIdentity(account: account);
     final codeAndCountdown = _CodeAndCountdown(
+      codeKey: Key('account-code-${account.id}'),
       displayCode: displayCode,
       timeWindow: timeWindow,
       periodSeconds: account.period,
@@ -175,11 +176,13 @@ class _AccountIdentity extends StatelessWidget {
 
 class _CodeAndCountdown extends StatelessWidget {
   const _CodeAndCountdown({
+    required this.codeKey,
     required this.displayCode,
     required this.timeWindow,
     required this.periodSeconds,
   });
 
+  final Key codeKey;
   final String displayCode;
   final TotpTimeWindow timeWindow;
   final int periodSeconds;
@@ -194,6 +197,7 @@ class _CodeAndCountdown extends StatelessWidget {
       children: [
         Text(
           displayCode,
+          key: codeKey,
           style: const TextStyle(
             fontSize: 21,
             fontWeight: FontWeight.bold,

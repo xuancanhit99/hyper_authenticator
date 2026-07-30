@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:hyper_authenticator/core/router/app_router.dart'; // Assuming router paths are defined here
+import 'package:hyper_authenticator/core/router/app_router.dart';
+import 'package:hyper_authenticator/core/widgets/responsive_content.dart';
 import 'package:hyper_authenticator/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:hyper_authenticator/features/auth/presentation/widgets/auth_header.dart';
 
@@ -102,138 +103,142 @@ class _RegisterPageState extends State<RegisterPage> {
       },
       child: Scaffold(
         body: SafeArea(
-          child: Center(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(24.0),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    const AuthHeader(
-                      title: 'Tạo tài khoản',
-                      subtitle: 'Đăng ký để bắt đầu',
+          child: ResponsiveScrollableContent(
+            child: Form(
+              key: _formKey,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const AuthHeader(
+                    title: 'Tạo tài khoản',
+                    subtitle: 'Đăng ký để bắt đầu',
+                  ),
+                  TextFormField(
+                    controller: _emailController,
+                    decoration: const InputDecoration(
+                      labelText: 'Email',
+                      prefixIcon: Icon(Icons.email_outlined),
                     ),
-                    TextFormField(
-                      controller: _emailController,
-                      decoration: const InputDecoration(
-                        labelText: 'Email',
-                        prefixIcon: Icon(Icons.email_outlined),
-                      ),
-                      keyboardType: TextInputType.emailAddress,
-                      validator: _validateEmail,
-                      textInputAction: TextInputAction.next,
-                    ),
-                    // Ensure Phone TextFormField is removed
-                    const SizedBox(height: 16),
-                    TextFormField(
-                      controller: _passwordController,
-                      decoration: InputDecoration(
-                        labelText: 'Mật khẩu',
-                        prefixIcon: const Icon(Icons.lock_outline),
-                        suffixIcon: IconButton(
-                          tooltip: _obscurePassword
-                              ? 'Hiện mật khẩu'
-                              : 'Ẩn mật khẩu',
-                          icon: Icon(
-                            _obscurePassword
-                                ? Icons.visibility_off_outlined
-                                : Icons.visibility_outlined,
-                          ),
-                          onPressed: () {
-                            setState(() {
-                              _obscurePassword = !_obscurePassword;
-                            });
-                          },
+                    keyboardType: TextInputType.emailAddress,
+                    validator: _validateEmail,
+                    textInputAction: TextInputAction.next,
+                  ),
+                  // Ensure Phone TextFormField is removed
+                  const SizedBox(height: 16),
+                  TextFormField(
+                    controller: _passwordController,
+                    decoration: InputDecoration(
+                      labelText: 'Mật khẩu',
+                      prefixIcon: const Icon(Icons.lock_outline),
+                      suffixIcon: IconButton(
+                        tooltip: _obscurePassword
+                            ? 'Hiện mật khẩu'
+                            : 'Ẩn mật khẩu',
+                        icon: Icon(
+                          _obscurePassword
+                              ? Icons.visibility_off_outlined
+                              : Icons.visibility_outlined,
                         ),
+                        onPressed: () {
+                          setState(() {
+                            _obscurePassword = !_obscurePassword;
+                          });
+                        },
                       ),
-                      obscureText: _obscurePassword,
-                      validator: _validatePassword,
-                      textInputAction: TextInputAction.next,
                     ),
-                    const SizedBox(height: 16),
-                    TextFormField(
-                      controller: _confirmPasswordController,
-                      decoration: InputDecoration(
-                        labelText: 'Xác nhận mật khẩu',
-                        prefixIcon: const Icon(Icons.lock_outline),
-                        suffixIcon: IconButton(
-                          tooltip: _obscureConfirmPassword
-                              ? 'Hiện mật khẩu'
-                              : 'Ẩn mật khẩu',
-                          icon: Icon(
-                            _obscureConfirmPassword
-                                ? Icons.visibility_off_outlined
-                                : Icons.visibility_outlined,
-                          ),
-                          onPressed: () {
-                            setState(() {
-                              _obscureConfirmPassword =
-                                  !_obscureConfirmPassword;
-                            });
-                          },
+                    obscureText: _obscurePassword,
+                    autocorrect: false,
+                    enableSuggestions: false,
+                    enableIMEPersonalizedLearning: false,
+                    autofillHints: const [AutofillHints.newPassword],
+                    validator: _validatePassword,
+                    textInputAction: TextInputAction.next,
+                  ),
+                  const SizedBox(height: 16),
+                  TextFormField(
+                    controller: _confirmPasswordController,
+                    decoration: InputDecoration(
+                      labelText: 'Xác nhận mật khẩu',
+                      prefixIcon: const Icon(Icons.lock_outline),
+                      suffixIcon: IconButton(
+                        tooltip: _obscureConfirmPassword
+                            ? 'Hiện mật khẩu'
+                            : 'Ẩn mật khẩu',
+                        icon: Icon(
+                          _obscureConfirmPassword
+                              ? Icons.visibility_off_outlined
+                              : Icons.visibility_outlined,
                         ),
+                        onPressed: () {
+                          setState(() {
+                            _obscureConfirmPassword = !_obscureConfirmPassword;
+                          });
+                        },
                       ),
-                      obscureText: _obscureConfirmPassword,
-                      validator: _validateConfirmPassword,
-                      textInputAction: TextInputAction.done,
-                      onFieldSubmitted: (_) =>
-                          _register(context), // Pass context
                     ),
-                    const SizedBox(height: 24),
-                    // Use BlocBuilder for loading state
-                    BlocBuilder<AuthBloc, AuthState>(
-                      builder: (context, state) {
-                        final isLoading = state is AuthLoading;
-                        return ElevatedButton(
-                          // Pass context to _register
-                          onPressed: isLoading
-                              ? null
-                              : () => _register(context),
-                          style: ElevatedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                            textStyle: Theme.of(context).textTheme.titleMedium,
+                    obscureText: _obscureConfirmPassword,
+                    autocorrect: false,
+                    enableSuggestions: false,
+                    enableIMEPersonalizedLearning: false,
+                    autofillHints: const [AutofillHints.newPassword],
+                    validator: _validateConfirmPassword,
+                    textInputAction: TextInputAction.done,
+                    onFieldSubmitted: (_) => _register(context), // Pass context
+                  ),
+                  const SizedBox(height: 24),
+                  // Use BlocBuilder for loading state
+                  BlocBuilder<AuthBloc, AuthState>(
+                    builder: (context, state) {
+                      final isLoading = state is AuthLoading;
+                      return ElevatedButton(
+                        // Pass context to _register
+                        onPressed: isLoading ? null : () => _register(context),
+                        style: ButtonStyle(
+                          textStyle: WidgetStatePropertyAll(
+                            Theme.of(context).textTheme.titleMedium,
                           ),
-                          child: isLoading
-                              ? const SizedBox(
-                                  width: 24,
-                                  height: 24,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: Colors.white,
-                                  ),
-                                )
-                              : const Text('Đăng ký'),
-                        );
-                      },
-                    ),
-                    const SizedBox(height: 16),
-                    Wrap(
-                      alignment: WrapAlignment.center,
-                      crossAxisAlignment: WrapCrossAlignment.center,
-                      spacing: 8,
-                      runSpacing: 4,
-                      children: [
-                        const Text('Đã có tài khoản?'),
-                        TextButton(
-                          onPressed: () {
-                            // Navigate back to Login page
-                            if (context.canPop()) {
-                              context.pop();
-                            } else {
-                              context.go(
-                                AppRoutes.login,
-                              ); // Fallback if cannot pop
-                            }
-                            // print('Navigate to Login');
-                          },
-                          child: const Text('Đăng nhập'),
                         ),
-                      ],
-                    ),
-                  ],
-                ),
+                        child: isLoading
+                            ? SizedBox(
+                                width: 24,
+                                height: 24,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onPrimary,
+                                ),
+                              )
+                            : const Text('Đăng ký'),
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  Wrap(
+                    alignment: WrapAlignment.center,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    spacing: 8,
+                    runSpacing: 4,
+                    children: [
+                      const Text('Đã có tài khoản?'),
+                      TextButton(
+                        onPressed: () {
+                          // Navigate back to Login page
+                          if (context.canPop()) {
+                            context.pop();
+                          } else {
+                            context.go(
+                              AppRoutes.login,
+                            ); // Fallback if cannot pop
+                          }
+                          // print('Navigate to Login');
+                        },
+                        child: const Text('Đăng nhập'),
+                      ),
+                    ],
+                  ),
+                ],
               ),
             ),
           ),

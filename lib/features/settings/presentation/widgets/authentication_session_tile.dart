@@ -5,6 +5,7 @@ import 'package:hyper_authenticator/core/router/app_router.dart';
 import 'package:hyper_authenticator/features/auth/domain/entities/user_entity.dart';
 import 'package:hyper_authenticator/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:hyper_authenticator/features/settings/presentation/bloc/session_security_bloc.dart';
+import 'package:hyper_authenticator/features/settings/presentation/widgets/settings_expansion_tile.dart';
 
 class AuthenticationSessionTile extends StatelessWidget {
   final UserEntity? currentUser;
@@ -32,15 +33,22 @@ class AuthenticationSessionTile extends StatelessWidget {
       );
     }
     final revoking = sessionSecurityState is SessionSecurityInProgress;
+    final destructiveColor = Theme.of(context).colorScheme.error;
     return Column(
       children: [
         ListTile(
-          leading: const Icon(Icons.logout, color: Colors.red),
-          title: const Text('Đăng xuất', style: TextStyle(color: Colors.red)),
+          leading: Icon(Icons.logout, color: destructiveColor),
+          title: Text('Đăng xuất', style: TextStyle(color: destructiveColor)),
           subtitle: const Text('Mã TOTP local và app lock được giữ nguyên.'),
           onTap: () => _confirmLogout(context),
         ),
-        ExpansionTile(
+        Divider(
+          height: 1,
+          indent: 56,
+          endIndent: 24,
+          color: Theme.of(context).colorScheme.outlineVariant,
+        ),
+        SettingsExpansionTile(
           leading: const Icon(Icons.admin_panel_settings_outlined),
           title: const Text('Bảo mật tài khoản nâng cao'),
           subtitle: const Text('Quản lý phiên đăng nhập Supabase.'),

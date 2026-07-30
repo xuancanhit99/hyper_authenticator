@@ -72,10 +72,7 @@ void main() {
         final accountsBloc = di.sl<AccountsBloc>();
         await _replaceVault(repository, const []);
         accountsBloc.add(LoadAccounts());
-        await _pumpUntil(
-          tester,
-          find.text('Không tìm thấy tài khoản phù hợp.'),
-        );
+        await _pumpUntil(tester, find.text('Chưa có tài khoản TOTP'));
         _runtimePhase('clean-vault-ready');
 
         await tester.tap(find.byKey(MainNavigationPage.settingsTabKey).last);

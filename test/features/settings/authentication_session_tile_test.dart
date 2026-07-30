@@ -86,6 +86,28 @@ void main() {
     expect(repository.revokeCalls, 0);
   });
 
+  testWidgets('divider phiên tài khoản thẳng hàng với nội dung ListTile', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: Card(
+            child: AuthenticationSessionTile(
+              currentUser: user,
+              sessionSecurityState: SessionSecurityIdle(),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    final divider = tester.widget<Divider>(find.byType(Divider));
+    expect(divider.height, 1);
+    expect(divider.indent, 56);
+    expect(divider.endIndent, 24);
+  });
+
   for (final themeMode in [ThemeMode.light, ThemeMode.dark]) {
     testWidgets(
       'session action pass accessibility/contrast ${themeMode.name}',

@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:hyper_authenticator/core/widgets/responsive_content.dart';
 import 'package:hyper_authenticator/features/authenticator/presentation/bloc/accounts_bloc.dart';
 import 'package:hyper_authenticator/features/authenticator/presentation/bloc/encrypted_backup_bloc.dart';
 import 'package:hyper_authenticator/injection_container.dart';
@@ -84,94 +85,97 @@ class _EncryptedBackupViewState extends State<_EncryptedBackupView>
         final busy = state is EncryptedBackupBusy;
         return Scaffold(
           appBar: AppBar(title: const Text('Backup file mã hóa')),
-          body: ListView(
-            padding: const EdgeInsets.all(16),
-            children: [
-              _SecuritySummaryCard(state: state),
-              const SizedBox(height: 12),
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      const Row(
-                        children: [
-                          Icon(Icons.lock_outline),
-                          SizedBox(width: 12),
-                          Expanded(
-                            child: Text(
-                              'Tạo file backup',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w600,
+          body: MaxWidthContent(
+            maxWidth: 760,
+            child: ListView(
+              padding: const EdgeInsets.all(16),
+              children: [
+                _SecuritySummaryCard(state: state),
+                const SizedBox(height: 12),
+                Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        const Row(
+                          children: [
+                            Icon(Icons.lock_outline),
+                            SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                'Tạo file backup',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w600,
+                                ),
                               ),
                             ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      const Text(
-                        'Xuất toàn bộ local vault vào một file .hyauth. File giữ stable ID, thứ tự và đầy đủ TOTP semantics.',
-                      ),
-                      const SizedBox(height: 12),
-                      FilledButton.icon(
-                        key: const Key('create-encrypted-backup'),
-                        onPressed: busy ? null : _requestExportPassword,
-                        icon: const Icon(Icons.save_alt),
-                        label: const Text('Tạo backup mã hóa'),
-                      ),
-                    ],
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        const Text(
+                          'Xuất toàn bộ local vault vào một file .hyauth. File giữ stable ID, thứ tự và đầy đủ TOTP semantics.',
+                        ),
+                        const SizedBox(height: 12),
+                        FilledButton.icon(
+                          key: const Key('create-encrypted-backup'),
+                          onPressed: busy ? null : _requestExportPassword,
+                          icon: const Icon(Icons.save_alt),
+                          label: const Text('Tạo backup mã hóa'),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(height: 12),
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.warning_amber_rounded,
-                            color: Theme.of(context).colorScheme.error,
-                          ),
-                          const SizedBox(width: 12),
-                          const Expanded(
-                            child: Text(
-                              'Khôi phục từ file',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w600,
+                const SizedBox(height: 12),
+                Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.warning_amber_rounded,
+                              color: Theme.of(context).colorScheme.error,
+                            ),
+                            const SizedBox(width: 12),
+                            const Expanded(
+                              child: Text(
+                                'Khôi phục từ file',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w600,
+                                ),
                               ),
                             ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      const Text(
-                        'Bạn sẽ được xem preview sau khi file vượt qua integrity verification. Xác nhận cuối sẽ thay toàn bộ local vault, không merge.',
-                      ),
-                      const SizedBox(height: 12),
-                      OutlinedButton.icon(
-                        key: const Key('pick-encrypted-backup'),
-                        onPressed: busy
-                            ? null
-                            : () => context.read<EncryptedBackupBloc>().add(
-                                const PickEncryptedBackupRequested(),
-                              ),
-                        icon: const Icon(Icons.restore),
-                        label: const Text('Chọn file để khôi phục'),
-                      ),
-                    ],
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        const Text(
+                          'Bạn sẽ được xem preview sau khi file vượt qua integrity verification. Xác nhận cuối sẽ thay toàn bộ local vault, không merge.',
+                        ),
+                        const SizedBox(height: 12),
+                        OutlinedButton.icon(
+                          key: const Key('pick-encrypted-backup'),
+                          onPressed: busy
+                              ? null
+                              : () => context.read<EncryptedBackupBloc>().add(
+                                  const PickEncryptedBackupRequested(),
+                                ),
+                          icon: const Icon(Icons.restore),
+                          label: const Text('Chọn file để khôi phục'),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(height: 12),
-              const _PasswordNotice(),
-            ],
+                const SizedBox(height: 12),
+                const _PasswordNotice(),
+              ],
+            ),
           ),
         );
       },
@@ -610,6 +614,7 @@ class _RestoreBackupDialogState extends State<_RestoreBackupDialog> {
               : null,
           style: FilledButton.styleFrom(
             backgroundColor: Theme.of(context).colorScheme.error,
+            foregroundColor: Theme.of(context).colorScheme.onError,
           ),
           child: const Text('Thay local vault'),
         ),

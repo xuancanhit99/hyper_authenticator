@@ -54,8 +54,15 @@ preparation, cùng các nhóm sau:
 - main-navigation URL/tab mapping và deep-link return qua app-lock bootstrap;
   stateful shell regression còn khóa `/` ↔ `/settings` không thay shell
   `ModalRoute`, không chạy full-page animation, giữ state branch và chọn đúng tab
-  khi bootstrap trực tiếp từ `/settings`; device integration lifecycle smoke
-  cũng khóa shell không phát sinh duplicate `GlobalKey` khi lock redirect liên tiếp;
+  khi bootstrap trực tiếp từ `/settings`; chọn lại tab hiện tại quay về branch
+  root, viewport desktop dùng `NavigationRail`, viewport compact dùng
+  `NavigationBar`; lifecycle regression chạy nhiều chuỗi
+  `inactive/hidden/paused/resumed`, giữ Privacy Shield trong hai giờ mô phỏng rồi
+  xác minh cả hai đích vẫn phản hồi. Device integration lifecycle smoke cũng khóa
+  shell không phát sinh duplicate `GlobalKey` khi lock redirect liên tiếp;
+- platform transition contract xác minh route phân cấp dùng Flutter native page
+  transition builder: Android Predictive Back, iOS/macOS Cupertino và
+  Windows/Linux Zoom; shell tab vẫn cố ý không chạy full-page transition;
 - TOTP URI/validator, countdown nhiều period và lifecycle resume; standard
   exporter → parser round-trip giữ issuer/account có dấu hai chấm, Unicode,
   SHA1/SHA256/SHA512, 6–8 digits và custom period; duplicate security parameter,
@@ -119,13 +126,23 @@ preparation, cùng các nhóm sau:
 - Auth, account list và form thêm account pass labeled tap target, Android 48×48
   và WCAG text-contrast guideline trên light/dark theme ở viewport 320×640/text
   scale 200%; regression test khóa password/search/copy semantics tiếng Việt,
-  TOTP countdown và layout không overflow.
+  TOTP countdown và layout không overflow. Auth desktop còn khóa max width và
+  border theo theme; form thêm/sửa khóa secret che mặc định cùng action hiện/ẩn.
+- Account list regression phân biệt vault trống với search trống, cung cấp CTA
+  đúng ngữ cảnh và chỉ báo xóa thành công sau khi repository đã persist. Lock
+  screen regression bao phủ light/dark ở 320×568, text scale 200%, scroll,
+  semantics, contrast và tap target.
 - Settings recovery import/key confirmation, sync conflict và session revoke dialog
   pass semantics + Android 48×48 + WCAG text-contrast guideline trên light/dark
   theme ở viewport 320×640/text scale 200%; raw recovery key không vào semantics
   tree, copy action có accessible name, import field obscured/autofocus/keyboard
   submit và destructive dialog mặc định Enter vào **Hủy**. Dialog content scroll
   được thay vì overflow ở text scale lớn.
+- Theme component regression khóa `Card` light/dark clip theo bo góc 16 px, ink
+  overlay khi giữ tile không tràn surface; filled/outlined/elevated button giữ
+  minimum 48 px, padding ngang 24 px và dùng đúng primary token của color scheme.
+  Input prefix/focus/floating label theo primary light/dark. Settings disclosure
+  khóa shape không border khi mở và session divider có start/end inset 56/24 px.
 - Keyboard regression phát Tab/Shift+Tab/Enter/Space/Escape: bao phủ login,
   register, update/recovery Auth form; theme/add/search/copy TOTP; manual
   add-account; recovery import/key confirmation, conflict và session dialog.
@@ -177,16 +194,25 @@ session, UI xác nhận action, session count giảm 2→1, current session vẫ
 và test user/row/app data được cleanup.
 
 Device integration smoke dùng fixture isolated và explicit destructive opt-in đã
-pass trên Android Pixel AVD và iOS 26.5 Simulator. Suite kiểm tra bootstrap với
-public config, probe `write/read/readAll/delete` trực tiếp qua secure-storage,
-thêm account qua UI, vault round-trip, lifecycle foreground/hidden, BLoC reload,
-chuyển Settings/Accounts và cleanup vault/secure-storage/preferences trong
+pass lại ngày 30-07-2026 trên Android 17/API 37.1 AVD và iOS 27.0 Simulator. Suite
+kiểm tra bootstrap với public config, probe `write/read/readAll/delete` trực tiếp
+qua secure-storage, Add/Edit/Delete qua UI, TOTP render, vault round-trip đủ
+semantics, lifecycle, BLoC reload và Settings/Accounts. Suite cùng runner còn
+round-trip standard `otpauth` và Google migration multipart qua import use case,
+exact dedupe, secure persistence và cleanup mọi fixture/preference trong
 `finally`, kể cả khi bootstrap hoặc seed fail.
 Runner chỉ chấp nhận Android emulator hoặc iOS Simulator; thiết bị thật và macOS
 bị từ chối để không chạm vault người dùng.
 
-Encrypted-backup two-phase runtime ngày 29-07-2026 đã pass trên Android 17/API
-37.1 AVD và iOS 26.3 Simulator. Cả hai target dùng full app/DI, secure storage thật
+UI lifecycle smoke riêng đã pass trên Android 17/API 37.1 AVD và iOS 27.0
+Simulator ngày 30-07-2026. Test
+đưa full app qua ba vòng `inactive/hidden/paused/resumed` rồi chuyển
+Settings/Accounts; harness không pump frame trong trạng thái `paused` vì iOS
+engine dừng scheduler cho tới khi nhận resume. Suite dùng vault hiện có của test
+profile, không reset hoặc upload dữ liệu.
+
+Encrypted-backup two-phase runtime pass lại ngày 30-07-2026 trên Android 17/API
+37.1 AVD và iOS 27.0 Simulator. Cả hai target dùng full app/DI, secure storage thật
 và system boundary thật để chứng minh:
 
 - save/share cancel không đổi vault;
@@ -202,12 +228,26 @@ cleanup vì package-manager uninstall trên AVD test trả lỗi nội bộ. Hai
 password, OTP hoặc file content. Đây là emulator/simulator evidence, chưa thay
 physical-device hoặc packaged desktop backup restore.
 
+Camera QR runtime ngày 30-07-2026 đã pass trên Android 17/API 37.1 AVD với
+`mobile_scanner 7.4.0`, camera imagefile frame chứa QR `TEST_ONLY`, native preview,
+no-secret preview semantics, user import, secure persistence và cleanup. Đây là
+camera pipeline thật của emulator nhưng chưa thay physical Android/iOS.
+
+App-lock runtime cùng ngày đã pass trên iOS 27.0 Simulator: toggle preference qua
+UI, Face ID match mở khóa, non-match rồi cancel giữ lock, retry match mở lại và
+tắt preference không relock. Android lifecycle/navigation pass riêng; biometric
+và device credential vật lý vẫn là gate khác.
+
 Authenticated E2EE smoke trên Android AVD và iOS Simulator còn tạo hai Supabase
 session, installation UUID và X25519 key độc lập. Sau khi cả hai active ở generation
 1, primary session rotate exact wrap set; secondary giữ DEK cũ và phải tự unwrap
 generation 2 rồi decrypt revision 4 không dùng HA1. Suite cũng ghi đè primary bằng
 DEK cũ để khóa cùng regression, sau đó operator xóa isolated user và admin GET phải
 trả 404. Đây là two-session native-process evidence, chưa phải hai thiết bị vật lý.
+Lượt Android 30-07-2026 chạy thêm sign-in/sign-out qua UI trước E2EE và chứng minh
+logout không xóa local vault. Remote production contract cùng campaign pass 36
+encrypted RLS/RPC check, 25 device/session registry check, 8 one-time recovery
+check và plaintext endpoint table-absent; mọi isolated user được cleanup.
 
 Linux CI dùng cùng behavioral suite nhưng chạy trong private D-Bus Secret Service,
 Xvfb và XDG sandbox mode 0700. Harness chỉ chạy khi `CI=true`, kiểm tra keyring
@@ -261,10 +301,10 @@ backup trước/sau migration có encrypted off-host copy.
 
 | Target | Gate |
 |---|---|
-| Android | Debug build mỗi CI; tag CI dùng encrypted secrets để build APK và bắt buộc `apksigner` khớp fingerprint; `v1.1.0-preview.5` đã pass tag/public signer gate, encrypted-backup AVD runtime đã pass, còn exact installed-APK upgrade evidence từ Preview 4; physical camera/biometric trước stable, AAB/internal track khi mở Play Store |
-| iOS | Simulator build mỗi CI; không public binary qua GitHub; signed archive + device/TestFlight trước phân phối |
-| macOS | Unsigned compile CI; Developer ID + signed runtime + notarized package trước GitHub Release hoặc phân phối khác |
-| Web | Configured release + Chrome headless local-vault semantics/startup-failure smoke + hardened image contract + CSP/runtime `lang=vi` production-browser smoke |
+| Android | Current local signed release APK ngày 30-07-2026 pass checksum và pinned signer sau camera smoke; tag CI/public evidence vẫn là `v1.1.0-preview.5`, exact installed-APK upgrade từ Preview 4; physical camera/biometric trước stable, AAB/internal track khi mở Play Store |
+| iOS | Current release build pass development signing; local Ad Hoc bundle `muoiwe.beta.demo` ký bằng team `2C7B3NKMT8`, entitlement tối thiểu và cài thành công trên iPhone 16 Pro. Launch bị iOS chặn vì máy khóa; còn physical runtime/camera/secure storage + archive/TestFlight trước phân phối |
+| macOS | Current source compile unsigned pass; Apple Development identity có nhưng Xcode account thiếu credential nên chưa tạo được Mac App Development profile. Còn Developer ID + signed Keychain runtime + notarized package trước GitHub Release |
+| Web | Current configured release + Chrome headless engine/semantics/local-vault shell pass ngày 30-07-2026; hardened image contract + CSP/runtime `lang=vi` production-browser smoke |
 | Windows | Hosted local-vault runtime + historical `1.0.0+9` vault-upgrade harness + configured x64 + NSIS install/launch/metadata-upgrade/uninstall retention; installer/checksum được phép lên GitHub Preview unsigned; physical device/signing trước stable |
 | Linux | Hosted amd64 configured x64 + historical `1.0.0+9` upgrade + private-keyring runtime + `.deb` transition + Ubuntu/Debian X11/Wayland matrix; package/checksum được phép lên GitHub Preview unsigned; KDE/login/signed runtime trước stable |
 
@@ -413,8 +453,9 @@ post-probe current image/health/hash và 5/5 public SPA route pass.
 
 1. Device integration bao phủ local vault/navigation/lifecycle trên Android
    emulator, iOS Simulator và GitHub-hosted Windows Server 2025; Android/iOS còn
-   pass direct secure-storage preflight và fail-safe cleanup. Biometric/camera
-   và secure-storage behavior trên thiết bị thật chưa được chứng minh. Google
+   pass direct secure-storage preflight và fail-safe cleanup. Android camera AVD
+   và iOS Face ID Simulator đã pass, nhưng biometric/camera và secure-storage
+   behavior trên thiết bị thật chưa được chứng minh. Google
    Authenticator 7.2 app-to-app hai chiều đã pass trên Android AVD nhưng không
    thay gate physical Android/iOS. Portable `.hyauth` đã pass two-phase
    export/restore trên Android AVD và iOS Simulator nhưng chưa có physical-device
@@ -437,7 +478,10 @@ post-probe current image/health/hash và 5/5 public SPA route pass.
    Tag CI, public download/signature verifier và encrypted-backup Android AVD
    runtime của `v1.1.0-preview.5` đều pass. APK hiện là signed pre-release;
    camera/biometric trên thiết bị thật vẫn còn trước stable.
-6. Accessibility automation đã bao phủ Auth, account list, form thêm account và
+6. Flutter 3.44.6 còn cảnh báo `mobile_scanner 7.4.0` áp dụng Kotlin Gradle Plugin
+   trên AGP hiện tại; build và camera smoke vẫn pass nhưng cần migrate Built-in
+   Kotlin trước khi future Flutter nâng cảnh báo thành lỗi.
+7. Accessibility automation đã bao phủ Auth, account list, form thêm account và
    sensitive Settings recovery/conflict/session dialog với WCAG text-contrast
    gate light/dark cùng core keyboard traversal. Chưa thay TalkBack/VoiceOver
    runtime, keyboard audit toàn bộ Settings/main navigation, active screen capture

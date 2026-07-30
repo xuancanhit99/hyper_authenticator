@@ -10,19 +10,21 @@ class CElevatedButtonTheme {
       elevation: 0,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       foregroundColor: AppColors.cWhiteColor,
-      backgroundColor: AppColors.cSecondaryColor,
-      side: const BorderSide(color: AppColors.cSecondaryColor),
-      padding: const EdgeInsets.symmetric(vertical: 15),
+      backgroundColor: AppColors.primaryLight,
+      side: const BorderSide(color: AppColors.primaryLight),
+      minimumSize: const Size(64, 48),
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
     ),
   );
   static final darkElevatedButtonTheme = ElevatedButtonThemeData(
     style: ElevatedButton.styleFrom(
       elevation: 0,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      foregroundColor: AppColors.cSecondaryColor,
-      backgroundColor: AppColors.cWhiteColor,
-      side: const BorderSide(color: AppColors.cWhiteColor),
-      padding: const EdgeInsets.symmetric(vertical: 15),
+      foregroundColor: AppColors.onPrimaryDark,
+      backgroundColor: AppColors.primaryDark,
+      side: const BorderSide(color: AppColors.primaryDark),
+      minimumSize: const Size(64, 48),
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
     ),
   );
 }

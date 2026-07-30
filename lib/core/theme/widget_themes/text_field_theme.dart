@@ -6,21 +6,21 @@ class CTextFormFieldTheme {
 
   static InputDecorationTheme lightInputDecorationTheme = InputDecorationTheme(
     border: OutlineInputBorder(borderRadius: BorderRadius.circular(100)),
-    prefixIconColor: AppColors.cSecondaryColor,
-    floatingLabelStyle: const TextStyle(color: AppColors.cSecondaryColor),
+    prefixIconColor: AppColors.primaryLight,
+    floatingLabelStyle: const TextStyle(color: AppColors.primaryLight),
     focusedBorder: OutlineInputBorder(
       borderRadius: BorderRadius.circular(100),
-      borderSide: const BorderSide(width: 2, color: AppColors.cSecondaryColor),
+      borderSide: const BorderSide(width: 2, color: AppColors.primaryLight),
     ),
   );
 
   static InputDecorationTheme darkInputDecorationTheme = InputDecorationTheme(
     border: OutlineInputBorder(borderRadius: BorderRadius.circular(100)),
-    prefixIconColor: AppColors.cPrimaryColor,
-    floatingLabelStyle: const TextStyle(color: AppColors.cPrimaryColor),
+    prefixIconColor: AppColors.primaryDark,
+    floatingLabelStyle: const TextStyle(color: AppColors.primaryDark),
     focusedBorder: OutlineInputBorder(
       borderRadius: BorderRadius.circular(100),
-      borderSide: const BorderSide(width: 2, color: AppColors.cPrimaryColor),
+      borderSide: const BorderSide(width: 2, color: AppColors.primaryDark),
     ),
   );
 }

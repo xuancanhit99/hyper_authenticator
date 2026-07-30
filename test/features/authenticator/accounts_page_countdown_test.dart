@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -247,7 +249,91 @@ void main() {
       },
     );
   }
+
+  testWidgets('vault rỗng có hướng dẫn và CTA thêm tài khoản', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    final preferences = await SharedPreferences.getInstance();
+    final repository = _MemoryAuthenticatorRepository([]);
+    final accountsBloc = _createAccountsBloc(repository);
+    addTearDown(accountsBloc.close);
+
+    await tester.pumpWidget(
+      MultiBlocProvider(
+        providers: [
+          BlocProvider(create: (_) => ThemeCubit(preferences)),
+          BlocProvider.value(value: accountsBloc),
+        ],
+        child: MaterialApp(
+          home: AccountsPage(generateTotpCode: _CountingGenerateTotpCode()),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Chưa có tài khoản TOTP'), findsOneWidget);
+    expect(
+      find.text('Quét mã QR hoặc nhập secret key để tạo mã xác thực đầu tiên.'),
+      findsOneWidget,
+    );
+    expect(find.byKey(AccountsPage.emptyAddAccountButtonKey), findsOneWidget);
+  });
+
+  testWidgets('xóa chỉ báo thành công sau khi persistence xác nhận', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    final preferences = await SharedPreferences.getInstance();
+    final deleteCompleter = Completer<Either<Failure, Unit>>();
+    final repository = _MemoryAuthenticatorRepository([
+      const AuthenticatorAccount(
+        id: 'delete-account',
+        issuer: 'TEST_ONLY Delete Issuer',
+        accountName: 'delete@example.invalid',
+        secretKey: 'JBSWY3DPEHPK3PXP',
+      ),
+    ], deleteCompleter: deleteCompleter);
+    final accountsBloc = _createAccountsBloc(repository);
+    addTearDown(accountsBloc.close);
+
+    await tester.pumpWidget(
+      MultiBlocProvider(
+        providers: [
+          BlocProvider(create: (_) => ThemeCubit(preferences)),
+          BlocProvider.value(value: accountsBloc),
+        ],
+        child: MaterialApp(
+          home: AccountsPage(generateTotpCode: _CountingGenerateTotpCode()),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('account-actions-delete-account')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Xóa'));
+    await tester.pumpAndSettle();
+    expect(find.text('Xác nhận xóa'), findsOneWidget);
+    await tester.tap(find.widgetWithText(TextButton, 'Xóa'));
+    await tester.pump();
+
+    expect(find.text('Đã xóa tài khoản.'), findsNothing);
+
+    deleteCompleter.complete(const Right(unit));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Đã xóa tài khoản.'), findsOneWidget);
+    expect(find.text('TEST_ONLY Delete Issuer'), findsNothing);
+  });
 }
+
+AccountsBloc _createAccountsBloc(AuthenticatorRepository repository) =>
+    AccountsBloc(
+      getAccounts: GetAccounts(repository),
+      addAccount: AddAccount(repository),
+      deleteAccount: DeleteAccount(repository),
+      updateAccount: UpdateAccount(repository),
+      importAccounts: ImportAccounts(repository),
+    );
 
 class _CountingGenerateTotpCode extends GenerateTotpCode {
   int callCount = 0;
@@ -262,9 +348,10 @@ class _CountingGenerateTotpCode extends GenerateTotpCode {
 }
 
 class _MemoryAuthenticatorRepository implements AuthenticatorRepository {
-  _MemoryAuthenticatorRepository(this.accounts);
+  _MemoryAuthenticatorRepository(this.accounts, {this.deleteCompleter});
 
   final List<AuthenticatorAccount> accounts;
+  final Completer<Either<Failure, Unit>>? deleteCompleter;
 
   @override
   Future<Either<Failure, List<AuthenticatorAccount>>> getAccounts() async =>
@@ -290,8 +377,12 @@ class _MemoryAuthenticatorRepository implements AuthenticatorRepository {
   }
 
   @override
-  Future<Either<Failure, Unit>> deleteAccount(String id) {
-    throw UnimplementedError();
+  Future<Either<Failure, Unit>> deleteAccount(String id) async {
+    final result = deleteCompleter == null
+        ? const Right<Failure, Unit>(unit)
+        : await deleteCompleter!.future;
+    result.fold((_) {}, (_) => accounts.removeWhere((item) => item.id == id));
+    return result;
   }
 
   @override

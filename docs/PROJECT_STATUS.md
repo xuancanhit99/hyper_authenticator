@@ -70,7 +70,9 @@ session registry hoặc vault-key generation.
   key và recovery URL. Partial config, service-role/secret key hoặc
   `ALLOW_INSECURE_PLAINTEXT_SYNC=true` đều fail closed.
 - Accounts và Settings dùng `StatefulShellRoute.indexedStack`; đổi tab giữ state,
-  không chạy full-page transition.
+  không chạy full-page transition, chọn lại tab hiện tại quay về branch root.
+  Viewport compact dùng `NavigationBar`; desktop từ 900 px dùng
+  `NavigationRail`. Route phân cấp giữ transition native theo platform.
 - Feature state dùng BLoC/Cubit; theme có một `ThemeCubit`. Root không tạo trùng
   `SettingsBloc`.
 - Remember Me đã bỏ; Supabase sở hữu session persistence, app không lưu lại
@@ -87,6 +89,16 @@ session registry hoặc vault-key generation.
   nội dung bên dưới khỏi semantics.
 - UI chính dùng tiếng Việt; thuật ngữ TOTP, Base32, cloud, recovery key giữ khi
   cần chính xác.
+- Form Auth, tài khoản, Settings và Backup có max-width responsive; empty state
+  phân biệt vault trống với search trống. Secret nhập tay được che mặc định và
+  tắt personalized IME learning. Xóa account chỉ báo thành công sau khi persist.
+- Lock screen dùng responsive Material 3 layout, hỗ trợ scroll ở viewport hẹp và
+  text scale lớn; lifecycle resume giữ shell/tab có thể tương tác.
+- Settings tách device security, backup cloud, account/session và backup file
+  thành card độc lập. Card tương tác clip pressed overlay theo bo góc 16 px; button
+  Filled/Elevated/Outlined giữ touch target 48 px, padding ngang và semantic color
+  theo light/dark theme. Advanced disclosure không dùng default border theo state;
+  action/divider thẳng hàng content edge 56/24 px của ListTile.
 - Widget regression có light/dark, text scale 200%, tap target, text contrast,
   keyboard focus và credential redaction trên các luồng cốt lõi.
 
@@ -117,17 +129,17 @@ user-facing cryptographic device exclusion.
 
 | Gate | Kết quả |
 |---|---|
-| `flutter analyze` | Pass, 0 diagnostic ngày 29-07-2026 |
-| `scripts/agent/check.sh full` | Pass ngày 29-07-2026; tổng hợp bốn boundary dưới đây |
-| `scripts/agent/check.sh app` | Pass ngày 29-07-2026: docs/generated/format/analyze/platform và 258 Flutter test |
-| `scripts/agent/check.sh backend` | Pass ngày 29-07-2026: encrypted/device-wrap và plaintext-retirement PostgreSQL contract |
-| `scripts/agent/check.sh release` | Pass ngày 29-07-2026: GitHub Preview asset/public contract và Web rollback harness |
-| `scripts/agent/check.sh infra` | Pass ngày 29-07-2026: NPM secret/backup/deploy/route/rollback, Auth load pacing và restore drill contract |
-| Local-only release smoke | Android debug APK, Web release, iOS Simulator và macOS unsigned compile pass ngày 27-07-2026; Chrome engine/semantics/local-vault shell đã pass baseline trước |
-| Android Pixel AVD | Signed build, clean install, vault-retaining upgrade, E2EE và Google Authenticator 7.2 app-to-app hai chiều đã pass; physical camera/biometric còn thiếu |
-| Encrypted backup Android AVD | Android 17/API 37.1 pass cancel/save vào Downloads, tamper, wrong password, preview cancel, clean-vault atomic restore và cleanup ngày 29-07-2026 |
-| iOS Simulator | iOS 26.3 pass local vault, encrypted backup export → clean install → tamper/wrong-password/cancel/atomic restore và authenticated E2EE flows; device/signing còn thiếu |
-| macOS | Unsigned compile pass; signing/Keychain release runtime còn thiếu |
+| `flutter analyze` | Pass, 0 diagnostic ngày 30-07-2026 |
+| `scripts/agent/check.sh full` | Pass ngày 30-07-2026; tổng hợp bốn boundary dưới đây |
+| `scripts/agent/check.sh app` | Pass ngày 30-07-2026: docs/generated/format/analyze/platform và 269 Flutter test |
+| `scripts/agent/check.sh backend` | Pass ngày 30-07-2026: encrypted/device-wrap và plaintext-retirement PostgreSQL contract |
+| `scripts/agent/check.sh release` | Pass ngày 30-07-2026: GitHub Preview asset/public contract và Web rollback harness |
+| `scripts/agent/check.sh infra` | Pass ngày 30-07-2026: NPM secret/backup/deploy/route/rollback, Auth load pacing và restore drill contract |
+| Local release smoke | Android signed APK + checksum/pinned signer, Web release + Chrome runtime, iOS development-signed device release build và macOS unsigned compile pass ngày 30-07-2026 |
+| Android 17/API 37.1 AVD | Local vault Add/Edit/Delete/TOTP, standard + Google migration import/export, camera-frame QR, lifecycle, Auth UI, E2EE và encrypted backup pass; physical camera/biometric còn thiếu |
+| Encrypted backup Android/iOS | Android 17/API 37.1 và iOS 27.0 pass cancel/save local, tamper, wrong password, preview cancel, clean-vault atomic restore và cleanup ngày 30-07-2026 |
+| iOS 27.0 Simulator + iPhone 16 Pro | Simulator pass local vault/import-export, encrypted backup, lifecycle/navigation và Face ID app-lock; local Ad Hoc app đã ký/cài trên thiết bị thật, launch bị chặn vì máy khóa nên runtime/camera còn thiếu |
+| macOS | Unsigned compile pass; Apple Development identity có nhưng thiếu Xcode account/Mac provisioning profile, nên signed Keychain runtime còn thiếu |
 | Windows hosted | Historical vault upgrade, local-vault runtime, release bundle và unsigned NSIS pass |
 | Linux hosted/container | Historical upgrade, private keyring, `.deb`, distro matrix và authenticated E2EE debug runtime pass |
 | Flutter Web production | HTTPS/Nginx/runtime/rollback smoke đã pass; E2EE backup tắt |
@@ -137,6 +149,10 @@ Encrypted backup runtime rehearsal phát hiện và đã sửa hai gap Android: 
 sheet không bảo đảm local save nên được thay bằng native document picker; app-lock
 không còn dispose route đang chờ trusted system UI. Không đổi local-vault v2,
 file schema v1, cloud encrypted envelope, Supabase schema/RPC hoặc production data.
+Full feature acceptance ngày 30-07-2026 còn pass Auth UI logout-preserves-vault,
+native two-session E2EE revision 1→4, 36 encrypted remote checks, 25 device registry
+checks, 8 recovery-token checks và plaintext table-absent; isolated user được
+admin probe 404 sau cleanup.
 
 ## Capability matrix
 
@@ -156,7 +172,7 @@ file schema v1, cloud encrypted envelope, Supabase schema/RPC hoặc production 
 | Platform | Kênh hiện tại | Gate còn lại trước stable |
 |---|---|---|
 | Android | Signed APK qua GitHub Preview | Camera, biometric và upgrade trên thiết bị thật; Play Store để sau |
-| iOS | Chưa phân phối | Apple credential, physical device, TestFlight/App Store |
+| iOS | Local Ad Hoc trên thiết bị đăng ký | Còn physical runtime/camera/secure storage/VoiceOver, archive và TestFlight/App Store |
 | macOS | Chưa phân phối | Developer ID, hardened runtime, notarization, staple, runtime smoke |
 | Windows | Unsigned NSIS Preview | Code signing và Windows Hello/physical-device |
 | Linux | Unsigned `.deb` Preview | KDE/physical desktop, signed repository/channel |
@@ -191,10 +207,12 @@ Chi tiết command, rollback và evidence retention:
    interoperability Android/iOS cho standard/current Google export.
 2. **Device exclusion:** session revoke chưa phải cryptographic exclusion hoặc
    remote wipe; cần UX và independent security review.
-3. **Thiết bị thật:** camera, biometric, secure storage, TalkBack/VoiceOver,
+3. **Thiết bị thật:** Android camera AVD và iOS Face ID Simulator đã pass; camera,
+   biometric, secure storage, TalkBack/VoiceOver,
    two-device conflict/recovery chưa có đủ representative evidence.
-4. **Signing:** Apple và Windows credential chưa có; macOS/iOS/Windows stable bị
-   chặn tương ứng.
+4. **Signing:** iOS development build và local Ad Hoc install đã pass; launch
+   smoke chưa chạy vì thiết bị khóa, archive/TestFlight còn thiếu. macOS thiếu
+   Xcode account/profile và Developer ID; Windows chưa có code-signing certificate.
 5. **Recovery email:** SMTP mailbox delivery và expired/reused link E2E chưa xác
    minh.
 6. **Legal/support:** privacy policy/support/security contact cần URL công khai
@@ -206,6 +224,9 @@ Chi tiết command, rollback và evidence retention:
 9. **Infrastructure ownership:** Supabase/NPM operations harness còn cùng
    repository. Gate đã tách `infra`; physical move sang repository vận hành được
    hoãn tới khi owner có lifecycle/deployment repository riêng.
+10. **Android toolchain:** `mobile_scanner 7.4.0` là bản mới nhất resolvable và
+    camera smoke pass, nhưng Flutter còn cảnh báo Kotlin Gradle Plugin; cần migrate
+    Built-in Kotlin trước khi warning trở thành build failure.
 
 ## Gate canonical
 

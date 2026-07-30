@@ -68,6 +68,8 @@ embed lúc Flutter compile theo public-config contract. HTML dùng `no-store`, a
 revalidate, SPA fallback về `index.html`; access log tắt để query material không
 vào container log. Reverse proxy bên ngoài sở hữu TLS và domain routing.
 
+## Điều hướng và responsive UI
+
 GoRouter giữ URL làm source of truth cho main navigation: `/` mở Accounts và
 `/settings` mở Settings. Hai URL là branch của
 `StatefulShellRoute.indexedStack`; mỗi branch có Navigator riêng, giữ state khi
@@ -76,15 +78,24 @@ GoRouter giữ URL làm source of truth cho main navigation: `/` mở Accounts v
 lifecycle transition, transition mặc định có thể giữ hai shell có cùng
 `GlobalKey` trong tree và làm Flutter fail. Các route bootstrap/lock là overlay
 child của shell nhưng render trên root navigator, vì vậy shell luôn mounted và
-bottom navigation không lọt qua màn hình khóa. `NavigationBar` vẫn animate
-indicator trong 200 ms, còn route phân cấp như Auth hoặc Thêm/Sửa tài khoản tiếp
-tục dùng page transition native mà Flutter chọn theo platform.
+navigation không lọt qua màn hình khóa.
 
-Không ép `initialLocation`, vì làm vậy sẽ bỏ qua browser deep link và platform
-route ban đầu. Bottom navigation dùng `StatefulNavigationShell.goBranch`, nên URL,
-refresh và back vẫn chọn đúng tab. Local-auth check thuộc bootstrap/lifecycle và
-router redirect, không được phát lại chỉ vì người dùng đổi tab. Web bật
-`PathUrlStrategy` qua conditional import; native build dùng no-op stub.
+Viewport dưới 900 px dùng `NavigationBar` với indicator 200 ms; viewport từ
+900 px dùng `NavigationRail` để đích điều hướng không bị kéo giãn theo chiều
+ngang. Đổi branch không ép `initialLocation`, nên vẫn giữ branch state, browser
+deep link và platform route ban đầu. Chọn lại branch hiện tại mới gọi
+`goBranch(..., initialLocation: true)` để quay về root của branch và phục hồi
+route branch nhất quán sau lifecycle restore. URL, refresh và back vẫn chọn đúng
+tab. Local-auth check thuộc bootstrap/lifecycle và router redirect, không được
+phát lại chỉ vì người dùng đổi tab.
+
+Route phân cấp như Auth, Thêm/Sửa tài khoản, Export và Backup dùng transition
+native mặc định do Flutter chọn theo platform: Cupertino trên iOS/macOS,
+Predictive Back trên Android hỗ trợ và Zoom trên Windows/Linux. Form Auth được
+giới hạn 480 px, form tài khoản 640 px, nội dung Accounts 960 px và Settings/
+Backup 760 px; màn hình hẹp vẫn dùng toàn bộ chiều rộng khả dụng và cho phép
+scroll khi text scale lớn. Web bật `PathUrlStrategy` qua conditional import;
+native build dùng no-op stub.
 
 ## Local vault
 
@@ -164,6 +175,12 @@ chồng thời gian không thể hoàn tất nhầm route. Failure cũng mang op
 request tương ứng mới mở lại nút lưu và hiển thị lỗi. Reload danh sách không đóng
 form; update ở GoRouter root đi về `/` thay vì pop page cuối. `LoadAccounts` vẫn
 được queue sau success để account list nhận dữ liệu mới nhất.
+
+Form thêm/sửa che `secretKey` mặc định, chỉ hiện sau thao tác chủ động và tắt
+autocorrect, suggestion cùng personalized IME learning. Danh sách phân biệt vault
+trống với kết quả tìm kiếm trống và cung cấp action tương ứng. Xóa tài khoản chỉ
+hiện thông báo thành công sau khi persistence trả success; trong khi mutation
+đang chờ, UI chặn xóa lặp và failure không bị mô tả thành success.
 
 ## App lock và logout
 
@@ -296,8 +313,23 @@ tiếp accessible name với title của setting.
 
 Light/dark theme dùng primary/on-primary token riêng để giữ brand blue nhưng đạt
 WCAG AA text contrast trên các core surface. Widget regression khóa contract này
-ở Auth, account list, form thêm account và sensitive Settings dialog; đây không
-thay cho TalkBack/VoiceOver hoặc audit toàn bộ UI trên thiết bị thật.
+ở Auth, account list, form thêm/sửa account, lock screen và sensitive Settings
+dialog; đây không thay cho TalkBack/VoiceOver hoặc audit toàn bộ UI trên thiết bị
+thật. Lock screen dùng cùng responsive constraint, Material 3 error surface và
+brand mark với fallback an toàn thay vì layout cố định.
+
+Surface tương tác dùng `Card` bo 16 px và `Clip.antiAlias`, nên ink/pressed overlay
+không được vượt khỏi góc bo. Settings tách bảo mật thiết bị, backup cloud, phiên
+tài khoản và backup file thành các card riêng thay vì ghép thành một surface dài.
+`FilledButton`, `ElevatedButton` và `OutlinedButton` dùng touch target tối thiểu
+48 px, padding ngang 24 px và brand/error token của active color scheme; action
+full-width vẫn giữ label/icon cách viền cân đối. Input focus/prefix/floating label
+dùng primary token tương ứng thay vì legacy color.
+
+Disclosure nâng cao trong Settings nằm trong card đã tách nên chủ động bỏ border
+trên/dưới mặc định chỉ xuất hiện khi `ExpansionTile` mở. Action và divider căn theo
+content edge Material 3 của `ListTile` (start 56 px, end 24 px); vì vậy divider
+không dừng ở vị trí button hoặc chạm cạnh card một cách lệch lạc.
 
 Core keyboard contract dùng focus tree mặc định của Flutter nhưng khóa thứ tự và
 activation bằng Tab/Shift+Tab/Enter/Space. Sensitive dialog mặc định focus

@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:hyper_authenticator/core/config/app_config.dart';
 import 'package:hyper_authenticator/core/platform/platform_capabilities.dart';
 import 'package:hyper_authenticator/core/router/app_router.dart';
+import 'package:hyper_authenticator/core/widgets/responsive_content.dart';
 import 'package:hyper_authenticator/features/auth/domain/entities/user_entity.dart';
 import 'package:hyper_authenticator/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:hyper_authenticator/features/settings/presentation/bloc/settings_bloc.dart';
@@ -11,6 +12,7 @@ import 'package:hyper_authenticator/features/settings/presentation/widgets/authe
 import 'package:hyper_authenticator/features/settings/presentation/widgets/encrypted_sync_unavailable_tile.dart';
 import 'package:hyper_authenticator/features/settings/presentation/widgets/recovery_import_dialog.dart';
 import 'package:hyper_authenticator/features/settings/presentation/widgets/recovery_key_confirmation_dialog.dart';
+import 'package:hyper_authenticator/features/settings/presentation/widgets/settings_expansion_tile.dart';
 import 'package:hyper_authenticator/features/settings/presentation/widgets/sync_conflict_resolution_dialog.dart';
 import 'package:hyper_authenticator/features/sync/presentation/bloc/sync_bloc.dart';
 import 'package:hyper_authenticator/injection_container.dart';
@@ -65,66 +67,72 @@ class _SettingsView extends StatelessWidget {
               return const Center(child: CircularProgressIndicator());
             }
             final loaded = state is SettingsLoaded ? state : null;
-            return ListView(
-              padding: const EdgeInsets.all(16),
-              children: [
-                if (currentUser != null) _UserCard(currentUser),
-                Card(
-                  child: Column(
-                    children: [
-                      if (loaded?.canCheckBiometrics == true)
-                        SwitchListTile(
-                          secondary: const Icon(Icons.fingerprint),
-                          title: const Text('Khóa bằng sinh trắc học'),
-                          subtitle: const Text(
-                            'Dùng Face ID, vân tay hoặc mã khóa thiết bị.',
+            return MaxWidthContent(
+              maxWidth: 760,
+              child: ListView(
+                padding: const EdgeInsets.all(16),
+                children: [
+                  if (currentUser != null) _UserCard(currentUser),
+                  Card(
+                    child: loaded?.canCheckBiometrics == true
+                        ? SwitchListTile(
+                            secondary: const Icon(Icons.fingerprint),
+                            title: const Text('Khóa bằng sinh trắc học'),
+                            subtitle: const Text(
+                              'Dùng Face ID, vân tay hoặc mã khóa thiết bị.',
+                            ),
+                            value: loaded!.isBiometricEnabled,
+                            onChanged: (enabled) => context
+                                .read<SettingsBloc>()
+                                .add(ToggleBiometric(isEnabled: enabled)),
+                          )
+                        : const ListTile(
+                            leading: Icon(Icons.fingerprint),
+                            title: Text('Khóa bằng sinh trắc học'),
+                            subtitle: Text(
+                              'Thiết bị hoặc platform không hỗ trợ.',
+                            ),
                           ),
-                          value: loaded!.isBiometricEnabled,
-                          onChanged: (enabled) => context
-                              .read<SettingsBloc>()
-                              .add(ToggleBiometric(isEnabled: enabled)),
-                        )
-                      else
-                        const ListTile(
-                          leading: Icon(Icons.fingerprint),
-                          title: Text('Khóa bằng sinh trắc học'),
-                          subtitle: Text(
-                            'Thiết bị hoặc platform không hỗ trợ.',
-                          ),
-                        ),
-                      const Divider(height: 1),
-                      _EncryptedSyncSection(
-                        currentUser: currentUser,
-                        isSupported: encryptedSyncSupported,
-                        unavailableMessage: unavailableMessage,
-                      ),
-                      if (currentUser != null || encryptedSyncSupported) ...[
-                        const Divider(height: 1),
-                        BlocBuilder<SessionSecurityBloc, SessionSecurityState>(
-                          builder: (context, sessionSecurityState) =>
-                              AuthenticationSessionTile(
-                                currentUser: currentUser,
-                                sessionSecurityState: sessionSecurityState,
-                              ),
-                        ),
-                      ],
-                    ],
                   ),
-                ),
-                const SizedBox(height: 12),
-                Card(
-                  child: ListTile(
-                    key: const Key('encrypted-backup-file-settings'),
-                    leading: const Icon(Icons.folder_zip_outlined),
-                    title: const Text('Backup file mã hóa'),
-                    subtitle: const Text(
-                      'Portable offline bằng Argon2id + AES-256-GCM; không cần Supabase.',
+                  const SizedBox(height: 12),
+                  Card(
+                    child: _EncryptedSyncSection(
+                      currentUser: currentUser,
+                      isSupported: encryptedSyncSupported,
+                      unavailableMessage: unavailableMessage,
                     ),
-                    trailing: const Icon(Icons.chevron_right),
-                    onTap: () => context.push(AppRoutes.encryptedBackup),
                   ),
-                ),
-              ],
+                  if (currentUser != null || encryptedSyncSupported) ...[
+                    const SizedBox(height: 12),
+                    Card(
+                      child:
+                          BlocBuilder<
+                            SessionSecurityBloc,
+                            SessionSecurityState
+                          >(
+                            builder: (context, sessionSecurityState) =>
+                                AuthenticationSessionTile(
+                                  currentUser: currentUser,
+                                  sessionSecurityState: sessionSecurityState,
+                                ),
+                          ),
+                    ),
+                  ],
+                  const SizedBox(height: 12),
+                  Card(
+                    child: ListTile(
+                      key: const Key('encrypted-backup-file-settings'),
+                      leading: const Icon(Icons.folder_zip_outlined),
+                      title: const Text('Backup file mã hóa'),
+                      subtitle: const Text(
+                        'Portable offline bằng Argon2id + AES-256-GCM; không cần Supabase.',
+                      ),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () => context.push(AppRoutes.encryptedBackup),
+                    ),
+                  ),
+                ],
+              ),
             );
           },
         ),
@@ -248,7 +256,9 @@ class _EncryptedSyncSectionState extends State<_EncryptedSyncSection> {
             _syncTile(context, state),
             if (widget.currentUser != null)
               Padding(
-                padding: const EdgeInsets.fromLTRB(72, 0, 16, 8),
+                // Align action content with the ListTile title: 16 px outer
+                // inset + 40 px leading slot. Keep 24 px at the trailing edge.
+                padding: const EdgeInsetsDirectional.fromSTEB(56, 0, 24, 8),
                 child: _actions(context, state),
               ),
           ],
@@ -392,20 +402,32 @@ class _EncryptedSyncSectionState extends State<_EncryptedSyncSection> {
             label: const Text('Backup ngay'),
           ),
         if (canManageRecovery)
-          ExpansionTile(
-            tilePadding: EdgeInsets.zero,
-            childrenPadding: const EdgeInsets.only(bottom: 8),
-            title: const Text('Bảo mật nâng cao'),
-            subtitle: const Text('Chỉ dùng khi recovery key có nguy cơ bị lộ.'),
-            children: [
-              OutlinedButton.icon(
-                onPressed: () => context.read<SyncBloc>().add(
-                  const BeginRecoveryKeyRotation(),
-                ),
-                icon: const Icon(Icons.key),
-                label: const Text('Đổi recovery key'),
+          Padding(
+            padding: const EdgeInsets.only(top: 12),
+            child: SettingsExpansionTile(
+              tilePadding: EdgeInsets.zero,
+              childrenPadding: const EdgeInsets.only(bottom: 8),
+              title: const Text('Bảo mật nâng cao'),
+              subtitle: const Text(
+                'Chỉ dùng khi recovery key có nguy cơ bị lộ.',
               ),
-            ],
+              children: [
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    key: const Key('rotate-recovery-key'),
+                    onPressed: () => context.read<SyncBloc>().add(
+                      const BeginRecoveryKeyRotation(),
+                    ),
+                    icon: const Icon(Icons.key),
+                    label: const Text(
+                      'Đổi recovery key',
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
       ],
     );

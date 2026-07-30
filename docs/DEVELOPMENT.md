@@ -231,9 +231,12 @@ runtime evidence riêng, không được suy ra chỉ từ widget test.
 
 ## Device integration smoke
 
-Suite local-vault kiểm tra bootstrap có config, direct secure-storage
-`write/read/readAll/delete`, thêm account qua UI, vault round-trip, lifecycle
-foreground/hidden, BLoC reload, navigation và cleanup:
+Runner chạy hai suite liên tiếp. Suite local-vault kiểm tra bootstrap có config,
+direct secure-storage `write/read/readAll/delete`, Add/Edit/Delete qua UI, TOTP
+render đúng digits, vault round-trip đủ algorithm/digits/period, lifecycle,
+BLoC reload và navigation. Suite thứ hai kiểm tra standard `otpauth` export →
+parse → import cùng Google migration multipart export → collect → import, gồm
+exact dedupe và persistence:
 
     scripts/agent/device_integration.sh \
       emulator-5554 .env --allow-test-vault-reset
@@ -249,6 +252,50 @@ Tham số đầu cũng có thể là UUID của iOS Simulator đang boot. Harnes
 
 Không nới guard để chạy trên thiết bị người dùng. Device test cho biometric/camera
 phải dùng flow riêng, dữ liệu isolated và không được reset vault ngầm.
+
+### UI lifecycle smoke
+
+Để kiểm tra tab chính sau background/resume trên một Android emulator hoặc iOS
+Simulator sạch:
+
+    flutter test integration_test/ui_lifecycle_navigation_smoke_test.dart \
+      -d <emulator-or-simulator-id>
+
+Suite đưa app qua ba vòng `inactive`, `hidden`, `paused`, `resumed` rồi chuyển
+Settings/Accounts. Không pump frame trong lúc `paused`: iOS engine có thể dừng
+scheduler cho tới khi nhận resume. Test không reset vault, không dùng cloud và
+chỉ tắt biometric preference trong test profile; không chạy trên thiết bị chứa
+dữ liệu thật.
+
+### Camera QR smoke
+
+`integration_test/camera_qr_smoke_test.dart` dùng full camera frame thay vì gọi
+parser trực tiếp. Chỉ chạy trên Android AVD riêng được boot với camera imagefile
+chứa QR `TEST_ONLY`, cấp CAMERA permission cho test package rồi chạy:
+
+    flutter test integration_test/camera_qr_smoke_test.dart \
+      -d <android-emulator-id> \
+      --dart-define-from-file=.env \
+      --dart-define=ALLOW_DEVICE_TEST_VAULT_RESET=true
+
+Suite yêu cầu preview không lộ secret, import qua action người dùng, đối chiếu
+issuer/account/algorithm/digits/period trong secure repository và cleanup trong
+`finally`. Fixture không được chứa credential thật hoặc được ghi full `otpauth`
+vào log. iOS Simulator không cung cấp camera frame tương đương; camera iOS cần
+thiết bị test riêng và không được dùng suite reset-vault trên thiết bị người dùng.
+
+### App lock/Face ID trên iOS Simulator
+
+Bật **Simulator > Features > Face ID > Enrolled**, sau đó:
+
+    scripts/agent/app_lock_ios_simulator_smoke.sh \
+      <ios-simulator-uuid> .env --allow-app-lock-test
+
+Theo phase log, chọn **Matching Face**; tiếp theo chọn **Non-matching Face** rồi
+**Hủy**; cuối cùng chọn **Matching Face** khi retry. Suite bật/tắt preference qua
+UI, chứng minh match mở khóa, non-match/cancel vẫn fail closed, retry hoạt động và
+tắt preference không relock sau lifecycle. Harness chỉ nhận iOS Simulator và luôn
+đưa preference về `false`; nó không thay Face ID/Touch ID evidence trên thiết bị thật.
 
 ### Encrypted-backup device smoke
 
@@ -405,19 +452,25 @@ Khi user lifecycle được quản lý riêng, có thể chạy client-only harn
 
 Harness fail closed với thiết bị thật/macOS, service-role environment hoặc target
 không phải Android/iOS. Credential tạm chỉ vào config 0600 trong sandbox và bị xóa
-sau test. Suite reset local vault; tạo hai auth session/installation/device key;
-xóa DEK + primary private key rồi dùng HA1 thay key; xoay recovery key + DEK tới
-revision 4; bắt secondary và primary stale-DEK path tự unwrap generation mới.
+sau test. Suite đầu đăng nhập/đăng xuất qua UI và chứng minh logout giữ local
+vault. Suite E2EE tiếp theo reset test vault; tạo hai auth
+session/installation/device key; xóa DEK + primary private key rồi dùng HA1 thay
+key; xoay recovery key + DEK tới revision 4; bắt secondary và primary stale-DEK
+path tự unwrap generation mới.
 
 ## Dependency
 
     flutter pub outdated
 
 Chỉ nâng package resolvable, đọc changelog plugin/platform và chạy `full` + build
-matrix. `build_runner` 2.15.2 hiện không resolvable do Flutter test SDK pin `meta`.
+matrix. `build_runner` 2.15.3 hiện không resolvable do Flutter test SDK pin `meta`.
 Backup file dùng direct `file_selector 1.1.0` và `share_plus 13.3.0`; lockfile giữ
 `flutter_secure_storage_windows 4.2.2` và `win32 6.3.0`. Không đổi sang plugin
 buộc hạ hai package storage/platform này nếu chưa có compatibility review riêng.
+`mobile_scanner 7.4.0` là bản resolvable mới nhất tại lần audit 30-07-2026 và đã
+pass camera-frame smoke Android. Flutter vẫn cảnh báo plugin áp dụng Kotlin Gradle
+Plugin trên AGP hiện tại; cần theo dõi/migrate Built-in Kotlin trước khi Flutter
+biến cảnh báo này thành build failure.
 
 ## Backend operator boundary
 

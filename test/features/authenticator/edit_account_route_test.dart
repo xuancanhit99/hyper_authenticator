@@ -29,6 +29,39 @@ const _account = AuthenticatorAccount(
 );
 
 void main() {
+  testWidgets('edit che secret key mặc định và cho phép hiện có chủ đích', (
+    tester,
+  ) async {
+    final repository = _MemoryAuthenticatorRepository();
+    final accountsBloc = _accountsBloc(repository);
+    addTearDown(accountsBloc.close);
+
+    await tester.pumpWidget(
+      BlocProvider.value(
+        value: accountsBloc,
+        child: const MaterialApp(home: EditAccountPage(account: _account)),
+      ),
+    );
+    await tester.pump();
+
+    final secretInput = find.descendant(
+      of: find.byKey(EditAccountPage.secretFieldKey),
+      matching: find.byType(EditableText),
+    );
+    var secretField = tester.widget<EditableText>(secretInput);
+    expect(secretField.obscureText, isTrue);
+    expect(secretField.autocorrect, isFalse);
+    expect(secretField.enableSuggestions, isFalse);
+    expect(secretField.enableIMEPersonalizedLearning, isFalse);
+
+    await tester.tap(find.byTooltip('Hiện secret key'));
+    await tester.pump();
+
+    secretField = tester.widget<EditableText>(secretInput);
+    expect(secretField.obscureText, isFalse);
+    expect(find.byTooltip('Ẩn secret key'), findsOneWidget);
+  });
+
   testWidgets('chỉ đóng edit route sau success đúng operation', (tester) async {
     final updateGate = Completer<void>();
     final repository = _MemoryAuthenticatorRepository(updateGate: updateGate);

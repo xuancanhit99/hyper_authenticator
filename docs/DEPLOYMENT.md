@@ -134,6 +134,11 @@ Simulator ngày 29-07-2026, gồm local save, clean-vault restore, tamper, wrong
 password và cancel. Gate này đủ cho source/Preview confidence nhưng chưa thay
 physical Android/iOS, packaged desktop hoặc Apple signing evidence.
 
+Full acceptance 30-07-2026 build lại Android signed APK bằng `mobile_scanner
+7.4.0`, xác minh checksum và certificate fingerprint pin. Camera-frame AVD pass;
+Flutter vẫn cảnh báo plugin áp dụng Kotlin Gradle Plugin trên AGP hiện tại, nên
+Built-in Kotlin migration là gate toolchain trước future Flutter upgrade.
+
 ## Android
 
 App signing key lâu dài của kênh GitHub đã được owner tạo ngoài repository tại
@@ -207,6 +212,13 @@ thức tại [Android app signing](https://developer.android.com/studio/publish/
 
 Gate: matching Xcode runtime, team/provisioning profile, Keychain/Face ID/camera
 trên device, associated recovery link behavior, archive validation và TestFlight.
+Ngày 30-07-2026, `flutter build ios --release --dart-define-from-file=.env` đã
+pass development signing bằng team `S9ZBH635TZ`. Cùng ngày, source hiện tại còn
+được đóng gói thành local Ad Hoc IPA bằng team `2C7B3NKMT8`, ký với entitlement
+tối thiểu và cài thành công lên iPhone 16 Pro đã đăng ký dưới bundle thử nghiệm
+`muoiwe.beta.demo`. Đây không phải public distribution hoặc evidence runtime:
+thiết bị đang khóa nên iOS từ chối launch tự động; camera, secure storage,
+VoiceOver, archive validation và TestFlight vẫn là gate riêng.
 
 ## macOS
 
@@ -216,8 +228,13 @@ trên device, associated recovery link behavior, archive validation và TestFlig
 
 Entitlement secure storage yêu cầu signing certificate; không tắt signing để né gate.
 Phân phối ngoài store cần Developer ID, hardened runtime, notarization và staple.
-`scripts/agent/build.sh macos` có thể compile unsigned trong môi trường CI đã lọc;
-artifact đó chỉ chứng minh compile và không được chạy/phân phối như app hợp lệ.
+Runner đã khai báo Development Team `S9ZBH635TZ`. Nếu workstation có signing
+identity nhưng thiếu Mac App Development profile/Xcode account hợp lệ,
+`scripts/agent/build.sh macos` thử signed debug trước rồi fallback về compile
+unsigned có thông báo rõ. Artifact unsigned chỉ chứng minh compile, không được
+chạy/phân phối như app hợp lệ và không thay Keychain runtime evidence. Máy audit
+30-07-2026 đang đúng trạng thái blocker này; cần đăng nhập lại Xcode để tạo
+development profile, còn release công khai vẫn cần Developer ID/notarization.
 
 ## Web
 

@@ -101,6 +101,10 @@ jq -n \
 chmod 0600 "$config"
 rm -f "$email_input" "$password_input"
 
+flutter test integration_test/auth_session_smoke_test.dart \
+  --device-id "$DEVICE_ID" \
+  --dart-define-from-file="$config"
+
 flutter test integration_test/encrypted_sync_smoke_test.dart \
   --device-id "$DEVICE_ID" \
   --dart-define-from-file="$config"

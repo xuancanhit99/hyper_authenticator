@@ -53,6 +53,13 @@ không bao giờ được đặt trong Flutter `.env`, asset, build log hoặc b
 - `AuthenticatorAccount`, `AddAccountParams` và `UpdateAccountParams` cũng redact
   string representation. `toJson` vẫn chứa secret theo persisted contract và chỉ
   được gọi trong storage/encryption path, không dùng làm log payload.
+- Form thêm/sửa che `secretKey` mặc định và tắt autocorrect, suggestion cùng
+  personalized IME learning; hiện plaintext cần thao tác chủ động. Đây chỉ giảm
+  shoulder-surfing/keyboard learning, không bảo vệ trước screen capture khi app
+  đang `resumed`.
+- Delete UI chỉ báo thành công sau khi local-vault persistence trả success, chặn
+  thao tác xóa đồng thời và redacted failure state không đưa identifier/secret
+  vào diagnostics.
 - Logout không xóa vault.
 - App lock fail closed và relock theo lifecycle.
 - System picker/share do app chủ động mở được đánh dấu bằng in-process guard để

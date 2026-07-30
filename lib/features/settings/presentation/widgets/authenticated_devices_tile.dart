@@ -225,7 +225,10 @@ class _DeviceSessionRow extends StatelessWidget {
           : IconButton(
               tooltip: 'Đăng xuất ${device.displayName}',
               onPressed: busy ? null : onRevoke,
-              icon: const Icon(Icons.logout, color: Colors.red),
+              icon: Icon(
+                Icons.logout,
+                color: Theme.of(context).colorScheme.error,
+              ),
             ),
     );
   }

@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:hyper_authenticator/core/constants/app_colors.dart';
 import 'package:hyper_authenticator/core/theme/widget_themes/elevated_button_theme.dart';
+import 'package:hyper_authenticator/core/theme/widget_themes/filled_button_theme.dart';
 import 'package:hyper_authenticator/core/theme/widget_themes/outlined_button_theme.dart';
 import 'package:hyper_authenticator/core/theme/widget_themes/text_field_theme.dart';
 import 'package:hyper_authenticator/core/theme/widget_themes/text_theme.dart';
@@ -9,6 +10,15 @@ import 'package:hyper_authenticator/core/theme/widget_themes/text_theme.dart';
 class AppTheme {
   // Prevent instantiation
   AppTheme._();
+
+  static final _sectionCardShape = RoundedRectangleBorder(
+    borderRadius: BorderRadius.circular(16),
+  );
+
+  static final _sectionCardTheme = CardThemeData(
+    clipBehavior: Clip.antiAlias,
+    shape: _sectionCardShape,
+  );
 
   static final ThemeData lightTheme = ThemeData(
     useMaterial3: true,
@@ -27,8 +37,10 @@ class AppTheme {
       iconTheme: IconThemeData(color: AppColors.textPrimaryLight),
     ),
     textTheme: CTextTheme.lightTextTheme,
+    cardTheme: _sectionCardTheme,
     outlinedButtonTheme: COutlinedButtonTheme.lightOutlinedButtonTheme,
     elevatedButtonTheme: CElevatedButtonTheme.lightElevatedButtonTheme,
+    filledButtonTheme: CFilledButtonTheme.filledButtonTheme,
     inputDecorationTheme: CTextFormFieldTheme.lightInputDecorationTheme,
     navigationBarTheme: NavigationBarThemeData(
       backgroundColor: AppColors.lightBackground,
@@ -110,8 +122,10 @@ class AppTheme {
       elevation: 0,
     ),
     textTheme: CTextTheme.darkTextTheme,
+    cardTheme: _sectionCardTheme,
     outlinedButtonTheme: COutlinedButtonTheme.darkOutlinedButtonTheme,
     elevatedButtonTheme: CElevatedButtonTheme.darkElevatedButtonTheme,
+    filledButtonTheme: CFilledButtonTheme.filledButtonTheme,
     inputDecorationTheme: CTextFormFieldTheme.darkInputDecorationTheme,
     colorScheme: ColorScheme.fromSeed(
       seedColor: AppColors.primaryDark,

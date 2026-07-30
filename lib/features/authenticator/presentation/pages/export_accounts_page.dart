@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:hyper_authenticator/core/platform/platform_capabilities.dart';
+import 'package:hyper_authenticator/core/widgets/responsive_content.dart';
 import 'package:hyper_authenticator/features/authenticator/domain/entities/authenticator_account.dart';
 import 'package:hyper_authenticator/features/authenticator/domain/services/google_authenticator_migration_exporter.dart';
 import 'package:hyper_authenticator/features/authenticator/domain/services/sensitive_action_authenticator.dart';
@@ -311,33 +312,36 @@ class _ExportAccountsPageState extends State<ExportAccountsPage>
     return Scaffold(
       appBar: AppBar(title: const Text('Xuất tài khoản')),
       body: SafeArea(
-        child: BlocBuilder<AccountsBloc, AccountsState>(
-          builder: (context, state) {
-            if (_parts case final parts?) {
-              return _buildExportSession(context, parts);
-            }
-            if (state is AccountsLoading || state is AccountsInitial) {
-              return const Center(child: CircularProgressIndicator());
-            }
-            if (state is AccountsError) {
-              return Center(
-                child: Padding(
-                  padding: const EdgeInsets.all(24),
-                  child: Text(
-                    'Không thể tải tài khoản để export.',
-                    textAlign: TextAlign.center,
+        child: MaxWidthContent(
+          maxWidth: 760,
+          child: BlocBuilder<AccountsBloc, AccountsState>(
+            builder: (context, state) {
+              if (_parts case final parts?) {
+                return _buildExportSession(context, parts);
+              }
+              if (state is AccountsLoading || state is AccountsInitial) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              if (state is AccountsError) {
+                return Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Text(
+                      'Không thể tải tài khoản để export.',
+                      textAlign: TextAlign.center,
+                    ),
                   ),
-                ),
-              );
-            }
-            if (state case AccountsLoaded(:final accounts)) {
-              _selectedIds.removeWhere(
-                (id) => !accounts.any((account) => account.id == id),
-              );
-              return _buildSelection(context, accounts);
-            }
-            return const SizedBox.shrink();
-          },
+                );
+              }
+              if (state case AccountsLoaded(:final accounts)) {
+                _selectedIds.removeWhere(
+                  (id) => !accounts.any((account) => account.id == id),
+                );
+                return _buildSelection(context, accounts);
+              }
+              return const SizedBox.shrink();
+            },
+          ),
         ),
       ),
     );

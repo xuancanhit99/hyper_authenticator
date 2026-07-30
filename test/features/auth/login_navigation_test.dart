@@ -243,6 +243,49 @@ void main() {
     );
   });
 
+  testWidgets('auth form giữ max width và cùng border trên desktop', (
+    tester,
+  ) async {
+    await pumpApp(
+      tester,
+      initialLocation: '/login',
+      viewSize: const Size(1280, 800),
+    );
+
+    final loginEmail = find.widgetWithText(TextFormField, 'Email');
+    expect(tester.getSize(loginEmail).width, lessThanOrEqualTo(480));
+    final loginBorder =
+        tester
+                .widget<InputDecorator>(
+                  find.descendant(
+                    of: loginEmail,
+                    matching: find.byType(InputDecorator),
+                  ),
+                )
+                .decoration
+                .border
+            as OutlineInputBorder;
+
+    router.go('/forgot-password');
+    await tester.pumpAndSettle();
+    final recoveryEmail = find.widgetWithText(TextFormField, 'Email');
+    expect(tester.getSize(recoveryEmail).width, lessThanOrEqualTo(480));
+    final recoveryBorder =
+        tester
+                .widget<InputDecorator>(
+                  find.descendant(
+                    of: recoveryEmail,
+                    matching: find.byType(InputDecorator),
+                  ),
+                )
+                .decoration
+                .border
+            as OutlineInputBorder;
+
+    expect(recoveryBorder.borderRadius, loginBorder.borderRadius);
+    expect(recoveryBorder.borderRadius, BorderRadius.circular(100));
+  });
+
   test('auth event/state string redact password và user identity', () {
     const email = 'sensitive@example.invalid';
     const password = 'TEST_ONLY_SENSITIVE_PASSWORD';
