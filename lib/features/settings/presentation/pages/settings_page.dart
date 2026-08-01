@@ -8,6 +8,7 @@ import 'package:hyper_authenticator/features/auth/domain/entities/user_entity.da
 import 'package:hyper_authenticator/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:hyper_authenticator/features/settings/presentation/bloc/settings_bloc.dart';
 import 'package:hyper_authenticator/features/settings/presentation/bloc/session_security_bloc.dart';
+import 'package:hyper_authenticator/features/settings/presentation/widgets/appearance_style_picker.dart';
 import 'package:hyper_authenticator/features/settings/presentation/widgets/authentication_session_tile.dart';
 import 'package:hyper_authenticator/features/settings/presentation/widgets/encrypted_sync_unavailable_tile.dart';
 import 'package:hyper_authenticator/features/settings/presentation/widgets/recovery_import_dialog.dart';
@@ -94,6 +95,8 @@ class _SettingsView extends StatelessWidget {
                             ),
                           ),
                   ),
+                  const SizedBox(height: 12),
+                  const Card(child: AppearanceStylePicker()),
                   const SizedBox(height: 12),
                   Card(
                     child: _EncryptedSyncSection(

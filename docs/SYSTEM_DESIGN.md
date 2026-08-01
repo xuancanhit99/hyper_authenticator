@@ -311,11 +311,37 @@ scroll được ở viewport hẹp hoặc text scale lớn. Backup status progre
 success/failure là live region, còn switch sinh trắc học/backup E2EE gắn trực
 tiếp accessible name với title của setting.
 
-Light/dark theme dùng primary/on-primary token riêng để giữ brand blue nhưng đạt
-WCAG AA text contrast trên các core surface. Widget regression khóa contract này
-ở Auth, account list, form thêm/sửa account, lock screen và sensitive Settings
-dialog; đây không thay cho TalkBack/VoiceOver hoặc audit toàn bộ UI trên thiết bị
-thật. Lock screen dùng cùng responsive constraint, Material 3 error surface và
+Giao diện có ba visual style (`AppStyle`): Security Minimal (brand green, mặc
+định), OLED Dark (dark variant nền đen tuyền và mã OTP màu accent; light variant
+nền trắng) và Dark Cinema (accent indigo, bo góc lớn). Mỗi style cung cấp đủ
+palette light + dark trong
+`core/theme/app_style_palette.dart`, nên style kết hợp tự do với ThemeMode
+system/light/dark. `ThemeCubit` sở hữu cặp lựa chọn này và persist qua
+SharedPreferences (`theme_mode`, `app_style`); người dùng đổi trong card
+"Giao diện" của Settings và thay đổi áp dụng ngay. Ghi preference được
+serialize theo key và cubit giữ giá trị đã xác nhận: request revision cũ được
+bỏ qua trước khi bắt đầu (request đã in-flight vẫn hoàn tất nhưng không rollback
+UI), kể cả chuỗi A → B → A. Ghi thất bại rollback UI về giá trị đã xác
+nhận gần nhất (không phải lựa chọn trung gian chưa persist) và cache legacy
+được sửa bằng một lượt ghi bù trên đúng key đó về giá trị đã xác nhận — không
+reload toàn cache, nên không đè snapshot cũ lên write vừa thành công của
+preference khác dùng chung instance (biometric/sync metadata). Lượt ghi bù khôi
+phục Dart cache trong process; durable platform state vẫn là best-effort nếu
+legacy plugin báo lỗi vì API không cung cấp transaction/read-back theo key.
+Token không biểu diễn được bằng `ColorScheme` (màu mã OTP, màu countdown thường/
+sắp hết hạn) đi qua
+`ThemeExtension` `AppStyleTokens`. Mọi style phải đạt WCAG AA text contrast
+trên các core surface — primary light-mode được chỉnh tối hơn brand hue để chữ
+14 px đạt 4.5:1. Đổi theme dùng Material theme animation mặc định (~200 ms);
+frame trung gian có thể xuống dưới AA thoáng qua (rõ nhất khi light↔dark vì nền
+và chữ lerp đồng thời). Đây là quyết định chấp nhận có chủ đích: transition ngắn
+do người dùng chủ động kích hoạt, contrast contract đo ở resting state; token
+OTP giữ non-null để không bao giờ lerp qua transparent. Nếu product muốn bỏ hẳn
+blend frame, đặt `themeAnimationDuration: Duration.zero` tại `MaterialApp` là
+đủ. Widget regression khóa contract này ở Auth, account list, form
+thêm/sửa account, lock screen và sensitive Settings dialog; đây không thay cho
+TalkBack/VoiceOver hoặc audit toàn bộ UI trên thiết bị thật. Lock screen dùng cùng
+responsive constraint, Material 3 error surface và
 brand mark với fallback an toàn thay vì layout cố định.
 
 Surface tương tác dùng `Card` bo 16 px và `Clip.antiAlias`, nên ink/pressed overlay

@@ -49,6 +49,7 @@ dev_dependencies:
   flutter_native_splash: ^2.4.8
   injectable_generator: ^3.1.0
   local_auth_platform_interface: ^1.1.0
+  shared_preferences_platform_interface: ^2.4.2
 
 flutter_native_splash:
   color: "#ffffff"

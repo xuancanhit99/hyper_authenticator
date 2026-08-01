@@ -113,7 +113,10 @@ void main() {
       expect(editableText.focusNode.hasFocus, isTrue);
 
       await tester.enterText(find.byType(TextField), recoveryCode);
-      await tester.pump();
+      // Settle the disabled->enabled color animation of the confirm button;
+      // the contrast guideline must measure the resting state, not a blend
+      // frame mid-transition.
+      await tester.pumpAndSettle();
       final fieldSemantics = tester
           .getSemantics(find.byType(TextField))
           .getSemanticsData();

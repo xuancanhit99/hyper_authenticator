@@ -299,6 +299,17 @@ SharedPreferences còn giữ một installation UUID v4 không phải credential
 làm display metadata ổn định cho device registry. UUID này không xác thực request,
 không quyết định current session và có thể được tạo lại khi local preference hỏng.
 
+SharedPreferences cấp thiết bị (không theo user) giữ tùy chọn hiển thị:
+`theme_mode` (`system`/`light`/`dark`) và `app_style`
+(`securityMinimal`/`oledDark`/`darkCinema`). Giá trị không nhận diện được hoặc
+sai kiểu rơi về default thay vì lỗi; hai key này không chứa dữ liệu người dùng
+hoặc credential. Request được nhận diện bằng revision theo key để chuỗi lựa chọn
+A → B → A không nhầm request cũ với request mới. Khi ghi thất bại, state rollback
+về giá trị đã xác nhận gần nhất và Dart cache được sửa bằng một lượt ghi bù trên
+đúng key đó — không reload toàn cache dùng chung, nên không ảnh hưởng preference
+khác đang ghi đồng thời. Durable platform state vẫn là best-effort trong failure
+path vì API legacy không cung cấp transaction hoặc read-back riêng theo key.
+
 Table `public.authenticator_device_sessions` là metadata server-side:
 
 | Column | Contract |

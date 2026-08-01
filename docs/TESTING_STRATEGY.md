@@ -143,6 +143,10 @@ preparation, cùng các nhóm sau:
   minimum 48 px, padding ngang 24 px và dùng đúng primary token của color scheme.
   Input prefix/focus/floating label theo primary light/dark. Settings disclosure
   khóa shape không border khi mở và session divider có start/end inset 56/24 px.
+- Appearance style picker regression sweep đủ sáu style/brightness tại viewport
+  320×640 và text scale 200%; từng radio style tile được đưa vào giữa viewport
+  trước khi đo WCAG contrast/tap target, sau đó mode chip được đổi selection và
+  kiểm tra lại.
 - Keyboard regression phát Tab/Shift+Tab/Enter/Space/Escape: bao phủ login,
   register, update/recovery Auth form; theme/add/search/copy TOTP; manual
   add-account; recovery import/key confirmation, conflict và session dialog.

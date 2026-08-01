@@ -4,6 +4,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:hyper_authenticator/core/platform/system_ui_interaction_guard.dart';
 import 'package:hyper_authenticator/core/router/app_router.dart';
 import 'package:hyper_authenticator/core/security/privacy_shield.dart';
+import 'package:hyper_authenticator/core/theme/app_theme.dart';
 import 'package:hyper_authenticator/core/theme/theme_cubit.dart';
 import 'package:hyper_authenticator/features/authenticator/presentation/bloc/local_auth_bloc.dart';
 import 'package:hyper_authenticator/injection_container.dart';
@@ -53,7 +54,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
-    final themeMode = context.watch<ThemeCubit>().state;
+    final themeState = context.watch<ThemeCubit>().state;
 
     return MaterialApp.router(
       title: 'Hyper Authenticator',
@@ -64,9 +65,9 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
       ],
-      theme: widget.lightTheme ?? sl<ThemeData>(instanceName: 'lightTheme'),
-      darkTheme: widget.darkTheme ?? sl<ThemeData>(instanceName: 'darkTheme'),
-      themeMode: themeMode,
+      theme: widget.lightTheme ?? AppTheme.light(themeState.style),
+      darkTheme: widget.darkTheme ?? AppTheme.dark(themeState.style),
+      themeMode: themeState.mode,
       routerConfig: widget.routerConfig ?? sl<AppRouter>().config(),
       builder: (context, child) =>
           PrivacyShield(child: child ?? const SizedBox.shrink()),

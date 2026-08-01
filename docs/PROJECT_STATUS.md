@@ -74,7 +74,10 @@ session registry hoặc vault-key generation.
   Viewport compact dùng `NavigationBar`; desktop từ 900 px dùng
   `NavigationRail`. Route phân cấp giữ transition native theo platform.
 - Feature state dùng BLoC/Cubit; theme có một `ThemeCubit`. Root không tạo trùng
-  `SettingsBloc`.
+  `SettingsBloc`. Theme hỗ trợ ba visual style (Security Minimal, OLED Dark,
+  Dark Cinema) kết hợp độc lập với `ThemeMode`; lựa chọn được persist ở
+  `theme_mode`/`app_style` và picker Settings đã có regression 320×640/text scale
+  200% cho cả sáu style/brightness.
 - Remember Me đã bỏ; Supabase sở hữu session persistence, app không lưu lại
   email/password preference.
 

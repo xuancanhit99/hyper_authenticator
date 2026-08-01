@@ -1,6 +1,8 @@
 // lib/core/theme/app_theme.dart
 import 'package:flutter/material.dart';
-import 'package:hyper_authenticator/core/constants/app_colors.dart';
+import 'package:hyper_authenticator/core/theme/app_style.dart';
+import 'package:hyper_authenticator/core/theme/app_style_palette.dart';
+import 'package:hyper_authenticator/core/theme/app_style_tokens.dart';
 import 'package:hyper_authenticator/core/theme/widget_themes/elevated_button_theme.dart';
 import 'package:hyper_authenticator/core/theme/widget_themes/filled_button_theme.dart';
 import 'package:hyper_authenticator/core/theme/widget_themes/outlined_button_theme.dart';
@@ -11,129 +13,102 @@ class AppTheme {
   // Prevent instantiation
   AppTheme._();
 
-  static final _sectionCardShape = RoundedRectangleBorder(
-    borderRadius: BorderRadius.circular(16),
-  );
+  static ThemeData light([AppStyle style = AppStyle.securityMinimal]) =>
+      _build(style, Brightness.light);
 
-  static final _sectionCardTheme = CardThemeData(
-    clipBehavior: Clip.antiAlias,
-    shape: _sectionCardShape,
-  );
+  static ThemeData dark([AppStyle style = AppStyle.securityMinimal]) =>
+      _build(style, Brightness.dark);
 
-  static final ThemeData lightTheme = ThemeData(
-    useMaterial3: true,
-    brightness: Brightness.light,
-    primaryColor: AppColors.primaryLight,
-    scaffoldBackgroundColor: AppColors.lightBackground,
-    appBarTheme: AppBarTheme(
-      backgroundColor: AppColors.lightBackground,
-      foregroundColor: AppColors.textPrimaryLight,
-      elevation: 0.5,
-      titleTextStyle: TextStyle(
-        color: AppColors.textPrimaryLight,
-        fontSize: 20,
-        fontWeight: FontWeight.bold,
+  /// Default-style aliases kept for tests and call sites that do not care
+  /// about the selected [AppStyle].
+  static ThemeData get lightTheme => light();
+  static ThemeData get darkTheme => dark();
+
+  static ThemeData _build(AppStyle style, Brightness brightness) {
+    final palette = AppStylePalette.of(style, brightness);
+    final isLight = brightness == Brightness.light;
+
+    return ThemeData(
+      useMaterial3: true,
+      brightness: brightness,
+      primaryColor: palette.primary,
+      scaffoldBackgroundColor: palette.background,
+      appBarTheme: AppBarTheme(
+        backgroundColor: palette.background,
+        foregroundColor: palette.textPrimary,
+        elevation: 0.5,
+        titleTextStyle: TextStyle(
+          color: palette.textPrimary,
+          fontSize: 20,
+          fontWeight: FontWeight.bold,
+        ),
+        iconTheme: IconThemeData(color: palette.textPrimary),
       ),
-      iconTheme: IconThemeData(color: AppColors.textPrimaryLight),
-    ),
-    textTheme: CTextTheme.lightTextTheme,
-    cardTheme: _sectionCardTheme,
-    outlinedButtonTheme: COutlinedButtonTheme.lightOutlinedButtonTheme,
-    elevatedButtonTheme: CElevatedButtonTheme.lightElevatedButtonTheme,
-    filledButtonTheme: CFilledButtonTheme.filledButtonTheme,
-    inputDecorationTheme: CTextFormFieldTheme.lightInputDecorationTheme,
-    navigationBarTheme: NavigationBarThemeData(
-      backgroundColor: AppColors.lightBackground,
-      indicatorColor: AppColors.primaryLight.withValues(alpha: 0.15),
-      indicatorShape: const StadiumBorder(),
-      labelTextStyle: WidgetStateProperty.resolveWith((states) {
-        if (states.contains(WidgetState.selected)) {
+      textTheme: isLight ? CTextTheme.lightTextTheme : CTextTheme.darkTextTheme,
+      cardTheme: CardThemeData(
+        clipBehavior: Clip.antiAlias,
+        color: palette.surfaceCard,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(palette.cardRadius),
+        ),
+      ),
+      outlinedButtonTheme: COutlinedButtonTheme.themed(
+        primary: palette.primary,
+        radius: palette.controlRadius,
+      ),
+      elevatedButtonTheme: CElevatedButtonTheme.themed(
+        primary: palette.primary,
+        onPrimary: palette.onPrimary,
+        radius: palette.controlRadius,
+      ),
+      filledButtonTheme: CFilledButtonTheme.filledButtonTheme,
+      inputDecorationTheme: CTextFormFieldTheme.themed(
+        primary: palette.primary,
+      ),
+      navigationBarTheme: NavigationBarThemeData(
+        backgroundColor: palette.background,
+        indicatorColor: palette.primary.withValues(
+          alpha: isLight ? 0.15 : 0.25,
+        ),
+        indicatorShape: const StadiumBorder(),
+        labelTextStyle: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) {
+            return TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: palette.primary,
+            );
+          }
           return TextStyle(
             fontSize: 12,
-            fontWeight: FontWeight.w600,
-            color: AppColors.primaryLight,
+            fontWeight: FontWeight.w500,
+            color: palette.textSecondary,
           );
-        }
-        return TextStyle(
-          fontSize: 12,
-          fontWeight: FontWeight.w500,
-          color: AppColors.textSecondaryLight,
-        );
-      }),
-      iconTheme: WidgetStateProperty.resolveWith((states) {
-        if (states.contains(WidgetState.selected)) {
-          return IconThemeData(color: AppColors.primaryLight);
-        }
-        return IconThemeData(color: AppColors.textSecondaryLight);
-      }),
-      elevation: 0,
-    ),
-    colorScheme: ColorScheme.fromSeed(
-      seedColor: AppColors.primaryLight,
-      brightness: Brightness.light,
-      primary: AppColors.primaryLight,
-      onPrimary: Colors.white,
-      surface: AppColors.lightBackground,
-      onSurface: AppColors.textPrimaryLight,
-    ),
-  );
-
-  static final ThemeData darkTheme = ThemeData(
-    useMaterial3: true,
-    brightness: Brightness.dark,
-    primaryColor: AppColors.primaryDark,
-    scaffoldBackgroundColor: AppColors.darkBackground,
-    appBarTheme: AppBarTheme(
-      backgroundColor: AppColors.cDarkColor,
-      foregroundColor: AppColors.textPrimaryDark,
-      elevation: 0.5,
-      titleTextStyle: TextStyle(
-        color: AppColors.textPrimaryDark,
-        fontSize: 20,
-        fontWeight: FontWeight.bold,
+        }),
+        iconTheme: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) {
+            return IconThemeData(color: palette.primary);
+          }
+          return IconThemeData(color: palette.textSecondary);
+        }),
+        elevation: 0,
       ),
-      iconTheme: IconThemeData(color: AppColors.textPrimaryDark),
-    ),
-    // Set color cDarkColor for background bottomNavigationBar
-    navigationBarTheme: NavigationBarThemeData(
-      backgroundColor: AppColors.cDarkColor,
-      indicatorColor: AppColors.primaryDark.withValues(alpha: 0.25),
-      indicatorShape: const StadiumBorder(),
-      labelTextStyle: WidgetStateProperty.resolveWith((states) {
-        if (states.contains(WidgetState.selected)) {
-          return TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
-            color: AppColors.primaryDark,
-          );
-        }
-        return TextStyle(
-          fontSize: 12,
-          fontWeight: FontWeight.w500,
-          color: AppColors.textSecondaryDark,
-        );
-      }),
-      iconTheme: WidgetStateProperty.resolveWith((states) {
-        if (states.contains(WidgetState.selected)) {
-          return IconThemeData(color: AppColors.primaryDark);
-        }
-        return IconThemeData(color: AppColors.textSecondaryDark);
-      }),
-      elevation: 0,
-    ),
-    textTheme: CTextTheme.darkTextTheme,
-    cardTheme: _sectionCardTheme,
-    outlinedButtonTheme: COutlinedButtonTheme.darkOutlinedButtonTheme,
-    elevatedButtonTheme: CElevatedButtonTheme.darkElevatedButtonTheme,
-    filledButtonTheme: CFilledButtonTheme.filledButtonTheme,
-    inputDecorationTheme: CTextFormFieldTheme.darkInputDecorationTheme,
-    colorScheme: ColorScheme.fromSeed(
-      seedColor: AppColors.primaryDark,
-      brightness: Brightness.dark,
-      primary: AppColors.primaryDark,
-      surface: AppColors.darkSurface,
-      onPrimary: AppColors.onPrimaryDark,
-      onSurface: AppColors.textPrimaryDark,
-    ),
-  );
+      colorScheme: ColorScheme.fromSeed(
+        seedColor: palette.primary,
+        brightness: brightness,
+        primary: palette.primary,
+        onPrimary: palette.onPrimary,
+        surface: palette.background,
+        onSurface: palette.textPrimary,
+        onSurfaceVariant: palette.textSecondary,
+      ),
+      extensions: [
+        AppStyleTokens(
+          countdownColor: palette.primary,
+          countdownWarnColor: palette.countdownWarn,
+          otpCodeColor: palette.otpCode ?? palette.textPrimary,
+        ),
+      ],
+    );
+  }
 }

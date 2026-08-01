@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:hyper_authenticator/core/constants/app_colors.dart';
 import 'package:hyper_authenticator/core/router/app_router.dart';
 import 'package:hyper_authenticator/core/theme/theme_cubit.dart';
 import 'package:hyper_authenticator/core/widgets/responsive_content.dart';
@@ -151,8 +150,7 @@ class _AccountsPageState extends State<AccountsPage>
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final isDarkMode = theme.brightness == Brightness.dark;
-    final themeMode = context.watch<ThemeCubit>().state;
+    final themeMode = context.watch<ThemeCubit>().state.mode;
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Theme.of(context).scaffoldBackgroundColor,
@@ -250,10 +248,7 @@ class _AccountsPageState extends State<AccountsPage>
                           BorderSide.none, // Keep border invisible on focus
                     ),
                     filled: true,
-                    fillColor: isDarkMode
-                        ? AppColors
-                              .cCardDarkColor // Use custom dark color
-                        : null, // Use default theme fill color for light mode (or specify one)
+                    fillColor: theme.cardTheme.color,
                     contentPadding: const EdgeInsets.symmetric(
                       vertical: 0,
                       horizontal: 16,
@@ -369,14 +364,8 @@ class _AccountsPageState extends State<AccountsPage>
                       }
                       // Build the list view with Pull-to-Refresh inside a Card
                       return Card(
-                        // Wrap with Card
+                        // Màu lấy từ CardTheme của style đang chọn.
                         elevation: 1,
-                        color: isDarkMode
-                            ? AppColors
-                                  .cCardDarkColor // Use custom dark color
-                            : Theme.of(
-                                context,
-                              ).cardColor, // Use default theme color for light mode
                         margin: const EdgeInsets.only(
                           top: 8.0,
                           left: 16.0,
