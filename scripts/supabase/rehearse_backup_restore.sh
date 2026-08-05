@@ -4,6 +4,15 @@ set -euo pipefail
 BACKUP_DIR=${1:?Usage: rehearse_backup_restore.sh BACKUP_DIR}
 DB_CONTAINER=${DB_CONTAINER:-supabase-db}
 RESTORE_LOCK_FILE=${RESTORE_LOCK_FILE:-$(dirname "$BACKUP_DIR")/.backup.lock}
+RESTORE_SCHEMA_MODE=${RESTORE_SCHEMA_MODE:-account-sync}
+
+case "$RESTORE_SCHEMA_MODE" in
+  account-sync | account-sync-pre-realtime | minimal | pre-minimal) ;;
+  *)
+    printf 'RESTORE_SCHEMA_MODE không hợp lệ: %s\n' "$RESTORE_SCHEMA_MODE" >&2
+    exit 64
+    ;;
+esac
 
 umask 077
 
@@ -36,137 +45,116 @@ docker exec "$DB_CONTAINER" createdb -U supabase_admin "$database_name"
 docker exec -i "$DB_CONTAINER" pg_restore \
   --exit-on-error \
   --no-owner \
-  --no-privileges \
   -U supabase_admin \
   -d "$database_name" <"$BACKUP_DIR/database-full.dump"
 
-schema_ready=$(docker exec "$DB_CONTAINER" psql \
-  -X -v ON_ERROR_STOP=1 -U supabase_admin -d "$database_name" -Atqc \
-  "select to_regclass('auth.users') is not null and to_regclass('public.encrypted_vault_snapshots') is not null")
-[[ "$schema_ready" == t ]]
-
-rls_ready=$(docker exec "$DB_CONTAINER" psql \
-  -X -v ON_ERROR_STOP=1 -U supabase_admin -d "$database_name" -Atqc \
-  "select relrowsecurity and relforcerowsecurity from pg_class where oid = 'public.encrypted_vault_snapshots'::regclass")
-[[ "$rls_ready" == t ]]
-
-session_guard_ready=$(docker exec "$DB_CONTAINER" psql \
-  -X -v ON_ERROR_STOP=1 -U supabase_admin -d "$database_name" -Atqc \
-  "select
-     to_regprocedure('private.is_current_auth_session_active()') is not null
-     and exists (
-       select 1 from pg_proc
-       where oid = 'private.is_current_auth_session_active()'::regprocedure
-         and prosecdef
-     )
-     and exists (
-       select 1 from pg_policies
-       where schemaname = 'public'
-         and tablename = 'encrypted_vault_snapshots'
-         and policyname = 'encrypted_vault_select_own'
-         and position('is_current_auth_session_active' in qual) > 0
-     )
-     and position(
-       'is_current_auth_session_active'
-       in pg_get_functiondef(
-         'public.publish_encrypted_vault_snapshot(bigint,smallint,text,text,text,text,smallint,text,text,text)'::regprocedure
+if [[ "$RESTORE_SCHEMA_MODE" == account-sync ||
+  "$RESTORE_SCHEMA_MODE" == account-sync-pre-realtime ]]; then
+  contract_ready=$(docker exec "$DB_CONTAINER" psql \
+    -X -v ON_ERROR_STOP=1 -U supabase_admin -d "$database_name" -Atqc \
+    "select
+       to_regclass('auth.users') is not null
+       and to_regclass('public.authenticator_accounts') is not null
+       and (select relrowsecurity and relforcerowsecurity from pg_class
+         where oid = 'public.authenticator_accounts'::regclass)
+       and not has_table_privilege(
+         'authenticated', 'public.authenticator_accounts',
+         'select,insert,update,delete'
        )
-     ) > 0
-     and position(
-       'session_revoked'
-       in pg_get_functiondef(
-         'public.publish_encrypted_vault_snapshot(bigint,smallint,text,text,text,text,smallint,text,text,text)'::regprocedure
+       and has_function_privilege(
+         'authenticated', 'public.list_authenticator_accounts()', 'execute'
        )
-     ) > 0")
-[[ "$session_guard_ready" == t ]]
-
-device_registry_ready=$(docker exec "$DB_CONTAINER" psql \
-  -X -v ON_ERROR_STOP=1 -U supabase_admin -d "$database_name" -Atqc \
-  "select
-     to_regclass('public.authenticator_device_sessions') is not null
-     and (
-       select relrowsecurity and relforcerowsecurity
-       from pg_class
-       where oid = 'public.authenticator_device_sessions'::regclass
-     )
-     and not has_table_privilege(
-       'authenticated', 'public.authenticator_device_sessions', 'select'
-     )
-     and exists (
-       select 1 from pg_proc
-       where oid = 'public.register_current_authenticator_device(uuid,text,text)'::regprocedure
-         and prosecdef
-     )
-     and exists (
-       select 1 from pg_proc
-       where oid = 'public.list_authenticator_device_sessions()'::regprocedure
-         and prosecdef
-     )
-     and exists (
-       select 1 from pg_proc
-       where oid = 'public.revoke_authenticator_device_session(uuid)'::regprocedure
-         and prosecdef
-     )
-     and position(
-       'delete from auth.sessions'
-       in lower(pg_get_functiondef(
-         'public.revoke_authenticator_device_session(uuid)'::regprocedure
-       ))
-     ) > 0")
-[[ "$device_registry_ready" == t ]]
-
-device_wrap_ready=$(docker exec "$DB_CONTAINER" psql \
-  -X -v ON_ERROR_STOP=1 -U supabase_admin -d "$database_name" -Atqc \
-  "select
-     to_regclass('public.synced_accounts') is null
-     and to_regclass('public.authenticator_device_keys') is not null
-     and to_regclass('public.authenticator_device_key_wraps') is not null
-     and to_regclass('private.encrypted_vault_membership_verifiers') is not null
-     and not has_table_privilege(
-       'authenticated', 'public.authenticator_device_keys', 'select'
-     )
-     and not has_table_privilege(
-       'authenticated', 'public.authenticator_device_key_wraps', 'select'
-     )
-     and not has_table_privilege(
-       'authenticated', 'private.encrypted_vault_membership_verifiers', 'select'
-     )
-     and to_regprocedure(
-       'public.begin_authenticator_device_key_enrollment(uuid,text,text,text)'
-     ) is not null
-     and to_regprocedure(
-       'public.begin_authenticator_device_key_enrollment(uuid,text,text)'
-     ) is null
-     and to_regprocedure(
-       'public.publish_encrypted_vault_snapshot_v2(bigint,bigint,text,smallint,text,text,text,text,smallint,text,text,text)'
-     ) is not null
-     and position(
-       'for update'
-       in lower(pg_get_functiondef(
-         'public.publish_encrypted_vault_snapshot_v2(bigint,bigint,text,smallint,text,text,text,text,smallint,text,text,text)'::regprocedure
-       ))
-     ) > 0
-     and position(
-       'p_expected_revision <> 0'
-       in pg_get_functiondef(
-         'public.publish_encrypted_vault_snapshot(bigint,smallint,text,text,text,text,smallint,text,text,text)'::regprocedure
+       and has_function_privilege(
+         'authenticated',
+         'public.upsert_authenticator_account(uuid,bigint,jsonb)', 'execute'
        )
-     ) > 0
-     and position(
-       'p_expected_revision is null'
-       in lower(pg_get_functiondef(
-         'public.publish_encrypted_vault_snapshot(bigint,smallint,text,text,text,text,smallint,text,text,text)'::regprocedure
-       ))
-     ) > 0
-     and to_regprocedure(
-       'public.rotate_encrypted_vault_device_keys(bigint,bigint,text,smallint,text,text,text,text,smallint,text,text,text,text,jsonb,uuid[])'
-     ) is not null")
-[[ "$device_wrap_ready" == t ]]
+       and has_function_privilege(
+         'authenticated',
+         'public.delete_authenticator_account(uuid,bigint)', 'execute'
+       )
+       and exists (select 1 from pg_extension where extname = 'supabase_vault')
+       and to_regclass('public.encrypted_vault_snapshots') is null
+       and to_regclass('public.synced_accounts') is null
+       and to_regprocedure(
+         'public.publish_encrypted_vault_snapshot(bigint,smallint,text,text,text,text,smallint,text,text,text)'
+       ) is null")
+  data_table=public.authenticator_accounts
+  if [[ "$RESTORE_SCHEMA_MODE" == account-sync ]]; then
+    realtime_ready=$(docker exec "$DB_CONTAINER" psql \
+      -X -v ON_ERROR_STOP=1 -U supabase_admin -d "$database_name" -Atqc \
+      "select
+         (select prosecdef from pg_proc where oid =
+           'private.broadcast_account_sync_change()'::regprocedure)
+         and exists (
+           select 1 from pg_trigger
+           where tgrelid = 'public.authenticator_accounts'::regclass
+             and tgname = 'broadcast_account_sync_change'
+             and not tgisinternal
+         )
+         and exists (
+           select 1 from pg_policy
+           where polrelid = 'realtime.messages'::regclass
+             and polname = 'account_sync_receive_own_broadcast'
+             and polcmd = 'r'
+         )
+         and (
+           select pg_get_expr(polqual, polrelid) not ilike '%private%'
+           from pg_policy
+           where polrelid = 'realtime.messages'::regclass
+             and polname = 'account_sync_receive_own_broadcast'
+         )
+         and not exists (
+           select 1 from pg_publication_tables
+           where schemaname = 'public'
+             and tablename = 'authenticator_accounts'
+         )")
+  else
+    realtime_ready=$(docker exec "$DB_CONTAINER" psql \
+      -X -v ON_ERROR_STOP=1 -U supabase_admin -d "$database_name" -Atqc \
+      "select
+         to_regprocedure('private.broadcast_account_sync_change()') is null
+         and not exists (
+           select 1 from pg_policy
+           where polrelid = 'realtime.messages'::regclass
+             and polname = 'account_sync_receive_own_broadcast'
+         )")
+  fi
+  [[ "$realtime_ready" == t ]]
+elif [[ "$RESTORE_SCHEMA_MODE" == minimal ]]; then
+  contract_ready=$(docker exec "$DB_CONTAINER" psql \
+    -X -v ON_ERROR_STOP=1 -U supabase_admin -d "$database_name" -Atqc \
+    "select to_regclass('auth.users') is not null
+       and to_regclass('public.encrypted_vault_snapshots') is not null
+       and (select relrowsecurity and relforcerowsecurity from pg_class
+         where oid = 'public.encrypted_vault_snapshots'::regclass)
+       and to_regprocedure(
+         'public.publish_encrypted_vault_snapshot(bigint,smallint,text,text,text,text,smallint,text,text,text)'
+       ) is not null")
+  data_table=public.encrypted_vault_snapshots
+else
+  # Backup ngay trước ADR-0019 phải restore được nguyên legacy encrypted
+  # protocol để rollback production. Mode này chỉ verify backup; không làm các
+  # object cũ trở thành contract được phép cho deployment mới.
+  contract_ready=$(docker exec "$DB_CONTAINER" psql \
+    -X -v ON_ERROR_STOP=1 -U supabase_admin -d "$database_name" -Atqc \
+    "select
+       to_regclass('public.authenticator_device_sessions') is not null
+       and to_regclass('public.authenticator_device_keys') is not null
+       and to_regclass('public.authenticator_device_key_wraps') is not null
+       and exists (
+         select 1 from pg_proc
+         where pronamespace = 'public'::regnamespace
+           and proname = 'publish_encrypted_vault_snapshot_v2'
+           and prosecdef
+       )")
+  data_table=public.encrypted_vault_snapshots
+fi
+[[ "$contract_ready" == t ]]
 
 data_probe=$(docker exec "$DB_CONTAINER" psql \
   -X -v ON_ERROR_STOP=1 -U supabase_admin -d "$database_name" -Atqc \
-  "select count(*) >= 0 from auth.users; select count(*) >= 0 from public.encrypted_vault_snapshots")
+  "select count(*) >= 0 from auth.users; select count(*) >= 0 from $data_table")
 [[ $(printf '%s\n' "$data_probe" | grep -c '^t$') -eq 2 ]]
 
 printf '%s\n' \
-  'Supabase restore rehearsal pass: checksum, catalog, full restore, plaintext retirement, force-RLS, active-session, device-registry và device-wrap guard.'
+  "Supabase restore rehearsal pass: checksum, catalog, full restore và $RESTORE_SCHEMA_MODE contract."

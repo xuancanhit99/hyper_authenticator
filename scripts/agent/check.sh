@@ -68,9 +68,12 @@ run_release_harness() {
 run_infra_harness() {
   printf '\n%s\n' "== Self-hosted infrastructure harness gate =="
   bash -n \
-    scripts/agent/linux_e2ee_operator.sh \
-    scripts/agent/mobile_e2ee_integration.sh \
-    scripts/agent/mobile_e2ee_operator.sh \
+    scripts/agent/linux_account_sync_container.sh \
+    scripts/agent/list_working_tree_source_files.sh \
+    scripts/agent/test_linux_working_tree_archive.sh \
+    scripts/agent/linux_account_sync_operator.sh \
+    scripts/agent/mobile_account_sync_integration.sh \
+    scripts/agent/mobile_account_sync_operator.sh \
     scripts/supabase/backup_nginx_proxy_manager.sh \
     scripts/supabase/nginx_proxy_manager_database.sh \
     scripts/supabase/npm_database_exec_container.sh \
@@ -78,8 +81,8 @@ run_infra_harness() {
     scripts/supabase/deploy_nginx_proxy_manager_file_secrets.sh \
     scripts/supabase/rehearse_nginx_proxy_manager_backup.sh \
     scripts/supabase/rehearse_nginx_proxy_manager_upgrade.sh \
-    scripts/supabase/test_plaintext_retirement_migration.sh
   scripts/supabase/test_render_nginx_proxy_manager_file_secrets.sh
+  scripts/agent/test_linux_working_tree_archive.sh
   scripts/supabase/test_prepare_nginx_proxy_manager_file_secrets_contract.sh
   scripts/supabase/test_deploy_nginx_proxy_manager_file_secrets_contract.sh
   scripts/supabase/test_nginx_proxy_manager_timing_contract.sh
@@ -116,10 +119,8 @@ run_app() {
 
 run_backend() {
   local status=0
-  printf '\n%s\n' "== Supabase encrypted migration gate =="
-  scripts/supabase/test_encrypted_vault_migration.sh || status=1
-  printf '\n%s\n' "== Supabase plaintext retirement gate =="
-  scripts/supabase/test_plaintext_retirement_migration.sh || status=1
+  printf '\n%s\n' "== Supabase account-managed sync migration gate =="
+  scripts/supabase/test_account_sync_migration.sh || status=1
   return "$status"
 }
 

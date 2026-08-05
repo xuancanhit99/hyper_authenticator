@@ -13,10 +13,10 @@ import 'package:integration_test/integration_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 const _allowRemoteMutation = bool.fromEnvironment(
-  'ALLOW_E2EE_REMOTE_TEST_MUTATION',
+  'ALLOW_ACCOUNT_SYNC_REMOTE_TEST_MUTATION',
 );
-const _testEmail = String.fromEnvironment('E2EE_TEST_EMAIL');
-const _testPassword = String.fromEnvironment('E2EE_TEST_PASSWORD');
+const _testEmail = String.fromEnvironment('ACCOUNT_SYNC_TEST_EMAIL');
+const _testPassword = String.fromEnvironment('ACCOUNT_SYNC_TEST_PASSWORD');
 const _testAccount = AuthenticatorAccount(
   id: 'auth-session-smoke-account',
   issuer: 'TEST_ONLY Auth Session',
@@ -57,8 +57,7 @@ void main() {
         );
 
         await tester.tap(find.byKey(MainNavigationPage.settingsTabKey).last);
-        await _pumpUntil(tester, find.text('Đăng nhập để dùng backup cloud'));
-        await tester.tap(find.text('Đăng nhập để dùng backup cloud'));
+        await _tapVisible(tester, find.text('Đăng nhập để đồng bộ mã'));
         await _pumpUntil(tester, find.text('Chào mừng bạn trở lại!'));
 
         final emailField = find.widgetWithText(TextFormField, 'Email');
@@ -84,8 +83,7 @@ void main() {
         _phase('ui-sign-in-verified');
 
         final logoutTile = find.widgetWithText(ListTile, 'Đăng xuất');
-        await _pumpUntil(tester, logoutTile);
-        await tester.tap(logoutTile);
+        await _tapVisible(tester, logoutTile);
         await _pumpUntil(tester, find.text('Xác nhận đăng xuất'));
         await tester.tap(
           find.widgetWithText(FilledButton, 'Đăng xuất').hitTestable(),
@@ -95,7 +93,7 @@ void main() {
           authBloc,
           (state) => state is AuthUnauthenticated,
         );
-        await _pumpUntil(tester, find.text('Đăng nhập để dùng backup cloud'));
+        await _pumpUntil(tester, find.text('Đăng nhập để đồng bộ mã'));
 
         expect(authBloc.state, isA<AuthUnauthenticated>());
         expect(
@@ -138,6 +136,15 @@ Future<void> _pumpUntil(
     await tester.pump(const Duration(milliseconds: 100));
   }
   await tester.pump(const Duration(milliseconds: 200));
+}
+
+Future<void> _tapVisible(WidgetTester tester, Finder finder) async {
+  await _pumpUntil(tester, finder);
+  await tester.ensureVisible(finder);
+  await tester.pumpAndSettle();
+  final target = finder.hitTestable();
+  expect(target, findsOneWidget);
+  await tester.tap(target);
 }
 
 Future<void> _pumpUntilAuthState(

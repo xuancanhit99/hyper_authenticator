@@ -7,6 +7,7 @@ import 'package:hyper_authenticator/core/security/privacy_shield.dart';
 import 'package:hyper_authenticator/core/theme/app_theme.dart';
 import 'package:hyper_authenticator/core/theme/theme_cubit.dart';
 import 'package:hyper_authenticator/features/authenticator/presentation/bloc/local_auth_bloc.dart';
+import 'package:hyper_authenticator/features/sync/presentation/bloc/sync_bloc.dart';
 import 'package:hyper_authenticator/injection_container.dart';
 
 class MyApp extends StatefulWidget {
@@ -43,6 +44,9 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     final localAuthBloc = sl<LocalAuthBloc>();
     if (state == AppLifecycleState.resumed) {
       localAuthBloc.add(CheckLocalAuth());
+      if (sl.isRegistered<SyncBloc>()) {
+        sl<SyncBloc>().add(const SyncNowRequested());
+      }
     } else if (state == AppLifecycleState.paused ||
         state == AppLifecycleState.hidden ||
         state == AppLifecycleState.detached) {

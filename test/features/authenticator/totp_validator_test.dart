@@ -27,6 +27,10 @@ void main() {
         () => TotpValidator.validateParameters(digits: 6, period: 0),
         throwsFormatException,
       );
+      expect(
+        () => TotpValidator.validateParameters(digits: 6, period: 301),
+        throwsFormatException,
+      );
     });
   });
 }

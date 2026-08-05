@@ -1,5 +1,9 @@
 # ADR-0005: E2EE snapshot với recovery key do người dùng giữ
 
+> **Được thu gọn bởi ADR-0019.** Snapshot/recovery-key core còn hiệu lực; mọi
+> rotation/device-specific extension bên dưới chỉ là lịch sử, không có trong
+> Minimal E2EE source/schema.
+
 - Trạng thái: Chấp nhận theo giai đoạn
 - Ngày: 2026-07-18
 - Owner: canhvx

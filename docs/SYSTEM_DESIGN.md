@@ -1,461 +1,160 @@
 # Thiết kế hệ thống
 
-Tài liệu này mô tả runtime đã triển khai. Hạng mục tương lai phải có nhãn
-**Dự kiến** hoặc **Khoảng trống đã biết**.
+Tài liệu này mô tả source runtime sau ADR-0020. Trạng thái deploy nằm trong
+[PROJECT_STATUS.md](PROJECT_STATUS.md).
 
-## Bối cảnh và trust boundary
+## Mục tiêu
 
-Hyper Authenticator là Flutter client local-first. TOTP secret ở local vault;
-Supabase cung cấp Auth và một encrypted snapshot cho mỗi user. Backend chỉ nhận
-ciphertext, wrapped DEK và concurrency metadata.
+- TOTP local luôn hoạt động không cần tài khoản/network.
+- Đăng nhập thì đồng bộ tự động, thiết bị mới không cần recovery key.
+- Local mutation không bị rollback vì cloud lỗi.
+- Không log/persist TOTP plaintext ngoài local vault và backend RPC boundary.
+- UI phát event/render state; persistence/network thuộc data/repository layer.
 
-~~~mermaid
-flowchart LR
-  User["Người dùng"] --> App["Flutter app"]
-  App --> Lock["OS local authentication"]
-  App --> Vault["Platform secure storage\nversioned local vault"]
-  App --> Prefs["SharedPreferences\nkhông chứa secret"]
-  App --> FileCipher["Argon2id + AES-256-GCM\nportable backup"]
-  FileCipher --> UserFile["File .hyauth\ndo người dùng quản lý"]
-  App --> Cipher["AES-256-GCM + recovery key"]
-  Cipher --> HTTPS["Reverse proxy HTTPS"]
-  HTTPS --> Auth["Supabase Auth"]
-  HTTPS --> RPC["Atomic revision RPC"]
-  RPC --> DB["encrypted_vault_snapshots\nFORCE RLS"]
-  Recovery["Recovery Web"] --> Auth
-~~~
+## Component
 
-Web không bật encrypted sync vì browser key storage khác native secure storage.
-Web vẫn chạy TOTP local trong storage do platform plugin cung cấp; người dùng phải
-hiểu browser profile compromise nằm ngoài native trust boundary.
+```text
+Flutter UI
+  ├── Accounts / Auth / Settings
+  ├── AccountsBloc / AuthBloc / global SyncBloc
+  └── GoRouter + lifecycle/privacy shield
+        │
+Domain
+  ├── TOTP parser/validator/generator/import/export
+  ├── AuthenticatorRepository
+  └── AccountSynchronizer
+        │
+Data
+  ├── FlutterSecureStorage local vault v2
+  ├── secure ownership/revision/fingerprint metadata
+  └── Supabase Auth + Vault-backed authenticated RPC
+```
+
+GetIt/Injectable quản lý dependency. `injection_container.config.dart` là output
+generated, không sửa thủ công.
 
 ## Bootstrap
 
-1. Khởi tạo Flutter binding.
-2. Trên Windows, nhập layout AppData từng dùng ở pre-release vào layout
-   canonical trước khi bất kỳ secure storage/SharedPreferences nào khởi tạo.
-   Hai vault khác nhau làm bootstrap fail closed; nguồn không bị xóa.
-3. Injectable/GetIt đăng ký dependency và pre-resolve SharedPreferences.
-4. `AppConfig` đọc compile-time define; `.env` không được bundle làm asset.
-   Không có cả ba cloud define là local-only hợp lệ. Nếu bật cloud, validator
-   yêu cầu đủ HTTPS Supabase origin, `sb_publishable_*` hoặc legacy JWT role
-   `anon`, và recovery URL. Partial config bị từ chối. Plaintext flag chỉ còn là
-   poison sentinel và mọi build đều từ chối giá trị `true`.
-5. Chỉ khởi tạo Supabase client khi capability cloud đã cấu hình.
-6. Cấp shared `AuthBloc`, `AccountsBloc`, `LocalAuthBloc`, `SettingsBloc`; tạo
-   `SyncBloc` dùng chính `AccountsBloc` đó.
-7. Router kết hợp Auth và local-lock state để chọn public route, startup, lock
-   hoặc main navigation.
+`AppConfig` đọc compile-time public config:
 
-Cloud config dở dang hoặc sai gây bootstrap error rõ ràng, không fallback tới
-server khác. `sb_secret_*` và legacy `service_role` bị từ chối mà không đưa key
-vào error. Local-only route policy chặn public auth route và đưa người dùng về
-local app.
-
-## Kiến trúc feature
-
-- Presentation phát event và render state.
-- Domain giữ entity, repository contract, crypto service contract và use case.
-- Data source sở hữu secure storage, SharedPreferences và Supabase calls.
-- Repository chuyển exception sang typed `Failure` bằng `Either`.
-- `injection_container.config.dart` được generate, không sửa thủ công.
-
-## Biên triển khai Web
-
-Flutter Web artifact được phục vụ bởi `web-deployment` qua Nginx non-root. Runtime
-entrypoint chỉ nhận public Supabase HTTPS origin để tạo CSP; client key vẫn được
-embed lúc Flutter compile theo public-config contract. HTML dùng `no-store`, asset
-revalidate, SPA fallback về `index.html`; access log tắt để query material không
-vào container log. Reverse proxy bên ngoài sở hữu TLS và domain routing.
-
-## Điều hướng và responsive UI
-
-GoRouter giữ URL làm source of truth cho main navigation: `/` mở Accounts và
-`/settings` mở Settings. Hai URL là branch của
-`StatefulShellRoute.indexedStack`; mỗi branch có Navigator riêng, giữ state khi
-đổi tab và không chạy full-page transition giữa các tab. Page của shell dùng
-`NoTransitionPage` có chủ đích: khi app-lock redirect xảy ra liên tiếp trong
-lifecycle transition, transition mặc định có thể giữ hai shell có cùng
-`GlobalKey` trong tree và làm Flutter fail. Các route bootstrap/lock là overlay
-child của shell nhưng render trên root navigator, vì vậy shell luôn mounted và
-navigation không lọt qua màn hình khóa.
-
-Viewport dưới 900 px dùng `NavigationBar` với indicator 200 ms; viewport từ
-900 px dùng `NavigationRail` để đích điều hướng không bị kéo giãn theo chiều
-ngang. Đổi branch không ép `initialLocation`, nên vẫn giữ branch state, browser
-deep link và platform route ban đầu. Chọn lại branch hiện tại mới gọi
-`goBranch(..., initialLocation: true)` để quay về root của branch và phục hồi
-route branch nhất quán sau lifecycle restore. URL, refresh và back vẫn chọn đúng
-tab. Local-auth check thuộc bootstrap/lifecycle và router redirect, không được
-phát lại chỉ vì người dùng đổi tab.
-
-Route phân cấp như Auth, Thêm/Sửa tài khoản, Export và Backup dùng transition
-native mặc định do Flutter chọn theo platform: Cupertino trên iOS/macOS,
-Predictive Back trên Android hỗ trợ và Zoom trên Windows/Linux. Form Auth được
-giới hạn 480 px, form tài khoản 640 px, nội dung Accounts 960 px và Settings/
-Backup 760 px; màn hình hẹp vẫn dùng toàn bộ chiều rộng khả dụng và cho phép
-scroll khi text scale lớn. Web bật `PathUrlStrategy` qua conditional import;
-native build dùng no-op stub.
+- thiếu toàn bộ cloud config: app bootstrap local-only;
+- cloud-enabled cần HTTPS `SUPABASE_URL`, publishable key và HTTPS
+  `PASSWORD_RECOVERY_URL`;
+- service-role/database/Vault root key không thuộc Flutter build.
 
 ## Local vault
 
-`AuthenticatorLocalDataSource` serialize mutation bằng critical section:
+`AuthenticatorLocalDataSource` dùng versioned copy-on-write snapshot:
 
-1. Đọc generation committed hiện tại.
-2. Validate toàn bộ account và tạo snapshot mới.
-3. Ghi immutable record/manifest của generation mới.
-4. Ghi commit marker sau cùng.
-5. Đọc lại để verify.
-6. Best-effort compaction, giữ hai generation hợp lệ gần nhất.
+1. đọc committed generation mới nhất validate được;
+2. ghi/verify generation mới;
+3. publish commit marker;
+4. giữ generation rollback gần nhất và compact bản cũ.
 
-Nếu generation mới hỏng, reader fallback generation trước. Legacy index/record
-được dual-read và repair nhưng không bị xóa ngay, giúp rollback. `replaceAccounts`
-dùng cùng transaction copy-on-write và là primitive duy nhất cho cloud recovery
-cùng encrypted file restore.
+Add/update/delete/import/replace serialize trong process. Logout không xóa vault.
 
-Trên Windows, `CompanyName=app.hyperz.authenticator` và
-`ProductName=hyper_authenticator` là storage identity canonical từ bản lịch sử
-`1.0.0+9`. Tên cửa sổ, installer và `FileDescription` vẫn là “Hyper
-Authenticator”. Startup migrator chỉ copy atomic file secure storage/preference
-đã allowlist từ layout pre-release `Hyper Authenticator`, giữ nguyên nguồn và ghi
-marker sau khi hoàn tất. Nếu cả hai layout chứa vault không byte-identical, app
-dừng trước DI để không tự chọn hoặc ghi đè dữ liệu.
+## Account-managed sync
 
-## TOTP
+### Remote boundary
 
-- Manual entry dùng default SHA1/6 digits/30 giây.
-- Standard QR parser giữ algorithm, digits và period không mặc định; giới hạn URI
-  16 KiB, chỉ nhận `otpauth://totp` có một path segment và từ chối security query
-  parameter bị lặp. Unknown query parameter được bỏ qua cho interoperability.
-- Standard QR cũng đi qua preview chung rồi phát `ImportAccountsRequested`;
-  cancel không mutate, confirm validate toàn bộ, exact-dedupe trong critical
-  section và append bằng đúng một COW commit. Không còn scanner path persist
-  account ngay sau parse.
-- Google Authenticator migration parser đọc bounded protobuf version 1 và wire
-  shape version 2 đã quan sát từ Google Authenticator 7.2. V2 chỉ chấp nhận một
-  opaque identifier field 8 bounded/non-empty rồi loại khỏi domain; top-level
-  hoặc account metadata khác đều fail closed. Collector thu multi-part theo batch
-  metadata kể cả out-of-order, reject batch trộn/HOTP/MD5 hoặc enum lạ, chỉ ở
-  memory và giới hạn 100 account.
-- Khi đủ Google batch, preview chung chỉ hiển thị issuer/account name cùng tham số
-  TOTP; local data source dùng cùng atomic append/dedupe boundary như standard
-  import, không replace account hiện có.
-- Export là read-only disclosure flow đa format, tách khỏi `LocalAuthBloc`. User
-  chọn account/format rồi fresh-authenticate qua OS. Google encoder tạo bounded
-  migration payload v1, chỉ nhận period 30 giây và 6/8 digits, tự chia QR theo
-  batch metadata. Standard encoder giữ algorithm/digits/period, tạo một URI/QR
-  cho mỗi account và giới hạn 100 account/1.800 ký tự mỗi URI. Cả hai validate
-  toàn bộ trước khi trả list; QR tự xóa sau 60 giây hoặc ngay khi app rời
-  foreground. Khi native auth sheet trả success trước lifecycle `resumed`, page
-  chờ bounded 2 giây; timeout hoặc không trở lại foreground thì không tạo QR.
-- Export route không gọi repository/sync. Web/Linux fail closed vì chưa có OS
-  reauthentication boundary; Android/iOS/macOS/Windows dùng sensitive local auth
-  không persist qua background.
-- Camera scanner render loading state có hướng dẫn permission; lỗi permission hoặc
-  unsupported được localize, cho retry hoặc quay lại manual entry. Không hiển thị
-  raw plugin error cho người dùng.
-- Account có UUID stable; update/restore không tự đổi ID.
-- Code dùng Unix epoch và period của từng account; UI cache theo time step và
-  refresh khi app resume.
-- Full `otpauth` URI, `secretKey` và generated code không được log.
+- `CloudAccountRepository`: list/upsert/delete per-account record.
+- Supabase RPC kiểm tra `auth.uid()` và là đường duy nhất client dùng.
+- Payload account được Supabase Vault authenticated-encrypt khi lưu. Table/backup
+  không giữ payload plaintext; RPC có thể decrypt cho đúng owner.
+- Revision CAS cô lập concurrent mutation. Tombstone không thể revive.
 
-Form thêm account đánh dấu submit đang chạy để chặn request lặp. Sau khi persist,
-`AccountsBloc` phát `AccountAddSuccess` không chứa account/secret rồi mới queue
-`LoadAccounts`; UI chỉ hoàn tất navigation trên signal operation-specific này.
-`AccountsLoaded` do reload/lifecycle không được phép tự đóng route. Khi GoRouter
-không còn back stack, completion đi về `/` thay vì gọi `Navigator.pop` trên page
-cuối; regression khóa race này qua lifecycle integration Linux.
+Đây là encryption at rest do server quản lý, không phải E2EE.
 
-Form chỉnh sửa dùng cùng contract với `AccountUpdateSuccess`: account đã update
-được persist trước khi phát success, state không mang account/secret, nút lưu bị
-khóa trong khi request đang chạy và lỗi generic chỉ được render khi form đang
-submit. Mỗi submit tạo opaque operation token chỉ tồn tại trong memory; BLoC trả
-đúng token trong success và form so sánh identity trước khi đóng, nên update khác
-chồng thời gian không thể hoàn tất nhầm route. Failure cũng mang opaque token; chỉ
-request tương ứng mới mở lại nút lưu và hiển thị lỗi. Reload danh sách không đóng
-form; update ở GoRouter root đi về `/` thay vì pop page cuối. `LoadAccounts` vẫn
-được queue sau success để account list nhận dữ liệu mới nhất.
+### Metadata local
 
-Form thêm/sửa che `secretKey` mặc định, chỉ hiện sau thao tác chủ động và tắt
-autocorrect, suggestion cùng personalized IME learning. Danh sách phân biệt vault
-trống với kết quả tìm kiếm trống và cung cấp action tương ứng. Xóa tài khoản chỉ
-hiện thông báo thành công sau khi persistence trả success; trong khi mutation
-đang chờ, UI chặn xóa lặp và failure không bị mô tả thành success.
+Secure storage giữ map theo stable account UUID:
 
-## App lock và logout
+- `ownerUserId`;
+- `remoteRevision`;
+- `syncedFingerprint`;
+- `isDeleted`.
 
-Local-auth preference nằm trong SharedPreferences; OS challenge do `local_auth`.
-Khi lock đã bật, plugin error là locked state. App relock khi rời foreground.
-Logout chỉ kết thúc Supabase session hiện tại, giữ local vault và lock preference.
+Fingerprint được tính trên canonical account JSON, không đưa plaintext secret vào
+log. Metadata corrupt/write-verify fail làm sync dừng fail-safe.
 
-System file picker/share sheet do app chủ động mở được bao trong
-`SystemUiInteractionGuard`. Trong khoảng Future platform còn chờ kết quả,
-`MyApp` không phát `ResetAuthStatus`, tránh GoRouter redirect/dispose route đang
-giữ operation. Privacy Shield vẫn che/chặn toàn bộ Flutter tree. Khi không có
-guard, lifecycle `paused/hidden/detached` vẫn kích hoạt relock như cũ. Guard dùng
-counter và luôn release trong `finally`, kể cả platform operation lỗi.
+### Trình tự sync
 
-`PrivacyShield` được đặt trong `MaterialApp.router.builder`, bao toàn bộ router.
-Sau bootstrap, mọi lifecycle signal khác `resumed` đều render một surface opaque
-không chứa account/user data, bỏ keyboard focus, chặn pointer, dừng ticker và loại
-semantics của router. Initial `detached` trước lifecycle signal được xem là trạng
-thái bootstrap, vì Linux headless/desktop có thể không phát `resumed`; runtime CI
-khóa contract này để app không tự che vĩnh viễn. Khi resume, shield chỉ gỡ overlay;
-state/vault không bị tạo lại hoặc mutate. Control này bổ sung cho `LocalAuthBloc`:
-privacy shield che ngay ở `inactive`, còn app-lock vẫn quyết định challenge theo
-policy hiện tại.
+1. Nếu chưa đăng nhập, trả `signedOut` và không gọi network.
+2. Đọc local vault + metadata.
+3. Bind mọi account chưa có owner với user hiện hành và verify metadata **trước
+   network**.
+4. List toàn bộ remote record của user.
+5. Áp tombstone trước; tombstone thắng local dirty update.
+6. Tải live record về nếu local chưa có hoặc local đang clean.
+7. Upload local create/update dirty bằng CAS; conflict refresh rồi retry một lần.
+8. Local record đã mất nhưng metadata còn live được publish thành tombstone.
+9. Verify/persist metadata; lỗi giữ pending intent cho lần sau.
 
-Overlay là Material 3 static, có nền và gradient đã alpha-blend thành màu opaque,
-branding cùng biểu tượng khóa nhưng không blur/sample route nhạy cảm bên dưới.
-Layout dùng `SafeArea`, giới hạn chiều rộng và co giãn ở viewport 320 px/text scale
-200%; light/dark theme đều giữ đúng một semantics label an toàn. Overlay không có
-transition, spinner hoặc ticker nên frame che đầu tiên không chờ animation. Đây là
-privacy control cho background/app-switcher, không phải active
-screenshot-prevention API.
+Account thuộc user khác bị bỏ qua trong phiên hiện hành và vẫn dùng local.
 
-Session-security, device-registry và targeted revoke contract vẫn tồn tại trong
-domain/data/backend nhưng không còn được render trong primary Settings. Chúng là
-advanced security capability chưa có UX đủ rõ để người dùng phân biệt session
-revoke, remote wipe và cryptographic device exclusion. Backend tiếp tục bind
-registry row với JWT `session_id`; các contract test vẫn bắt buộc.
+### Trigger
 
-## Backup file mã hóa portable
+Global `SyncBloc` tự yêu cầu sync khi:
 
-`/encrypted-backup` được mở từ Settings và không phụ thuộc Supabase session.
-`EncryptedBackupBloc` điều phối repository, codec và file gateway; UI chỉ phát
-event/render state, không tự đọc hoặc replace persistence.
+- session restore/sign-in;
+- add/update/import/delete thành công;
+- app resume;
+- người dùng pull-to-refresh hoặc bấm retry trong Settings.
+- private Realtime channel của user báo cloud đã thay đổi hoặc reconnect.
 
-### Export
+Realtime event được debounce 350 ms rồi gọi cùng full sync; message không chứa
+account data. Sync events được serialize. Download/delete remote thành công yêu
+cầu `AccountsBloc` reload list.
 
-1. User nhập password hai lần; password dùng nguyên văn, tối thiểu 12 code point
-   và tối đa 1.024 UTF-8 byte.
-2. Repository đọc một snapshot local. Codec validate account count, stable ID,
-   field bound và toàn bộ TOTP semantics trước encryption.
-3. Argon2id v19 dùng salt 16 byte, 19 MiB, 2 iteration, parallelism 1 để derive
-   key 256-bit. Parameter được persist trong bounded envelope để decoder tương lai
-   tiếp tục mở file v1 và có thể nâng encoder cost.
-4. Plaintext payload v1 gồm UTC `created_at` cùng account theo local order.
-   AES-256-GCM dùng nonce 12 byte/tag 16 byte; canonical AAD bind purpose, file
-   version, KDF metadata/salt, cipher và nonce.
-5. Chỉ compact JSON ciphertext được chuyển cho system boundary: Web khởi tạo
-   download, desktop dùng system save dialog, Android dùng native Storage Access
-   Framework `ACTION_CREATE_DOCUMENT`, còn iOS dùng system share sheet với Files.
-   Android chỉ trả thành công sau khi document stream ghi/flush xong. Cancel save
-   không mutate vault.
+### Private Realtime signal
 
-### Restore
+- Topic: `account-sync:<auth.uid()>`, channel bắt buộc `private=true`.
+- Database trigger chỉ phát event `account-sync-changed` với protocol version và
+  Realtime-generated ID; không phát row/account/Vault data.
+- `realtime.messages` chỉ có own-topic `SELECT` policy cho `authenticated`; không
+  có client `INSERT` policy.
+- Policy chỉ dựa trên extension/topic/`auth.uid()`: Realtime 2.102.3 dùng probe
+  row không populate `private`. Channel config vẫn bắt buộc `private=true` và
+  trigger luôn gọi `realtime.send(..., true)`.
+- Logout/account switch hủy subscription cũ. Channel error không biến RPC sync
+  thành failure; reconnect/resume chạy full sync để bù event có thể mất.
+- Không thêm `authenticator_accounts` vào Postgres Changes publication.
 
-1. System file picker chỉ nhận một file, kiểm tra size tối đa 8 MiB rồi mới đọc.
-2. Codec kiểm tra exact envelope/version/KDF resource bound trước Argon2id. Sai
-   password hoặc tamper làm AEAD verification thất bại với cùng thông báo.
-3. Plaintext chỉ được trả sau authentication; decoder exact-validate payload,
-   unique stable ID và tối đa 10.000 account.
-4. BLoC giữ decrypted account private, chỉ public metadata preview. Password/
-   preview dialog chỉ mở sau lifecycle `resumed`; tap ngoài không dismiss password
-   restore. Candidate bị bỏ khi user cancel, một active sensitive dialog rời
-   foreground, timeout hai phút, restore/failure hoặc BLoC đóng.
-5. Dialog hiển thị số account hiện tại và từ file, yêu cầu gõ `KHOI PHUC`.
-   Confirm gọi `replaceAccounts()` đúng một lần; COW commit marker được đổi sau
-   record/manifest verification nên write failure giữ snapshot active trước đó.
+## Auth và Settings
 
-File restore là exact full replacement, không merge/dedupe và không tự gọi cloud
-sync. Generation cũ được local vault giữ như internal rollback candidate nhưng
-chưa có nút undo user-facing. `file_selector` là open boundary trên sáu target và
-save boundary trên desktop/Web. Android có MethodChannel hẹp tới
-`ACTION_CREATE_DOCUMENT`; `share_plus` chỉ còn là encrypted-file save boundary
-trên iOS.
+- Auth hỗ trợ login/register/password recovery/update/session restore.
+- Settings hiển thị local-only khi chưa cấu hình hoặc chưa đăng nhập.
+- Đăng nhập bật sync tự động; không có setup recovery key/manual backup/conflict
+  dialog.
+- Logout chỉ kết thúc Supabase session, dừng sync và giữ local/app lock.
 
-## Backup cloud mã hóa đầu cuối
+## Portability
 
-UI gọi capability này là **backup cloud mã hóa đầu cuối** và chỉ hiển thị khi
-native platform hỗ trợ cùng public cloud config đầy đủ. Revision, protocol và key
-generation không được đưa vào trạng thái thành công phổ thông. Các mục dưới dùng
-thuật ngữ sync/revision vì mô tả data contract nội bộ.
+- Standard `otpauth`: bounded parse, preview, validate-all, exact dedupe, atomic
+  append; protected export một QR/account.
+- Google migration QR: bounded multi-part assembly, preview và atomic append;
+  export chỉ nhận semantics Google biểu diễn được.
 
-### Setup
+## Navigation, theme và privacy
 
-1. Xác minh user đã đăng nhập và cloud vault chưa tồn tại.
-2. Sinh DEK 256-bit cùng recovery key `HA1-...`.
-3. Hiển thị recovery key một lần; user phải xác nhận đã lưu. Raw key bị loại khỏi
-   semantics tree tự động; assistive user dùng action “Sao chép recovery key” có
-   nhãn rõ ràng để chuyển key sang password manager.
-4. Encrypt snapshot local revision 1, atomic publish với expected revision 0.
-5. Download/read-after-write verify revision và envelope.
-6. Chỉ sau đó persist DEK vào secure storage và bật sync metadata.
-
-Cancel hoặc publish failure không persist key và không bật sync.
-
-### Sync thường
-
-1. Download current encrypted snapshot và decrypt/validate trong memory.
-2. So sánh remote revision với last-seen revision trên thiết bị.
-3. Nếu không conflict và local khác remote, encrypt local ở revision kế tiếp.
-4. RPC compare-and-swap theo expected revision.
-5. Download lại và verify trước khi cập nhật last-seen revision.
-
-RPC không delete snapshot cũ trước update. Conflict trả typed failure, giữ cả
-local snapshot và cloud snapshot hiện có.
-
-### Recovery và conflict
-
-Thiết bị mới nhập recovery key để unwrap DEK. Remote payload phải authenticate,
-decrypt và validate hoàn toàn trước khi local write. Nếu local không rỗng và khác
-cloud, UI yêu cầu chọn:
-
-- **Dùng cloud:** re-download đúng revision đã review rồi atomic replace local.
-- **Giữ local:** encrypt local và compare-and-swap thành revision mới.
-
-Nếu cloud đổi tiếp trong lúc chọn, thao tác dừng và yêu cầu review lại.
-Dialog conflict và sensitive operation mặc định keyboard focus vào **Hủy**; content
-scroll được ở viewport hẹp hoặc text scale lớn. Backup status progress/conflict/
-success/failure là live region, còn switch sinh trắc học/backup E2EE gắn trực
-tiếp accessible name với title của setting.
-
-Giao diện có ba visual style (`AppStyle`): Security Minimal (brand green, mặc
-định), OLED Dark (dark variant nền đen tuyền và mã OTP màu accent; light variant
-nền trắng) và Dark Cinema (accent indigo, bo góc lớn). Mỗi style cung cấp đủ
-palette light + dark trong
-`core/theme/app_style_palette.dart`, nên style kết hợp tự do với ThemeMode
-system/light/dark. `ThemeCubit` sở hữu cặp lựa chọn này và persist qua
-SharedPreferences (`theme_mode`, `app_style`); người dùng đổi trong card
-"Giao diện" của Settings và thay đổi áp dụng ngay. Ghi preference được
-serialize theo key và cubit giữ giá trị đã xác nhận: request revision cũ được
-bỏ qua trước khi bắt đầu (request đã in-flight vẫn hoàn tất nhưng không rollback
-UI), kể cả chuỗi A → B → A. Ghi thất bại rollback UI về giá trị đã xác
-nhận gần nhất (không phải lựa chọn trung gian chưa persist) và cache legacy
-được sửa bằng một lượt ghi bù trên đúng key đó về giá trị đã xác nhận — không
-reload toàn cache, nên không đè snapshot cũ lên write vừa thành công của
-preference khác dùng chung instance (biometric/sync metadata). Lượt ghi bù khôi
-phục Dart cache trong process; durable platform state vẫn là best-effort nếu
-legacy plugin báo lỗi vì API không cung cấp transaction/read-back theo key.
-Token không biểu diễn được bằng `ColorScheme` (màu mã OTP, màu countdown thường/
-sắp hết hạn) đi qua
-`ThemeExtension` `AppStyleTokens`. Mọi style phải đạt WCAG AA text contrast
-trên các core surface — primary light-mode được chỉnh tối hơn brand hue để chữ
-14 px đạt 4.5:1. Đổi theme dùng Material theme animation mặc định (~200 ms);
-frame trung gian có thể xuống dưới AA thoáng qua (rõ nhất khi light↔dark vì nền
-và chữ lerp đồng thời). Đây là quyết định chấp nhận có chủ đích: transition ngắn
-do người dùng chủ động kích hoạt, contrast contract đo ở resting state; token
-OTP giữ non-null để không bao giờ lerp qua transparent. Nếu product muốn bỏ hẳn
-blend frame, đặt `themeAnimationDuration: Duration.zero` tại `MaterialApp` là
-đủ. Widget regression khóa contract này ở Auth, account list, form
-thêm/sửa account, lock screen và sensitive Settings dialog; đây không thay cho
-TalkBack/VoiceOver hoặc audit toàn bộ UI trên thiết bị thật. Lock screen dùng cùng
-responsive constraint, Material 3 error surface và
-brand mark với fallback an toàn thay vì layout cố định.
-
-Surface tương tác dùng `Card` bo 16 px và `Clip.antiAlias`, nên ink/pressed overlay
-không được vượt khỏi góc bo. Settings tách bảo mật thiết bị, backup cloud, phiên
-tài khoản và backup file thành các card riêng thay vì ghép thành một surface dài.
-`FilledButton`, `ElevatedButton` và `OutlinedButton` dùng touch target tối thiểu
-48 px, padding ngang 24 px và brand/error token của active color scheme; action
-full-width vẫn giữ label/icon cách viền cân đối. Input focus/prefix/floating label
-dùng primary token tương ứng thay vì legacy color.
-
-Disclosure nâng cao trong Settings nằm trong card đã tách nên chủ động bỏ border
-trên/dưới mặc định chỉ xuất hiện khi `ExpansionTile` mở. Action và divider căn theo
-content edge Material 3 của `ListTile` (start 56 px, end 24 px); vì vậy divider
-không dừng ở vị trí button hoặc chạm cạnh card một cách lệch lạc.
-
-Core keyboard contract dùng focus tree mặc định của Flutter nhưng khóa thứ tự và
-activation bằng Tab/Shift+Tab/Enter/Space. Sensitive dialog mặc định focus
-**Hủy**; recovery-key confirmation chỉ cho tới action sau xác nhận đã lưu key và
-bắt Escape để trả `false` kể cả khi barrier không dismissible. Contract này chưa
-thay full Settings/main-navigation runtime audit trên từng desktop/browser.
-
-### Xoay recovery key
-
-Thiết bị đang giữ DEK có thể tạo KEK mới, re-wrap cùng DEK, re-encrypt current
-remote snapshot và compare-and-swap revision kế tiếp. Hủy hoặc conflict giữ key
-cũ. User phải lưu key mới trước commit vì nếu publish thành công nhưng
-read-after-write lỗi thì key mới có thể đã hiệu lực. Flow này không revoke thiết
-bị vì DEK không đổi.
-
-### Xoay vault key — capability nội bộ, chưa có primary UI
-
-Client tạo DEK và recovery key mới sau khi xác thực DEK hiện tại với current remote
-snapshot. Khi user xác nhận đã lưu key, client re-download đúng revision, decrypt
-bằng DEK cũ, re-encrypt bằng DEK mới rồi atomic publish ciphertext/wrapped key ở
-revision kế tiếp. DEK secure storage chỉ được thay sau read-after-write verify.
-
-Trước khi tạo bất kỳ next-generation wrap nào, client kiểm tra mọi active device
-có current-generation wrap đầy đủ và membership proof HMAC hợp lệ với DEK hiện
-tại. Một proof thiếu, stale hoặc giả làm toàn bộ preparation fail closed trước khi
-tạo wrap/publish. Generic flow sau đó cấp wrap mới cho **tất cả** active device đã
-được verify; UI hiện chưa triển khai per-device cryptographic exclusion.
-
-Conflict/cancel không đổi key. Publish transport, verify hoặc key-store failure sau
-request được báo là trạng thái mơ hồ và last-seen revision không tăng; recovery key
-mới là đường khôi phục. Thiết bị tuân thủ chỉ có DEK cũ không đọc được current
-snapshot, nhưng auth session và backup cũ không tự bị revoke.
-
-Surviving native device không thử decrypt mãi bằng DEK cũ rồi yêu cầu HA1. Khi
-current snapshot có `device_wrap_version=1`, client đọc exact current-device wrap,
-unwrap bằng private key local, verify membership proof và chỉ persist DEK mới sau
-khi current snapshot decrypt/validate thành công. Missing private key, không có
-wrap do một rotation có exclusion, session binding sai hoặc wrap/proof lỗi đều fail
-closed; auth/server failure không bị mô tả sai thành recovery-key failure.
-
-## Backend
-
-- Một row `encrypted_vault_snapshots` cho mỗi `auth.users.id`.
-- Client authenticated chỉ có SELECT row của chính mình qua `FORCE RLS` khi JWT
-  `session_id` vẫn tồn tại cho cùng `auth.uid()` trong `auth.sessions`.
-- Write chỉ qua `SECURITY DEFINER` RPC dùng cùng owner + active-session guard.
-- `SignOutScope.others` xóa các session khác; RLS trả 0 row và RPC trả
-  `session_revoked` cho JWT cũ ngay cả trước khi JWT hết hạn.
-- Device registry chỉ qua security-definer RPC: register bind current JWT, list
-  active owned row không lộ session ID và targeted revoke xóa một non-current
-  `auth.sessions` row. Installation ID/label không được dùng làm authorization.
-- Expected revision sai trả SQLSTATE `PT409`/`revision_conflict`.
-- Legacy `publish_encrypted_vault_snapshot` chỉ được tạo revision 1 với
-  `expected_revision=0`; mọi update tiếp theo phải dùng device-bound RPC v2.
-- RPC v2 khóa exact row/revision/generation bằng `FOR UPDATE`, kiểm tra protocol
-  `1` trên row đã khóa rồi mới xác minh active device binding và update. Protocol
-  `0` hoặc version stale đều fail trước mutation, đóng cửa sổ TOCTOU khi confirm
-  device key chạy đồng thời.
-- Plaintext client stack đã bị xóa. Migration loại bỏ cuối cùng lấy
-  `ACCESS EXCLUSIVE` lock trước khi đếm và chỉ drop `public.synced_accounts` trong
-  nhánh đã lock khi row count bằng `0`; còn credential legacy thì abort nguyên
-  transaction và không dùng `CASCADE`. `ALLOW_INSECURE_PLAINTEXT_SYNC` chỉ còn là
-  poison sentinel; giá trị `true` bị từ chối ở mọi build.
-
-## Recovery password
-
-Web recovery là canonical surface. GoTrue template dùng one-time `token_hash` và
-exact HTTPS redirect allow-list. Password recovery chỉ khôi phục Supabase account;
-nó không thay thế E2EE recovery key.
-
-Login được mở từ Settings với `returnTo=/settings`. Redirect policy chỉ nhận `/`
-hoặc `/settings`; URL ngoài allowlist fallback `/`. Login listener chủ động `go()`
-tới destination này sau `AuthAuthenticated`, không phụ thuộc timing của router
-refresh hoặc navigator stack. Trong local-only build, auth route luôn redirect về
-local app.
-
-## Platform capability
-
-`PlatformCapabilities` là source of truth để ẩn camera/image/local-auth/E2EE trên
-platform plugin không hỗ trợ. Windows/Linux vẫn hỗ trợ nhập TOTP thủ công và E2EE;
-Web chỉ có local TOTP + camera QR.
+- `StatefulShellRoute.indexedStack` giữ Accounts/Settings branch state.
+- Theme có Security Minimal, OLED Dark và Dark Cinema độc lập với ThemeMode.
+- App Lock fail closed trên error/cancel.
+- Privacy Shield chặn interaction/semantics ngoài foreground nhưng không ngăn OS
+  screenshot/recording.
 
 ## Failure behavior
 
-- Decrypt/validation/auth failure: không mutate local vault.
-- Local commit failure: generation cũ vẫn active.
-- Publish conflict/network failure: cloud snapshot cũ vẫn tồn tại.
-- Session đổi giữa operation: request bị từ chối trước network/write kế tiếp.
-- Session đã revoke: RLS không trả snapshot; RPC fail `session_revoked`; local
-  vault không bị xóa và session hiện tại không bị sign out.
-- Secure key write không verify được: setup/recovery trả failure.
+- Cloud lỗi: local mutation vẫn thành công; sync báo retry được.
+- Metadata ownership lỗi: dừng trước network để tránh cross-account upload.
+- Remote payload sai format: không ghi đè local.
+- CAS conflict: refresh/retry một lần, sau đó giữ pending.
+- Tombstone: luôn thắng update offline; xóa local idempotent.
+- Không log TOTP secret, payload, full `otpauth`, auth credential hay Vault key.
 
-## Khoảng trống đã biết
+## Chưa triển khai
 
-- E2EE v1 đã có recovery-key re-wrap, DEK rotation và bulk revoke mọi session
-  khác. Device registry + targeted auth-session revoke đã deploy. ADR-0012 cùng
-  device-wrap client/migration/RPC đã deploy và pass focused, PostgreSQL, remote
-  regression cùng Linux/Android/iOS lost-key runtime và two-session survivor
-  auto-unwrap. Generic client rotation giữ toàn bộ active device có proof hợp lệ;
-  per-device cryptographic exclusion chưa có flow cho người dùng. Physical
-  two-device/independent review, tombstone/history và Web E2EE vẫn chưa có.
-- Device-level camera/biometric/secure-storage integration coverage chưa đầy đủ.
-- Alerting backend chưa có external notification channel.
+- Background periodic sync hoặc push khi OS suspend app.
+- Ownership transfer/account switch UI.
+- Tombstone retention/compaction.
+- Remote wipe local vault trên thiết bị đã đăng xuất.

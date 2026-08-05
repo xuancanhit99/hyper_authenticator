@@ -12,6 +12,7 @@ import 'package:hyper_authenticator/features/authenticator/presentation/bloc/acc
 import 'package:hyper_authenticator/features/authenticator/presentation/widgets/account_avatar.dart';
 import 'package:hyper_authenticator/features/authenticator/presentation/widgets/account_code_tile.dart';
 import 'package:hyper_authenticator/features/authenticator/presentation/widgets/circular_countdown_timer.dart';
+import 'package:hyper_authenticator/features/sync/presentation/bloc/sync_bloc.dart';
 import 'package:hyper_authenticator/injection_container.dart';
 
 class AccountsPage extends StatefulWidget {
@@ -337,7 +338,7 @@ class _AccountsPageState extends State<AccountsPage>
                       if (filteredAccounts.isEmpty) {
                         return RefreshIndicator(
                           onRefresh: () async {
-                            context.read<AccountsBloc>().add(LoadAccounts());
+                            _refreshAccounts(context);
                           },
                           child: LayoutBuilder(
                             // Use LayoutBuilder to allow scrolling for refresh
@@ -378,7 +379,7 @@ class _AccountsPageState extends State<AccountsPage>
                           // Start RefreshIndicator
                           onRefresh: () async {
                             // Dispatch LoadAccounts event when pulled
-                            context.read<AccountsBloc>().add(LoadAccounts());
+                            _refreshAccounts(context);
                           },
                           child: ListView.separated(
                             // Change to ListView.separated
@@ -518,6 +519,13 @@ class _AccountsPageState extends State<AccountsPage>
         );
       },
     );
+  }
+
+  void _refreshAccounts(BuildContext context) {
+    context.read<AccountsBloc>().add(LoadAccounts());
+    if (sl.isRegistered<SyncBloc>()) {
+      sl<SyncBloc>().add(const SyncNowRequested());
+    }
   }
 } // End _AccountsPageState class
 

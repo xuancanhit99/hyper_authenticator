@@ -25,10 +25,6 @@ class AppConfig {
       'SUPABASE_PUBLISHABLE_KEY',
       defaultValue: String.fromEnvironment('SUPABASE_ANON_KEY'),
     );
-    const allowInsecurePlaintextSync = bool.fromEnvironment(
-      'ALLOW_INSECURE_PLAINTEXT_SYNC',
-      defaultValue: false,
-    );
     const passwordRecoveryUrlValue = String.fromEnvironment(
       'PASSWORD_RECOVERY_URL',
     );
@@ -37,7 +33,6 @@ class AppConfig {
       supabaseUrl: url,
       supabasePublishableKey: publishableKey,
       passwordRecoveryUrl: passwordRecoveryUrlValue,
-      allowInsecurePlaintextSync: allowInsecurePlaintextSync,
       releaseMode: kReleaseMode,
     );
 

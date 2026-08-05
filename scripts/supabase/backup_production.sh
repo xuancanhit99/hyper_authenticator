@@ -8,6 +8,12 @@ MIN_FREE_KIB=${MIN_FREE_KIB:-10485760}
 QUIESCE_STORAGE=${QUIESCE_STORAGE:-true}
 DB_CONTAINER=${DB_CONTAINER:-supabase-db}
 STORAGE_CONTAINER=${STORAGE_CONTAINER:-supabase-storage}
+STORAGE_HEALTH_TIMEOUT_SECONDS=${STORAGE_HEALTH_TIMEOUT_SECONDS:-180}
+
+if [[ ! "$STORAGE_HEALTH_TIMEOUT_SECONDS" =~ ^[1-9][0-9]*$ ]]; then
+  printf '%s\n' 'STORAGE_HEALTH_TIMEOUT_SECONDS phải là số nguyên dương.' >&2
+  exit 64
+fi
 
 umask 077
 mkdir -p "$BACKUP_ROOT"
@@ -73,11 +79,12 @@ if [[ "$storage_stopped" == true ]]; then
   storage_stopped=false
 fi
 
-for _ in {1..60}; do
+storage_health_deadline=$((SECONDS + STORAGE_HEALTH_TIMEOUT_SECONDS))
+while ((SECONDS < storage_health_deadline)); do
   storage_health=$(docker inspect --format '{{.State.Health.Status}}' \
     "$STORAGE_CONTAINER" 2>/dev/null || true)
   [[ "$storage_health" == healthy ]] && break
-  sleep 1
+  sleep 2
 done
 [[ "${storage_health:-}" == healthy ]]
 

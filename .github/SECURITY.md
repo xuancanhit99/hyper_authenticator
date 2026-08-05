@@ -1,6 +1,6 @@
 # Báo cáo lỗ hổng bảo mật
 
-Không gửi TOTP secret, full `otpauth` URI, recovery key, password, session token
+Không gửi TOTP secret, full `otpauth` URI, password, session token
 hoặc server credential trong GitHub Issue công khai.
 
 Hãy dùng [GitHub private security advisory](https://github.com/xuancanhit99/hyper_authenticator/security/advisories/new)

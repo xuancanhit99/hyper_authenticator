@@ -2,8 +2,9 @@
 
 Hyper Authenticator là ứng dụng Flutter đa nền tảng để lưu tài khoản TOTP và tạo
 mã dùng một lần theo RFC 6238. Local vault hoạt động offline không cần đăng nhập;
-Supabase authentication chỉ phục vụ backup cloud mã hóa đầu cuối tùy chọn. Ứng
-dụng có app lock, nhập QR và giao diện sáng/tối.
+Supabase authentication chỉ phục vụ account-managed cloud sync tùy chọn; private
+Realtime Broadcast đánh thức sync foreground nhưng không truyền TOTP payload.
+Ứng dụng có app lock, nhập QR và giao diện sáng/tối.
 
 > Trạng thái dự án: **production baseline kỹ thuật; GitHub Releases là kênh phân
 > phối binary ưu tiên trong giai đoạn hiện tại**. Web đang chạy production.
@@ -28,7 +29,7 @@ vault-retaining upgrade; camera/biometric trên thiết bị thật vẫn là ga
 ## Chức năng
 
 - Dùng TOTP local không cần tài khoản hoặc network.
-- Đăng ký, đăng nhập và khôi phục mật khẩu Web qua Supabase Auth cho backup cloud.
+- Đăng ký, đăng nhập và khôi phục mật khẩu Web qua Supabase Auth cho cloud sync.
 - Thêm tài khoản bằng camera, ảnh QR hoặc nhập thủ công.
 - Import QR chuyển dữ liệu do Google Authenticator xuất, gồm multi-part batch,
   schema v1/v2 đã quan sát, preview và duplicate detection trước một atomic
@@ -40,9 +41,9 @@ vault-retaining upgrade; camera/biometric trên thiết bị thật vẫn là ga
 - Parse URI `otpauth://totp` và validate Base32, SHA1/SHA256/SHA512, 6–8 chữ số cùng chu kỳ tùy chỉnh.
 - Lưu TOTP bằng FlutterSecureStorage; tìm kiếm, sửa, xóa và sao chép.
 - Khóa ứng dụng bằng sinh trắc học hoặc credential của OS trên platform được hỗ trợ.
-- Giao diện sáng, tối hoặc theo hệ thống.
-- Backup cloud mã hóa đầu cuối do người dùng kích hoạt trên native platform, có
-  recovery key và conflict resolution.
+- Ba visual style, mỗi style hỗ trợ sáng/tối/theo hệ thống.
+- Không đăng nhập thì local-only; đăng nhập thì mã tự upload/download theo tài
+  khoản. Xóa tạo cloud tombstone và truyền sang thiết bị khác; không recovery key.
 
 ## Kiến trúc
 
@@ -70,7 +71,7 @@ Yêu cầu Flutter stable tương thích `pubspec.yaml` và toolchain của plat
     flutter run
 
 Lệnh trên khởi động chế độ local-only. Chỉ tạo file `.env` khi cần đăng nhập và
-backup cloud:
+cloud sync:
 
     cp .env.example .env
     flutter run --dart-define-from-file=.env
@@ -128,22 +129,20 @@ và [Chiến lược kiểm thử](docs/TESTING_STRATEGY.md).
 | Android | Signed APK pre-release | Camera QR và device authentication; còn gate thiết bị thật |
 | iOS | Đã xác minh simulator | Cần device và signing để release |
 | macOS | Đã xác minh compile unsigned | Cần signing để test Keychain/runtime và release |
-| Web | Production HTTPS | Không có device authentication hoặc backup cloud E2EE |
-| Windows | Hosted runtime + unsigned NSIS Preview | Nhập thủ công + E2EE; không có camera QR |
-| Linux | Hosted runtime + unsigned `.deb` Preview | Nhập thủ công + E2EE; chưa KDE/physical desktop |
+| Web | Production HTTPS | Không có device authentication; account sync dùng browser trust boundary |
+| Windows | Hosted runtime + unsigned NSIS Preview | Nhập thủ công + account sync; không camera QR |
+| Linux | Hosted runtime + unsigned `.deb` Preview | Nhập thủ công + account sync; chưa KDE/physical desktop |
 
 `scripts/agent/build.sh` tự từ chối target không thể build trên host hiện tại.
 
 ## Lưu ý bảo mật
 
-Client không còn source/runtime path để backup TOTP secret ở dạng plaintext.
-Migration retirement chỉ drop legacy table khi xác minh bảng rỗng và fail closed
-nếu còn row; trạng thái deploy production được ghi riêng trong
-[Trạng thái dự án](docs/PROJECT_STATUS.md). E2EE vẫn không thay thế việc người dùng
-giữ recovery key; mất mọi thiết bị cùng recovery key có thể làm mất khả năng khôi
-phục. Revoke Supabase session không phải remote wipe hoặc cryptographic device
-exclusion; generic vault-key rotation vẫn cấp wrap mới cho mọi active device có
-membership proof hợp lệ. Đọc
+Client không ghi TOTP plaintext vào bảng public. Supabase Vault mã hóa payload
+khi lưu, nhưng authenticated backend RPC có quyền giải mã; đây không phải E2EE.
+Account ownership được bind local trước network để tránh cross-user upload; cloud
+failure không rollback local và deletion dùng tombstone.
+Trạng thái production rollout được ghi riêng trong
+[Trạng thái dự án](docs/PROJECT_STATUS.md). Đọc
 [Mô hình bảo mật](docs/SECURITY.md) trước khi dùng dữ liệu nhạy cảm.
 
 ## Đóng góp và giấy phép

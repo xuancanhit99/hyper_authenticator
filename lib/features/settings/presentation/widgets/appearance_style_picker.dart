@@ -22,68 +22,105 @@ class AppearanceStylePicker extends StatelessWidget {
         const ListTile(
           leading: Icon(Icons.palette_outlined),
           title: Text('Giao diện'),
-          subtitle: Text('Đổi phong cách và chế độ sáng tối, áp dụng ngay.'),
+          dense: true,
+          visualDensity: VisualDensity(vertical: -2),
         ),
-        RadioGroup<AppStyle>(
-          groupValue: themeState.style,
-          onChanged: (style) {
-            if (style != null) cubit.setStyle(style);
-          },
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              for (final style in AppStyle.values)
-                Semantics(
-                  key: Key('app-style-${style.name}'),
-                  container: true,
-                  button: true,
-                  selected: style == themeState.style,
-                  inMutuallyExclusiveGroup: true,
-                  label: '${style.label}. ${style.description}',
-                  onTap: () => cubit.setStyle(style),
-                  // RadioListTile's merged semantics can expose only the
-                  // trailing control bounds when a tall tile is clipped by a
-                  // sliver at text scale 200%. Keep one explicit full-tile
-                  // target and treat the visual radio as decorative here.
-                  child: ExcludeSemantics(
-                    child: RadioListTile<AppStyle>(
-                      value: style,
-                      controlAffinity: ListTileControlAffinity.trailing,
-                      title: Text(style.label),
-                      subtitle: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(style.description),
-                          const SizedBox(height: 8),
-                          _StyleSwatch(style: style),
-                        ],
-                      ),
+              Semantics(
+                label: 'Phong cách giao diện',
+                value: themeState.style.label,
+                child: InputDecorator(
+                  decoration: const InputDecoration(
+                    labelText: 'Phong cách',
+                    border: OutlineInputBorder(),
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
+                  ),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<AppStyle>(
+                      key: const Key('app-style-dropdown'),
+                      value: themeState.style,
+                      isExpanded: true,
+                      borderRadius: BorderRadius.circular(16),
+                      onChanged: (style) {
+                        if (style != null) cubit.setStyle(style);
+                      },
+                      items: [
+                        for (final style in AppStyle.values)
+                          DropdownMenuItem<AppStyle>(
+                            key: Key('app-style-option-${style.name}'),
+                            value: style,
+                            child: Row(
+                              children: [
+                                _StyleSwatch(style: style),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Text(
+                                    style.label,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                      ],
                     ),
                   ),
                 ),
-            ],
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
-          // Wrap thay vì SegmentedButton: mỗi chip giữ intrinsic width và tự
-          // xuống dòng, nên không vỡ layout ở viewport hẹp với text scale lớn.
-          child: Wrap(
-            key: const Key('theme-mode-selector'),
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              for (final (mode, label, icon) in const [
-                (ThemeMode.system, 'Hệ thống', Icons.brightness_auto_outlined),
-                (ThemeMode.light, 'Sáng', Icons.light_mode_outlined),
-                (ThemeMode.dark, 'Tối', Icons.dark_mode_outlined),
-              ])
-                ChoiceChip(
-                  key: Key('theme-mode-${mode.name}'),
-                  avatar: Icon(icon, size: 18),
-                  label: Text(label),
-                  selected: themeState.mode == mode,
-                  onSelected: (_) => cubit.setThemeMode(mode),
+              ),
+              const SizedBox(height: 12),
+              Semantics(
+                label: 'Chế độ hiển thị',
+                value: _modeLabel(themeState.mode),
+                child: InputDecorator(
+                  decoration: const InputDecoration(
+                    labelText: 'Chế độ',
+                    border: OutlineInputBorder(),
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
+                  ),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<ThemeMode>(
+                      key: const Key('theme-mode-dropdown'),
+                      value: themeState.mode,
+                      isExpanded: true,
+                      borderRadius: BorderRadius.circular(16),
+                      onChanged: (mode) {
+                        if (mode != null) cubit.setThemeMode(mode);
+                      },
+                      items: [
+                        for (final mode in ThemeMode.values)
+                          DropdownMenuItem<ThemeMode>(
+                            key: Key('theme-mode-option-${mode.name}'),
+                            value: mode,
+                            child: Row(
+                              children: [
+                                Icon(_modeIcon(mode), size: 20),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Text(
+                                    _modeLabel(mode),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
                 ),
+              ),
             ],
           ),
         ),
@@ -107,8 +144,8 @@ class _StyleSwatch extends StatelessWidget {
     ).colorScheme.onSurface.withValues(alpha: 0.15);
 
     return Container(
-      width: 44,
-      height: 28,
+      width: 36,
+      height: 24,
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(8),
@@ -137,3 +174,15 @@ class _StyleSwatch extends StatelessWidget {
     );
   }
 }
+
+String _modeLabel(ThemeMode mode) => switch (mode) {
+  ThemeMode.system => 'Theo hệ thống',
+  ThemeMode.light => 'Sáng',
+  ThemeMode.dark => 'Tối',
+};
+
+IconData _modeIcon(ThemeMode mode) => switch (mode) {
+  ThemeMode.system => Icons.brightness_auto_outlined,
+  ThemeMode.light => Icons.light_mode_outlined,
+  ThemeMode.dark => Icons.dark_mode_outlined,
+};

@@ -11,6 +11,12 @@ TIMER="$ROOT/supabase/systemd/hyper-auth-supabase-restore-drill.timer"
 
 bash -n "$RUNNER" "$STATE_CHECKER" "$REHEARSAL" "$HEALTH"
 
+if RESTORE_SCHEMA_MODE=invalid "$REHEARSAL" /tmp/TEST_ONLY-missing-backup \
+  >/dev/null 2>&1; then
+  printf '%s\n' 'Restore schema mode lạ phải bị từ chối.' >&2
+  exit 1
+fi
+
 temp_dir=$(mktemp -d "${TMPDIR:-/tmp}/ha-restore-drill-contract.XXXXXX")
 cleanup() {
   rm -rf -- "$temp_dir"
@@ -117,7 +123,18 @@ fi
 [[ ! -e "$state_file" ]]
 
 grep -Fq 'flock -n 9' "$REHEARSAL"
+grep -Fq 'pre-minimal' "$REHEARSAL"
+grep -Fq 'account-sync' "$REHEARSAL"
+if grep -Fq -- '--no-privileges' "$REHEARSAL"; then
+  printf '%s\n' 'Restore rehearsal phải phục hồi ACL để verify security grants.' >&2
+  exit 1
+fi
 grep -Fq 'check_restore_drill_state.sh' "$HEALTH"
+grep -Fq "to_regclass('public.synced_accounts') is null" "$REHEARSAL"
+grep -Fq "to_regclass('public.synced_accounts') is null" "$HEALTH"
+grep -Fq "upsert_authenticator_account(uuid,bigint,jsonb)" "$REHEARSAL"
+grep -Fq "upsert_authenticator_account(uuid,bigint,jsonb)" "$HEALTH"
+grep -Fq "extname = 'supabase_vault'" "$HEALTH"
 grep -Fq 'TimeoutStartSec=2h' "$SERVICE"
 grep -Fq 'ReadWritePaths=/home/xuancanhit/backups/hyper-authenticator' "$SERVICE"
 grep -Fq 'OnCalendar=*-*-* 04:30:00 UTC' "$TIMER"

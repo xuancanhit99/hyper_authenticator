@@ -22,15 +22,8 @@ class PublicRuntimeConfig {
     required String supabaseUrl,
     required String supabasePublishableKey,
     required String passwordRecoveryUrl,
-    required bool allowInsecurePlaintextSync,
     required bool releaseMode,
   }) {
-    if (allowInsecurePlaintextSync) {
-      throw StateError(
-        'ALLOW_INSECURE_PLAINTEXT_SYNC đã bị loại bỏ và phải luôn là false',
-      );
-    }
-
     final hasSupabaseUrl = supabaseUrl.isNotEmpty;
     final hasPublishableKey = supabasePublishableKey.isNotEmpty;
     final hasRecoveryUrl = passwordRecoveryUrl.isNotEmpty;

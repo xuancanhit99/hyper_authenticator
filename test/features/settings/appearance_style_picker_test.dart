@@ -17,8 +17,6 @@ void main() {
     return ThemeCubit(await SharedPreferences.getInstance());
   }
 
-  /// Fixture khớp composition Settings thật: AppBar, ListView padding 16 và
-  /// card đứng trước/sau card Giao diện để kiểm tra đúng scroll viewport.
   Future<void> pumpPicker(
     WidgetTester tester,
     ThemeCubit cubit, {
@@ -54,7 +52,7 @@ void main() {
                 Card(
                   child: ListTile(
                     leading: Icon(Icons.folder_zip_outlined),
-                    title: Text('Backup file mã hóa'),
+                    title: Text('Nhập và xuất QR'),
                     subtitle: Text('Portable offline, không cần Supabase.'),
                   ),
                 ),
@@ -84,13 +82,6 @@ void main() {
     }
   }
 
-  Future<void> scrollChipsIntoViewport(WidgetTester tester) async {
-    await centerInViewport(
-      tester,
-      find.byKey(const Key('theme-mode-selector')),
-    );
-  }
-
   void expectFullyVisible(WidgetTester tester, Finder finder, String reason) {
     final rect = tester.getRect(finder);
     final appBarBottom = tester.getBottomLeft(find.byType(AppBar)).dy;
@@ -99,17 +90,7 @@ void main() {
     expect(rect.bottom, lessThan(viewportBottom - 8), reason: reason);
   }
 
-  void expectChipsFullyVisible(WidgetTester tester) {
-    for (final mode in ThemeMode.values) {
-      expectFullyVisible(
-        tester,
-        find.byKey(Key('theme-mode-${mode.name}')),
-        mode.name,
-      );
-    }
-  }
-
-  testWidgets('320px + text scale 200% không overflow và chip không nổ dọc', (
+  testWidgets('dropdown gọn và không overflow ở 320px + text scale 200%', (
     tester,
   ) async {
     tester.view.devicePixelRatio = 1;
@@ -120,29 +101,42 @@ void main() {
     final cubit = await makeCubit();
     await pumpPicker(tester, cubit, textScale: 2);
 
+    expect(find.byType(RadioListTile<AppStyle>), findsNothing);
+    expect(find.byType(ChoiceChip), findsNothing);
+    expect(find.byKey(const Key('app-style-dropdown')), findsOneWidget);
+    expect(find.byKey(const Key('theme-mode-dropdown')), findsOneWidget);
+    final pickerCard = find
+        .ancestor(
+          of: find.byType(AppearanceStylePicker),
+          matching: find.byType(Card),
+        )
+        .first;
+    expect(tester.getSize(pickerCard).height, lessThan(440));
     expect(tester.takeException(), isNull);
-    for (final label in ['Security Minimal', 'OLED Dark', 'Dark Cinema']) {
-      expect(find.text(label), findsOneWidget);
-    }
-    await scrollChipsIntoViewport(tester);
-    // Regression SegmentedButton: segment hẹp từng làm label wrap gần như
-    // từng ký tự và đẩy card lên ~2.700px. Invariant là từng label/chip không
-    // nổ chiều dọc; chiều cao tổng phụ thuộc mô tả wrap hợp lệ nên không phải
-    // invariant.
-    for (final label in ['Hệ thống', 'Sáng', 'Tối']) {
-      expect(find.text(label), findsOneWidget);
-      expect(tester.getSize(find.text(label)).height, lessThan(60));
-    }
-    for (final chip in find.byType(ChoiceChip).evaluate()) {
-      expect(tester.getSize(find.byWidget(chip.widget)).height, lessThan(120));
-    }
+
+    await centerInViewport(tester, find.byKey(const Key('app-style-dropdown')));
+    await tester.tap(find.byKey(const Key('app-style-dropdown')));
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+    await tester.tap(find.byKey(const Key('app-style-option-oledDark')).last);
+    await tester.pumpAndSettle();
+    expect(cubit.state.style, AppStyle.oledDark);
+
+    await centerInViewport(
+      tester,
+      find.byKey(const Key('theme-mode-dropdown')),
+    );
+    await tester.tap(find.byKey(const Key('theme-mode-dropdown')));
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+    await tester.tap(find.byKey(const Key('theme-mode-option-dark')).last);
+    await tester.pumpAndSettle();
+    expect(cubit.state.mode, ThemeMode.dark);
   });
 
-  // Sweep a11y đủ 6 theme thực tế; style đang chọn trùng theme để cover cả
-  // trạng thái selected của từng tile.
   for (final style in AppStyle.values) {
     for (final brightness in Brightness.values) {
-      testWidgets('picker a11y ${style.name}/${brightness.name} ở 320px/200%', (
+      testWidgets('dropdown a11y ${style.name}/${brightness.name}', (
         tester,
       ) async {
         final semantics = tester.ensureSemantics();
@@ -157,34 +151,16 @@ void main() {
             : AppTheme.dark(style);
         await pumpPicker(tester, cubit, textScale: 2, theme: theme);
 
-        // Viewport đầu: AppBar + card sinh trắc học + đầu card Giao diện.
-        await expectLater(tester, meetsGuideline(textContrastGuideline));
-        await expectLater(tester, meetsGuideline(androidTapTargetGuideline));
-
-        // Đưa từng style tile vào giữa viewport trước khi chạy guideline.
-        // Mỗi test có style hiện hành trùng palette, nên vòng này cover đúng
-        // một selected tile và hai unselected tile trên cả 6 theme.
-        for (final candidate in AppStyle.values) {
-          final tile = find.byKey(Key('app-style-${candidate.name}'));
-          await centerInViewport(tester, tile);
-          expectFullyVisible(tester, tile, candidate.name);
+        for (final key in const [
+          Key('app-style-dropdown'),
+          Key('theme-mode-dropdown'),
+        ]) {
+          final dropdown = find.byKey(key);
+          await centerInViewport(tester, dropdown);
+          expectFullyVisible(tester, dropdown, key.toString());
           await expectLater(tester, meetsGuideline(textContrastGuideline));
           await expectLater(tester, meetsGuideline(androidTapTargetGuideline));
         }
-
-        // Chip nằm trọn trong viewport (không dính rìa) rồi mới đánh giá —
-        // cover chip selected (mode hiện tại) lẫn unselected.
-        await scrollChipsIntoViewport(tester);
-        expectChipsFullyVisible(tester);
-        await expectLater(tester, meetsGuideline(textContrastGuideline));
-        await expectLater(tester, meetsGuideline(androidTapTargetGuideline));
-
-        // Đổi selection để chip khác thành selected rồi đánh giá lại.
-        await tester.tap(find.byKey(const Key('theme-mode-dark')));
-        await tester.pumpAndSettle();
-        expectChipsFullyVisible(tester);
-        await expectLater(tester, meetsGuideline(textContrastGuideline));
-        await expectLater(tester, meetsGuideline(androidTapTargetGuideline));
         semantics.dispose();
       });
     }
@@ -194,13 +170,17 @@ void main() {
     final cubit = await makeCubit();
     await pumpPicker(tester, cubit);
 
-    await tester.ensureVisible(find.byKey(const Key('app-style-oledDark')));
-    await tester.tap(find.byKey(const Key('app-style-oledDark')));
+    await tester.ensureVisible(find.byKey(const Key('app-style-dropdown')));
+    await tester.tap(find.byKey(const Key('app-style-dropdown')));
     await tester.pumpAndSettle();
-    expect(cubit.state.style, AppStyle.oledDark);
+    await tester.tap(find.byKey(const Key('app-style-option-darkCinema')).last);
+    await tester.pumpAndSettle();
+    expect(cubit.state.style, AppStyle.darkCinema);
 
-    await tester.ensureVisible(find.byKey(const Key('theme-mode-dark')));
-    await tester.tap(find.byKey(const Key('theme-mode-dark')));
+    await tester.ensureVisible(find.byKey(const Key('theme-mode-dropdown')));
+    await tester.tap(find.byKey(const Key('theme-mode-dropdown')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('theme-mode-option-dark')).last);
     await tester.pumpAndSettle();
     expect(cubit.state.mode, ThemeMode.dark);
   });

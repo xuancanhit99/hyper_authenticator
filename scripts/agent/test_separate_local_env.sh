@@ -48,10 +48,6 @@ for key in REMOTE_HOST REMOTE_PORT REMOTE_USER SSH_KEY_PATH REMOTE_COMPOSE_DIR_S
     exit 1
   fi
 done
-if ! grep -qx 'ALLOW_INSECURE_PLAINTEXT_SYNC=false' "$client_env"; then
-  printf '%s\n' 'Client env không có plaintext-sync guard an toàn.' >&2
-  exit 1
-fi
 if [[ $(read_file_mode "$client_env") != 600 ||
   $(read_file_mode "$server_env") != 600 ]]; then
   printf '%s\n' 'Env sau khi tách không giữ mode 0600.' >&2
@@ -66,26 +62,6 @@ fi
 after=$(shasum -a 256 "$client_env" | awk '{ print $1 }')
 if [[ "$before" != "$after" ]]; then
   printf '%s\n' 'Client env bị đổi khi server env đã tồn tại.' >&2
-  exit 1
-fi
-
-unsafe_client="$WORK_DIR/unsafe-client.env"
-unsafe_server="$WORK_DIR/unsafe-server.env"
-sed 's/ALLOW_INSECURE_PLAINTEXT_SYNC=false/ALLOW_INSECURE_PLAINTEXT_SYNC=true/' \
-  "$client_env" >"$unsafe_client"
-for key in REMOTE_HOST REMOTE_PORT REMOTE_USER SSH_KEY_PATH REMOTE_COMPOSE_DIR_SUPABASE; do
-  grep "^${key}=" "$server_env" >>"$unsafe_client"
-done
-chmod 0600 "$unsafe_client"
-unsafe_before=$(shasum -a 256 "$unsafe_client" | awk '{ print $1 }')
-if "$SCRIPT" "$unsafe_client" "$unsafe_server" SEPARATE_LOCAL_SERVER_CONFIG \
-  >/dev/null 2>&1; then
-  printf '%s\n' 'Script phải từ chối plaintext sync bật.' >&2
-  exit 1
-fi
-unsafe_after=$(shasum -a 256 "$unsafe_client" | awk '{ print $1 }')
-if [[ "$unsafe_before" != "$unsafe_after" || -e "$unsafe_server" ]]; then
-  printf '%s\n' 'Fail-closed path đã thay đổi file cấu hình.' >&2
   exit 1
 fi
 

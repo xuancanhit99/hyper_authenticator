@@ -13,7 +13,7 @@ const requiredDocuments = <String>[
   'docs/DATA_MODELS.md',
   'docs/SECURITY.md',
   'docs/SUPABASE_INTEGRATION.md',
-  'docs/E2EE_DESIGN.md',
+  'docs/ACCOUNT_SYNC_DESIGN.md',
   'docs/DEVELOPMENT.md',
   'docs/TESTING_STRATEGY.md',
   'docs/DEPLOYMENT.md',

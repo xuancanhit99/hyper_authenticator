@@ -35,7 +35,7 @@ void main() {
                     ),
                     const TextField(
                       decoration: InputDecoration(
-                        labelText: 'Recovery key',
+                        labelText: 'Mã bảo mật',
                         helperText: 'Key chỉ được xử lý trong thiết bị này.',
                       ),
                     ),

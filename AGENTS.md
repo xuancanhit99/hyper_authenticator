@@ -59,11 +59,11 @@ Các thay đổi có sẵn trong working tree thuộc về người dùng. Khôn
 
 Đọc `docs/PROJECT_STATUS.md` trước khi tác động đến:
 
-- restore/rollback backup lịch sử có plaintext table và terminal migration
-  device-bound cutoff;
-- membership proof của toàn bộ active device trước rotation; generic rotation
-  hiện chưa có user-facing per-device cryptographic exclusion;
-- session revoke không phải remote wipe local vault hoặc crypto-exclude device;
+- breaking Minimal E2EE migration xóa remote protocol/data cũ và chỉ được deploy
+  sau full backup + restore rehearsal;
+- một HA1 recovery path; mất HA1 key cùng mọi thiết bị có DEK thì không thể
+  khôi phục cloud snapshot;
+- xóa cloud không remote-wipe local vault/DEK trên thiết bị khác;
 - Web E2EE trust boundary và browser storage;
 - Privacy Shield không phải active screenshot/recording prevention;
 - permission, physical-device evidence và Apple/Windows release signing;
@@ -79,6 +79,8 @@ Các thay đổi có sẵn trong working tree thuộc về người dùng. Khôn
 - Field đã persist phải round-trip mà không âm thầm bị thay bằng default.
 - Mọi thay đổi remote schema cần migration plan, ghi chú compatibility và contract test.
 - `injection_container.config.dart` được generate phải khớp annotation và không được sửa thủ công.
+- Không thêm lại portable backup, device/session registry, per-device key wrap,
+  key rotation hoặc compatibility fallback nếu chưa có ADR mới được owner duyệt.
 
 ## Kỷ luật thay đổi
 

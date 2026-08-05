@@ -122,28 +122,33 @@ void main() {
     'Linux integration CI-only guard',
   );
   requireText(
-    'scripts/agent/linux_e2ee_integration.sh',
+    'scripts/agent/linux_account_sync_integration.sh',
     'service-role key không được đi vào client integration harness',
-    'Linux E2EE service-role boundary',
+    'Linux account-sync service-role boundary',
   );
   requireText(
-    'scripts/agent/linux_e2ee_integration.sh',
-    'integration_test/encrypted_sync_smoke_test.dart',
-    'Linux authenticated E2EE runtime gate',
+    'scripts/agent/linux_account_sync_integration.sh',
+    'integration_test/account_sync_smoke_test.dart',
+    'Linux authenticated account-sync runtime gate',
   );
   requireText(
-    'scripts/agent/linux_e2ee_container.sh',
+    'scripts/agent/linux_account_sync_container.sh',
+    'bash scripts/agent/list_working_tree_source_files.sh',
+    'Linux account-sync container source helper',
+  );
+  requireText(
+    'scripts/agent/list_working_tree_source_files.sh',
     'git ls-files --cached --others --exclude-standard -z',
-    'Linux E2EE container source allowlist',
+    'Linux account-sync container source allowlist',
   );
   requireText(
-    'scripts/agent/linux_e2ee_operator.sh',
+    'scripts/agent/linux_account_sync_operator.sh',
     'remote-cleanup-verified',
-    'isolated E2EE user cleanup verification',
+    'isolated account-sync user cleanup verification',
   );
   requireText(
-    'integration_test/encrypted_sync_smoke_test.dart',
-    'ALLOW_E2EE_REMOTE_TEST_MUTATION',
+    'integration_test/account_sync_smoke_test.dart',
+    'ALLOW_ACCOUNT_SYNC_REMOTE_TEST_MUTATION',
     'explicit remote mutation opt-in',
   );
   requireText(

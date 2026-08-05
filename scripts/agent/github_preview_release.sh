@@ -128,8 +128,8 @@ khi dự án hoàn tất certificate/signing và quy trình phát hành trên c�
 - Android APK đã ký nhưng vẫn là preview; biometric/camera trên thiết bị thật và
   store review chưa hoàn tất. iOS và macOS chưa được đính kèm.
 - SMTP production chưa được owner cấu hình; email khôi phục mật khẩu có thể chưa tới mailbox thật.
-- Luôn giữ recovery key E2EE ở nơi an toàn. Mất recovery key có thể làm mất khả năng
-  khôi phục encrypted cloud vault trên thiết bị mới.
+- Khi đăng nhập, mã được đồng bộ tự động qua Supabase Vault. Đây là mã hóa do
+  server quản lý, không phải zero-knowledge E2EE.
 - Không gửi credential qua public issue. Báo cáo lỗ hổng riêng tư tại
   https://github.com/$repo/security/advisories/new
 
