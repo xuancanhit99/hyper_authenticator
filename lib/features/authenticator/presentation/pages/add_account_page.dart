@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hyper_authenticator/core/platform/platform_capabilities.dart';
-import 'package:hyper_authenticator/core/router/app_router.dart';
+import 'package:hyper_authenticator/core/router/app_routes.dart';
 import 'package:hyper_authenticator/core/widgets/responsive_content.dart';
 import 'package:hyper_authenticator/features/authenticator/domain/services/google_authenticator_migration_parser.dart';
 import 'package:hyper_authenticator/features/authenticator/domain/services/totp_uri_parser.dart';

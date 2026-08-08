@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:hyper_authenticator/app.dart';
 import 'package:hyper_authenticator/core/config/app_config.dart';
+import 'package:hyper_authenticator/core/router/app_router_registration.dart';
 import 'package:hyper_authenticator/core/router/app_url_strategy.dart';
 import 'package:hyper_authenticator/core/storage/windows_storage_migrator.dart';
 import 'package:hyper_authenticator/core/theme/theme_cubit.dart';
@@ -21,6 +22,7 @@ Future<void> main() async {
   try {
     await migrateWindowsStorageLayout();
     await di.configureDependencies();
+    registerDefaultAppRouter();
     final appConfig = di.sl<AppConfig>();
     if (appConfig.cloudEnabled) {
       await Supabase.initialize(

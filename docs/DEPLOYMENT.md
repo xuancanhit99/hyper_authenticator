@@ -12,6 +12,7 @@ GitHub Releases là binary channel hiện tại; store rollout để sau.
 | Windows | Unsigned NSIS preview | code signing + physical runtime |
 | Linux | Unsigned `.deb` preview | representative desktop/keyring |
 | Web | HTTPS/Nginx | browser camera/storage/account-sync runtime |
+| Chrome Extension | MV3 Side Panel preview package | clean-profile vault/session/sync/restart evidence; privacy/support URL; Chrome Store review |
 
 ## Release gate
 
@@ -121,6 +122,30 @@ Release đã xác minh hiện tại:
 Flutter Web dùng public runtime config và Nginx serving contract. Account sync
 được hỗ trợ nhưng browser profile/origin/XSS là trust boundary; release notes
 không được gọi là native-equivalent secure storage hoặc E2EE.
+
+## Chrome Extension
+
+Chrome Extension foundation tạo ZIP qua `scripts/agent/build_chrome_extension.sh`.
+Manifest chỉ xin `sidePanel` và host permission Supabase production; không mở
+page access/autofill. Package verifier bắt buộc MV3, local CanvasKit/WASM,
+extension CSP, không remote executable/ZXing CDN/PWA worker và encrypted vault
+bridge có AES-GCM key non-extractable.
+
+CI tạo artifact từ GitHub Actions Variables `SUPABASE_URL`,
+`SUPABASE_PUBLISHABLE_KEY` và `PASSWORD_RECOVERY_URL` qua file runtime tạm
+0600. Đây là public client config; service-role, database/SSH/SMTP/Vault key
+không được truyền vào job hoặc package.
+
+Đây chưa phải artifact GitHub Preview hoặc Chrome Web Store release. Trước khi
+phân phối cần:
+
+1. chạy clean profile load/unload/restart/tamper/local-vault smoke;
+2. test login/session restore, cross-device RPC sync/tombstone và Realtime
+   foreground wake-up bằng account isolated;
+3. review permission/CSP/source ZIP độc lập, checksum/provenance và no-secret log;
+4. public privacy policy, support/security contact, in-product cloud disclosure,
+   128 icon, promo/screenshot và Chrome developer/store review;
+5. Trusted Testers/limited rollout trước public store.
 
 ## Signing material
 

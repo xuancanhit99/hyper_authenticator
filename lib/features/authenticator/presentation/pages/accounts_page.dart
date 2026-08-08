@@ -3,7 +3,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:hyper_authenticator/core/router/app_router.dart';
+import 'package:hyper_authenticator/core/platform/platform_capabilities.dart';
+import 'package:hyper_authenticator/core/router/app_routes.dart';
 import 'package:hyper_authenticator/core/theme/theme_cubit.dart';
 import 'package:hyper_authenticator/core/widgets/responsive_content.dart';
 import 'package:hyper_authenticator/features/authenticator/domain/entities/authenticator_account.dart';
@@ -190,11 +191,12 @@ class _AccountsPageState extends State<AccountsPage>
               ),
             ],
           ),
-          IconButton(
-            icon: const Icon(Icons.ios_share_outlined),
-            tooltip: 'Xuất tài khoản',
-            onPressed: () => context.push(AppRoutes.exportAccounts),
-          ),
+          if (PlatformCapabilities.supportsProtectedExport)
+            IconButton(
+              icon: const Icon(Icons.ios_share_outlined),
+              tooltip: 'Xuất tài khoản',
+              onPressed: () => context.push(AppRoutes.exportAccounts),
+            ),
           Padding(
             padding: const EdgeInsets.only(right: 8.0),
             child: IconButton(

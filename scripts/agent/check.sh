@@ -56,12 +56,16 @@ run_release_harness() {
     scripts/agent/configure_github_android_signing.sh \
     scripts/agent/separate_local_env.sh \
     scripts/agent/test_ide_run_config.sh \
-    scripts/agent/web_runtime_smoke.sh
+    scripts/agent/web_runtime_smoke.sh \
+    scripts/agent/build_chrome_extension.sh \
+    scripts/agent/verify_chrome_extension_package.sh \
+    scripts/agent/test_chrome_extension_contract.sh
   node --check tool/agent/web_runtime_probe.mjs
   scripts/agent/test_ide_run_config.sh
   scripts/agent/test_separate_local_env.sh
   scripts/agent/test_github_preview_assets.sh
   scripts/agent/test_github_preview_release_contract.sh
+  scripts/agent/test_chrome_extension_contract.sh
   web-deployment/test-production-rollback-contract.sh
 }
 

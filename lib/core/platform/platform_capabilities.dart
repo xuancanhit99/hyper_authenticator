@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:hyper_authenticator/core/config/chrome_extension_runtime.dart';
 
 abstract final class PlatformCapabilities {
   static bool get supportsLocalAuthentication {
@@ -16,6 +17,9 @@ abstract final class PlatformCapabilities {
   }
 
   static bool get supportsBarcodeScanning {
+    if (ChromeExtensionRuntime.isEnabled) {
+      return false;
+    }
     if (kIsWeb) {
       return true;
     }
@@ -31,6 +35,9 @@ abstract final class PlatformCapabilities {
   }
 
   static bool get supportsBarcodeImageAnalysis {
+    if (ChromeExtensionRuntime.isEnabled) {
+      return false;
+    }
     if (kIsWeb) {
       return false;
     }
@@ -44,4 +51,9 @@ abstract final class PlatformCapabilities {
       TargetPlatform.windows => false,
     };
   }
+
+  /// Chrome Extension MVP intentionally excludes protected QR export because
+  /// browser extension storage has no equivalent to a fresh OS-auth prompt.
+  static bool get supportsProtectedExport =>
+      !ChromeExtensionRuntime.isEnabled && supportsLocalAuthentication;
 }

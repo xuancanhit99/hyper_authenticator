@@ -18,6 +18,9 @@ Hyper Authenticator là ứng dụng TOTP Flutter đa nền tảng, local-first:
   giải mã qua authenticated RPC. Đây **không phải E2EE/zero-knowledge**.
 - Import/export hỗ trợ standard `otpauth` và Google Authenticator migration QR.
 - GitHub Releases là kênh binary hiện tại; store release vẫn để sau.
+- Chrome Extension MV3 Side Panel đã có current-profile smoke: render, login,
+  account sync và session còn sau đóng/mở Chrome. Clean-profile/tamper và
+  cross-device runtime riêng cho Side Panel vẫn chưa có evidence; chưa phát hành.
 
 ## Đã triển khai trong source
 
@@ -89,6 +92,7 @@ Hyper Authenticator là ứng dụng TOTP Flutter đa nền tảng, local-first:
 | Windows | Có | Không | Không | Có | Có | Có |
 | Linux | Có | Không | Không | Không | Không | Có |
 | Web | Có | Có | Không | Không | Không | Có |
+| Chrome Extension | Có | Không | Không | Không | Không | Có (khi Side Panel mở) |
 
 Đây là source capability, không thay thế runtime/store evidence.
 
@@ -101,6 +105,8 @@ Hyper Authenticator là ứng dụng TOTP Flutter đa nền tảng, local-first:
 | `scripts/supabase/test_account_sync_migration.sh` | Pass trên đúng `supabase/postgres:17.6.1.136`: Vault/RPC/CAS/tombstone và authorization probe đúng Realtime 2.102.3 |
 | Full gate | `scripts/agent/check.sh full` pass ngày 05-08-2026: docs/codegen/format/analyze/platform, 203 Flutter test, migration/release/infra harness |
 | iOS Simulator account sync | UI auth giữ local vault + upload/download/tombstone + remote-only upsert/delete qua Realtime pass; isolated user cleanup verified ngày 05-08-2026 |
+| iOS Simulator account sync re-run | Isolated user: UI sign-in/sign-out vẫn giữ local vault, upload/fresh-device download/Realtime/tombstone pass và remote cleanup verified ngày 09-08-2026 |
+| Chrome Extension current profile | Owner manual smoke: Side Panel render sau local Roboto bundle, login Supabase, sync và session còn sau đóng/mở Chrome ngày 09-08-2026; không phải clean-profile/tamper evidence |
 | iOS physical Ad Hoc | `1.1.0 (13)` chứa client Realtime, ký Distribution và upgrade-install pass trên iPhone 16 Pro ngày 05-08-2026; device query xác nhận build 13, auto-launch chờ user unlock |
 | Android physical qua ADB Wi-Fi | Release-mode `1.1.0 (13)` ký lại bằng đúng debug certificate đang cài đã upgrade-install/launch pass ngày 05-08-2026, giữ app data; APK production-signing riêng đã verify nhưng không cài đè do signer khác |
 | GitHub Preview 7 | Public pre-release [`v1.1.0-preview.7`](https://github.com/xuancanhit99/hyper_authenticator/releases/tag/v1.1.0-preview.7) từ commit `feec221101ab40aa9cd89d5e151265bd901ca255`; exact tag CI run `31278011636` pass ngày 09-08-2026; public verifier xác nhận đúng 7 asset, digest/checksum/manifest, Android signer pin, Debian và Windows PE32 |
@@ -125,6 +131,10 @@ Hyper Authenticator là ứng dụng TOTP Flutter đa nền tảng, local-first:
    chưa có GitHub binary và toàn bộ app-store rollout vẫn để sau.
 6. **Release inputs:** store signing/notarization, SMTP, public privacy/support URL
    và external alert destination vẫn để sau.
+7. **Chrome Extension:** current-profile render/login/sync/session smoke đã có,
+   nhưng còn Chrome clean-profile restart/tamper và cross-device Side Panel
+   runtime với isolated user; tiếp theo là QR local-bundle phase,
+   privacy/support URL và store review.
 
 ## Gate canonical
 

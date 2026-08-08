@@ -4,6 +4,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hyper_authenticator/core/config/app_config.dart';
+import 'package:hyper_authenticator/core/router/app_routes.dart';
 import 'package:hyper_authenticator/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:hyper_authenticator/features/authenticator/presentation/bloc/local_auth_bloc.dart'; // Import LocalAuthBloc
 import 'package:hyper_authenticator/features/auth/presentation/pages/login_page.dart'; // Renamed auth_page to login_page
@@ -20,94 +21,7 @@ import 'package:hyper_authenticator/features/authenticator/presentation/pages/ac
 import 'package:hyper_authenticator/features/settings/presentation/pages/settings_page.dart';
 // import 'package:hyper_authenticator/injection_container.dart'; // Not directly needed here
 
-// --- Define Route Paths ---
-class AppRoutes {
-  static const startup = '/startup';
-  static const login = '/login';
-  static const main = '/'; // Main screen (wrapper with bottom nav)
-  static const settings = '/settings';
-  static const addAccount = '/add-account';
-  static const lockScreen = '/lock-screen';
-  static const register = '/register'; // Added
-  static const forgotPassword = '/forgot-password'; // Added
-  static const updatePassword =
-      '/update-password'; // Added for deep link handling
-  static const editAccount = '/edit-account'; // Added for EditAccountPage
-  static const exportAccounts = '/export-accounts';
-}
-
-/// Pure redirect policy so offline-vault and app-lock behavior can be tested
-/// without constructing the widget tree.
-class AppRedirectPolicy {
-  static String? redirect({
-    required AuthState authState,
-    required LocalAuthState localAuthState,
-    required String location,
-    String? returnTo,
-    bool cloudEnabled = true,
-  }) {
-    final isLogin = location == AppRoutes.login;
-    final isRegister = location == AppRoutes.register;
-    final isForgotPassword = location == AppRoutes.forgotPassword;
-    final isUpdatePassword = location == AppRoutes.updatePassword;
-    final isStartup = location == AppRoutes.startup;
-    final isLockScreen = location == AppRoutes.lockScreen;
-    final isPublicAuthRoute =
-        isLogin || isRegister || isForgotPassword || isUpdatePassword;
-
-    if (isPublicAuthRoute) {
-      if (!cloudEnabled) {
-        return authenticatedDestination(returnTo: returnTo);
-      }
-      if (authState is AuthAuthenticated && (isLogin || isRegister)) {
-        return authenticatedDestination(returnTo: returnTo);
-      }
-      return null;
-    }
-
-    if (localAuthState is LocalAuthInitial) {
-      return isStartup ? null : _routeWithReturnTo(AppRoutes.startup, location);
-    }
-
-    if (localAuthState is LocalAuthRequired ||
-        localAuthState is LocalAuthError) {
-      return isLockScreen
-          ? null
-          : _routeWithReturnTo(
-              AppRoutes.lockScreen,
-              _safeMainReturnTo(returnTo) ?? location,
-            );
-    }
-
-    if (localAuthState is LocalAuthSuccess && (isStartup || isLockScreen)) {
-      return _safeMainReturnTo(returnTo) ?? AppRoutes.main;
-    }
-
-    return null;
-  }
-
-  static String _routeWithReturnTo(String route, String candidate) {
-    final safeReturnTo = _safeMainReturnTo(candidate);
-    if (safeReturnTo == null || safeReturnTo == AppRoutes.main) {
-      return route;
-    }
-    return Uri(
-      path: route,
-      queryParameters: {'returnTo': safeReturnTo},
-    ).toString();
-  }
-
-  static String authenticatedDestination({String? returnTo}) =>
-      _safeMainReturnTo(returnTo) ?? AppRoutes.main;
-
-  static String? _safeMainReturnTo(String? candidate) {
-    return switch (candidate) {
-      AppRoutes.main => AppRoutes.main,
-      AppRoutes.settings => AppRoutes.settings,
-      _ => null,
-    };
-  }
-}
+export 'app_routes.dart';
 
 // Helper class to trigger GoRouter refresh on multiple Bloc stream changes
 class CombinedAuthRefreshStream extends ChangeNotifier {

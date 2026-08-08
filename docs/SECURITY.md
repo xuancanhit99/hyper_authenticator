@@ -36,6 +36,21 @@ Web dùng cùng account-sync RPC. Browser profile, origin/XSS và implementation
 `flutter_secure_storage` là trust boundary local; không khẳng định tương đương
 Keychain/Keystore native.
 
+### Chrome Extension (foundation, chưa public release)
+
+Manifest V3 Side Panel không xin quyền đọc tab/page/cookie, không có content
+script hay autofill. Package verifier chặn remote JS/WASM, ZXing CDN và PWA
+service worker; Flutter engine/WASM, Roboto hỗ trợ tiếng Việt và bridge vault
+đều ở trong ZIP. CSP không được nới để tải font/code từ Internet.
+
+Extension vault dùng IndexedDB/WebCrypto AES-256-GCM, nonce mới 96-bit/AAD theo
+logical key và `CryptoKey` non-extractable. Supabase session + PKCE cũng đi qua
+vault này. Đây giảm nguy cơ ciphertext/key được lưu cùng localStorage, nhưng
+**không** tạo Keychain/Keystore hoặc E2EE: browser profile, extension code đã
+cài, extension-origin XSS, malware/compromised OS và plaintext trong running
+process vẫn là trust boundary. Không có fresh OS auth nên extension MVP không
+hiển thị protected QR export.
+
 ## Control đã triển khai
 
 ### Local và disclosure
@@ -118,6 +133,8 @@ Keychain/Keystore native.
   ownership-transfer UI.
 - Tombstone chưa có retention/compaction policy.
 - Browser/local secure storage và physical-device behavior cần runtime evidence.
+- Chrome Extension clean-profile/restart/tamper/auth-sync evidence và independent
+  security review chưa hoàn tất; không public/store release trước các gate này.
 - External alert, public security contact và off-host restore SLA chưa hoàn tất.
 
 ## Release checklist

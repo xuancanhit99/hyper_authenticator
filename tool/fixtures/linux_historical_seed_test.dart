@@ -1,3 +1,7 @@
+// This source is copied into the 1.0.0+9 checkout by the historical harness.
+// That checkout still accepts FlutterSecureStorage directly; current source does not.
+// ignore_for_file: argument_type_not_assignable
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';

@@ -10,6 +10,8 @@
 - [x] Private Realtime Broadcast wake-up trong source, giữ full-sync fallback.
 - [x] Không còn recovery key/manual E2EE conflict flow.
 - [x] GitHub Preview release harness.
+- [x] Chrome Extension MV3 foundation: Side Panel, local-only package verifier
+  và encrypted IndexedDB vault/session adapter.
 
 ## P0 — Rollout account sync
 

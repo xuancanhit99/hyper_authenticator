@@ -1,7 +1,7 @@
 import 'dart:convert';
 
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:hyper_authenticator/core/storage/secure_key_value_store.dart';
 import 'package:hyper_authenticator/features/authenticator/data/datasources/authenticator_local_data_source.dart';
 import 'package:hyper_authenticator/features/authenticator/domain/entities/authenticator_account.dart';
 import 'package:uuid/uuid.dart';
@@ -304,47 +304,23 @@ AuthenticatorAccount _account({
   );
 }
 
-class _MemorySecureStorage extends FlutterSecureStorage {
+class _MemorySecureStorage implements SecureKeyValueStore {
   final Map<String, String> values = <String, String>{};
   Duration writeDelay = Duration.zero;
   String? failNextWriteWithPrefix;
 
   @override
-  Future<String?> read({
-    required String key,
-    AppleOptions? iOptions,
-    AndroidOptions? aOptions,
-    LinuxOptions? lOptions,
-    WebOptions? webOptions,
-    AppleOptions? mOptions,
-    WindowsOptions? wOptions,
-  }) async {
+  Future<String?> read({required String key}) async {
     return values[key];
   }
 
   @override
-  Future<Map<String, String>> readAll({
-    AppleOptions? iOptions,
-    AndroidOptions? aOptions,
-    LinuxOptions? lOptions,
-    WebOptions? webOptions,
-    AppleOptions? mOptions,
-    WindowsOptions? wOptions,
-  }) async {
+  Future<Map<String, String>> readAll() async {
     return Map<String, String>.from(values);
   }
 
   @override
-  Future<void> write({
-    required String key,
-    required String? value,
-    AppleOptions? iOptions,
-    AndroidOptions? aOptions,
-    LinuxOptions? lOptions,
-    WebOptions? webOptions,
-    AppleOptions? mOptions,
-    WindowsOptions? wOptions,
-  }) async {
+  Future<void> write({required String key, required String value}) async {
     if (writeDelay > Duration.zero) {
       await Future<void>.delayed(writeDelay);
     }
@@ -353,23 +329,11 @@ class _MemorySecureStorage extends FlutterSecureStorage {
       failNextWriteWithPrefix = null;
       throw StateError('TEST_ONLY injected storage failure');
     }
-    if (value == null) {
-      values.remove(key);
-    } else {
-      values[key] = value;
-    }
+    values[key] = value;
   }
 
   @override
-  Future<void> delete({
-    required String key,
-    AppleOptions? iOptions,
-    AndroidOptions? aOptions,
-    LinuxOptions? lOptions,
-    WebOptions? webOptions,
-    AppleOptions? mOptions,
-    WindowsOptions? wOptions,
-  }) async {
+  Future<void> delete({required String key}) async {
     values.remove(key);
   }
 }
