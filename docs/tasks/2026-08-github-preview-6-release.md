@@ -1,4 +1,4 @@
-# Task: Phát hành GitHub Preview 6
+# Task: Phát hành GitHub Preview 7 sau failed tag Preview 6
 
 - Trạng thái: Đang thực hiện
 - Bắt đầu: 2026-08-09
@@ -7,7 +7,7 @@
 
 ## Mục tiêu
 
-Phát hành `v1.1.0-preview.6` từ đúng source account-managed automatic sync, kèm
+Phát hành `v1.1.0-preview.7` từ đúng source account-managed automatic sync, kèm
 Android APK đã ký và các package Windows/Linux do tag CI tạo, có checksum,
 provenance và public verification tái hiện được.
 
@@ -63,7 +63,13 @@ provenance và public verification tái hiện được.
 | APK local `1.1.0+14` signer pin + metadata | Pass trước release candidate | 2026-08-09 |
 | `scripts/agent/check.sh full` | Pass: 203 Flutter test và toàn bộ backend/release/infra gate | 2026-08-09 |
 | Backend gate sau khi đợi final postmaster PID 1 | Pass; loại bỏ race với initdb server tạm | 2026-08-09 |
-| PR #35 Windows local-vault smoke | Phát hiện submit button chỉ partially visible; harness đang được harden và chạy lại | 2026-08-09 |
+| PR #35 Windows local-vault smoke | Pass sau fix đầu nhưng tag Preview 6 tái hiện selector chọn nhầm ListView ẩn | 2026-08-09 |
+| Tag `v1.1.0-preview.6` | Failed CI, không tạo GitHub Release; giữ tag làm evidence bất biến | 2026-08-09 |
+| Fix Preview 7 vòng 1 | Chọn đúng Scrollable ancestor nhưng live Windows vẫn trả hit-testable rỗng | 2026-08-09 |
+| Fix Preview 7 vòng 2 | Center submit bằng ensureVisible; tap thật rồi dùng UI/vault outcome làm acceptance | 2026-08-09 |
+| Root cause UI | Submit ở cuối ListView có 0px bottom clearance; live Windows đặt tâm nút tại y=632/640 | 2026-08-09 |
+| Fix Preview 7 vòng 3 | Thêm 64px + safe-area trailing padding và regression khóa clearance >=48px | 2026-08-09 |
+| Fix Preview 7 vòng 4 | Linux/Windows xác nhận animated `ensureVisible` deadlock khi Future chờ pump; đổi sang jump đồng bộ + một frame có giới hạn, đồng thời tránh `pumpAndSettle()` với TOTP countdown | 2026-08-09 |
 
 ## Tác động tài liệu
 

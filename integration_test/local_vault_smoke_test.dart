@@ -130,13 +130,13 @@ void main() {
         );
         FocusManager.instance.primaryFocus?.unfocus();
         await tester.pump(const Duration(milliseconds: 300));
+        _phase('edit-submit-scroll-start');
         await _scrollUntilVisible(
           tester,
           find.byKey(EditAccountPage.submitButtonKey),
         );
-        await tester.tap(
-          find.byKey(EditAccountPage.submitButtonKey).hitTestable(),
-        );
+        _phase('edit-submit-visible');
+        await tester.tap(find.byKey(EditAccountPage.submitButtonKey));
         await _pumpUntil(tester, find.text(_updatedIssuer));
 
         final updated = await _readVault(repository);
@@ -153,7 +153,7 @@ void main() {
         final updatedActions = find.byKey(Key('account-actions-$accountId'));
         await _pumpUntil(tester, updatedActions);
         await tester.pump(const Duration(seconds: 1));
-        await tester.tap(updatedActions.hitTestable());
+        await tester.tap(updatedActions);
         await _pumpUntil(tester, find.text('Xóa'));
         await tester.tap(find.text('Xóa'));
         await _pumpUntil(tester, find.text('Xác nhận xóa'));
@@ -261,17 +261,14 @@ Future<void> _pumpUntil(
 }
 
 Future<void> _scrollUntilVisible(WidgetTester tester, Finder finder) async {
-  final listView = find.byType(ListView).last;
   expect(finder, findsOneWidget);
-  await tester.ensureVisible(finder);
-  await tester.pump(const Duration(milliseconds: 100));
-  for (
-    var attempt = 0;
-    finder.hitTestable().evaluate().isEmpty && attempt < 10;
-    attempt++
-  ) {
-    await tester.drag(listView, const Offset(0, -120), warnIfMissed: false);
-    await tester.pump(const Duration(milliseconds: 100));
-  }
-  expect(finder.hitTestable(), findsOneWidget);
+  await Scrollable.ensureVisible(
+    tester.element(finder),
+    alignment: 0.5,
+    duration: Duration.zero,
+  );
+  // An animated ensureVisible needs test pumps before its Future can complete,
+  // while the live TOTP countdown also makes pumpAndSettle unsafe. Jump first,
+  // then render one bounded frame instead.
+  await tester.pump();
 }
