@@ -87,11 +87,7 @@ void main() {
 
         final accountId = persisted.single.id;
         final codeFinder = find.byKey(Key('account-code-$accountId'));
-        await _pumpUntil(tester, codeFinder);
-        final displayedCode = tester
-            .widget<Text>(codeFinder)
-            .data!
-            .replaceAll(' ', '');
+        final displayedCode = await _pumpUntilTotpCode(tester, codeFinder);
         expect(displayedCode, matches(RegExp(r'^\d{6}$')));
         _phase('totp-code-rendered');
 
@@ -258,6 +254,27 @@ Future<void> _pumpUntil(
     await tester.pump(const Duration(milliseconds: 100));
   }
   await tester.pump(const Duration(milliseconds: 200));
+}
+
+Future<String> _pumpUntilTotpCode(
+  WidgetTester tester,
+  Finder finder, {
+  Duration timeout = const Duration(seconds: 30),
+}) async {
+  final deadline = DateTime.now().add(timeout);
+  final codePattern = RegExp(r'^\d{6}$');
+  while (true) {
+    if (finder.evaluate().length == 1) {
+      final code = (tester.widget<Text>(finder).data ?? '').replaceAll(' ', '');
+      if (codePattern.hasMatch(code)) {
+        return code;
+      }
+    }
+    if (DateTime.now().isAfter(deadline)) {
+      throw TestFailure('Timeout khi chờ mã TOTP hoàn tất render.');
+    }
+    await tester.pump(const Duration(milliseconds: 100));
+  }
 }
 
 Future<void> _scrollUntilVisible(WidgetTester tester, Finder finder) async {

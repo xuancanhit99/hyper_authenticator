@@ -60,6 +60,12 @@ mutation opt-in. Luồng tối thiểu:
 Harness operator phải tạo/xóa isolated user ngoài client và xác minh cleanup.
 Không truyền service-role key vào Flutter process.
 
+`integration_test/local_vault_smoke_test.dart` chạy trên private Linux keyring và
+Windows Credential Manager runner. Acceptance của bước render phải đợi nội dung
+mã TOTP hợp lệ, không chỉ đợi widget xuất hiện vì `FutureBuilder` có thể vẫn đang
+hiển thị placeholder. Scroll trong live app dùng jump + bounded pump; không dùng
+`pumpAndSettle()` khi countdown tiếp tục tạo frame.
+
 ## PostgreSQL contract
 
 ```bash
