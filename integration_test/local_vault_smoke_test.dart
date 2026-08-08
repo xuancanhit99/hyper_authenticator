@@ -134,10 +134,8 @@ void main() {
           tester,
           find.byKey(EditAccountPage.submitButtonKey),
         );
-        _phase('edit-submit-hit-testable');
-        await tester.tap(
-          find.byKey(EditAccountPage.submitButtonKey).hitTestable(),
-        );
+        _phase('edit-submit-visible');
+        await tester.tap(find.byKey(EditAccountPage.submitButtonKey));
         await _pumpUntil(tester, find.text(_updatedIssuer));
 
         final updated = await _readVault(repository);
@@ -154,7 +152,7 @@ void main() {
         final updatedActions = find.byKey(Key('account-actions-$accountId'));
         await _pumpUntil(tester, updatedActions);
         await tester.pump(const Duration(seconds: 1));
-        await tester.tap(updatedActions.hitTestable());
+        await tester.tap(updatedActions);
         await _pumpUntil(tester, find.text('Xóa'));
         await tester.tap(find.text('Xóa'));
         await _pumpUntil(tester, find.text('Xác nhận xóa'));
@@ -263,13 +261,10 @@ Future<void> _pumpUntil(
 
 Future<void> _scrollUntilVisible(WidgetTester tester, Finder finder) async {
   expect(finder, findsOneWidget);
-  final scrollable = find.ancestor(
-    of: finder,
-    matching: find.byType(Scrollable),
+  await Scrollable.ensureVisible(
+    tester.element(finder),
+    alignment: 0.5,
+    duration: const Duration(milliseconds: 200),
   );
-  expect(scrollable, findsOneWidget);
-  final position = tester.state<ScrollableState>(scrollable).position;
-  position.jumpTo(position.maxScrollExtent);
-  await tester.pump(const Duration(milliseconds: 200));
-  expect(finder.hitTestable(), findsOneWidget);
+  await tester.pumpAndSettle();
 }

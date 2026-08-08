@@ -65,7 +65,8 @@ provenance và public verification tái hiện được.
 | Backend gate sau khi đợi final postmaster PID 1 | Pass; loại bỏ race với initdb server tạm | 2026-08-09 |
 | PR #35 Windows local-vault smoke | Pass sau fix đầu nhưng tag Preview 6 tái hiện selector chọn nhầm ListView ẩn | 2026-08-09 |
 | Tag `v1.1.0-preview.6` | Failed CI, không tạo GitHub Release; giữ tag làm evidence bất biến | 2026-08-09 |
-| Fix Preview 7 | Chọn đúng Scrollable ancestor và jump tới max extent trước khi yêu cầu hit-testable | 2026-08-09 |
+| Fix Preview 7 vòng 1 | Chọn đúng Scrollable ancestor nhưng live Windows vẫn trả hit-testable rỗng | 2026-08-09 |
+| Fix Preview 7 vòng 2 | Center submit bằng ensureVisible; tap thật rồi dùng UI/vault outcome làm acceptance | 2026-08-09 |
 
 ## Tác động tài liệu
 
