@@ -1,9 +1,9 @@
 # Trạng thái dự án
 
 Baseline được audit ngày **5 tháng 8 năm 2026** trên nhánh
-`codex/minimal-e2ee`. Tên nhánh là lịch sử; source trong working tree đã chuyển
-sang account-managed automatic sync theo ADR-0020 và backend production đã được
-migrate cùng ngày. Working tree chưa commit.
+`codex/minimal-e2ee`. Tên nhánh là lịch sử; source đã chuyển sang
+account-managed automatic sync theo ADR-0020 và backend production đã được
+migrate cùng ngày.
 
 ## Kết luận
 

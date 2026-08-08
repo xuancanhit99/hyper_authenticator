@@ -19,7 +19,7 @@ fi
 
 make_fixture() {
   local root=$1
-  local version=${2:-1.1.0+10}
+  local version=${2:-1.1.0+14}
   local include_android=${3:-false}
   mkdir -p "$root/linux" "$root/windows" "$root/android"
   printf '%s' 'TEST_ONLY_DEBIAN_PACKAGE' \
@@ -72,7 +72,7 @@ printf '%s\n' '✓ Valid fixture tạo đúng năm release asset'
 
 android_input="$WORK_ROOT/android-input"
 android_output="$WORK_ROOT/android-output"
-make_fixture "$android_input" '1.1.0+10' true
+make_fixture "$android_input" '1.1.0+14' true
 mkdir -p "$android_output"
 REQUIRE_ANDROID_SIGNED_APK=true \
   "$ROOT/scripts/agent/check_github_preview_assets.sh" \
@@ -102,7 +102,7 @@ checksum_input="$WORK_ROOT/checksum-input"
 checksum_output="$WORK_ROOT/checksum-output"
 make_fixture "$checksum_input"
 printf '%s' 'TAMPERED' >> \
-  "$checksum_input/linux/hyper-authenticator_1.1.0+10_amd64.deb"
+  "$checksum_input/linux/hyper-authenticator_1.1.0+14_amd64.deb"
 mkdir -p "$checksum_output"
 expect_failure checksum \
   "$ROOT/scripts/agent/check_github_preview_assets.sh" \
@@ -135,9 +135,9 @@ expect_failure forbidden-artifact \
 target_input="$WORK_ROOT/target-input"
 target_output="$WORK_ROOT/target-output"
 make_fixture "$target_input"
-checksum_path="$target_input/linux/hyper-authenticator_1.1.0+10_amd64.deb.sha256"
+checksum_path="$target_input/linux/hyper-authenticator_1.1.0+14_amd64.deb.sha256"
 recorded_hash=$("${hash_command[@]}" \
-  "$target_input/linux/hyper-authenticator_1.1.0+10_amd64.deb" | awk '{print $1}')
+  "$target_input/linux/hyper-authenticator_1.1.0+14_amd64.deb" | awk '{print $1}')
 printf '%s  %s\n' "$recorded_hash" '../outside.deb' > "$checksum_path"
 mkdir -p "$target_output"
 expect_failure checksum-target \

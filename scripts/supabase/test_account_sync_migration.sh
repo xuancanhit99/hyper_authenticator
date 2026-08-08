@@ -21,7 +21,13 @@ docker run --detach --name "$CONTAINER" \
   "$IMAGE" >/dev/null
 
 attempt=0
-until docker exec "$CONTAINER" pg_isready -U postgres >/dev/null 2>&1; do
+# Supabase Postgres dùng một postmaster tạm trong initdb rồi chủ động tắt nó
+# trước khi exec postmaster cuối với PID 1. Chỉ đợi pg_isready sẽ race vào đúng
+# cửa sổ này và migration test bị ngắt giữa chừng khi initdb shutdown.
+until docker exec "$CONTAINER" sh -c \
+  'test "$(head -n 1 /var/lib/postgresql/data/postmaster.pid)" = 1' \
+  >/dev/null 2>&1 && \
+  docker exec "$CONTAINER" pg_isready -U postgres >/dev/null 2>&1; do
   attempt=$((attempt + 1))
   if [[ "$attempt" -ge 60 ]]; then
     docker logs "$CONTAINER" >&2

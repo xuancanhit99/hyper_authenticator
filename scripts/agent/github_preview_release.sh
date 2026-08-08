@@ -109,8 +109,19 @@ notes_path="$work_dir/RELEASE_NOTES.md"
 cat > "$notes_path" <<EOF
 # Hyper Authenticator $TAG
 
-Đây là **GitHub Preview unsigned**, dành cho người dùng muốn thử bản desktop trước
-khi dự án hoàn tất certificate/signing và quy trình phát hành trên các app store.
+Đây là **GitHub Preview** dành cho người dùng muốn thử ứng dụng trước khi dự án
+hoàn tất quy trình phát hành trên các app store. Android APK đã ký bằng app
+signing certificate của dự án; package Windows/Linux chưa code-sign.
+
+## Điểm mới
+
+- Đăng nhập là tùy chọn: không đăng nhập vẫn dùng vault local bình thường.
+- Khi đăng nhập, tài khoản TOTP tự đồng bộ qua cloud và nhận tín hiệu thay đổi
+  Realtime; thêm/sửa/xóa được áp dụng cho cùng tài khoản trên các thiết bị.
+- Hỗ trợ import/export QR chuẩn \`otpauth\` và import Google Authenticator,
+  bao gồm migration nhiều QR.
+- Bổ sung ba visual style, light/dark mode và giao diện Settings gọn hơn.
+- Cải thiện điều hướng, privacy shield, accessibility và trải nghiệm scanner.
 
 ## Tải xuống
 
