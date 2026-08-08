@@ -134,6 +134,7 @@ void main() {
           tester,
           find.byKey(EditAccountPage.submitButtonKey),
         );
+        _phase('edit-submit-hit-testable');
         await tester.tap(
           find.byKey(EditAccountPage.submitButtonKey).hitTestable(),
         );
@@ -261,17 +262,14 @@ Future<void> _pumpUntil(
 }
 
 Future<void> _scrollUntilVisible(WidgetTester tester, Finder finder) async {
-  final listView = find.byType(ListView).last;
   expect(finder, findsOneWidget);
-  await tester.ensureVisible(finder);
-  await tester.pump(const Duration(milliseconds: 100));
-  for (
-    var attempt = 0;
-    finder.hitTestable().evaluate().isEmpty && attempt < 10;
-    attempt++
-  ) {
-    await tester.drag(listView, const Offset(0, -120), warnIfMissed: false);
-    await tester.pump(const Duration(milliseconds: 100));
-  }
+  final scrollable = find.ancestor(
+    of: finder,
+    matching: find.byType(Scrollable),
+  );
+  expect(scrollable, findsOneWidget);
+  final position = tester.state<ScrollableState>(scrollable).position;
+  position.jumpTo(position.maxScrollExtent);
+  await tester.pump(const Duration(milliseconds: 200));
   expect(finder.hitTestable(), findsOneWidget);
 }
