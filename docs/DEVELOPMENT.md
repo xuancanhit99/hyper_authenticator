@@ -96,6 +96,26 @@ flutter build linux --release --dart-define-from-file=.env
 Chỉ target hiện tại mới chạy được trên host phù hợp; Windows/Linux hosted CI giữ
 evidence cho hai platform đó.
 
+## Chrome Extension development
+
+Foundation MV3 có entrypoint riêng và không dùng `.env.server`:
+
+```bash
+scripts/agent/build_chrome_extension.sh .env
+```
+
+Kết quả:
+
+- `build/chrome-extension/unpacked`: load qua `chrome://extensions` → bật
+  Developer mode → **Load unpacked**;
+- `build/chrome-extension/hyper-authenticator-chrome-extension.zip`: preview
+  package, manifest ở root.
+
+Không load extension với local vault thật ở giai đoạn foundation. Dùng Chrome
+profile test riêng và test account/secret fixture không production. Harness
+reject remote executable code/PWA worker; nó không thay thế clean-profile,
+restart, tamper và auth-sync acceptance.
+
 ## Android signing
 
 Keystore nằm ngoài repository. Local `android/key.properties` là ignored và chứa

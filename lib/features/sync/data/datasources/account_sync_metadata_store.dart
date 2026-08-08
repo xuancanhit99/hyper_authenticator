@@ -1,6 +1,6 @@
 import 'dart:convert';
 
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:hyper_authenticator/core/storage/secure_key_value_store.dart';
 import 'package:hyper_authenticator/features/sync/domain/entities/account_sync_metadata.dart';
 import 'package:hyper_authenticator/features/sync/domain/repositories/account_sync_metadata_repository.dart';
 import 'package:injectable/injectable.dart';
@@ -12,7 +12,7 @@ class AccountSyncMetadataStore implements AccountSyncMetadataRepository {
 
   AccountSyncMetadataStore(this._storage);
 
-  final FlutterSecureStorage _storage;
+  final SecureKeyValueStore _storage;
 
   @override
   Future<AccountSyncMetadata> read() async {

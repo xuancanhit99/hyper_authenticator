@@ -31,6 +31,10 @@ physical-device hoặc production evidence.
   fallback, own-topic authorization, client-send denial và payload allowlist.
 - Theme: six style/brightness combinations, transition opacity, persistence race,
   cache repair và 320 px/200% accessibility.
+- Chrome Extension: Supabase session/PKCE namespace đi qua secure-store; native
+  local-vault regression vẫn pass sau storage abstraction. Package gate kiểm tra
+  MV3 Side Panel/CSP/permission/host allowlist, local CanvasKit/WASM/Roboto,
+  không CDN executable/PWA worker và vault WebCrypto contract.
 
 ## Widget/navigation
 
@@ -104,6 +108,7 @@ runbook phải lưu runtime evidence riêng.
 | Windows | release/NSIS | Credential Manager, Windows Hello, installer upgrade |
 | Linux | release/deb | Secret Service/keyring, desktop lifecycle, account sync |
 | Web | release/Nginx | local TOTP, camera, reset-password và account sync |
+| Chrome Extension | MV3 ZIP/unpacked | clean profile, Side Panel, IndexedDB vault restart/tamper, session restore và foreground sync |
 
 Simulator/emulator bổ sung nhưng không thay physical camera/biometric evidence.
 

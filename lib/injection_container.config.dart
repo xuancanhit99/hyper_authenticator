@@ -18,6 +18,7 @@ import 'package:supabase_flutter/supabase_flutter.dart' as _i454;
 import 'package:uuid/uuid.dart' as _i706;
 
 import 'core/config/app_config.dart' as _i828;
+import 'core/storage/secure_key_value_store.dart' as _i697;
 import 'features/auth/data/datasources/auth_remote_data_source.dart' as _i767;
 import 'features/auth/data/repositories/auth_repository_impl.dart' as _i111;
 import 'features/auth/domain/repositories/auth_repository.dart' as _i1015;
@@ -79,16 +80,14 @@ extension GetItInjectableX on _i174.GetIt {
       () => registerModule.flutterSecureStorage,
     );
     gh.lazySingleton<_i706.Uuid>(() => registerModule.uuid);
+    gh.lazySingleton<_i697.SecureKeyValueStore>(
+      () =>
+          registerModule.secureKeyValueStore(gh<_i558.FlutterSecureStorage>()),
+    );
     gh.factory<_i421.SettingsBloc>(
       () => _i421.SettingsBloc(
         sharedPreferences: gh<_i460.SharedPreferences>(),
         localAuthentication: gh<_i152.LocalAuthentication>(),
-      ),
-    );
-    gh.lazySingleton<_i674.AuthenticatorLocalDataSource>(
-      () => _i674.AuthenticatorLocalDataSourceImpl(
-        secureStorage: gh<_i558.FlutterSecureStorage>(),
-        uuid: gh<_i706.Uuid>(),
       ),
     );
     gh.lazySingleton<_i454.SupabaseClient>(
@@ -100,9 +99,6 @@ extension GetItInjectableX on _i174.GetIt {
         sharedPreferences: gh<_i460.SharedPreferences>(),
       ),
     );
-    gh.lazySingleton<_i41.AccountSyncMetadataRepository>(
-      () => _i194.AccountSyncMetadataStore(gh<_i558.FlutterSecureStorage>()),
-    );
     gh.lazySingleton<_i767.AuthRemoteDataSource>(
       () => _i767.AuthRemoteDataSourceImpl(
         gh<_i454.SupabaseClient>(),
@@ -111,6 +107,12 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i817.CloudAccountRepository>(
       () => _i146.CloudAccountRemoteDataSource(gh<_i454.SupabaseClient>()),
+    );
+    gh.lazySingleton<_i674.AuthenticatorLocalDataSource>(
+      () => _i674.AuthenticatorLocalDataSourceImpl(
+        secureStorage: gh<_i697.SecureKeyValueStore>(),
+        uuid: gh<_i706.Uuid>(),
+      ),
     );
     gh.lazySingleton<_i608.AuthenticatorRepository>(
       () => _i166.AuthenticatorRepositoryImpl(
@@ -125,6 +127,9 @@ extension GetItInjectableX on _i174.GetIt {
       () => _i387.LocalSensitiveActionAuthenticator(
         gh<_i152.LocalAuthentication>(),
       ),
+    );
+    gh.lazySingleton<_i41.AccountSyncMetadataRepository>(
+      () => _i194.AccountSyncMetadataStore(gh<_i697.SecureKeyValueStore>()),
     );
     gh.factory<_i356.AddAccount>(
       () => _i356.AddAccount(gh<_i608.AuthenticatorRepository>()),

@@ -32,6 +32,25 @@ Commit marker publish một generation đã verify. Reader có thể lùi về g
 hợp lệ trước; compaction giữ hai generation gần nhất. Write/delete/import/replace
 được serialize.
 
+## Chrome Extension encrypted store
+
+Chrome Extension không đổi key/JSON của local vault v2 hoặc sync metadata. Nó
+đổi **container** phía dưới thành IndexedDB origin của extension:
+
+```text
+database: hyper-authenticator-extension-v1
+keys[vault-key]     = CryptoKey AES-256-GCM, extractable=false
+records[logicalKey] = { iv: ArrayBuffer(12), ciphertext: ArrayBuffer }
+```
+
+`logicalKey` giữ nguyên `ha:v2:*`, `ha:cloud-sync:v1:metadata` hoặc namespace
+Supabase extension. AAD là `hyper-authenticator-extension-v1:<logicalKey>`;
+copy ciphertext giữa key khác phải decrypt fail. Raw key không có serialization,
+không ghi vào localStorage/chrome.storage và không portable sang profile khác.
+
+Supabase session/PKCE record là implementation detail tách namespace, không là
+model account/cloud protocol và không được log.
+
 ## Sync metadata v1
 
 Secure-storage key:

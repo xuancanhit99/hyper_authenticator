@@ -33,6 +33,32 @@ Data
 GetIt/Injectable quản lý dependency. `injection_container.config.dart` là output
 generated, không sửa thủ công.
 
+## Chrome Extension foundation
+
+`lib/main_extension.dart` là entrypoint riêng cho Manifest V3 Side Panel. Nó
+tái dùng TOTP domain, Accounts/Auth/Sync BLoC và Supabase RPC nhưng không import
+primary `AppRouter`/mobile scanner. Vì vậy package MVP chỉ có list/search/copy,
+manual add/edit/delete, Settings và account sync; không có QR scanner/import
+hoặc protected QR export.
+
+`SecureKeyValueStore` tách feature storage khỏi plugin:
+
+- native/hosted Web giữ `FlutterSecureStorage` adapter hiện có;
+- Chrome Extension compile-time flag dùng bridge `chrome_extension/vault.js`;
+- bridge giữ AES-256-GCM `CryptoKey` non-extractable trong IndexedDB và record
+  ciphertext riêng; local vault v2 và sync metadata không đổi serialization;
+- Supabase session/PKCE storage extension dùng cùng vault namespace, không dùng
+  `localStorage`.
+- CanvasKit extension bundle kèm Roboto có glyph tiếng Việt trong FontManifest;
+  không dựa vào Google Fonts vì MV3 CSP chỉ cho phép resource self-hosted.
+
+Extension local vault không chia sẻ trực tiếp với website/native storage. Sau
+login, account-managed sync là đường chia sẻ duy nhất. Side Panel chạy countdown
+và foreground sync; MV3 service worker chỉ mở panel, không chứa credential/timer.
+
+Trạng thái: foundation source/package đã có; Chrome profile runtime/store
+evidence chưa có, xem ADR-0022 và `tasks/2026-08-chrome-extension.md`.
+
 ## Bootstrap
 
 `AppConfig` đọc compile-time public config:

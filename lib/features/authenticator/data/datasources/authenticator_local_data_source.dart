@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:hyper_authenticator/core/storage/secure_key_value_store.dart';
 import 'package:hyper_authenticator/features/authenticator/domain/entities/account_import_summary.dart';
 import 'package:hyper_authenticator/features/authenticator/domain/entities/authenticator_account.dart';
 import 'package:injectable/injectable.dart';
@@ -57,7 +57,7 @@ class AuthenticatorLocalDataSourceImpl implements AuthenticatorLocalDataSource {
     r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$',
   );
 
-  final FlutterSecureStorage secureStorage;
+  final SecureKeyValueStore secureStorage;
   final Uuid uuid;
 
   Future<void> _operationTail = Future<void>.value();

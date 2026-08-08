@@ -1,0 +1,29 @@
+{
+  "manifest_version": 3,
+  "name": "Hyper Authenticator",
+  "description": "Tạo mã TOTP local-first và đồng bộ tùy chọn với tài khoản HyperZ.",
+  "version": "1.1.0",
+  "minimum_chrome_version": "114",
+  "action": {
+    "default_title": "Mở Hyper Authenticator"
+  },
+  "background": {
+    "service_worker": "service_worker.js",
+    "type": "module"
+  },
+  "side_panel": {
+    "default_path": "index.html"
+  },
+  "permissions": [
+    "sidePanel"
+  ],
+  "host_permissions": [
+    "https://supabase-api.vnpay.dev/*"
+  ],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'; connect-src 'self' https://supabase-api.vnpay.dev wss://supabase-api.vnpay.dev"
+  },
+  "icons": {
+    "128": "icons/icon-192.png"
+  }
+}

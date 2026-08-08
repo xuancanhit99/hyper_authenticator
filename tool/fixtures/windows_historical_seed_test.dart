@@ -1,6 +1,7 @@
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:hyper_authenticator/core/storage/secure_key_value_store.dart';
 import 'package:hyper_authenticator/features/authenticator/data/datasources/authenticator_local_data_source.dart';
 import 'package:hyper_authenticator/features/authenticator/domain/entities/authenticator_account.dart';
 import 'package:integration_test/integration_test.dart';
@@ -34,7 +35,7 @@ void main() {
       const storage = FlutterSecureStorage();
       await storage.deleteAll();
       final dataSource = AuthenticatorLocalDataSourceImpl(
-        secureStorage: storage,
+        secureStorage: FlutterSecureKeyValueStore(storage),
         uuid: const Uuid(),
       );
       await dataSource.saveAccount(_testAccount);

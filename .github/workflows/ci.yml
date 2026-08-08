@@ -165,6 +165,47 @@ jobs:
         run: bash scripts/agent/web_runtime_smoke.sh
       - run: bash web-deployment/test.sh
 
+  chrome-extension:
+    name: Chrome Extension MV3 package
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+      SUPABASE_PUBLISHABLE_KEY: ${{ vars.SUPABASE_PUBLISHABLE_KEY }}
+      PASSWORD_RECOVERY_URL: ${{ vars.PASSWORD_RECOVERY_URL }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - name: Tạo public runtime config và build Chrome Extension
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          config_path="$RUNNER_TEMP/chrome-extension-runtime-config.json"
+          jq -n \
+            --arg supabase_url "$SUPABASE_URL" \
+            --arg publishable_key "$SUPABASE_PUBLISHABLE_KEY" \
+            --arg recovery_url "$PASSWORD_RECOVERY_URL" \
+            '{
+              SUPABASE_URL: $supabase_url,
+              SUPABASE_PUBLISHABLE_KEY: $publishable_key,
+              PASSWORD_RECOVERY_URL: $recovery_url
+            }' > "$config_path"
+          dart run tool/agent/check_release_config.dart "$config_path"
+          scripts/agent/build_chrome_extension.sh "$config_path"
+      - name: Lưu Chrome Extension preview artifact trong 14 ngày
+        uses: actions/upload-artifact@v7
+        with:
+          name: hyper-authenticator-chrome-extension-${{ github.sha }}
+          path: build/chrome-extension/hyper-authenticator-chrome-extension.zip
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
+
   linux:
     name: Linux release and isolated vault smoke
     runs-on: ubuntu-22.04
