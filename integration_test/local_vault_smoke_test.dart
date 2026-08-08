@@ -130,6 +130,7 @@ void main() {
         );
         FocusManager.instance.primaryFocus?.unfocus();
         await tester.pump(const Duration(milliseconds: 300));
+        _phase('edit-submit-scroll-start');
         await _scrollUntilVisible(
           tester,
           find.byKey(EditAccountPage.submitButtonKey),
@@ -266,5 +267,7 @@ Future<void> _scrollUntilVisible(WidgetTester tester, Finder finder) async {
     alignment: 0.5,
     duration: const Duration(milliseconds: 200),
   );
-  await tester.pumpAndSettle();
+  // TOTP countdown keeps scheduling frames in the live app, so pumpAndSettle
+  // can wait until the test-level timeout even after this scroll has finished.
+  await tester.pump(const Duration(milliseconds: 300));
 }
