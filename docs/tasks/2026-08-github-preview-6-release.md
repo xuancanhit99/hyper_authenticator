@@ -67,6 +67,8 @@ provenance và public verification tái hiện được.
 | Tag `v1.1.0-preview.6` | Failed CI, không tạo GitHub Release; giữ tag làm evidence bất biến | 2026-08-09 |
 | Fix Preview 7 vòng 1 | Chọn đúng Scrollable ancestor nhưng live Windows vẫn trả hit-testable rỗng | 2026-08-09 |
 | Fix Preview 7 vòng 2 | Center submit bằng ensureVisible; tap thật rồi dùng UI/vault outcome làm acceptance | 2026-08-09 |
+| Root cause UI | Submit ở cuối ListView có 0px bottom clearance; live Windows đặt tâm nút tại y=632/640 | 2026-08-09 |
+| Fix Preview 7 vòng 3 | Thêm 64px + safe-area trailing padding và regression khóa clearance >=48px | 2026-08-09 |
 
 ## Tác động tài liệu
 

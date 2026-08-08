@@ -62,6 +62,48 @@ void main() {
     expect(find.byTooltip('Ẩn secret key'), findsOneWidget);
   });
 
+  testWidgets('nút lưu vào trọn vùng chạm ở viewport Windows 384x640', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(384, 640));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final repository = _MemoryAuthenticatorRepository();
+    final accountsBloc = _accountsBloc(repository);
+    addTearDown(accountsBloc.close);
+
+    await tester.pumpWidget(
+      BlocProvider.value(
+        value: accountsBloc,
+        child: const MaterialApp(home: EditAccountPage(account: _account)),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final submit = find.byKey(EditAccountPage.submitButtonKey);
+    await tester.scrollUntilVisible(
+      submit,
+      200,
+      scrollable: find
+          .descendant(
+            of: find.byType(ListView),
+            matching: find.byType(Scrollable),
+          )
+          .first,
+    );
+    await Scrollable.ensureVisible(
+      tester.element(submit),
+      alignment: 0.5,
+      duration: const Duration(milliseconds: 200),
+    );
+    await tester.pumpAndSettle();
+
+    expect(submit.hitTestable(), findsOneWidget);
+    final bottomClearance =
+        tester.getBottomRight(find.byType(ListView)).dy -
+        tester.getBottomRight(submit).dy;
+    expect(bottomClearance, greaterThanOrEqualTo(48));
+  });
+
   testWidgets('chỉ đóng edit route sau success đúng operation', (tester) async {
     final updateGate = Completer<void>();
     final repository = _MemoryAuthenticatorRepository(updateGate: updateGate);

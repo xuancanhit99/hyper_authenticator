@@ -182,6 +182,9 @@ class _EditAccountPageState extends State<EditAccountPage> {
             child: Form(
               key: _formKey,
               child: ListView(
+                padding: EdgeInsets.only(
+                  bottom: 64 + MediaQuery.paddingOf(context).bottom,
+                ),
                 children: [
                   Padding(
                     padding: const EdgeInsets.symmetric(vertical: 16),
