@@ -110,24 +110,18 @@ class AccountsBloc extends Bloc<AccountsEvent, AccountsState> {
     DeleteAccountRequested event,
     Emitter<AccountsState> emit,
   ) async {
-    // Optionally emit a loading state specific to deleting
-    // emit(AccountDeleting());
     final failureOrSuccess = await deleteAccount(
       DeleteAccountParams(accountId: event.accountId),
     );
 
     await failureOrSuccess.fold(
-      (failure) async => emit(AccountsError(_mapFailureToMessage(failure))),
+      (failure) async {
+        emit(AccountDeleteFailure(_mapFailureToMessage(failure)));
+        add(LoadAccounts());
+      },
       (_) async {
-        // After successfully deleting, reload the list
-        add(LoadAccounts()); // Trigger reload
-        // Alternatively, update state directly:
-        // if (state is AccountsLoaded) {
-        //   final updatedList = (state as AccountsLoaded).accounts.where((acc) => acc.id != event.accountId).toList();
-        //   emit(AccountsLoaded(updatedList));
-        // } else {
-        //    add(LoadAccounts()); // Fallback
-        // }
+        emit(const AccountDeleteSuccess());
+        add(LoadAccounts());
       },
     );
   }

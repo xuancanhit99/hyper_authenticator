@@ -109,8 +109,19 @@ notes_path="$work_dir/RELEASE_NOTES.md"
 cat > "$notes_path" <<EOF
 # Hyper Authenticator $TAG
 
-Đây là **GitHub Preview unsigned**, dành cho người dùng muốn thử bản desktop trước
-khi dự án hoàn tất certificate/signing và quy trình phát hành trên các app store.
+Đây là **GitHub Preview** dành cho người dùng muốn thử ứng dụng trước khi dự án
+hoàn tất quy trình phát hành trên các app store. Android APK đã ký bằng app
+signing certificate của dự án; package Windows/Linux chưa code-sign.
+
+## Điểm mới
+
+- Đăng nhập là tùy chọn: không đăng nhập vẫn dùng vault local bình thường.
+- Khi đăng nhập, tài khoản TOTP tự đồng bộ qua cloud và nhận tín hiệu thay đổi
+  Realtime; thêm/sửa/xóa được áp dụng cho cùng tài khoản trên các thiết bị.
+- Hỗ trợ import/export QR chuẩn \`otpauth\` và import Google Authenticator,
+  bao gồm migration nhiều QR.
+- Bổ sung ba visual style, light/dark mode và giao diện Settings gọn hơn.
+- Cải thiện điều hướng, privacy shield, accessibility và trải nghiệm scanner.
 
 ## Tải xuống
 
@@ -128,8 +139,8 @@ khi dự án hoàn tất certificate/signing và quy trình phát hành trên c�
 - Android APK đã ký nhưng vẫn là preview; biometric/camera trên thiết bị thật và
   store review chưa hoàn tất. iOS và macOS chưa được đính kèm.
 - SMTP production chưa được owner cấu hình; email khôi phục mật khẩu có thể chưa tới mailbox thật.
-- Luôn giữ recovery key E2EE ở nơi an toàn. Mất recovery key có thể làm mất khả năng
-  khôi phục encrypted cloud vault trên thiết bị mới.
+- Khi đăng nhập, mã được đồng bộ tự động qua Supabase Vault. Đây là mã hóa do
+  server quản lý, không phải zero-knowledge E2EE.
 - Không gửi credential qua public issue. Báo cáo lỗ hổng riêng tư tại
   https://github.com/$repo/security/advisories/new
 

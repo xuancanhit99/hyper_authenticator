@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:hyper_authenticator/core/widgets/responsive_content.dart';
 import 'package:hyper_authenticator/features/authenticator/presentation/bloc/local_auth_bloc.dart';
-// Imports no longer needed after removing listener
-// import 'package:go_router/go_router.dart';
-// import 'package:hyper_authenticator/core/router/app_router.dart';
 
 class LockScreenPage extends StatefulWidget {
   const LockScreenPage({super.key});
@@ -13,108 +11,147 @@ class LockScreenPage extends StatefulWidget {
 }
 
 class _LockScreenPageState extends State<LockScreenPage> {
-  bool _authTriggered = false; // Flag to prevent multiple triggers
+  bool _authTriggered = false;
 
   @override
   void initState() {
     super.initState();
-    // Use addPostFrameCallback to ensure context is available and bloc is ready
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _triggerAuthenticationIfNeeded();
     });
   }
 
   void _triggerAuthenticationIfNeeded() {
-    // Check if mounted before accessing context after async gap
     if (!mounted) return;
 
     final localAuthBloc = context.read<LocalAuthBloc>();
-    // Trigger auth automatically only if required and not already triggered
     if (localAuthBloc.state is LocalAuthRequired && !_authTriggered) {
-      setState(() {
-        _authTriggered = true; // Mark as triggered
-      });
+      setState(() => _authTriggered = true);
       localAuthBloc.add(Authenticate());
     }
   }
 
   @override
-  Widget build(BuildContext context) {
-    // Optional: Use BlocListener if you need to react to state changes *after* initial build
-    // For example, if auth fails and returns to LocalAuthRequired, you might want to re-trigger
-    // or show a message. For now, initState handles the initial trigger.
+  Widget build(BuildContext context) => Scaffold(
+    body: SafeArea(
+      child: ResponsiveScrollableContent(
+        maxWidth: 420,
+        child: BlocBuilder<LocalAuthBloc, LocalAuthState>(
+          builder: (context, state) => Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const _LockBrandMark(),
+              const SizedBox(height: 28),
+              Text(
+                'Ứng dụng đang được khóa',
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                'Xác thực bằng Face ID, vân tay hoặc mã khóa thiết bị để tiếp tục.',
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              ),
+              if (state is LocalAuthError) ...[
+                const SizedBox(height: 20),
+                Semantics(
+                  liveRegion: true,
+                  child: Card(
+                    color: Theme.of(context).colorScheme.errorContainer,
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Icon(
+                            Icons.error_outline,
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.onErrorContainer,
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              state.message,
+                              style: TextStyle(
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onErrorContainer,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+              const SizedBox(height: 28),
+              FilledButton.icon(
+                icon: const Icon(Icons.fingerprint_rounded),
+                label: const Text('Mở khóa'),
+                onPressed: () =>
+                    context.read<LocalAuthBloc>().add(Authenticate()),
+              ),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
+}
 
-    return Scaffold(
-      // Optionally add an AppBar
-      // appBar: AppBar(title: const Text('App Locked')),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+class _LockBrandMark extends StatelessWidget {
+  const _LockBrandMark();
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Center(
+      child: SizedBox(
+        width: 96,
+        height: 96,
+        child: Stack(
+          clipBehavior: Clip.none,
           children: [
-            // Replace Icon with Image.asset
-            Image.asset(
-              'assets/logos/hyper-logo-green-non-bg.png', // Assuming this is the correct path
-              height: 80, // Set height similar to the original icon size
-              // Optional: Add width, fit, errorBuilder etc. if needed
-              // width: 80,
-              // fit: BoxFit.contain,
-              errorBuilder: (context, error, stackTrace) {
-                // Fallback if logo fails to load
-                return const Icon(
-                  Icons.lock_outline,
-                  size: 80,
-                  color: Colors.grey,
-                );
-              },
-            ),
-            const SizedBox(height: 20),
-            const Text(
-              'Ứng dụng đã khóa',
-              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 10),
-            const Text('Vui lòng xác thực để tiếp tục.'),
-            const SizedBox(height: 30),
-            ElevatedButton.icon(
-              icon: const Icon(Icons.fingerprint), // Or appropriate icon
-              label: const Text('Mở khóa'),
-              onPressed: () {
-                context.read<LocalAuthBloc>().add(Authenticate());
-              },
-              style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 30,
-                  vertical: 15,
+            DecoratedBox(
+              decoration: BoxDecoration(
+                color: scheme.surfaceContainerHigh,
+                borderRadius: BorderRadius.circular(28),
+                border: Border.all(color: scheme.outlineVariant),
+              ),
+              child: Center(
+                child: Image.asset(
+                  'assets/logos/hyper-logo-green-non-bg-alt.png',
+                  width: 58,
+                  height: 58,
+                  errorBuilder: (context, error, stackTrace) => Icon(
+                    Icons.shield_outlined,
+                    size: 52,
+                    color: scheme.primary,
+                  ),
                 ),
               ),
             ),
-            // Display error messages from the bloc if any
-            BlocBuilder<LocalAuthBloc, LocalAuthState>(
-              builder: (context, state) {
-                if (state is LocalAuthError) {
-                  // Reset the trigger flag if an error occurs, allowing retry
-                  // Note: This might cause immediate re-trigger if error state persists.
-                  // Consider more sophisticated retry logic if needed.
-                  // WidgetsBinding.instance.addPostFrameCallback((_) {
-                  //   if (mounted) {
-                  //     setState(() { _authTriggered = false; });
-                  //   }
-                  // });
-                  return Padding(
-                    padding: const EdgeInsets.only(top: 20.0),
-                    child: Text(
-                      state.message,
-                      style: const TextStyle(color: Colors.red),
-                      textAlign: TextAlign.center,
-                    ),
-                  );
-                }
-                return const SizedBox.shrink(); // No error
-              },
+            Positioned(
+              right: -4,
+              bottom: -4,
+              child: CircleAvatar(
+                radius: 16,
+                backgroundColor: scheme.primary,
+                foregroundColor: scheme.onPrimary,
+                child: const Icon(Icons.lock_rounded, size: 17),
+              ),
             ),
           ],
         ),
-      ), // Close Center
-    ); // Close Scaffold and return statement
+      ),
+    );
   }
 }

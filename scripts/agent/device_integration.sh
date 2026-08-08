@@ -42,3 +42,8 @@ flutter test integration_test/local_vault_smoke_test.dart \
   -d "$DEVICE_ID" \
   --dart-define-from-file="$ENV_FILE" \
   --dart-define=ALLOW_DEVICE_TEST_VAULT_RESET=true
+
+flutter test integration_test/import_export_roundtrip_smoke_test.dart \
+  -d "$DEVICE_ID" \
+  --dart-define-from-file="$ENV_FILE" \
+  --dart-define=ALLOW_DEVICE_TEST_VAULT_RESET=true

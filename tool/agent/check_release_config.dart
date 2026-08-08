@@ -8,7 +8,6 @@ const allowedKeys = <String>{
   'SUPABASE_PUBLISHABLE_KEY',
   'SUPABASE_ANON_KEY',
   'PASSWORD_RECOVERY_URL',
-  'ALLOW_INSECURE_PLAINTEXT_SYNC',
 };
 
 void main(List<String> arguments) {
@@ -44,23 +43,15 @@ void main(List<String> arguments) {
       );
     }
 
-    final plaintextFlag = values['ALLOW_INSECURE_PLAINTEXT_SYNC'] ?? 'false';
-    if (plaintextFlag != 'true' && plaintextFlag != 'false') {
-      throw const FormatException(
-        'ALLOW_INSECURE_PLAINTEXT_SYNC phải là true hoặc false',
-      );
-    }
-
     final config = PublicRuntimeConfig.validate(
       supabaseUrl: values['SUPABASE_URL'] ?? '',
       supabasePublishableKey: publishableKey ?? legacyAnonKey ?? '',
       passwordRecoveryUrl: values['PASSWORD_RECOVERY_URL'] ?? '',
-      allowInsecurePlaintextSync: plaintextFlag == 'true',
       releaseMode: true,
     );
     stdout.writeln(
       config.cloudEnabled
-          ? 'Release config pass: cloud dùng public key, HTTPS URL và plaintext path đã retired.'
+          ? 'Release config pass: cloud dùng public key và HTTPS URL.'
           : 'Release config pass: local-only, không cấu hình cloud.',
     );
   } on FormatException catch (error) {

@@ -2,12 +2,19 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hyper_authenticator/core/router/app_router.dart';
+import 'package:hyper_authenticator/core/widgets/responsive_content.dart';
 import 'package:hyper_authenticator/features/authenticator/domain/entities/authenticator_account.dart';
 import 'package:hyper_authenticator/features/authenticator/presentation/bloc/accounts_bloc.dart';
 import 'package:hyper_authenticator/features/authenticator/presentation/widgets/account_avatar.dart';
 
 class EditAccountPage extends StatefulWidget {
   static const submitButtonKey = Key('edit-account-submit');
+  static const issuerFieldKey = Key('edit-account-issuer');
+  static const accountNameFieldKey = Key('edit-account-name');
+  static const secretFieldKey = Key('edit-account-secret');
+  static const algorithmFieldKey = Key('edit-account-algorithm');
+  static const digitsFieldKey = Key('edit-account-digits');
+  static const periodFieldKey = Key('edit-account-period');
 
   final AuthenticatorAccount account;
 
@@ -29,6 +36,7 @@ class _EditAccountPageState extends State<EditAccountPage> {
   late TextEditingController _digitsController;
   late TextEditingController _periodController;
   bool _isSubmitting = false;
+  bool _obscureSecret = true;
   Object? _activeOperationToken;
 
   @override
@@ -131,8 +139,12 @@ class _EditAccountPageState extends State<EditAccountPage> {
 
   void _showError(String message) {
     if (mounted) {
+      final colorScheme = Theme.of(context).colorScheme;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message), backgroundColor: Colors.red),
+        SnackBar(
+          content: Text(message, style: TextStyle(color: colorScheme.onError)),
+          backgroundColor: colorScheme.error,
+        ),
       );
     }
   }
@@ -163,123 +175,149 @@ class _EditAccountPageState extends State<EditAccountPage> {
             }
           }
         },
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Form(
-            key: _formKey,
-            child: ListView(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  child: Center(
-                    child: AccountAvatar(
-                      issuer: _issuerController.text,
-                      size: 72,
+        child: MaxWidthContent(
+          maxWidth: 640,
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Form(
+              key: _formKey,
+              child: ListView(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    child: Center(
+                      child: AccountAvatar(
+                        issuer: _issuerController.text,
+                        size: 72,
+                      ),
                     ),
                   ),
-                ),
-                TextFormField(
-                  controller: _issuerController,
-                  decoration: const InputDecoration(
-                    labelText: 'Nhà cung cấp (ví dụ: Google, GitHub)',
-                    hintText: 'Nhập tên nhà cung cấp',
+                  TextFormField(
+                    key: EditAccountPage.issuerFieldKey,
+                    controller: _issuerController,
+                    decoration: const InputDecoration(
+                      labelText: 'Nhà cung cấp (ví dụ: Google, GitHub)',
+                      hintText: 'Nhập tên nhà cung cấp',
+                    ),
+                    validator: (value) => (value == null || value.isEmpty)
+                        ? 'Vui lòng nhập nhà cung cấp.'
+                        : null,
                   ),
-                  validator: (value) => (value == null || value.isEmpty)
-                      ? 'Vui lòng nhập nhà cung cấp.'
-                      : null,
-                ),
-                const SizedBox(height: 16),
-                TextFormField(
-                  controller: _accountNameController,
-                  decoration: const InputDecoration(
-                    labelText: 'Tên tài khoản (ví dụ: user@example.com)',
+                  const SizedBox(height: 16),
+                  TextFormField(
+                    key: EditAccountPage.accountNameFieldKey,
+                    controller: _accountNameController,
+                    decoration: const InputDecoration(
+                      labelText: 'Tên tài khoản (ví dụ: user@example.com)',
+                    ),
+                    validator: (value) => (value == null || value.isEmpty)
+                        ? 'Vui lòng nhập tên tài khoản.'
+                        : null,
                   ),
-                  validator: (value) => (value == null || value.isEmpty)
-                      ? 'Vui lòng nhập tên tài khoản.'
-                      : null,
-                ),
-                const SizedBox(height: 16),
-                TextFormField(
-                  controller: _secretController,
-                  decoration: const InputDecoration(
-                    labelText: 'Secret key (mã hóa Base32)',
-                    // Consider making this read-only or adding strong warnings
-                    // helperText: 'Warning: Changing the secret key will invalidate existing 2FA setups.',
+                  const SizedBox(height: 16),
+                  TextFormField(
+                    key: EditAccountPage.secretFieldKey,
+                    controller: _secretController,
+                    decoration: InputDecoration(
+                      labelText: 'Secret key (mã hóa Base32)',
+                      suffixIcon: IconButton(
+                        tooltip: _obscureSecret
+                            ? 'Hiện secret key'
+                            : 'Ẩn secret key',
+                        icon: Icon(
+                          _obscureSecret
+                              ? Icons.visibility_off_outlined
+                              : Icons.visibility_outlined,
+                        ),
+                        onPressed: () =>
+                            setState(() => _obscureSecret = !_obscureSecret),
+                      ),
+                    ),
+                    obscureText: _obscureSecret,
+                    autocorrect: false,
+                    enableSuggestions: false,
+                    enableIMEPersonalizedLearning: false,
+                    textCapitalization: TextCapitalization.characters,
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Vui lòng nhập secret key.';
+                      }
+                      return null;
+                    },
                   ),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Vui lòng nhập secret key.';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 24),
-                const Text(
-                  'Tùy chọn nâng cao (chỉ sửa khi hiểu rõ):',
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 8),
-                TextFormField(
-                  controller: _algorithmController,
-                  decoration: const InputDecoration(
-                    labelText: 'Thuật toán (SHA1, SHA256, SHA512)',
+                  const SizedBox(height: 24),
+                  const Text(
+                    'Tùy chọn nâng cao (chỉ sửa khi hiểu rõ):',
+                    style: TextStyle(fontWeight: FontWeight.bold),
                   ),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Vui lòng nhập thuật toán.';
-                    }
-                    if (![
-                      'SHA1',
-                      'SHA256',
-                      'SHA512',
-                    ].contains(value.toUpperCase())) {
-                      return 'Thuật toán không hợp lệ. Dùng SHA1, SHA256 hoặc SHA512.';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 16),
-                TextFormField(
-                  controller: _digitsController,
-                  decoration: const InputDecoration(
-                    labelText: 'Số chữ số (ví dụ: 6 hoặc 8)',
+                  const SizedBox(height: 8),
+                  TextFormField(
+                    key: EditAccountPage.algorithmFieldKey,
+                    controller: _algorithmController,
+                    decoration: const InputDecoration(
+                      labelText: 'Thuật toán (SHA1, SHA256, SHA512)',
+                    ),
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Vui lòng nhập thuật toán.';
+                      }
+                      if (![
+                        'SHA1',
+                        'SHA256',
+                        'SHA512',
+                      ].contains(value.toUpperCase())) {
+                        return 'Thuật toán không hợp lệ. Dùng SHA1, SHA256 hoặc SHA512.';
+                      }
+                      return null;
+                    },
                   ),
-                  keyboardType: TextInputType.number,
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Vui lòng nhập số chữ số.';
-                    }
-                    final n = int.tryParse(value);
-                    if (n == null) return 'Số không hợp lệ.';
-                    if (n < 6 || n > 8) return 'Số chữ số phải là 6, 7 hoặc 8.';
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 16),
-                TextFormField(
-                  controller: _periodController,
-                  decoration: const InputDecoration(
-                    labelText: 'Chu kỳ (giây, ví dụ: 30)',
+                  const SizedBox(height: 16),
+                  TextFormField(
+                    key: EditAccountPage.digitsFieldKey,
+                    controller: _digitsController,
+                    decoration: const InputDecoration(
+                      labelText: 'Số chữ số (ví dụ: 6 hoặc 8)',
+                    ),
+                    keyboardType: TextInputType.number,
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Vui lòng nhập số chữ số.';
+                      }
+                      final n = int.tryParse(value);
+                      if (n == null) return 'Số không hợp lệ.';
+                      if (n < 6 || n > 8) {
+                        return 'Số chữ số phải là 6, 7 hoặc 8.';
+                      }
+                      return null;
+                    },
                   ),
-                  keyboardType: TextInputType.number,
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Vui lòng nhập chu kỳ.';
-                    }
-                    final n = int.tryParse(value);
-                    if (n == null || n <= 0) {
-                      return 'Chu kỳ phải là số dương.';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 32),
-                ElevatedButton(
-                  key: EditAccountPage.submitButtonKey,
-                  onPressed: _isSubmitting ? null : _submitUpdate,
-                  child: Text(_isSubmitting ? 'Đang lưu…' : 'Lưu thay đổi'),
-                ),
-              ],
+                  const SizedBox(height: 16),
+                  TextFormField(
+                    key: EditAccountPage.periodFieldKey,
+                    controller: _periodController,
+                    decoration: const InputDecoration(
+                      labelText: 'Chu kỳ (giây, ví dụ: 30)',
+                    ),
+                    keyboardType: TextInputType.number,
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Vui lòng nhập chu kỳ.';
+                      }
+                      final n = int.tryParse(value);
+                      if (n == null || n <= 0) {
+                        return 'Chu kỳ phải là số dương.';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 32),
+                  ElevatedButton(
+                    key: EditAccountPage.submitButtonKey,
+                    onPressed: _isSubmitting ? null : _submitUpdate,
+                    child: Text(_isSubmitting ? 'Đang lưu…' : 'Lưu thay đổi'),
+                  ),
+                ],
+              ),
             ),
           ),
         ),

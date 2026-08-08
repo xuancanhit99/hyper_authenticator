@@ -1,5 +1,8 @@
 # ADR-0008: Chỉ cho auth session còn active truy cập encrypted vault
 
+> **Bị thay thế bởi ADR-0019.** Session registry/revoke không còn trong Minimal
+> E2EE source/schema; nội dung dưới đây chỉ là lịch sử quyết định.
+
 - Trạng thái: Chấp nhận
 - Ngày: 2026-07-18
 - Owner: canhvx

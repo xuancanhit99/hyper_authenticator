@@ -139,8 +139,8 @@ Có runner không đồng nghĩa được hỗ trợ.
 Bắt buộc trước production:
 
 - recovery khi local storage không nhất quán;
-- rollback remote snapshot;
-- policy key loss và E2EE recovery;
+- rollback account-sync schema/data bằng full backup đã rehearse;
+- Vault root-key custody và backend-compromise response;
 - account export/import có format, reauthentication và rollback policy;
 - incident response khi credential hoặc backend bị compromise.
 

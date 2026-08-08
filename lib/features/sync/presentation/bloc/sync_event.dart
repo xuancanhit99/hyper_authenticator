@@ -11,63 +11,28 @@ class CheckSyncStatus extends SyncEvent {
   const CheckSyncStatus();
 }
 
-class BeginEncryptedSyncSetup extends SyncEvent {
-  const BeginEncryptedSyncSetup();
-}
-
-class ConfirmRecoveryKeySaved extends SyncEvent {
-  const ConfirmRecoveryKeySaved();
-}
-
-class BeginRecoveryKeyRotation extends SyncEvent {
-  const BeginRecoveryKeyRotation();
-}
-
-class ConfirmRecoveryKeyRotation extends SyncEvent {
-  const ConfirmRecoveryKeyRotation();
-}
-
-class BeginVaultKeyRotation extends SyncEvent {
-  const BeginVaultKeyRotation();
-}
-
-class ConfirmVaultKeyRotation extends SyncEvent {
-  const ConfirmVaultKeyRotation();
-}
-
-class RecoverEncryptedSync extends SyncEvent {
-  final String recoveryCode;
-
-  const RecoverEncryptedSync(this.recoveryCode);
-
-  @override
-  List<Object?> get props => [recoveryCode];
-
-  @override
-  String toString() => 'RecoverEncryptedSync(recoveryCode: [REDACTED])';
-}
-
-class SetEncryptedSyncEnabled extends SyncEvent {
-  final bool enabled;
-
-  const SetEncryptedSyncEnabled(this.enabled);
-
-  @override
-  List<Object?> get props => [enabled];
-}
-
 class SyncNowRequested extends SyncEvent {
   const SyncNowRequested();
 }
 
-class ResolveSyncConflictWithCloud extends SyncEvent {
-  const ResolveSyncConflictWithCloud();
+class _AuthSyncRequested extends SyncEvent {
+  const _AuthSyncRequested(this.userId);
+
+  final String? userId;
+
+  @override
+  List<Object?> get props => [userId];
 }
 
-class ResolveSyncConflictWithLocal extends SyncEvent {
-  const ResolveSyncConflictWithLocal();
+class _LocalMutationSyncRequested extends SyncEvent {
+  const _LocalMutationSyncRequested();
 }
 
-class CancelSensitiveSyncOperation extends SyncEvent {
-  const CancelSensitiveSyncOperation();
+class _RealtimeSyncRequested extends SyncEvent {
+  const _RealtimeSyncRequested(this.userId);
+
+  final String userId;
+
+  @override
+  List<Object?> get props => [userId];
 }

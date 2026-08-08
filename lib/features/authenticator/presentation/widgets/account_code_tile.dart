@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:hyper_authenticator/core/theme/app_style_tokens.dart';
 import 'package:hyper_authenticator/features/authenticator/domain/entities/authenticator_account.dart';
 import 'package:hyper_authenticator/features/authenticator/presentation/widgets/account_avatar.dart';
 import 'package:hyper_authenticator/features/authenticator/presentation/widgets/circular_countdown_timer.dart';
@@ -111,6 +112,7 @@ class _AccountCodeContent extends StatelessWidget {
   Widget build(BuildContext context) {
     final identity = _AccountIdentity(account: account);
     final codeAndCountdown = _CodeAndCountdown(
+      codeKey: Key('account-code-${account.id}'),
       displayCode: displayCode,
       timeWindow: timeWindow,
       periodSeconds: account.period,
@@ -175,17 +177,26 @@ class _AccountIdentity extends StatelessWidget {
 
 class _CodeAndCountdown extends StatelessWidget {
   const _CodeAndCountdown({
+    required this.codeKey,
     required this.displayCode,
     required this.timeWindow,
     required this.periodSeconds,
   });
 
+  final Key codeKey;
   final String displayCode;
   final TotpTimeWindow timeWindow;
   final int periodSeconds;
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final tokens = theme.extension<AppStyleTokens>();
+    final isExpiring = timeWindow.secondsRemaining <= 5;
+    final countdownColor = isExpiring
+        ? (tokens?.countdownWarnColor ?? theme.colorScheme.error)
+        : (tokens?.countdownColor ?? theme.colorScheme.primary);
+
     return Wrap(
       alignment: WrapAlignment.end,
       crossAxisAlignment: WrapCrossAlignment.center,
@@ -194,11 +205,13 @@ class _CodeAndCountdown extends StatelessWidget {
       children: [
         Text(
           displayCode,
-          style: const TextStyle(
+          key: codeKey,
+          style: TextStyle(
             fontSize: 21,
             fontWeight: FontWeight.bold,
             letterSpacing: 1.3,
-            fontFeatures: [FontFeature.tabularFigures()],
+            color: tokens?.otpCodeColor,
+            fontFeatures: const [FontFeature.tabularFigures()],
           ),
         ),
         CircularCountdownTimer(
@@ -206,7 +219,7 @@ class _CodeAndCountdown extends StatelessWidget {
           periodSeconds: periodSeconds,
           size: 18,
           backgroundColor: Colors.transparent,
-          progressColor: Colors.grey,
+          progressColor: countdownColor,
         ),
       ],
     );

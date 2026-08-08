@@ -7,10 +7,12 @@ class AppColors {
   AppColors._();
 
   // --- Primary Colors ---
-  /// Brand blue variants tuned for WCAG AA text contrast in each theme.
-  static const Color primaryLight = Color(0xFF0B57D0);
-  static const Color primaryDark = Color(0xFF8AB4F8);
-  static const Color onPrimaryDark = Color(0xFF001B3E);
+  /// Brand green variants tuned for WCAG AA text contrast in each theme.
+  /// Per-style palettes live in `core/theme/app_style_palette.dart`; these
+  /// constants mirror the default (Security Minimal) style.
+  static const Color primaryLight = Color(0xFF0F6E4C);
+  static const Color primaryDark = Color(0xFF3CC88B);
+  static const Color onPrimaryDark = Color(0xFF06281C);
 
   // --- Neutral Colors ---
   static const Color lightBackground = Color(

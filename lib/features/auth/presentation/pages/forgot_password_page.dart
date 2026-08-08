@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:hyper_authenticator/core/router/app_router.dart'; // Assuming router paths are defined here
+import 'package:hyper_authenticator/core/router/app_router.dart';
+import 'package:hyper_authenticator/core/widgets/responsive_content.dart';
 import 'package:hyper_authenticator/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:hyper_authenticator/features/auth/presentation/widgets/auth_header.dart';
 
@@ -77,73 +78,72 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
           backgroundColor: Colors.transparent,
         ),
         body: SafeArea(
-          child: Center(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(24.0),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    const AuthHeader(
-                      title: 'Đặt lại mật khẩu',
-                      subtitle: 'Nhập email để nhận liên kết đặt lại mật khẩu',
+          child: ResponsiveScrollableContent(
+            child: Form(
+              key: _formKey,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const AuthHeader(
+                    title: 'Đặt lại mật khẩu',
+                    subtitle: 'Nhập email để nhận liên kết đặt lại mật khẩu',
+                  ),
+                  TextFormField(
+                    controller: _emailController,
+                    decoration: const InputDecoration(
+                      labelText: 'Email',
+                      prefixIcon: Icon(Icons.email_outlined),
                     ),
-                    TextFormField(
-                      controller: _emailController,
-                      decoration: const InputDecoration(
-                        labelText: 'Email',
-                        prefixIcon: Icon(Icons.email_outlined),
-                        border: OutlineInputBorder(),
-                      ),
-                      keyboardType: TextInputType.emailAddress,
-                      validator: _validateEmail,
-                      textInputAction: TextInputAction.done,
-                      onFieldSubmitted: (_) =>
-                          _sendResetLink(context), // Pass context
-                    ),
-                    const SizedBox(height: 24),
-                    // Use BlocBuilder for loading state
-                    BlocBuilder<AuthBloc, AuthState>(
-                      builder: (context, state) {
-                        final isLoading = state is AuthLoading;
-                        return ElevatedButton(
-                          onPressed: isLoading
-                              ? null
-                              : () => _sendResetLink(context), // Pass context
-                          style: ElevatedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                            textStyle: Theme.of(context).textTheme.titleMedium,
+                    keyboardType: TextInputType.emailAddress,
+                    validator: _validateEmail,
+                    textInputAction: TextInputAction.done,
+                    onFieldSubmitted: (_) =>
+                        _sendResetLink(context), // Pass context
+                  ),
+                  const SizedBox(height: 24),
+                  // Use BlocBuilder for loading state
+                  BlocBuilder<AuthBloc, AuthState>(
+                    builder: (context, state) {
+                      final isLoading = state is AuthLoading;
+                      return ElevatedButton(
+                        onPressed: isLoading
+                            ? null
+                            : () => _sendResetLink(context), // Pass context
+                        style: ButtonStyle(
+                          textStyle: WidgetStatePropertyAll(
+                            Theme.of(context).textTheme.titleMedium,
                           ),
-                          child: isLoading
-                              ? const SizedBox(
-                                  width: 24,
-                                  height: 24,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: Colors.white,
-                                  ),
-                                )
-                              : const Text('Gửi liên kết đặt lại'),
-                        );
-                      },
-                    ),
-                    const SizedBox(height: 16),
-                    TextButton(
-                      onPressed: () {
-                        // Navigate back to Login page
-                        if (context.canPop()) {
-                          context.pop();
-                        } else {
-                          context.go(AppRoutes.login); // Fallback if cannot pop
-                          // print('Navigate to Login (Fallback)');
-                        }
-                      },
-                      child: const Text('Quay lại đăng nhập'),
-                    ),
-                  ],
-                ),
+                        ),
+                        child: isLoading
+                            ? SizedBox(
+                                width: 24,
+                                height: 24,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onPrimary,
+                                ),
+                              )
+                            : const Text('Gửi liên kết đặt lại'),
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  TextButton(
+                    onPressed: () {
+                      // Navigate back to Login page
+                      if (context.canPop()) {
+                        context.pop();
+                      } else {
+                        context.go(AppRoutes.login); // Fallback if cannot pop
+                        // print('Navigate to Login (Fallback)');
+                      }
+                    },
+                    child: const Text('Quay lại đăng nhập'),
+                  ),
+                ],
               ),
             ),
           ),

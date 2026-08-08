@@ -12,7 +12,7 @@ quét một hoặc nhiều QR migration bằng Google Authenticator mà không m
 
 ## Ngoài phạm vi
 
-- Encrypted backup file và export `otpauth` độc lập.
+- Portable backup file (sau đó đã bị ADR-0019 loại bỏ) và export `otpauth` độc lập.
 - HOTP hoặc TOTP có period khác 30 giây.
 - Khẳng định physical-device interoperability từ evidence Android AVD.
 

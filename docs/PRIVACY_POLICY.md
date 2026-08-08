@@ -1,118 +1,70 @@
-# Chính sách quyền riêng tư — bản dự thảo phát hành
+# Chính sách quyền riêng tư kỹ thuật
 
-Cập nhật: 27 tháng 7 năm 2026.
+Tài liệu mô tả source hiện tại. Owner phải công bố URL, pháp nhân, contact và ngày
+hiệu lực trước stable/store release.
 
-Tài liệu này phản ánh behavior đã triển khai. Trước store submission, owner phải
-điền tên pháp nhân/nhà phát hành, kênh support và host nội dung tại URL HTTPS công khai.
+## Dữ liệu local
 
-## Dữ liệu ứng dụng xử lý
+- issuer, account label, TOTP secret, algorithm, digits, period;
+- local-vault generation/commit metadata;
+- secure cloud ownership/revision/fingerprint/tombstone metadata;
+- theme, app-lock và session data do Supabase SDK quản lý.
 
-Hyper Authenticator xử lý tên nhà cung cấp, tên tài khoản, TOTP secret và tham số
-TOTP để tạo mã xác thực trên thiết bị. Nếu người dùng đăng nhập, Supabase Auth xử
-lý email, password verifier/session và audit/security metadata cần cho xác thực.
-Phiên chạy client mới còn đăng ký một installation UUID ngẫu nhiên, platform,
-display label và timestamp để người dùng nhận diện/đăng xuất riêng phiên. API
-không trả raw session ID, IP hoặc user agent qua device registry.
+Không đưa TOTP/auth credential vào analytics hoặc log.
 
-## Lưu trữ local
+## Dữ liệu Supabase
 
-TOTP account được lưu trong platform secure storage của thiết bị/browser profile.
-Ứng dụng không gửi plaintext TOTP secret tới analytics hoặc log. Logout Supabase
-không tự động xóa local authenticator vault.
+Khi đăng nhập, Supabase có thể xử lý:
 
-Khi người dùng import standard `otpauth` hoặc Google Authenticator migration QR,
-QR payload và TOTP secret chỉ được xử lý trong memory để parse/preview. Preview
-không hiển thị secret; dữ liệu chỉ được append vào local vault sau xác nhận.
-Cancel, batch chưa đủ hoặc payload lỗi không ghi account.
+- email/auth identity/session metadata;
+- per-account UUID/revision/timestamp/tombstone;
+- TOTP payload mã hóa trong Supabase Vault;
+- payload plaintext tạm thời khi authenticated RPC decrypt cho đúng owner;
+- network/server/audit log không được chứa payload.
 
-Khi người dùng export standard `otpauth` hoặc Google transfer, ứng dụng yêu cầu
-xác thực lại bằng cơ chế hệ điều hành rồi tạo QR chứa TOTP secret trong memory.
-Standard format tạo một QR cho mỗi account; Google format có thể gộp/chia batch.
-QR tự đóng sau 60 giây hoặc khi ứng dụng rời foreground; ứng dụng không tự lưu,
-upload, copy hay chia sẻ QR. Người dùng phải tránh screenshot, screen sharing và
-camera ngoài vì người quét được QR có thể tạo mã xác thực tương ứng.
+Đây là server-managed encryption, không phải zero-knowledge E2EE. Backend/Vault
+root-key holder nằm trong trust boundary.
 
-## Backup file mã hóa do người dùng quản lý
+## Import/export
 
-Người dùng có thể chủ động tạo file `.hyauth` chứa toàn bộ local vault đã được
-mã hóa bằng Argon2id và AES-256-GCM. Password không được lưu, gửi tới Supabase
-hoặc có cơ chế lấy lại. File chỉ được chuyển tới system download/save/share
-boundary sau khi mã hóa; ứng dụng không tự upload hoặc quản lý retention của file.
+Standard `otpauth` và Google migration QR chỉ tạo/đọc theo thao tác explicit.
+Protected export yêu cầu OS auth và bị xóa khi timeout/background. QR/URI là
+credential; người dùng phải kiểm soát camera, ảnh và thiết bị nhận.
 
-Khi restore, ứng dụng đọc file được chọn, xác thực integrity và giải mã trong
-memory. Preview không chứa TOTP secret; local vault chỉ bị full replacement sau
-khi người dùng gõ cụm xác nhận phá hủy. Cancel, sai password, file bị sửa hoặc
-validation lỗi không ghi vault. Decrypted candidate bị bỏ khi app rời foreground
-hoặc preview hết hạn. Người dùng phải giữ encrypted file và password ở các vị trí
-tách biệt, đồng thời xóa bản copy khỏi share/download provider nếu không còn cần.
+## Xóa/logout
 
-## Backup cloud mã hóa đầu cuối tùy chọn
+- Xóa local account commit ngay. Nếu account thuộc user đang đăng nhập, cloud
+  tombstone được retry và thiết bị khác xóa ở lần sync sau.
+- Logout dừng sync nhưng giữ local và cloud.
+- Xóa Supabase user cascade xóa sync row; trigger dọn Vault secret live.
+- App chưa có self-service delete-account UI.
 
-Trên Android, iOS, macOS, Windows và Linux, người dùng có thể bật backup cloud
-E2EE. Trước khi rời thiết bị, account snapshot được mã hóa AES-256-GCM. Backend lưu
-ciphertext, wrapped key, revision và timestamp; backend không nhận recovery key
-hoặc DEK plaintext.
+## Third party
 
-Client hiện tại không còn source/runtime path để upload hoặc download TOTP secret
-ở dạng plaintext. Terminal migration đã xóa legacy compatibility table trên
-production sau backup và zero-row preflight; migration lấy exclusive lock và fail
-closed nếu còn row, nên không có PostgREST plaintext table trong schema hiện tại.
+- Supabase: Auth, password recovery, Vault-backed account sync.
+- GitHub Releases/Web hosting: phân phối artifact/site.
+- Hệ điều hành: secure storage, local auth, camera/file API.
 
-Backup cloud hiện tắt trên Web. Password reset không khôi phục E2EE vault; người dùng
-phải giữ recovery key hoặc thiết bị còn key. Mất cả hai có thể làm mất quyền khôi phục.
+Không có advertising SDK/product analytics trong source hiện tại.
 
-Revoke một hoặc nhiều Supabase session chỉ thu hồi quyền truy cập server của phiên
-đó; thao tác này không remote-wipe local vault. Generic vault-key rotation cấp wrap
-mới cho mọi active device có membership proof hợp lệ và hiện chưa cung cấp
-user-facing cryptographic exclusion theo từng device.
+## Giới hạn
 
-## Mục đích xử lý
+Secure storage, Vault, RLS/RPC, App Lock và Privacy Shield giảm rủi ro nhưng không
+chống compromised backend/root key, OS/root/jailbreak, malicious extension,
+screenshot hoặc administrator của thiết bị.
 
-- tạo mã TOTP theo yêu cầu người dùng;
-- tạo/khôi phục encrypted backup file theo thao tác explicit của người dùng;
-- bảo vệ local access bằng OS authentication khi được bật;
-- đăng ký/đăng nhập/khôi phục Supabase account;
-- backup encrypted snapshot khi người dùng chủ động bật;
-- bảo mật, chống lạm dụng, backup và vận hành dịch vụ.
+Nếu TOTP secret nghi lộ, phải rotate credential tại service phát hành TOTP.
 
-## Chia sẻ và bên xử lý
+## Retention
 
-Deployment hiện dùng Supabase self-hosted do nhà phát hành vận hành. Hạ tầng mạng,
-email và hosting có thể xử lý metadata kỹ thuật cần để cung cấp dịch vụ. Danh sách
-nhà cung cấp/pháp nhân cụ thể phải được owner bổ sung trước stable/store release.
+Live record tồn tại tới khi bị xóa/account bị xóa. Tombstone hiện giữ vô hạn để
+chống stale resurrection; production policy phải định nghĩa retention trước khi
+scale. Backup có retention/restore policy riêng và cần giữ Vault root key tương
+ứng.
 
-Không bán TOTP secret hoặc encrypted vault. Không dùng TOTP secret cho quảng cáo.
+## Owner phải điền
 
-## Retention và xóa
-
-Local data tồn tại tới khi người dùng xóa account/app data theo platform. Remote
-encrypted snapshot gắn với Supabase user và được xóa khi backend account bị xóa.
-File `.hyauth` nằm ngoài app sau save/share và chỉ bị xóa theo thao tác/retention
-của người dùng hoặc storage provider; xóa app không bảo đảm xóa các file đó.
-Backup vận hành có retention giới hạn; bản production hiện giữ 7 local backup và
-14 encrypted off-host copy, sau đó được rotation tự động.
-
-Device registry chỉ list phiên auth còn active. Metadata của phiên inactive quá
-30 ngày được prune khi một phiên hợp lệ đăng ký; xóa Supabase user cascade toàn bộ
-registry row của user đó.
-
-Ứng dụng chưa có self-service account deletion UI. Trước store submission, owner
-phải cung cấp support channel/quy trình xác minh yêu cầu truy cập hoặc xóa account.
-
-## Bảo mật
-
-Ứng dụng dùng platform secure storage, TLS, RLS, AES-256-GCM encrypted snapshot,
-verified backup và restore rehearsal. Khi app không còn ở foreground, lifecycle
-Privacy Shield hiển thị lớp Material 3 opaque để che UI nhạy cảm; đây không phải
-cam kết ngăn screenshot/recording khi app đang active hoặc bằng chứng native
-app-switcher snapshot trên mọi platform. Không có hệ thống nào bảo mật tuyệt đối;
-người dùng phải bảo vệ thiết bị và recovery key, đồng thời rotate TOTP nếu nghi bị lộ.
-
-## Quyền và liên hệ
-
-Quyền riêng tư cụ thể phụ thuộc nơi người dùng cư trú. Để hỏi hoặc yêu cầu xử lý dữ
-liệu, dùng kênh support/privacy do nhà phát hành công bố tại trang store/website.
-
-**Stable/store release blocker:** chưa điền pháp nhân, jurisdiction,
-support/privacy email, data processor list và URL public. Không dùng bản dự thảo
-này để tuyên bố legal compliance.
+- Pháp nhân/data controller, privacy URL và ngày hiệu lực.
+- Support/security contact.
+- Retention/deletion request process.
+- Jurisdiction/subprocessor disclosure.

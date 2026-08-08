@@ -122,24 +122,6 @@ class AuthRepositoryImpl implements AuthRepository {
     }
   }
 
-  @override
-  Future<Either<Failure, void>> revokeOtherSessions() async {
-    try {
-      await remoteDataSource.revokeOtherSessions();
-      return const Right(null);
-    } on AuthServerException catch (e) {
-      return Left(AuthServerFailure(e.message));
-    } on ServerException catch (e) {
-      return Left(ServerFailure(e.message));
-    } catch (_) {
-      return Left(
-        ServerFailure(
-          'Không thể thu hồi các session khác. Hãy kiểm tra kết nối hoặc thử lại sau.',
-        ),
-      );
-    }
-  }
-
   // Implementation for the new updatePassword method
   @override
   Future<Either<Failure, void>> updatePassword(String newPassword) async {

@@ -22,8 +22,10 @@ abstract final class TotpValidator {
     if (digits < 6 || digits > 8) {
       throw const FormatException('Số chữ số OTP phải nằm trong khoảng 6–8.');
     }
-    if (period <= 0) {
-      throw const FormatException('Chu kỳ OTP phải lớn hơn 0 giây.');
+    if (period <= 0 || period > 300) {
+      throw const FormatException(
+        'Chu kỳ OTP phải nằm trong khoảng 1–300 giây.',
+      );
     }
   }
 }

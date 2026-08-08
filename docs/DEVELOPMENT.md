@@ -2,426 +2,163 @@
 
 ## Yêu cầu
 
-- Flutter 3.44.6 stable, Dart 3.12.x.
-- Android Studio/JDK 17+ và Android SDK cho Android.
-- Xcode 26.5 + matching iOS Simulator runtime cho iOS/macOS.
-- Docker chỉ cần cho Supabase migration test local.
-- `jq`, `curl`, `ssh`, `age` cho production operator harness tương ứng.
+- Flutter stable/Dart theo `pubspec.lock` và CI.
+- Xcode/Cocoa tooling cho iOS/macOS.
+- Android SDK/JDK cho Android.
+- Docker + PostgreSQL client cho backend migration harness.
+- Node khi chạy Web/release harness.
 
-Chạy đầu tiên:
+Kiểm tra môi trường:
 
-    flutter doctor -v
-    flutter pub get
-    scripts/agent/doctor.sh
+```bash
+flutter doctor -v
+scripts/agent/doctor.sh
+```
 
-## Cấu hình client
+## Bắt đầu task
 
-App local-only không cần `.env`:
+```bash
+git status --short --branch
+scripts/agent/context.sh
+```
 
-    flutter run
+Đọc `AGENTS.md`, `docs/PROJECT_STATUS.md` và tài liệu canonical của subsystem.
+Không reset/format thay đổi không liên quan trong working tree.
 
-Chỉ tạo config khi cần Auth và backup cloud:
+## Dependency và codegen
 
-    cp .env.example .env
+```bash
+flutter pub get
+dart run build_runner build
+```
 
-Điền public client config; không thêm service-role/server/SSH credential:
+Không sửa thủ công `lib/injection_container.config.dart`. Sau thay đổi annotation,
+chạy codegen và để drift gate xác minh.
 
-    SUPABASE_URL=https://api.example.com
-    SUPABASE_PUBLISHABLE_KEY=sb_publishable_...
-    PASSWORD_RECOVERY_URL=https://auth.example.com/reset-password/
-    ALLOW_INSECURE_PLAINTEXT_SYNC=false
+## Public runtime config
 
-Chạy app:
+Tạo file local ignored, ví dụ `.env`:
 
-    flutter run --dart-define-from-file=.env
+```json
+{
+  "SUPABASE_URL": "https://supabase.example.com",
+  "SUPABASE_PUBLISHABLE_KEY": "TEST_ONLY_PUBLIC_KEY",
+  "PASSWORD_RECOVERY_URL": "https://authenticator.example.com/reset-password"
+}
+```
 
-`.env` chỉ được Flutter đọc ở build time qua command flag, không load runtime và
-không bundle như asset.
+Chạy:
 
-`ALLOW_INSECURE_PLAINTEXT_SYNC` là poison sentinel tương thích cấu hình cũ, không
-phải feature flag để bật legacy sync. Source plaintext bridge đã bị loại bỏ và
-validator/runtime từ chối giá trị `true` trong mọi build mode.
+```bash
+flutter run --dart-define-from-file=.env
+flutter build apk --release --dart-define-from-file=.env
+```
 
-Trong Android Studio, có thể chạy configuration mặc định để dùng local-only, hoặc
-chọn shared Run Configuration
-`Hyper Authenticator (local .env)` rồi Run/Debug. Configuration này chỉ tham
-chiếu file `.env` local qua `--dart-define-from-file=.env`; nó không chứa hoặc
-commit giá trị config.
+Không cần cloud thì chạy không có define; local TOTP vẫn hoạt động. File `.env`
+không chứa SSH/compose/DB/SMTP/service-role credential. Dùng `.env.server` ignored
+cho operator/server values; `scripts/agent/separate_local_env.sh` hỗ trợ tách file
+legacy.
 
-Validate theo đúng release contract mà không in key:
+## Lệnh hằng ngày
 
-    dart run tool/agent/check_release_config.dart .env
+```bash
+dart format lib test integration_test tool
+dart analyze
+flutter test
+scripts/agent/check.sh quick
+```
 
-Validator chỉ cho phép bốn nhóm public client config (có alias legacy
-`SUPABASE_ANON_KEY`), HTTPS URL và publishable/legacy `anon` key. Server/operator
-variable phải nằm ở file local khác và không được Git track.
+Scope auth/storage/sync/routing/plugin/platform:
 
-## Cấu hình server local
+```bash
+scripts/agent/check.sh full
+```
 
-Các biến SSH/remote operator không thuộc runtime contract của ứng dụng. Giữ chúng
-trong `.env.server` mode `0600`; file này được Git ignore và không được truyền cho
-`flutter run`, `flutter build` hoặc GitHub Actions. Tạo mới từ template:
+Backend local:
 
-    cp .env.server.example .env.server
-    chmod 0600 .env.server
+```bash
+scripts/agent/check.sh backend
+```
 
-Nếu `.env` cũ đang trộn client config và năm biến server canonical, tách một lần
-mà không in giá trị:
+## Chạy target
 
-    scripts/agent/separate_local_env.sh \
-      .env .env.server SEPARATE_LOCAL_SERVER_CONFIG
+```bash
+flutter devices
+flutter run -d <device-id> --dart-define-from-file=.env
+flutter build apk --release --dart-define-from-file=.env
+flutter build ios --release --no-codesign --dart-define-from-file=.env
+flutter build macos --release --dart-define-from-file=.env
+flutter build web --release --dart-define-from-file=.env
+flutter build windows --release --dart-define-from-file=.env
+flutter build linux --release --dart-define-from-file=.env
+```
 
-Helper fail closed khi thiếu/lặp biến, khi plaintext sync không phải `false`, khi
-file không có permission an toàn hoặc khi `.env.server` đã tồn tại. Encrypted
-off-host backup đọc SSH config bằng biến môi trường trỏ tới file này:
+Chỉ target hiện tại mới chạy được trên host phù hợp; Windows/Linux hosted CI giữ
+evidence cho hai platform đó.
 
-    OPERATOR_ENV="$PWD/.env.server" \
-      AGE_RECIPIENT_FILE=/secure/path/age-recipient.txt \
-      scripts/supabase/pull_encrypted_backup.sh
+## Android signing
 
-## Workflow AI Agent
+Keystore nằm ngoài repository. Local `android/key.properties` là ignored và chứa
+path/alias/password local; GitHub Actions dùng encrypted secrets:
 
-Mỗi lượt bắt đầu:
+- `ANDROID_KEYSTORE_BASE64`
+- `ANDROID_KEY_ALIAS`
+- `ANDROID_STORE_PASSWORD`
+- `ANDROID_KEY_PASSWORD`
 
-    git status --short --branch
-    scripts/agent/context.sh
+Không upload keystore vào artifact. Giữ ít nhất hai encrypted/offline backup và
+ghi fingerprint certificate ngoài secret store.
 
-Sau đó đọc `docs/PROJECT_STATUS.md`, canonical doc của subsystem và test/call site
-lân cận. Công việc nhiều subsystem tạo task record từ `docs/tasks/TEMPLATE.md`.
+## Apple signing
 
-Không reset/format thay đổi không liên quan. Không log secret hoặc full process env.
+Chọn đúng Team/bundle identity trong Xcode. Development/Ad Hoc install cần
+certificate + provisioning profile khớp registered device. App Store/TestFlight
+cần Apple Developer distribution credentials riêng. Không commit `.p12`, private
+key hoặc profile.
 
-## Quality gate
+## Account-sync integration
 
-Chỉ tài liệu:
+Integration test mutation chỉ dùng isolated account. Operator tạo credential,
+runner truyền qua file/env tạm, rồi cleanup remote user/row:
 
-    scripts/agent/check.sh docs
+```bash
+scripts/agent/mobile_account_sync_operator.sh
+scripts/agent/linux_account_sync_operator.sh
+```
 
-Dart/UI thông thường:
+Client process không được nhận service-role key. Smoke cover upload, fresh-device
+download và deletion tombstone; operator tạo/xóa isolated user.
 
-    scripts/agent/check.sh quick
+## Supabase schema
 
-Toàn bộ app, gồm platform contract và Flutter test:
+Migration canonical:
 
-    scripts/agent/check.sh app
+```text
+supabase/migrations/20260804000000_create_account_managed_sync.sql
+supabase/migrations/20260805000000_add_account_sync_realtime_signal.sql
+supabase/migrations/20260805010000_fix_account_sync_realtime_authorization.sql
+```
 
-Backend migration contract:
+Local contract:
 
-    scripts/agent/check.sh backend
+```bash
+scripts/supabase/test_account_sync_migration.sh
+```
 
-Release harness hoặc self-hosted infrastructure harness:
+Migration đầu là breaking reset lịch sử; hai migration Realtime sau đó là
+additive và phải được apply theo thứ tự timestamp.
+Không apply lên production từ IDE/local shell trước khi hoàn tất backup + restore
+rehearsal theo deployment runbook.
 
-    scripts/agent/check.sh release
-    scripts/agent/check.sh infra
+## Debug an toàn
 
-Tất cả scope:
+- Không `print` account entity, TOTP payload, auth credential hoặc full URI.
+- Dùng redacted state/failure message.
+- Không paste credential vào command history nếu script hỗ trợ `--*-file`.
+- Xóa isolated test user/file temp sau runtime test.
+- `.env`, `.env.server`, signing material và build artifact không thuộc commit.
 
-    scripts/agent/check.sh full
+## Bàn giao
 
-`full` là alias tổng hợp `app + backend + release + infra`. Việc tách mode giúp
-thay đổi UI không phụ thuộc Docker/operations toolchain, nhưng thay đổi trước khi
-merge vẫn phải chọn gate phù hợp ma trận trong `AGENTS.md`. Retirement contract
-chứng minh non-empty table fail closed/rollback nguyên vẹn, empty table được drop
-và reapply idempotent. Các gate không boot emulator/simulator.
-
-Secret history gate cần Gitleaks 8.30.1 hoặc tương thích:
-
-    scripts/agent/check_secrets.sh
-
-## Generated code
-
-Sau khi đổi Injectable annotation/constructor:
-
-    dart run build_runner build --delete-conflicting-outputs
-    git diff -- lib/injection_container.config.dart
-
-Không sửa generated file thủ công.
-
-## Build
-
-Compile smoke theo host:
-
-    scripts/agent/build.sh host
-
-Build có runtime config đã validate:
-
-    scripts/agent/build.sh host .env
-    scripts/agent/build.sh ios .env
-
-Trên macOS không có signing identity, script dùng `xcodebuild` với environment
-allowlist và code signing tắt để lấy compile evidence. Artifact đó không chạy được
-Keychain và không được dùng như runtime/release evidence.
-
-Linux compile cô lập từ committed ref, không mount workspace hoặc truyền `.env`:
-
-    scripts/agent/build_linux_container.sh
-    scripts/agent/build_linux_container.sh <git-ref>
-
-Flutter Web production-serving contract:
-
-    scripts/agent/build.sh web .env
-    scripts/agent/web_runtime_smoke.sh
-    web-deployment/test.sh
-    web-deployment/build-image.sh hyper-authenticator-web:test
-
-`web_runtime_smoke.sh` cần Chrome/Chromium, chạy chính `build/web` bằng
-headless browser và fail nếu engine/semantics local-vault shell không sẵn sàng hoặc
-startup failure xuất hiện. Artifact có thể là local-only hoặc cloud-configured;
-production Web CI hiện tạo public config tổng hợp trên domain `.invalid`, không lấy
-credential production. `check.sh release` chỉ kiểm tra shell/Node syntax của
-harness; runtime browser thật nằm trong Web CI/build matrix.
-
-Runtime-configured build:
-
-    flutter build web --release --dart-define-from-file=.env
-    flutter build apk --debug --dart-define-from-file=.env
-    flutter build ios --simulator --debug --dart-define-from-file=.env
-    flutter build macos --debug --dart-define-from-file=.env
-
-Android/macOS/iOS store release cần signing credential; thiếu credential phải fail,
-không fallback debug/unsigned.
-
-Android signed GitHub APK dùng app signing key lâu dài nằm ngoài repository. Không
-đưa password vào command line/chat; chạy helper tương tác để tạo ignored
-`android/key.properties` mode `0600`, sau đó build/verify signer/checksum:
-
-    scripts/agent/configure_android_signing.sh \
-      "$HOME/.hyper-authenticator/signing/android/hyper-authenticator-app-signing.jks" \
-      hyper-authenticator \
-      CONFIGURE_LOCAL_ANDROID_SIGNING
-
-    scripts/agent/build_android_release.sh \
-      .env build/release/android --allow-app-signing
-
-Fingerprint public canonical nằm ở `android/app-signing-certificate.sha256`.
-Keystore và password cần ít nhất hai backup encrypted/offline do owner kiểm soát;
-mất app signing key đồng nghĩa không thể phát hành APK cập nhật tương thích.
-Signed APK `v1.1.0-preview.5` đã pass tag CI và public download/signature
-verifier với cùng fingerprint đã pin. Preview 4 đã pass clean install/cold launch
-và vault-retaining upgrade trên Pixel AVD API 37; encrypted-backup runtime của
-Preview 5 đã pass trên Android 17/API 37.1 AVD. Camera, biometric và secure-storage
-trên thiết bị thật vẫn là gate trước stable; không cần chạy lại upload secrets chỉ
-để build local.
-
-## Test chọn lọc
-
-    flutter test test/features/sync/encrypted_vault_sync_usecase_test.dart
-    flutter test test/features/sync/vault_cipher_test.dart
-    flutter test test/features/authenticator/authenticator_local_data_source_test.dart
-    flutter test test/features/authenticator/local_auth_bloc_test.dart
-    flutter test test/features/authenticator/encrypted_backup_file_codec_test.dart
-    flutter test test/features/authenticator/encrypted_backup_bloc_test.dart
-    flutter test test/features/authenticator/encrypted_backup_page_test.dart
-
-Không thêm secret thật vào fixture. Dùng `TEST_ONLY_*` và UUID/email isolated.
-
-Manual platform smoke cho backup file phải dùng account test, không dùng
-credential thật:
-
-1. tạo `.hyauth`, hủy một lần ở save/share boundary và xác nhận vault không đổi;
-2. dùng sai password và một bản copy bị sửa byte, xác nhận không có preview/write;
-3. dùng file đúng, review count/identity rồi hủy, xác nhận vault không đổi;
-4. trên clean test profile, gõ `KHOI PHUC`, restore và đối chiếu TOTP semantics;
-5. xóa account/file/password test và không lưu raw secret/OTP vào evidence.
-
-Android dùng system document picker (`ACTION_CREATE_DOCUMENT`) để ghi local hoặc
-provider do người dùng chọn; iOS dùng system share sheet với action **Lưu vào
-Tệp**. Desktop dùng save dialog, Web khởi tạo browser download. Đây là manual
-runtime evidence riêng, không được suy ra chỉ từ widget test.
-
-## Device integration smoke
-
-Suite local-vault kiểm tra bootstrap có config, direct secure-storage
-`write/read/readAll/delete`, thêm account qua UI, vault round-trip, lifecycle
-foreground/hidden, BLoC reload, navigation và cleanup:
-
-    scripts/agent/device_integration.sh \
-      emulator-5554 .env --allow-test-vault-reset
-
-Tham số đầu cũng có thể là UUID của iOS Simulator đang boot. Harness fail closed:
-
-- chỉ chấp nhận Android emulator hoặc iOS Simulator mà host nhận diện được;
-- từ chối thiết bị thật và target macOS;
-- yêu cầu opt-in `--allow-test-vault-reset` vì suite thay toàn bộ local vault trên
-  target bằng fixture rồi xóa fixture, toàn bộ secure-storage test và preference
-  trong `finally`, kể cả khi preflight/seed fail;
-- không upload cloud snapshot, không dùng TOTP secret hoặc account thật.
-
-Không nới guard để chạy trên thiết bị người dùng. Device test cho biometric/camera
-phải dùng flow riêng, dữ liệu isolated và không được reset vault ngầm.
-
-### Encrypted-backup device smoke
-
-Runner hai phase dùng full app/DI, secure storage thật và system picker/share
-thật. Chỉ chạy với fixture `TEST_ONLY` trên Android emulator hoặc iOS Simulator:
-
-    scripts/agent/encrypted_backup_device_smoke.sh \
-      emulator-5554 .env export --allow-test-vault-reset
-
-    scripts/agent/encrypted_backup_device_smoke.sh \
-      emulator-5554 .env restore --allow-test-vault-reset
-
-Với iOS, thay `emulator-5554` bằng UUID Simulator available. Operator phải:
-
-1. ở phase `export`, hủy system save lần đầu, lưu file hợp lệ lần hai và lưu file
-   tampered vào local Files/Downloads;
-2. gỡ app hoặc dùng clean test profile giữa export và restore nhưng giữ hai file;
-3. ở phase `restore`, lần lượt chọn tampered, file đúng với wrong password, file
-   đúng để hủy preview và file đúng để atomic restore;
-4. chỉ lưu local trên emulator/simulator, không chọn Drive/iCloud/provider bên
-   thứ ba;
-5. xóa file test sau khi suite pass.
-
-Harness từ chối thiết bị thật/macOS, thiếu confirmation, config sai hoặc phase
-không hợp lệ. Nó replace toàn bộ test vault rồi cleanup vault, secure storage và
-preferences trong `finally`. Phase log không chứa password, TOTP secret, OTP,
-file content hoặc full `otpauth`.
-
-Android gateway dùng native Storage Access Framework và chỉ trả `saved` sau khi
-document stream ghi/flush thành công; cancel trả no-op. Trong system UI session do
-app chủ động mở, app-lock không redirect phá route đang chờ, nhưng Privacy Shield
-vẫn che nội dung. Background không thuộc session này vẫn relock như cũ.
-
-Linux CI chạy cùng suite trong Xvfb và private D-Bus Secret Service:
-
-    CI=true scripts/agent/linux_integration.sh \
-      /path/to/public-release-config.json --allow-test-vault-reset
-
-Harness yêu cầu Linux, `dbus-run-session`, `gnome-keyring-daemon`, `secret-tool`
-và `xvfb-run`; tạo XDG sandbox mode 0700, probe keyring, rồi cleanup bằng trap.
-Nó từ chối chạy ngoài CI để không chạm keyring/vault của desktop người dùng.
-GitHub workflow là entrypoint canonical cho headless behavior. Package transition
-CI và representative desktop/distro matrix là hai gate tách biệt.
-
-Windows CI chạy cùng integration test bằng guard riêng:
-
-    ./scripts/agent/windows_integration.ps1 `
-      -EnvFile C:\path\release-config.json `
-      -Confirmation '--allow-test-vault-reset'
-
-Script chỉ nhận `CI=true`, `GITHUB_ACTIONS=true`, `RUNNER_OS=Windows` và
-`RUNNER_ENVIRONMENT=github-hosted`; không nới guard để chạy trên workstation.
-Historical upgrade gate chạy trước local-vault smoke để profile còn sạch:
-
-    ./scripts/agent/windows_historical_upgrade.ps1 `
-      -EnvFile C:\path\release-config.json `
-      -Confirmation '--allow-historical-vault-migration'
-
-Script archive commit pin `8e381debfe680ac906de391b4d9274e49acf9c06`
-(`1.0.0+9`), giữ lock `flutter_secure_storage_windows 3.1.2`, ghi fixture vào
-AppData thật của hosted runner rồi chạy current integration test. Bản build tạm
-chỉ thêm compile-definition cho `local_auth_windows 1.0.11` tương thích MSVC
-14.51; storage source/metadata/plugin vẫn giữ nguyên. Guard từ chối
-workstation/self-hosted runner và cleanup cả hai layout trong `finally`.
-
-Sau configured release, `install_nsis.ps1` tải NSIS 3.12 đã pin checksum,
-`package_windows_installer.ps1` tạo unsigned installer/checksum và
-`windows_installer_smoke.ps1` kiểm tra install/launch/metadata-upgrade/uninstall
-giữ AppData. Smoke chỉ nhận hosted runner tạm và explicit
-`--allow-ephemeral-install`. Baseline dùng cùng bundle với version metadata thấp
-hơn, không thay historical-release migration test.
-
-Sau configured release build trên Linux, tạo Debian candidate:
-
-    scripts/agent/package_linux_deb.sh \
-      build/linux/x64/release/bundle build/linux/deb
-
-Builder nhận version từ `pubspec.yaml`, phát hiện amd64/arm64 từ ELF, sinh Depends
-bằng `dpkg-shlibdeps`, bổ sung `libegl1`, `libgles2`, `libgl1` vì Flutter nạp
-ba loader đồ họa bằng `dlopen`, đồng thời kéo `gnome-keyring` làm Secret Service
-provider, từ chối env/source-map/debug artifact, khóa archive root 0755 và tạo
-file `.deb.sha256`. CI còn chạy:
-
-    CI=true scripts/agent/linux_package_smoke.sh \
-      baseline.deb current.deb --allow-container-package-install
-
-Smoke chỉ install trong Ubuntu 24.04 container pin digest; nó xác minh desktop
-entry, shared library, release launch, metadata upgrade, remove và XDG data retention.
-Baseline dùng cùng tested bundle với version thấp hơn, nên không được dùng làm bằng
-chứng migration từ một release lịch sử thật.
-
-Current package tiếp tục chạy qua distro matrix pin digest:
-
-    CI=true GITHUB_ACTIONS=true RUNNER_ENVIRONMENT=github-hosted RUNNER_OS=Linux \
-      scripts/agent/linux_distro_matrix.sh \
-      current.deb --allow-container-package-install
-
-Matrix cài package trên Ubuntu 22.04/24.04 và Debian 12/13, kiểm tra dependency
-và `gnome-keyring` được package tự kéo, desktop entry, private Secret Service,
-launch trong Xvfb và Weston Wayland headless. Script từ chối workstation/
-self-hosted runner. Gate này không thay KDE login/unlock integration hoặc physical
-desktop smoke.
-
-## Linux authenticated E2EE runtime
-
-Gate này mutate production Supabase bằng isolated user và chỉ dành cho protected
-operator context. Tạo file operator ngoài repository, mode 0600:
-
-    SUPABASE_PUBLIC_URL=https://api.example.com
-    SERVICE_ROLE_KEY=<operator-only>
-
-Sau đó chạy:
-
-    chmod 0600 /secure/path/supabase-operator.env
-    scripts/agent/linux_e2ee_operator.sh \
-      .env /secure/path/supabase-operator.env \
-      --allow-isolated-remote-user
-
-Wrapper tạo user `.invalid`, chạy Ubuntu 24.04 pin digest với Flutter 3.44.6,
-private D-Bus Secret Service/Xvfb và source allowlist, rồi xóa user và yêu cầu
-admin GET trả 404. Client đi qua setup, sync, fresh-device recovery, recovery-key
-rotation, vault-key rotation và final recovery. Tất cả local data/key nằm trong
-container/XDG sandbox tạm.
-
-Service-role key chỉ được dùng ở parent operator shell qua header file 0600; không
-đi vào Docker environment, Flutter define, GitHub Actions secret, log hoặc binary.
-Container chỉ nhận credential của user test tạm, gỡ chúng khỏi process environment
-trước khi boot Flutter và xóa cùng container. Không chạy script với `set -x`.
-
-Đây là authenticated debug runtime evidence theo kiến trúc host của Docker. Nó
-không thay signed `.deb`, historical-upgrade hoặc distro/desktop matrix.
-
-## Mobile authenticated E2EE runtime
-
-Preferred operator wrapper tự tạo/xóa isolated user và giữ service-role key ngoài
-Flutter process/repository:
-
-    scripts/agent/mobile_e2ee_operator.sh \
-      .env /secure/path/supabase-operator.env \
-      <emulator-or-simulator-id> \
-      --allow-isolated-user-and-emulator-vault-reset
-
-Operator env phải nằm ngoài repository, mode 0600. Wrapper dùng header/config tạm
-0600, không đặt credential trong argv/log, luôn thử xóa user trong trap và yêu cầu
-admin GET trả 404 sau cleanup.
-
-Khi user lifecycle được quản lý riêng, có thể chạy client-only harness:
-
-    E2EE_TEST_EMAIL=<isolated-user> \
-    E2EE_TEST_PASSWORD=<temporary-password> \
-    scripts/agent/mobile_e2ee_integration.sh \
-      .env <emulator-or-simulator-id> \
-      --allow-emulator-vault-reset
-
-Harness fail closed với thiết bị thật/macOS, service-role environment hoặc target
-không phải Android/iOS. Credential tạm chỉ vào config 0600 trong sandbox và bị xóa
-sau test. Suite reset local vault; tạo hai auth session/installation/device key;
-xóa DEK + primary private key rồi dùng HA1 thay key; xoay recovery key + DEK tới
-revision 4; bắt secondary và primary stale-DEK path tự unwrap generation mới.
-
-## Dependency
-
-    flutter pub outdated
-
-Chỉ nâng package resolvable, đọc changelog plugin/platform và chạy `full` + build
-matrix. `build_runner` 2.15.2 hiện không resolvable do Flutter test SDK pin `meta`.
-Backup file dùng direct `file_selector 1.1.0` và `share_plus 13.3.0`; lockfile giữ
-`flutter_secure_storage_windows 4.2.2` và `win32 6.3.0`. Không đổi sang plugin
-buộc hạ hai package storage/platform này nếu chưa có compatibility review riêng.
-
-## Backend operator boundary
-
-Client repo không chứa server secret. Remote contract/backup script nhận operator
-env path bên ngoài repository. Chạy script với `set -x` là vi phạm bảo mật.
-
-Runbook: `docs/operations/SUPABASE_PRODUCTION_OPERATIONS.md`.
+Mỗi task ghi kết quả, file thay đổi, behavior/data contract, command đã chạy,
+rủi ro còn lại và xác nhận thay đổi không liên quan được bảo toàn.

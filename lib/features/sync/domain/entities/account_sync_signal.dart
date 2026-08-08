@@ -1,0 +1,1 @@
+enum AccountSyncSignal { connected, changed }

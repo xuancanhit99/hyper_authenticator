@@ -70,21 +70,6 @@ for key in "${server_keys[@]}"; do
   fi
 done
 
-plaintext_count=$(awk -F= '$1 == "ALLOW_INSECURE_PLAINTEXT_SYNC" { count += 1 } END { print count + 0 }' \
-  "$CLIENT_ENV")
-if [[ "$plaintext_count" -gt 1 ]]; then
-  printf '%s\n' 'ALLOW_INSECURE_PLAINTEXT_SYNC bị khai báo lặp.' >&2
-  exit 65
-fi
-if [[ "$plaintext_count" == 1 ]]; then
-  plaintext_value=$(awk -F= '$1 == "ALLOW_INSECURE_PLAINTEXT_SYNC" { print substr($0, index($0, "=") + 1) }' \
-    "$CLIENT_ENV")
-  if [[ "$plaintext_value" != false ]]; then
-    printf '%s\n' 'Chỉ cho phép tách cấu hình khi plaintext sync được đặt false.' >&2
-    exit 65
-  fi
-fi
-
 umask 077
 client_temp=$(mktemp "${CLIENT_ENV}.tmp.XXXXXX")
 server_temp=$(mktemp "${SERVER_ENV}.tmp.XXXXXX")
@@ -108,13 +93,6 @@ awk '
   }
 ' "$CLIENT_ENV" >"$client_temp"
 
-if [[ "$plaintext_count" == 0 ]]; then
-  if [[ -s "$client_temp" ]] && [[ $(tail -c 1 "$client_temp" | wc -l) -eq 0 ]]; then
-    printf '\n' >>"$client_temp"
-  fi
-  printf 'ALLOW_INSECURE_PLAINTEXT_SYNC=false\n' >>"$client_temp"
-fi
-
 {
   printf '%s\n' '# Cấu hình vận hành server/SSH; không được truyền vào Flutter build.'
   for key in "${server_keys[@]}"; do
@@ -128,5 +106,4 @@ mv "$client_temp" "$CLIENT_ENV"
 trap - EXIT
 
 printf '%s\n' '✓ Đã tách 5 biến server/SSH khỏi client env.'
-printf '%s\n' '✓ Client env đặt ALLOW_INSECURE_PLAINTEXT_SYNC=false.'
 printf '%s\n' '✓ Hai file local giữ mode 0600; không in giá trị cấu hình.'

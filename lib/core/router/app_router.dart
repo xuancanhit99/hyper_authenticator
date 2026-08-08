@@ -12,7 +12,6 @@ import 'package:hyper_authenticator/features/auth/presentation/pages/forgot_pass
 import 'package:hyper_authenticator/features/auth/presentation/pages/update_password_page.dart'; // Added import
 import 'package:hyper_authenticator/features/authenticator/presentation/pages/add_account_page.dart';
 import 'package:hyper_authenticator/features/authenticator/presentation/pages/edit_account_page.dart'; // Added import for EditAccountPage
-import 'package:hyper_authenticator/features/authenticator/presentation/pages/encrypted_backup_page.dart';
 import 'package:hyper_authenticator/features/authenticator/presentation/pages/export_accounts_page.dart';
 import 'package:hyper_authenticator/features/authenticator/presentation/pages/lock_screen_page.dart';
 import 'package:hyper_authenticator/features/main_navigation/presentation/pages/main_navigation_page.dart';
@@ -35,7 +34,6 @@ class AppRoutes {
       '/update-password'; // Added for deep link handling
   static const editAccount = '/edit-account'; // Added for EditAccountPage
   static const exportAccounts = '/export-accounts';
-  static const encryptedBackup = '/encrypted-backup';
 }
 
 /// Pure redirect policy so offline-vault and app-lock behavior can be tested
@@ -243,11 +241,6 @@ class AppRouter {
           path: AppRoutes.exportAccounts,
           name: AppRoutes.exportAccounts,
           builder: (context, state) => const ExportAccountsPage(),
-        ),
-        GoRoute(
-          path: AppRoutes.encryptedBackup,
-          name: AppRoutes.encryptedBackup,
-          builder: (context, state) => const EncryptedBackupPage(),
         ),
         // --- End New Auth Routes ---
         // Edit Account Route (protected by redirect)

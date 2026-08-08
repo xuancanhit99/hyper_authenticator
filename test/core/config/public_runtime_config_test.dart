@@ -23,7 +23,6 @@ void main() {
         supabaseUrl: 'https://supabase.example.com',
         supabasePublishableKey: publishableKey,
         passwordRecoveryUrl: 'https://auth.example.com/reset-password/',
-        allowInsecurePlaintextSync: false,
         releaseMode: true,
       );
 
@@ -37,7 +36,6 @@ void main() {
         supabaseUrl: '',
         supabasePublishableKey: '',
         passwordRecoveryUrl: '',
-        allowInsecurePlaintextSync: false,
         releaseMode: true,
       );
 
@@ -57,7 +55,6 @@ void main() {
             supabaseUrl: values.$1,
             supabasePublishableKey: values.$2,
             passwordRecoveryUrl: '',
-            allowInsecurePlaintextSync: false,
             releaseMode: false,
           ),
           throwsStateError,
@@ -70,7 +67,6 @@ void main() {
         supabaseUrl: 'https://supabase.example.com/',
         supabasePublishableKey: legacyKeyForRole('anon'),
         passwordRecoveryUrl: 'https://auth.example.com/reset-password/',
-        allowInsecurePlaintextSync: false,
         releaseMode: false,
       );
 
@@ -83,7 +79,6 @@ void main() {
           supabaseUrl: 'http://supabase.example.com',
           supabasePublishableKey: publishableKey,
           passwordRecoveryUrl: '',
-          allowInsecurePlaintextSync: false,
           releaseMode: false,
         ),
         throwsStateError,
@@ -93,7 +88,6 @@ void main() {
           supabaseUrl: 'https://supabase.example.com/rest/v1',
           supabasePublishableKey: publishableKey,
           passwordRecoveryUrl: '',
-          allowInsecurePlaintextSync: false,
           releaseMode: false,
         ),
         throwsStateError,
@@ -110,7 +104,6 @@ void main() {
             supabaseUrl: 'https://supabase.example.com',
             supabasePublishableKey: unsafeKey,
             passwordRecoveryUrl: '',
-            allowInsecurePlaintextSync: false,
             releaseMode: false,
           ),
           throwsStateError,
@@ -126,7 +119,6 @@ void main() {
           supabaseUrl: 'https://supabase.example.com',
           supabasePublishableKey: unsafeKey,
           passwordRecoveryUrl: '',
-          allowInsecurePlaintextSync: false,
           releaseMode: false,
         ),
         throwsA(
@@ -146,7 +138,6 @@ void main() {
             supabaseUrl: 'https://supabase.example.com',
             supabasePublishableKey: publishableKey,
             passwordRecoveryUrl: '',
-            allowInsecurePlaintextSync: false,
             releaseMode: releaseMode,
           ),
           throwsStateError,
@@ -160,20 +151,6 @@ void main() {
           supabaseUrl: '',
           supabasePublishableKey: '',
           passwordRecoveryUrl: 'https://auth.example.com/reset-password/',
-          allowInsecurePlaintextSync: false,
-          releaseMode: false,
-        ),
-        throwsStateError,
-      );
-    });
-
-    test('mọi build luôn từ chối plaintext sync flag đã retired', () {
-      expect(
-        () => PublicRuntimeConfig.validate(
-          supabaseUrl: 'https://supabase.example.com',
-          supabasePublishableKey: publishableKey,
-          passwordRecoveryUrl: '',
-          allowInsecurePlaintextSync: true,
           releaseMode: false,
         ),
         throwsStateError,
@@ -191,7 +168,6 @@ void main() {
             supabaseUrl: 'https://supabase.example.com',
             supabasePublishableKey: publishableKey,
             passwordRecoveryUrl: unsafeUrl,
-            allowInsecurePlaintextSync: false,
             releaseMode: false,
           ),
           throwsStateError,
