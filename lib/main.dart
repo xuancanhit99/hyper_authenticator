@@ -9,6 +9,7 @@ import 'package:hyper_authenticator/core/theme/theme_cubit.dart';
 import 'package:hyper_authenticator/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:hyper_authenticator/features/authenticator/presentation/bloc/accounts_bloc.dart';
 import 'package:hyper_authenticator/features/authenticator/presentation/bloc/local_auth_bloc.dart';
+import 'package:hyper_authenticator/features/sync/presentation/bloc/sync_bloc.dart';
 import 'package:hyper_authenticator/injection_container.dart' as di;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -41,6 +42,7 @@ Future<void> main() async {
             value: di.sl<LocalAuthBloc>()..add(CheckLocalAuth()),
           ),
           BlocProvider<AccountsBloc>.value(value: di.sl<AccountsBloc>()),
+          BlocProvider<SyncBloc>.value(value: di.sl<SyncBloc>()),
         ],
         child: const MyApp(),
       ),

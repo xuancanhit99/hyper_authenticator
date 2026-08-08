@@ -157,6 +157,8 @@ void main() {
     await tester.enterText(secretField, 'JBSWY3DPEHPK3PXP');
 
     await pressTab(tester);
+    expectPrimaryFocusWithin(find.byTooltip('Hiện secret key'));
+    await pressTab(tester);
     expectPrimaryFocusWithin(submit);
     await tester.sendKeyEvent(LogicalKeyboardKey.enter);
     await tester.pumpAndSettle();
@@ -170,6 +172,33 @@ void main() {
         secretKey: 'JBSWY3DPEHPK3PXP',
       ),
     );
+  });
+
+  testWidgets('secret key được che mặc định và chỉ hiện theo yêu cầu', (
+    tester,
+  ) async {
+    final controller = _FakeScannerController();
+    final accountsBloc = _accountsBloc();
+    addTearDown(accountsBloc.close);
+
+    await _pumpPage(tester, accountsBloc, controller);
+
+    final secretInput = find.descendant(
+      of: find.byKey(AddAccountPage.secretFieldKey),
+      matching: find.byType(EditableText),
+    );
+    var secretField = tester.widget<EditableText>(secretInput);
+    expect(secretField.obscureText, isTrue);
+    expect(secretField.autocorrect, isFalse);
+    expect(secretField.enableSuggestions, isFalse);
+    expect(secretField.enableIMEPersonalizedLearning, isFalse);
+
+    await tester.tap(find.byTooltip('Hiện secret key'));
+    await tester.pump();
+
+    secretField = tester.widget<EditableText>(secretInput);
+    expect(secretField.obscureText, isFalse);
+    expect(find.byTooltip('Ẩn secret key'), findsOneWidget);
   });
 
   testWidgets('chỉ đóng add route sau success đúng operation', (tester) async {

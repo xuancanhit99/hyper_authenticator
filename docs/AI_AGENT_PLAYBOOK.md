@@ -12,11 +12,10 @@
 - `scripts/agent/context.sh`: định hướng repository an toàn.
 - `scripts/agent/doctor.sh`: kiểm tra environment và configuration.
 - `scripts/agent/check.sh`: documentation, quick và full gate.
-- `supabase/`: upstream pin, non-secret compose overlay, migration và backend contract.
-- `scripts/supabase/test_remote_contract.sh`: terminal table-absent contract qua
-  public và service-role boundary; không tạo user.
-- `scripts/supabase/test_remote_encrypted_vault_contract.sh`: isolated
-  Auth/RLS/device-bound publish contract và tự cleanup test user.
+- `supabase/`: upstream pin, non-secret compose overlay, account-sync migration
+  và backend contract.
+- `scripts/supabase/test_remote_account_sync_contract.sh`: isolated two-user
+  Auth/RLS/CAS contract; operator chịu trách nhiệm tạo và cleanup test user.
 - `docs/operations`: runbook backup/restore không chứa secret.
 
 ## Bắt đầu session
@@ -164,6 +163,8 @@ Trước khi tuyên bố hoàn tất:
 - Lock đã cấu hình có fail closed không?
 - Server policy có version control và negative test không?
 - Behavior và tài liệu canonical có thay đổi cùng nhau không?
+- Có vô tình thêm lại portable backup, device/session registry, per-device wrap
+  hoặc recovery key trái ADR-0020 không?
 
 ## Điều kiện dừng để xin quyết định
 
@@ -171,7 +172,7 @@ Dừng và yêu cầu owner quyết định khi:
 
 - phải chọn offline hay mandatory account;
 - quyền sở hữu dữ liệu khi logout thay đổi;
-- thay đổi E2EE recovery policy hoặc key hierarchy đã chấp nhận;
+- thay đổi trust boundary account-managed sync đã chấp nhận;
 - migration có thể xóa plaintext hoặc ciphertext không thể đảo ngược;
 - claim platform support thay đổi;
 - cấu hình legal, store hoặc external production cần phê duyệt.

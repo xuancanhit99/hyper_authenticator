@@ -1,5 +1,8 @@
 # ADR-0011: Bind device registry với auth session do server xác định
 
+> **Bị thay thế bởi ADR-0019.** Device registry không còn trong Minimal E2EE
+> source/schema; nội dung dưới đây chỉ là lịch sử quyết định.
+
 - Trạng thái: Chấp nhận
 - Ngày: 2026-07-19
 - Owner: canhvx

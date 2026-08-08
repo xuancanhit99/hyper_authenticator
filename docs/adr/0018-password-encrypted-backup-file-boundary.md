@@ -1,5 +1,8 @@
 # ADR-0018: Biên backup file mã hóa bằng password
 
+> **Bị thay thế bởi ADR-0019.** Portable backup file không còn trong product,
+> source hoặc platform integration; nội dung dưới đây chỉ là lịch sử quyết định.
+
 - Trạng thái: Chấp nhận
 - Ngày: 2026-07-27
 - Cập nhật runtime boundary: 2026-07-29

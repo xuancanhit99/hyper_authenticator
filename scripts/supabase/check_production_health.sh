@@ -37,140 +37,83 @@ disk_percent=$(df -P / | awk 'NR == 2 {gsub("%", "", $5); print $5}')
 available_memory_kib=$(awk '/MemAvailable:/ {print $2}' /proc/meminfo)
 ((available_memory_kib >= MIN_AVAILABLE_MEMORY_KIB))
 
-docker exec supabase-db psql -X -v ON_ERROR_STOP=1 \
-  -U supabase_admin -d postgres -Atqc \
-  "select relrowsecurity and relforcerowsecurity from pg_class where oid = 'public.encrypted_vault_snapshots'::regclass" \
-  | grep -qx t
-
-session_guard_ready=$(docker exec supabase-db psql -X -v ON_ERROR_STOP=1 \
+account_sync_ready=$(docker exec supabase-db psql -X -v ON_ERROR_STOP=1 \
   -U supabase_admin -d postgres -Atqc \
   "select
-     to_regprocedure('private.is_current_auth_session_active()') is not null
-     and exists (
-       select 1 from pg_proc
-       where oid = 'private.is_current_auth_session_active()'::regprocedure
-         and prosecdef
-     )
-     and exists (
-       select 1 from pg_policies
-       where schemaname = 'public'
-         and tablename = 'encrypted_vault_snapshots'
-         and policyname = 'encrypted_vault_select_own'
-         and position('is_current_auth_session_active' in qual) > 0
-     )
-     and position(
-       'is_current_auth_session_active'
-       in pg_get_functiondef(
-         'public.publish_encrypted_vault_snapshot(bigint,smallint,text,text,text,text,smallint,text,text,text)'::regprocedure
-       )
-     ) > 0
-     and position(
-       'session_revoked'
-       in pg_get_functiondef(
-         'public.publish_encrypted_vault_snapshot(bigint,smallint,text,text,text,text,smallint,text,text,text)'::regprocedure
-       )
-     ) > 0")
-[[ "$session_guard_ready" == t ]]
-
-device_registry_ready=$(docker exec supabase-db psql -X -v ON_ERROR_STOP=1 \
-  -U supabase_admin -d postgres -Atqc \
-  "select
-     to_regclass('public.authenticator_device_sessions') is not null
+     to_regclass('public.authenticator_accounts') is not null
      and (
        select relrowsecurity and relforcerowsecurity
        from pg_class
-       where oid = 'public.authenticator_device_sessions'::regclass
+       where oid = 'public.authenticator_accounts'::regclass
      )
      and not has_table_privilege(
-       'authenticated', 'public.authenticator_device_sessions', 'select'
+       'authenticated', 'public.authenticator_accounts',
+       'select,insert,update,delete'
+     )
+     and has_function_privilege(
+       'authenticated', 'public.list_authenticator_accounts()', 'execute'
+     )
+     and has_function_privilege(
+       'authenticated',
+       'public.upsert_authenticator_account(uuid,bigint,jsonb)', 'execute'
+     )
+     and has_function_privilege(
+       'authenticated',
+       'public.delete_authenticator_account(uuid,bigint)', 'execute'
+     )
+     and not has_function_privilege(
+       'anon', 'public.list_authenticator_accounts()', 'execute'
+     )
+     and (select prosecdef from pg_proc where oid =
+       'public.list_authenticator_accounts()'::regprocedure)
+     and (select prosecdef from pg_proc where oid =
+       'public.upsert_authenticator_account(uuid,bigint,jsonb)'::regprocedure)
+     and (select prosecdef from pg_proc where oid =
+       'public.delete_authenticator_account(uuid,bigint)'::regprocedure)
+     and (select prosecdef from pg_proc where oid =
+       'private.broadcast_account_sync_change()'::regprocedure)
+     and exists (
+       select 1 from pg_trigger
+       where tgrelid = 'public.authenticator_accounts'::regclass
+         and tgname = 'broadcast_account_sync_change'
+         and not tgisinternal
      )
      and exists (
-       select 1 from pg_proc
-       where oid = 'public.register_current_authenticator_device(uuid,text,text)'::regprocedure
-         and prosecdef
+       select 1 from pg_policy
+       where polrelid = 'realtime.messages'::regclass
+         and polname = 'account_sync_receive_own_broadcast'
+         and polcmd = 'r'
+     )
+     and (
+       select pg_get_expr(polqual, polrelid) not ilike '%private%'
+       from pg_policy
+       where polrelid = 'realtime.messages'::regclass
+         and polname = 'account_sync_receive_own_broadcast'
+     )
+     and not exists (
+       select 1 from pg_policy
+       where polrelid = 'realtime.messages'::regclass
+         and polcmd = 'a'
+         and 'authenticated'::regrole = any (polroles)
+     )
+     and not exists (
+       select 1 from pg_publication_tables
+       where schemaname = 'public'
+         and tablename = 'authenticator_accounts'
      )
      and exists (
-       select 1 from pg_proc
-       where oid = 'public.list_authenticator_device_sessions()'::regprocedure
-         and prosecdef
+       select 1 from pg_extension where extname = 'supabase_vault'
      )
-     and exists (
-       select 1 from pg_proc
-       where oid = 'public.revoke_authenticator_device_session(uuid)'::regprocedure
-         and prosecdef
-     )
-     and position(
-       'is_current_auth_session_active'
-       in pg_get_functiondef(
-         'public.revoke_authenticator_device_session(uuid)'::regprocedure
-       )
-     ) > 0
-     and position(
-       'delete from auth.sessions'
-       in lower(pg_get_functiondef(
-         'public.revoke_authenticator_device_session(uuid)'::regprocedure
-       ))
-     ) > 0")
-[[ "$device_registry_ready" == t ]]
-
-device_wrap_ready=$(docker exec supabase-db psql -X -v ON_ERROR_STOP=1 \
-  -U supabase_admin -d postgres -Atqc \
-  "select
-     to_regclass('public.synced_accounts') is null
-     and to_regclass('public.authenticator_device_keys') is not null
-     and to_regclass('public.authenticator_device_key_wraps') is not null
-     and to_regclass('private.encrypted_vault_membership_verifiers') is not null
-     and not has_table_privilege(
-       'authenticated', 'public.authenticator_device_keys', 'select'
-     )
-     and not has_table_privilege(
-       'authenticated', 'public.authenticator_device_key_wraps', 'select'
-     )
-     and not has_table_privilege(
-       'authenticated', 'private.encrypted_vault_membership_verifiers', 'select'
-     )
-     and exists (
-       select 1 from pg_proc
-       where oid = 'public.publish_encrypted_vault_snapshot_v2(bigint,bigint,text,smallint,text,text,text,text,smallint,text,text,text)'::regprocedure
-         and prosecdef
-     )
-     and position(
-       'for update'
-       in lower(pg_get_functiondef(
-         'public.publish_encrypted_vault_snapshot_v2(bigint,bigint,text,smallint,text,text,text,text,smallint,text,text,text)'::regprocedure
-       ))
-     ) > 0
-     and position(
-       'p_expected_revision <> 0'
-       in pg_get_functiondef(
-         'public.publish_encrypted_vault_snapshot(bigint,smallint,text,text,text,text,smallint,text,text,text)'::regprocedure
-       )
-     ) > 0
-     and position(
-       'p_expected_revision is null'
-       in lower(pg_get_functiondef(
-         'public.publish_encrypted_vault_snapshot(bigint,smallint,text,text,text,text,smallint,text,text,text)'::regprocedure
-       ))
-     ) > 0
-     and exists (
-       select 1 from pg_proc
-       where oid = 'public.begin_authenticator_device_key_enrollment(uuid,text,text,text)'::regprocedure
-         and prosecdef
-     )
+     and to_regclass('public.encrypted_vault_snapshots') is null
+     and to_regclass('public.synced_accounts') is null
+     and to_regclass('public.authenticator_device_sessions') is null
+     and to_regclass('public.authenticator_device_keys') is null
+     and to_regclass('public.authenticator_device_key_wraps') is null
+     and to_regclass('private.encrypted_vault_membership_verifiers') is null
      and to_regprocedure(
-       'public.begin_authenticator_device_key_enrollment(uuid,text,text)'
-     ) is null
-     and exists (
-       select 1 from pg_proc
-       where oid = 'public.publish_authenticator_device_key_wrap(uuid,text,bigint,smallint,text,text,text,text,text,text,text,text)'::regprocedure
-         and prosecdef
-     )
-     and exists (
-       select 1 from pg_proc
-       where oid = 'public.rotate_encrypted_vault_device_keys(bigint,bigint,text,smallint,text,text,text,text,smallint,text,text,text,text,jsonb,uuid[])'::regprocedure
-         and prosecdef
-     )")
-[[ "$device_wrap_ready" == t ]]
+       'public.publish_encrypted_vault_snapshot(bigint,smallint,text,text,text,text,smallint,text,text,text)'
+     ) is null")
+[[ "$account_sync_ready" == t ]]
 
 if [[ -f "$STACK_ENV" && -n "$API_ORIGIN" ]]; then
   public_key=''
@@ -211,4 +154,4 @@ backup_age=$(( $(date +%s) - latest_epoch ))
   "$RESTORE_DRILL_STATE" "$MAX_RESTORE_DRILL_AGE_SECONDS" >/dev/null
 
 printf '%s\n' \
-  'Supabase production health pass: containers, capacity, active-session/device-registry/device-wrap guard, HTTPS, backup và restore-drill freshness.'
+  'Supabase production health pass: containers, capacity, Vault/RPC/private-Realtime contract, HTTPS, backup và restore-drill freshness.'

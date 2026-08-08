@@ -15,7 +15,7 @@ tạo thêm đường lộ credential ngoài protected export boundary hiện c�
 
 - HOTP, proprietary push MFA hoặc password-manager backup format.
 - Gộp nhiều account vào một QR `otpauth`; mỗi QR chuẩn chứa một account.
-- Encrypted backup file; đây là P0 kế tiếp sau task này.
+- Portable encrypted backup từng ngoài scope và sau đó đã bị ADR-0019 loại bỏ.
 
 ## Acceptance criteria
 
@@ -87,5 +87,5 @@ schema/RPC hoặc production data.
 
 Android debug compile là platform evidence của change set. Gate còn lại là
 app-to-app interoperability trên physical Android/iOS; không được lưu raw
-payload, secret hoặc OTP vào evidence. Encrypted backup file là P0 tiếp theo và
-phải có task/threat model riêng.
+payload, secret hoặc OTP vào evidence. Portable backup file không còn thuộc
+product contract theo ADR-0019.

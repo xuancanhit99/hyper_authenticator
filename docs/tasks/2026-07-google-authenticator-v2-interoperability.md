@@ -91,4 +91,5 @@ mọi mismatch schema/lifecycle tìm thấy và không giữ credential trong ev
 
 Inbound parser nhận v1/v2 theo exact observed shape; exporter vẫn phát v1. Không
 đổi data contract persisted hoặc Supabase. Gate còn lại là physical Android/iOS,
-standard `otpauth` portability và encrypted backup file.
+standard `otpauth` portability. Portable backup file từng được xem xét nhưng đã
+bị loại bỏ theo ADR-0019.

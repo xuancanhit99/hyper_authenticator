@@ -6,6 +6,7 @@ import 'package:hyper_authenticator/features/authenticator/domain/entities/authe
 import 'package:hyper_authenticator/features/authenticator/domain/repositories/authenticator_repository.dart';
 import 'package:hyper_authenticator/features/authenticator/presentation/bloc/accounts_bloc.dart';
 import 'package:hyper_authenticator/features/authenticator/presentation/pages/add_account_page.dart';
+import 'package:hyper_authenticator/features/authenticator/presentation/pages/edit_account_page.dart';
 import 'package:hyper_authenticator/injection_container.dart' as di;
 import 'package:hyper_authenticator/main.dart' as app;
 import 'package:hyper_authenticator/features/main_navigation/presentation/pages/main_navigation_page.dart';
@@ -16,6 +17,8 @@ const _allowVaultReset = bool.fromEnvironment('ALLOW_DEVICE_TEST_VAULT_RESET');
 const _testIssuer = 'TEST_ONLY Device Vault';
 const _testAccountName = 'device-smoke@example.invalid';
 const _testSecret = 'JBSWY3DPEHPK3PXP';
+const _updatedIssuer = 'TEST_ONLY Device Vault Updated';
+const _updatedAccountName = 'device-smoke-updated@example.invalid';
 
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
@@ -50,10 +53,7 @@ void main() {
         final accountsBloc = di.sl<AccountsBloc>();
         await _replaceVault(repository, const []);
         accountsBloc.add(LoadAccounts());
-        await _pumpUntil(
-          tester,
-          find.text('Không tìm thấy tài khoản phù hợp.'),
-        );
+        await _pumpUntil(tester, find.text('Chưa có tài khoản TOTP'));
         _phase('empty-vault-ready');
 
         await tester.tap(find.byTooltip('Thêm tài khoản'));
@@ -85,6 +85,16 @@ void main() {
         expect(persisted.single.period, 30);
         _phase('storage-round-trip-verified');
 
+        final accountId = persisted.single.id;
+        final codeFinder = find.byKey(Key('account-code-$accountId'));
+        await _pumpUntil(tester, codeFinder);
+        final displayedCode = tester
+            .widget<Text>(codeFinder)
+            .data!
+            .replaceAll(' ', '');
+        expect(displayedCode, matches(RegExp(r'^\d{6}$')));
+        _phase('totp-code-rendered');
+
         _phase('lifecycle-transition-start');
         await _transitionLifecycle(tester, const [
           AppLifecycleState.inactive,
@@ -106,14 +116,51 @@ void main() {
         await _pumpUntil(tester, find.text(_testIssuer));
         _phase('accounts-navigation-complete');
 
-        await _replaceVault(repository, const []);
-        accountsBloc.add(LoadAccounts());
-        await _pumpUntil(
-          tester,
-          find.text('Không tìm thấy tài khoản phù hợp.'),
+        await tester.tap(find.byKey(Key('account-actions-$accountId')));
+        await _pumpUntil(tester, find.text('Sửa'));
+        await tester.tap(find.text('Sửa'));
+        await _pumpUntil(tester, find.byKey(EditAccountPage.issuerFieldKey));
+        await tester.enterText(
+          find.byKey(EditAccountPage.issuerFieldKey),
+          _updatedIssuer,
         );
+        await tester.enterText(
+          find.byKey(EditAccountPage.accountNameFieldKey),
+          _updatedAccountName,
+        );
+        FocusManager.instance.primaryFocus?.unfocus();
+        await tester.pump(const Duration(milliseconds: 300));
+        await _scrollUntilVisible(
+          tester,
+          find.byKey(EditAccountPage.submitButtonKey),
+        );
+        await tester.tap(
+          find.byKey(EditAccountPage.submitButtonKey).hitTestable(),
+        );
+        await _pumpUntil(tester, find.text(_updatedIssuer));
+
+        final updated = await _readVault(repository);
+        expect(updated, hasLength(1));
+        expect(updated.single.id, accountId);
+        expect(updated.single.issuer, _updatedIssuer);
+        expect(updated.single.accountName, _updatedAccountName);
+        expect(updated.single.secretKey, _testSecret);
+        expect(updated.single.algorithm, 'SHA1');
+        expect(updated.single.digits, 6);
+        expect(updated.single.period, 30);
+        _phase('account-edit-persisted');
+
+        final updatedActions = find.byKey(Key('account-actions-$accountId'));
+        await _pumpUntil(tester, updatedActions);
+        await tester.pump(const Duration(seconds: 1));
+        await tester.tap(updatedActions.hitTestable());
+        await _pumpUntil(tester, find.text('Xóa'));
+        await tester.tap(find.text('Xóa'));
+        await _pumpUntil(tester, find.text('Xác nhận xóa'));
+        await tester.tap(find.widgetWithText(TextButton, 'Xóa'));
+        await _pumpUntil(tester, find.text('Chưa có tài khoản TOTP'));
         expect(await _readVault(repository), isEmpty);
-        _phase('cleanup-verified');
+        _phase('account-delete-persisted');
       } finally {
         try {
           if (repository != null) {
@@ -211,4 +258,20 @@ Future<void> _pumpUntil(
     await tester.pump(const Duration(milliseconds: 100));
   }
   await tester.pump(const Duration(milliseconds: 200));
+}
+
+Future<void> _scrollUntilVisible(WidgetTester tester, Finder finder) async {
+  final listView = find.byType(ListView).last;
+  expect(finder, findsOneWidget);
+  await tester.ensureVisible(finder);
+  await tester.pump(const Duration(milliseconds: 100));
+  for (
+    var attempt = 0;
+    finder.hitTestable().evaluate().isEmpty && attempt < 10;
+    attempt++
+  ) {
+    await tester.drag(listView, const Offset(0, -120), warnIfMissed: false);
+    await tester.pump(const Duration(milliseconds: 100));
+  }
+  expect(finder.hitTestable(), findsOneWidget);
 }

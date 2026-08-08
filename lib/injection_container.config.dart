@@ -28,14 +28,8 @@ import 'features/authenticator/data/repositories/authenticator_repository_impl.d
     as _i166;
 import 'features/authenticator/data/services/local_sensitive_action_authenticator.dart'
     as _i387;
-import 'features/authenticator/data/services/system_encrypted_backup_file_gateway.dart'
-    as _i188;
 import 'features/authenticator/domain/repositories/authenticator_repository.dart'
     as _i608;
-import 'features/authenticator/domain/repositories/encrypted_backup_file_gateway.dart'
-    as _i99;
-import 'features/authenticator/domain/services/encrypted_backup_file_codec.dart'
-    as _i560;
 import 'features/authenticator/domain/services/sensitive_action_authenticator.dart'
     as _i217;
 import 'features/authenticator/domain/usecases/add_account.dart' as _i356;
@@ -46,47 +40,21 @@ import 'features/authenticator/domain/usecases/get_accounts.dart' as _i572;
 import 'features/authenticator/domain/usecases/import_accounts.dart' as _i125;
 import 'features/authenticator/domain/usecases/update_account.dart' as _i827;
 import 'features/authenticator/presentation/bloc/accounts_bloc.dart' as _i467;
-import 'features/authenticator/presentation/bloc/encrypted_backup_bloc.dart'
-    as _i463;
 import 'features/authenticator/presentation/bloc/local_auth_bloc.dart' as _i534;
-import 'features/settings/data/datasources/authenticator_device_session_remote_data_source.dart'
-    as _i506;
-import 'features/settings/data/datasources/authenticator_installation_identity_store.dart'
-    as _i116;
-import 'features/settings/data/repositories/authenticator_device_session_repository_impl.dart'
-    as _i207;
-import 'features/settings/domain/repositories/authenticator_device_session_repository.dart'
-    as _i357;
-import 'features/settings/presentation/bloc/device_session_bloc.dart' as _i904;
-import 'features/settings/presentation/bloc/session_security_bloc.dart'
-    as _i469;
 import 'features/settings/presentation/bloc/settings_bloc.dart' as _i421;
-import 'features/sync/data/datasources/device_key_remote_data_source.dart'
-    as _i716;
-import 'features/sync/data/datasources/device_key_store.dart' as _i815;
-import 'features/sync/data/datasources/encrypted_vault_remote_data_source.dart'
-    as _i667;
-import 'features/sync/data/datasources/vault_key_store.dart' as _i493;
-import 'features/sync/data/repositories/device_key_repository_impl.dart'
-    as _i272;
-import 'features/sync/data/repositories/encrypted_sync_metadata_repository_impl.dart'
-    as _i961;
-import 'features/sync/data/repositories/encrypted_vault_repository_impl.dart'
-    as _i32;
-import 'features/sync/data/repositories/vault_key_repository_impl.dart'
-    as _i733;
-import 'features/sync/domain/repositories/device_key_repository.dart' as _i7;
-import 'features/sync/domain/repositories/encrypted_sync_metadata_repository.dart'
-    as _i126;
-import 'features/sync/domain/repositories/encrypted_vault_repository.dart'
-    as _i949;
-import 'features/sync/domain/repositories/vault_key_repository.dart' as _i776;
-import 'features/sync/domain/services/device_key_cipher.dart' as _i364;
-import 'features/sync/domain/services/vault_cipher.dart' as _i981;
-import 'features/sync/domain/usecases/device_key_enrollment_usecase.dart'
-    as _i274;
-import 'features/sync/domain/usecases/encrypted_vault_sync_usecase.dart'
-    as _i564;
+import 'features/sync/data/datasources/account_sync_metadata_store.dart'
+    as _i194;
+import 'features/sync/data/datasources/cloud_account_remote_data_source.dart'
+    as _i146;
+import 'features/sync/data/datasources/supabase_account_sync_signal_repository.dart'
+    as _i139;
+import 'features/sync/domain/repositories/account_sync_metadata_repository.dart'
+    as _i41;
+import 'features/sync/domain/repositories/account_sync_signal_repository.dart'
+    as _i1000;
+import 'features/sync/domain/repositories/cloud_account_repository.dart'
+    as _i817;
+import 'features/sync/domain/usecases/synchronize_accounts.dart' as _i747;
 import 'features/sync/presentation/bloc/sync_bloc.dart' as _i416;
 import 'injection_module.dart' as _i212;
 
@@ -104,11 +72,6 @@ extension GetItInjectableX on _i174.GetIt {
       preResolve: true,
     );
     gh.lazySingleton<_i828.AppConfig>(() => _i828.AppConfig.fromEnvironment());
-    gh.lazySingleton<_i560.EncryptedBackupFileCodec>(
-      () => _i560.EncryptedBackupFileCodec(),
-    );
-    gh.lazySingleton<_i364.DeviceKeyCipher>(() => _i364.DeviceKeyCipher());
-    gh.lazySingleton<_i981.VaultCipher>(() => _i981.VaultCipher());
     gh.lazySingleton<_i152.LocalAuthentication>(
       () => registerModule.localAuthentication,
     );
@@ -116,12 +79,6 @@ extension GetItInjectableX on _i174.GetIt {
       () => registerModule.flutterSecureStorage,
     );
     gh.lazySingleton<_i706.Uuid>(() => registerModule.uuid);
-    gh.lazySingleton<_i815.DeviceKeyMaterialStore>(
-      () => _i815.DeviceKeyStore(
-        gh<_i558.FlutterSecureStorage>(),
-        gh<_i364.DeviceKeyCipher>(),
-      ),
-    );
     gh.factory<_i421.SettingsBloc>(
       () => _i421.SettingsBloc(
         sharedPreferences: gh<_i460.SharedPreferences>(),
@@ -134,15 +91,6 @@ extension GetItInjectableX on _i174.GetIt {
         uuid: gh<_i706.Uuid>(),
       ),
     );
-    gh.lazySingleton<_i99.EncryptedBackupFileGateway>(
-      () => const _i188.SystemEncryptedBackupFileGateway(),
-    );
-    gh.lazySingleton<_i493.VaultKeyStore>(
-      () => _i493.VaultKeyStore(
-        gh<_i558.FlutterSecureStorage>(),
-        gh<_i981.VaultCipher>(),
-      ),
-    );
     gh.lazySingleton<_i454.SupabaseClient>(
       () => registerModule.supabaseClient(gh<_i828.AppConfig>()),
     );
@@ -152,16 +100,8 @@ extension GetItInjectableX on _i174.GetIt {
         sharedPreferences: gh<_i460.SharedPreferences>(),
       ),
     );
-    gh.lazySingleton<_i116.AuthenticatorInstallationIdentityStore>(
-      () => _i116.AuthenticatorInstallationIdentityStore(
-        gh<_i460.SharedPreferences>(),
-        gh<_i706.Uuid>(),
-      ),
-    );
-    gh.lazySingleton<_i126.EncryptedSyncMetadataRepository>(
-      () => _i961.EncryptedSyncMetadataRepositoryImpl(
-        gh<_i460.SharedPreferences>(),
-      ),
+    gh.lazySingleton<_i41.AccountSyncMetadataRepository>(
+      () => _i194.AccountSyncMetadataStore(gh<_i558.FlutterSecureStorage>()),
     );
     gh.lazySingleton<_i767.AuthRemoteDataSource>(
       () => _i767.AuthRemoteDataSourceImpl(
@@ -169,37 +109,21 @@ extension GetItInjectableX on _i174.GetIt {
         gh<_i828.AppConfig>(),
       ),
     );
-    gh.lazySingleton<_i506.AuthenticatorDeviceSessionRemoteDataSource>(
-      () => _i506.AuthenticatorDeviceSessionRemoteDataSource(
-        gh<_i454.SupabaseClient>(),
-      ),
-    );
-    gh.lazySingleton<_i716.DeviceKeyRemoteDataSource>(
-      () => _i716.DeviceKeyRemoteDataSource(gh<_i454.SupabaseClient>()),
-    );
-    gh.lazySingleton<_i667.EncryptedVaultRemoteDataSource>(
-      () => _i667.EncryptedVaultRemoteDataSource(gh<_i454.SupabaseClient>()),
-    );
-    gh.lazySingleton<_i7.DeviceKeyRepository>(
-      () =>
-          _i272.DeviceKeyRepositoryImpl(gh<_i716.DeviceKeyRemoteDataSource>()),
+    gh.lazySingleton<_i817.CloudAccountRepository>(
+      () => _i146.CloudAccountRemoteDataSource(gh<_i454.SupabaseClient>()),
     );
     gh.lazySingleton<_i608.AuthenticatorRepository>(
       () => _i166.AuthenticatorRepositoryImpl(
         localDataSource: gh<_i674.AuthenticatorLocalDataSource>(),
       ),
     );
-    gh.lazySingleton<_i776.VaultKeyRepository>(
-      () => _i733.VaultKeyRepositoryImpl(gh<_i493.VaultKeyStore>()),
+    gh.lazySingleton<_i1000.AccountSyncSignalRepository>(
+      () =>
+          _i139.SupabaseAccountSyncSignalRepository(gh<_i454.SupabaseClient>()),
     );
     gh.lazySingleton<_i217.SensitiveActionAuthenticator>(
       () => _i387.LocalSensitiveActionAuthenticator(
         gh<_i152.LocalAuthentication>(),
-      ),
-    );
-    gh.lazySingleton<_i949.EncryptedVaultRepository>(
-      () => _i32.EncryptedVaultRepositoryImpl(
-        gh<_i667.EncryptedVaultRemoteDataSource>(),
       ),
     );
     gh.factory<_i356.AddAccount>(
@@ -231,53 +155,22 @@ extension GetItInjectableX on _i174.GetIt {
         remoteDataSource: gh<_i767.AuthRemoteDataSource>(),
       ),
     );
-    gh.lazySingleton<_i357.AuthenticatorDeviceSessionRepository>(
-      () => _i207.AuthenticatorDeviceSessionRepositoryImpl(
-        gh<_i506.AuthenticatorDeviceSessionRemoteDataSource>(),
-        gh<_i116.AuthenticatorInstallationIdentityStore>(),
-      ),
-    );
-    gh.factory<_i463.EncryptedBackupBloc>(
-      () => _i463.EncryptedBackupBloc(
-        gh<_i608.AuthenticatorRepository>(),
-        gh<_i560.EncryptedBackupFileCodec>(),
-        gh<_i99.EncryptedBackupFileGateway>(),
-      ),
-    );
-    gh.factory<_i904.DeviceSessionBloc>(
-      () => _i904.DeviceSessionBloc(
-        gh<_i357.AuthenticatorDeviceSessionRepository>(),
-      ),
-    );
-    gh.factory<_i469.SessionSecurityBloc>(
-      () => _i469.SessionSecurityBloc(gh<_i1015.AuthRepository>()),
-    );
     gh.lazySingleton<_i363.AuthBloc>(
       () => _i363.AuthBloc(gh<_i1015.AuthRepository>()),
     );
-    gh.lazySingleton<_i274.DeviceKeyCoordinator>(
-      () => _i274.DeviceKeyEnrollmentUseCase(
-        gh<_i116.AuthenticatorInstallationIdentityStore>(),
-        gh<_i357.AuthenticatorDeviceSessionRepository>(),
-        gh<_i815.DeviceKeyMaterialStore>(),
-        gh<_i7.DeviceKeyRepository>(),
-        gh<_i364.DeviceKeyCipher>(),
-      ),
-    );
-    gh.lazySingleton<_i564.EncryptedVaultSyncUseCase>(
-      () => _i564.EncryptedVaultSyncUseCase(
+    gh.lazySingleton<_i747.AccountSynchronizer>(
+      () => _i747.SynchronizeAccounts(
         gh<_i1015.AuthRepository>(),
         gh<_i608.AuthenticatorRepository>(),
-        gh<_i949.EncryptedVaultRepository>(),
-        gh<_i776.VaultKeyRepository>(),
-        gh<_i126.EncryptedSyncMetadataRepository>(),
-        gh<_i981.VaultCipher>(),
-        gh<_i274.DeviceKeyCoordinator>(),
+        gh<_i817.CloudAccountRepository>(),
+        gh<_i41.AccountSyncMetadataRepository>(),
       ),
     );
-    gh.factory<_i416.SyncBloc>(
+    gh.lazySingleton<_i416.SyncBloc>(
       () => _i416.SyncBloc(
-        gh<_i564.EncryptedVaultSyncUseCase>(),
+        gh<_i747.AccountSynchronizer>(),
+        gh<_i1000.AccountSyncSignalRepository>(),
+        gh<_i363.AuthBloc>(),
         gh<_i467.AccountsBloc>(),
       ),
     );

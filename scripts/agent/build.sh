@@ -30,12 +30,16 @@ flutter_build() {
 build_macos() {
   if security find-identity -v -p codesigning 2>/dev/null |
       grep -Eq '[1-9][0-9]* valid identities found'; then
-    flutter_build macos --debug
-    return
+    if flutter_build macos --debug; then
+      return
+    fi
+    printf '%s\n' \
+      'Có signing identity nhưng thiếu profile/account phù hợp; chuyển sang compile unsigned.'
+  else
+    printf '%s\n' \
+      'Không có Apple signing identity; chỉ compile macOS unsigned, không runtime.'
   fi
 
-  printf '%s\n' \
-    'Không có Apple signing identity; chỉ compile macOS unsigned, không runtime.'
   flutter_build macos --debug --config-only
 
   # Xcode exports its environment in verbose build output. Use an allowlisted

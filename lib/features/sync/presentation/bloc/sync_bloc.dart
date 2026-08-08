@@ -1,214 +1,166 @@
+import 'dart:async';
+
 import 'package:bloc/bloc.dart';
 import 'package:equatable/equatable.dart';
 import 'package:fpdart/fpdart.dart';
 import 'package:hyper_authenticator/core/error/failures.dart';
-import 'package:hyper_authenticator/core/platform/platform_capabilities.dart';
+import 'package:hyper_authenticator/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:hyper_authenticator/features/authenticator/presentation/bloc/accounts_bloc.dart';
-import 'package:hyper_authenticator/features/sync/domain/entities/encrypted_sync_result.dart';
-import 'package:hyper_authenticator/features/sync/domain/usecases/encrypted_vault_sync_usecase.dart';
+import 'package:hyper_authenticator/features/sync/domain/entities/account_sync_result.dart';
+import 'package:hyper_authenticator/features/sync/domain/entities/account_sync_signal.dart';
+import 'package:hyper_authenticator/features/sync/domain/repositories/account_sync_signal_repository.dart';
+import 'package:hyper_authenticator/features/sync/domain/usecases/synchronize_accounts.dart';
 import 'package:injectable/injectable.dart';
 
 part 'sync_event.dart';
 part 'sync_state.dart';
 
-@injectable
+/// Owner duy nhất của trạng thái account-managed cloud sync.
+///
+/// BLoC nghe auth lifecycle và mutation local để đồng bộ tự động; Settings chỉ
+/// render status và phát retry event.
+@lazySingleton
 class SyncBloc extends Bloc<SyncEvent, SyncState> {
-  final EncryptedVaultSyncUseCase _sync;
+  SyncBloc(this._sync, this._signals, this._authBloc, this._accountsBloc)
+    : super(const SyncInitial()) {
+    on<CheckSyncStatus>(_onSyncRequested);
+    on<SyncNowRequested>(_onSyncRequested);
+    on<_AuthSyncRequested>(_onAuthChanged);
+    on<_LocalMutationSyncRequested>(_onSyncRequested);
+    on<_RealtimeSyncRequested>(_onRealtimeSyncRequested);
+
+    _authSubscription = _authBloc.stream.listen((state) {
+      add(
+        _AuthSyncRequested(state is AuthAuthenticated ? state.user.id : null),
+      );
+    });
+    _accountsSubscription = _accountsBloc.stream.listen((state) {
+      if (state is AccountAddSuccess ||
+          state is AccountImportSuccess ||
+          state is AccountUpdateSuccess ||
+          state is AccountDeleteSuccess) {
+        add(const _LocalMutationSyncRequested());
+      }
+    });
+
+    final currentAuthState = _authBloc.state;
+    add(
+      _AuthSyncRequested(
+        currentAuthState is AuthAuthenticated ? currentAuthState.user.id : null,
+      ),
+    );
+  }
+
+  final AccountSynchronizer _sync;
+  final AccountSyncSignalRepository _signals;
+  final AuthBloc _authBloc;
   final AccountsBloc _accountsBloc;
+  static const _realtimeDebounceDuration = Duration(milliseconds: 350);
+  StreamSubscription<AuthState>? _authSubscription;
+  StreamSubscription<AccountsState>? _accountsSubscription;
+  StreamSubscription<AccountSyncSignal>? _realtimeSubscription;
+  Timer? _realtimeDebounce;
+  String? _realtimeUserId;
 
-  SyncBloc(this._sync, this._accountsBloc) : super(const SyncInitial()) {
-    on<CheckSyncStatus>(_onCheckStatus);
-    on<BeginEncryptedSyncSetup>(_onBeginSetup);
-    on<ConfirmRecoveryKeySaved>(_onConfirmSetup);
-    on<BeginRecoveryKeyRotation>(_onBeginRecoveryKeyRotation);
-    on<ConfirmRecoveryKeyRotation>(_onConfirmRecoveryKeyRotation);
-    on<BeginVaultKeyRotation>(_onBeginVaultKeyRotation);
-    on<ConfirmVaultKeyRotation>(_onConfirmVaultKeyRotation);
-    on<RecoverEncryptedSync>(_onRecover);
-    on<SetEncryptedSyncEnabled>(_onSetEnabled);
-    on<SyncNowRequested>(_onSyncNow);
-    on<ResolveSyncConflictWithCloud>(_onUseCloud);
-    on<ResolveSyncConflictWithLocal>(_onKeepLocal);
-    on<CancelSensitiveSyncOperation>(_onCancelSensitiveOperation);
+  @override
+  Future<void> close() async {
+    _realtimeDebounce?.cancel();
+    await _realtimeSubscription?.cancel();
+    await _authSubscription?.cancel();
+    await _accountsSubscription?.cancel();
+    return super.close();
   }
 
-  Future<void> _onCheckStatus(
-    CheckSyncStatus event,
+  Future<void> _onAuthChanged(
+    _AuthSyncRequested event,
     Emitter<SyncState> emit,
   ) async {
-    if (!_supported(emit)) return;
-    emit(const SyncInProgress('Đang kiểm tra encrypted vault...'));
-    await _emitResult(await _sync.inspect(), emit);
+    await _replaceRealtimeSubscription(event.userId);
+    if (event.userId == null) {
+      emit(const SyncSignedOut());
+      return;
+    }
+    await _runSync(emit);
   }
 
-  Future<void> _onBeginSetup(
-    BeginEncryptedSyncSetup event,
+  Future<void> _replaceRealtimeSubscription(String? userId) async {
+    if (_realtimeUserId == userId && _realtimeSubscription != null) return;
+    _realtimeDebounce?.cancel();
+    _realtimeDebounce = null;
+    await _realtimeSubscription?.cancel();
+    _realtimeSubscription = null;
+    _realtimeUserId = userId;
+    if (userId == null) return;
+
+    _realtimeSubscription = _signals
+        .watch(userId: userId)
+        .listen(
+          (_) => _scheduleRealtimeSync(userId),
+          onError: (_, _) {
+            // Realtime là best-effort wake-up. RPC sync/resume/refresh/retry
+            // tiếp tục hoạt động và không bị đổi thành failure state.
+          },
+        );
+  }
+
+  void _scheduleRealtimeSync(String userId) {
+    _realtimeDebounce?.cancel();
+    _realtimeDebounce = Timer(_realtimeDebounceDuration, () {
+      if (!isClosed && _realtimeUserId == userId) {
+        add(_RealtimeSyncRequested(userId));
+      }
+    });
+  }
+
+  Future<void> _onRealtimeSyncRequested(
+    _RealtimeSyncRequested event,
     Emitter<SyncState> emit,
   ) async {
-    if (!_supported(emit)) return;
-    emit(const SyncInProgress('Đang tạo vault key...'));
-    await _emitResult(await _sync.prepareSetup(), emit);
+    final authState = _authBloc.state;
+    if (_realtimeUserId != event.userId ||
+        authState is! AuthAuthenticated ||
+        authState.user.id != event.userId) {
+      return;
+    }
+    await _runSync(emit);
   }
 
-  Future<void> _onConfirmSetup(
-    ConfirmRecoveryKeySaved event,
-    Emitter<SyncState> emit,
-  ) async {
-    if (!_supported(emit)) return;
-    emit(const SyncInProgress('Đang publish encrypted snapshot đầu tiên...'));
-    await _emitResult(await _sync.confirmSetup(), emit);
-  }
+  Future<void> _onSyncRequested(SyncEvent event, Emitter<SyncState> emit) =>
+      _runSync(emit);
 
-  Future<void> _onRecover(
-    RecoverEncryptedSync event,
-    Emitter<SyncState> emit,
-  ) async {
-    if (!_supported(emit)) return;
-    emit(const SyncInProgress('Đang xác thực recovery key...'));
-    await _emitResult(await _sync.recover(event.recoveryCode), emit);
-  }
-
-  Future<void> _onBeginRecoveryKeyRotation(
-    BeginRecoveryKeyRotation event,
-    Emitter<SyncState> emit,
-  ) async {
-    if (!_supported(emit)) return;
-    emit(const SyncInProgress('Đang tạo recovery key mới...'));
-    await _emitResult(await _sync.prepareRecoveryKeyRotation(), emit);
-  }
-
-  Future<void> _onConfirmRecoveryKeyRotation(
-    ConfirmRecoveryKeyRotation event,
-    Emitter<SyncState> emit,
-  ) async {
-    if (!_supported(emit)) return;
-    emit(const SyncInProgress('Đang xoay recovery key an toàn...'));
-    await _emitResult(await _sync.confirmRecoveryKeyRotation(), emit);
-  }
-
-  Future<void> _onBeginVaultKeyRotation(
-    BeginVaultKeyRotation event,
-    Emitter<SyncState> emit,
-  ) async {
-    if (!_supported(emit)) return;
-    emit(const SyncInProgress('Đang tạo vault key và recovery key mới...'));
-    await _emitResult(await _sync.prepareVaultKeyRotation(), emit);
-  }
-
-  Future<void> _onConfirmVaultKeyRotation(
-    ConfirmVaultKeyRotation event,
-    Emitter<SyncState> emit,
-  ) async {
-    if (!_supported(emit)) return;
-    emit(const SyncInProgress('Đang xoay khóa mã hóa vault...'));
-    await _emitResult(await _sync.confirmVaultKeyRotation(), emit);
-  }
-
-  Future<void> _onSetEnabled(
-    SetEncryptedSyncEnabled event,
-    Emitter<SyncState> emit,
-  ) async {
-    if (!_supported(emit)) return;
-    emit(const SyncInProgress('Đang cập nhật trạng thái backup...'));
-    await _emitResult(await _sync.setEnabled(event.enabled), emit);
-  }
-
-  Future<void> _onSyncNow(
-    SyncNowRequested event,
-    Emitter<SyncState> emit,
-  ) async {
-    if (!_supported(emit)) return;
-    emit(const SyncInProgress('Đang backup encrypted snapshot...'));
-    await _emitResult(await _sync.sync(), emit);
-  }
-
-  Future<void> _onUseCloud(
-    ResolveSyncConflictWithCloud event,
-    Emitter<SyncState> emit,
-  ) async {
-    if (!_supported(emit)) return;
-    emit(const SyncInProgress('Đang khôi phục snapshot từ cloud...'));
-    await _emitResult(await _sync.useCloud(), emit);
-  }
-
-  Future<void> _onKeepLocal(
-    ResolveSyncConflictWithLocal event,
-    Emitter<SyncState> emit,
-  ) async {
-    if (!_supported(emit)) return;
-    emit(const SyncInProgress('Đang publish snapshot local đã xác nhận...'));
-    await _emitResult(await _sync.keepLocal(), emit);
-  }
-
-  void _onCancelSensitiveOperation(
-    CancelSensitiveSyncOperation event,
-    Emitter<SyncState> emit,
-  ) {
-    _sync.cancelSensitiveOperation();
-    emit(const SyncInitial());
-    add(const CheckSyncStatus());
+  Future<void> _runSync(Emitter<SyncState> emit) async {
+    emit(const SyncInProgress());
+    await _emitResult(await _sync(), emit);
   }
 
   Future<void> _emitResult(
-    Either<Failure, EncryptedSyncResult> either,
+    Either<Failure, AccountSyncResult> either,
     Emitter<SyncState> emit,
   ) async {
-    await either.fold(
-      (Failure failure) async => emit(
-        SyncFailure(
-          failure.message,
-          isConflict: failure is SyncRevisionConflictFailure,
-        ),
-      ),
-      (EncryptedSyncResult result) async {
-        switch (result) {
-          case EncryptedSyncSetupRequired():
-            emit(const SyncSetupRequired());
-          case EncryptedSyncRecoveryRequired(:final updatedAt):
-            emit(SyncRecoveryRequired(updatedAt));
-          case EncryptedSyncRecoveryKeyReady(:final recoveryCode):
-            emit(SyncRecoveryKeyReady(recoveryCode));
-          case EncryptedSyncRecoveryKeyRotationReady(:final recoveryCode):
-            emit(SyncRecoveryKeyRotationReady(recoveryCode));
-          case EncryptedSyncVaultKeyRotationReady(:final recoveryCode):
-            emit(SyncVaultKeyRotationReady(recoveryCode));
-          case EncryptedSyncReady(
-            :final isEnabled,
-            :final revision,
-            :final updatedAt,
-          ):
-            emit(
-              SyncReady(
-                isEnabled: isEnabled,
-                revision: revision,
-                updatedAt: updatedAt,
-              ),
-            );
-          case EncryptedSyncConflict(
-            :final remoteRevision,
-            :final remoteUpdatedAt,
-          ):
-            emit(
-              SyncConflict(
-                remoteRevision: remoteRevision,
-                remoteUpdatedAt: remoteUpdatedAt,
-              ),
-            );
-          case EncryptedSyncCompleted(:final revision, :final completedAt):
+    await either.fold((failure) async => emit(SyncFailure(failure.message)), (
+      result,
+    ) async {
+      switch (result) {
+        case AccountSyncSignedOut():
+          emit(const SyncSignedOut());
+        case AccountSyncCompleted(
+          :final completedAt,
+          :final uploadedCount,
+          :final downloadedCount,
+          :final deletedCount,
+        ):
+          if (downloadedCount > 0 || deletedCount > 0) {
             _accountsBloc.add(LoadAccounts());
-            emit(SyncSuccess(revision: revision, completedAt: completedAt));
-        }
-      },
-    );
-  }
-
-  bool _supported(Emitter<SyncState> emit) {
-    if (PlatformCapabilities.supportsEncryptedCloudSync) return true;
-    emit(
-      const SyncUnavailable(
-        'Đồng bộ cloud mã hóa đầu cuối chưa hỗ trợ Web vì browser key storage có trust boundary khác native.',
-      ),
-    );
-    return false;
+          }
+          emit(
+            SyncReady(
+              completedAt: completedAt,
+              uploadedCount: uploadedCount,
+              downloadedCount: downloadedCount,
+              deletedCount: deletedCount,
+            ),
+          );
+      }
+    });
   }
 }

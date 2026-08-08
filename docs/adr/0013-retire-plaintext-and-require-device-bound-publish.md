@@ -1,5 +1,8 @@
 # ADR-0013: Loại bỏ plaintext sync và bắt buộc device-bound publish
 
+> **Bị thay thế một phần bởi ADR-0019.** Plaintext sync vẫn bị loại bỏ; phần
+> device-bound publish không còn trong Minimal E2EE source/schema.
+
 - Trạng thái: Đã chấp nhận
 - Ngày: 2026-07-22
 - Owner: canhvx

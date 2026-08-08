@@ -1,5 +1,8 @@
 # ADR-0012: Device-specific DEK wrap bằng HPKE và membership proof
 
+> **Bị thay thế bởi ADR-0019.** Per-device wrap/rotation không còn trong Minimal
+> E2EE source/schema; nội dung dưới đây chỉ là lịch sử quyết định.
+
 - Trạng thái: Đã chấp nhận
 - Ngày: 2026-07-19
 - Owner: canhvx

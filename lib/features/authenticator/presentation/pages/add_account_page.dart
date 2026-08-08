@@ -5,6 +5,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hyper_authenticator/core/platform/platform_capabilities.dart';
 import 'package:hyper_authenticator/core/router/app_router.dart';
+import 'package:hyper_authenticator/core/widgets/responsive_content.dart';
 import 'package:hyper_authenticator/features/authenticator/domain/services/google_authenticator_migration_parser.dart';
 import 'package:hyper_authenticator/features/authenticator/domain/services/totp_uri_parser.dart';
 import 'package:hyper_authenticator/features/authenticator/presentation/bloc/accounts_bloc.dart';
@@ -44,6 +45,7 @@ class _AddAccountPageState extends State<AddAccountPage> {
   bool _isScanning = false;
   bool _isSubmitting = false;
   bool _isProcessingBarcode = false;
+  bool _obscureSecret = true;
   late final MobileScannerController _scannerController;
   final GoogleAuthenticatorMigrationBatchCollector _migrationCollector =
       GoogleAuthenticatorMigrationBatchCollector();
@@ -245,8 +247,12 @@ class _AddAccountPageState extends State<AddAccountPage> {
 
   void _showError(String message) {
     if (mounted) {
+      final colorScheme = Theme.of(context).colorScheme;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message), backgroundColor: Colors.red),
+        SnackBar(
+          content: Text(message, style: TextStyle(color: colorScheme.onError)),
+          backgroundColor: colorScheme.error,
+        ),
       );
     }
   }
@@ -376,64 +382,89 @@ class _AddAccountPageState extends State<AddAccountPage> {
   }
 
   Widget _buildManualEntryForm() {
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: Form(
-        key: _formKey,
-        child: ListView(
-          // Use ListView for scrollability on small screens
-          children: [
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              child: Center(
-                child: AccountAvatar(issuer: _issuerController.text, size: 72),
+    return MaxWidthContent(
+      maxWidth: 640,
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Form(
+          key: _formKey,
+          child: ListView(
+            // Use ListView for scrollability on small screens
+            children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                child: Center(
+                  child: AccountAvatar(
+                    issuer: _issuerController.text,
+                    size: 72,
+                  ),
+                ),
               ),
-            ),
-            TextFormField(
-              key: AddAccountPage.issuerFieldKey,
-              controller: _issuerController,
-              decoration: const InputDecoration(
-                labelText: 'Nhà cung cấp (ví dụ: Google, GitHub)',
-                hintText: 'Nhập tên nhà cung cấp',
+              TextFormField(
+                key: AddAccountPage.issuerFieldKey,
+                controller: _issuerController,
+                decoration: const InputDecoration(
+                  labelText: 'Nhà cung cấp (ví dụ: Google, GitHub)',
+                  hintText: 'Nhập tên nhà cung cấp',
+                ),
+                validator: (value) => (value == null || value.isEmpty)
+                    ? 'Vui lòng nhập nhà cung cấp.'
+                    : null,
+                // Listener is in initState to update preview dynamically
               ),
-              validator: (value) => (value == null || value.isEmpty)
-                  ? 'Vui lòng nhập nhà cung cấp.'
-                  : null,
-              // Listener is in initState to update preview dynamically
-            ),
-            const SizedBox(height: 16),
-            TextFormField(
-              key: AddAccountPage.accountNameFieldKey,
-              controller: _accountNameController,
-              decoration: const InputDecoration(
-                labelText: 'Tên tài khoản (ví dụ: user@example.com)',
+              const SizedBox(height: 16),
+              TextFormField(
+                key: AddAccountPage.accountNameFieldKey,
+                controller: _accountNameController,
+                decoration: const InputDecoration(
+                  labelText: 'Tên tài khoản (ví dụ: user@example.com)',
+                ),
+                validator: (value) => (value == null || value.isEmpty)
+                    ? 'Vui lòng nhập tên tài khoản.'
+                    : null,
               ),
-              validator: (value) => (value == null || value.isEmpty)
-                  ? 'Vui lòng nhập tên tài khoản.'
-                  : null,
-            ),
-            const SizedBox(height: 16),
-            TextFormField(
-              key: AddAccountPage.secretFieldKey,
-              controller: _secretController,
-              decoration: const InputDecoration(
-                labelText: 'Secret key (mã hóa Base32)',
+              const SizedBox(height: 16),
+              TextFormField(
+                key: AddAccountPage.secretFieldKey,
+                controller: _secretController,
+                decoration: InputDecoration(
+                  labelText: 'Secret key (mã hóa Base32)',
+                  suffixIcon: IconButton(
+                    tooltip: _obscureSecret
+                        ? 'Hiện secret key'
+                        : 'Ẩn secret key',
+                    icon: Icon(
+                      _obscureSecret
+                          ? Icons.visibility_off_outlined
+                          : Icons.visibility_outlined,
+                    ),
+                    onPressed: () =>
+                        setState(() => _obscureSecret = !_obscureSecret),
+                  ),
+                ),
+                obscureText: _obscureSecret,
+                autocorrect: false,
+                enableSuggestions: false,
+                enableIMEPersonalizedLearning: false,
+                textCapitalization: TextCapitalization.characters,
+                textInputAction: TextInputAction.done,
+                onFieldSubmitted: (_) => _submitManualEntry(),
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Vui lòng nhập secret key.';
+                  }
+                  // Optional: Add a more robust Base32 validation if needed
+                  return null;
+                },
               ),
-              validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return 'Vui lòng nhập secret key.';
-                }
-                // Optional: Add a more robust Base32 validation if needed
-                return null;
-              },
-            ),
-            const SizedBox(height: 32),
-            ElevatedButton(
-              key: AddAccountPage.submitButtonKey,
-              onPressed: _isSubmitting ? null : _submitManualEntry,
-              child: Text(_isSubmitting ? 'Đang thêm…' : 'Thêm tài khoản'),
-            ),
-          ],
+              const SizedBox(height: 32),
+              ElevatedButton(
+                key: AddAccountPage.submitButtonKey,
+                onPressed: _isSubmitting ? null : _submitManualEntry,
+                child: Text(_isSubmitting ? 'Đang thêm…' : 'Thêm tài khoản'),
+              ),
+            ],
+          ),
         ),
       ),
     );

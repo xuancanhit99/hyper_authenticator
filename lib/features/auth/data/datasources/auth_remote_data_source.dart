@@ -22,8 +22,6 @@ abstract class AuthRemoteDataSource {
 
   Future<void> signOut();
 
-  Future<void> revokeOtherSessions();
-
   // Added method for updating password
   Future<void> updatePassword(String newPassword);
 }
@@ -126,17 +124,6 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       await _supabaseClient.auth.signOut(scope: SignOutScope.local);
     } catch (_) {
       throw ServerException('Đã xảy ra lỗi khi đăng xuất.');
-    }
-  }
-
-  @override
-  Future<void> revokeOtherSessions() async {
-    try {
-      await _supabaseClient.auth.signOut(scope: SignOutScope.others);
-    } on AuthException catch (e) {
-      throw AuthServerException(e.message);
-    } catch (_) {
-      throw ServerException('Đã xảy ra lỗi khi thu hồi các session khác.');
     }
   }
 

@@ -3,18 +3,22 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:hyper_authenticator/core/constants/app_colors.dart';
 import 'package:hyper_authenticator/core/router/app_router.dart';
 import 'package:hyper_authenticator/core/theme/theme_cubit.dart';
+import 'package:hyper_authenticator/core/widgets/responsive_content.dart';
 import 'package:hyper_authenticator/features/authenticator/domain/entities/authenticator_account.dart';
 import 'package:hyper_authenticator/features/authenticator/domain/usecases/generate_totp_code.dart';
 import 'package:hyper_authenticator/features/authenticator/presentation/bloc/accounts_bloc.dart';
 import 'package:hyper_authenticator/features/authenticator/presentation/widgets/account_avatar.dart';
 import 'package:hyper_authenticator/features/authenticator/presentation/widgets/account_code_tile.dart';
 import 'package:hyper_authenticator/features/authenticator/presentation/widgets/circular_countdown_timer.dart';
+import 'package:hyper_authenticator/features/sync/presentation/bloc/sync_bloc.dart';
 import 'package:hyper_authenticator/injection_container.dart';
 
 class AccountsPage extends StatefulWidget {
+  static const emptyAddAccountButtonKey = Key('empty-add-account');
+  static const clearSearchButtonKey = Key('clear-account-search');
+
   const AccountsPage({
     super.key,
     this.now = DateTime.now,
@@ -37,6 +41,7 @@ class _AccountsPageState extends State<AccountsPage>
   late final GenerateTotpCode _generateTotpCode;
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
+  bool _deleteInProgress = false;
 
   @override
   void initState() {
@@ -144,8 +149,9 @@ class _AccountsPageState extends State<AccountsPage>
 
   @override
   Widget build(BuildContext context) {
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    final themeMode = context.watch<ThemeCubit>().state;
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final themeMode = context.watch<ThemeCubit>().state.mode;
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Theme.of(context).scaffoldBackgroundColor,
@@ -157,7 +163,7 @@ class _AccountsPageState extends State<AccountsPage>
               ThemeMode.light => Icons.light_mode_outlined,
               ThemeMode.dark => Icons.dark_mode_outlined,
               ThemeMode.system => Icons.brightness_auto_outlined,
-            }, color: isDarkMode ? Colors.white : Colors.black87),
+            }, color: colorScheme.onSurface),
             tooltip: 'Đổi giao diện',
             onSelected: context.read<ThemeCubit>().setThemeMode,
             itemBuilder: (context) => const [
@@ -192,19 +198,12 @@ class _AccountsPageState extends State<AccountsPage>
           Padding(
             padding: const EdgeInsets.only(right: 8.0),
             child: IconButton(
-              icon: const Icon(Icons.add, size: 20), // Reduced icon size
-              color: isDarkMode
-                  ? Colors
-                        .white // Light icon on dark background
-                  : Colors.black87, // Darker icon on light background
+              icon: const Icon(Icons.add, size: 20),
+              color: colorScheme.onPrimaryContainer,
               tooltip: 'Thêm tài khoản',
               style: IconButton.styleFrom(
-                backgroundColor: isDarkMode
-                    ? AppColors
-                          .cDarkIconBg // Dark background for dark mode
-                    : AppColors.cLightIconBg, // Light background for light mode
-                shape:
-                    const CircleBorder(), // Slightly reduced padding for smaller icon
+                backgroundColor: colorScheme.primaryContainer,
+                shape: const CircleBorder(),
               ),
               onPressed: () {
                 context.push(AppRoutes.addAccount);
@@ -215,223 +214,249 @@ class _AccountsPageState extends State<AccountsPage>
           // IconButton(icon: Icon(Icons.search), onPressed: () { /* Toggle search bar visibility */ }),
         ],
       ),
-      body: GestureDetector(
-        // Wrap with GestureDetector
-        excludeFromSemantics: true,
-        onTap: () => FocusScope.of(context).unfocus(), // Unfocus on tap outside
-        child: Column(
-          // Wrap body content in a Column
-          children: [
-            // Search Bar
-            Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 16.0,
-                vertical: 8.0,
-              ), // Increased horizontal padding
-              child: TextField(
-                controller: _searchController,
-                decoration: InputDecoration(
-                  hintText: 'Tìm dịch vụ hoặc ứng dụng...',
-                  prefixIcon: const Icon(Icons.search),
-                  // Define consistent border radius
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(
-                      12.0,
-                    ), // Match Card radius (adjust if needed)
-                    borderSide: BorderSide.none,
+      body: MaxWidthContent(
+        maxWidth: 960,
+        child: GestureDetector(
+          // Wrap with GestureDetector
+          excludeFromSemantics: true,
+          onTap: () =>
+              FocusScope.of(context).unfocus(), // Unfocus on tap outside
+          child: Column(
+            // Wrap body content in a Column
+            children: [
+              // Search Bar
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16.0,
+                  vertical: 8.0,
+                ), // Increased horizontal padding
+                child: TextField(
+                  controller: _searchController,
+                  decoration: InputDecoration(
+                    hintText: 'Tìm dịch vụ hoặc ứng dụng...',
+                    prefixIcon: const Icon(Icons.search),
+                    // Define consistent border radius
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(
+                        12.0,
+                      ), // Match Card radius (adjust if needed)
+                      borderSide: BorderSide.none,
+                    ),
+                    // Ensure focused border also uses the same radius and no visible border side
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12.0),
+                      borderSide:
+                          BorderSide.none, // Keep border invisible on focus
+                    ),
+                    filled: true,
+                    fillColor: theme.cardTheme.color,
+                    contentPadding: const EdgeInsets.symmetric(
+                      vertical: 0,
+                      horizontal: 16,
+                    ), // Adjust padding
+                    suffixIcon: _searchQuery.isNotEmpty
+                        ? IconButton(
+                            icon: const Icon(Icons.clear),
+                            tooltip: 'Xóa nội dung tìm kiếm',
+                            onPressed: () {
+                              _searchController.clear();
+                              // _onSearchChanged will be called by the listener
+                            },
+                          )
+                        : null,
                   ),
-                  // Ensure focused border also uses the same radius and no visible border side
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12.0),
-                    borderSide:
-                        BorderSide.none, // Keep border invisible on focus
-                  ),
-                  filled: true,
-                  fillColor: isDarkMode
-                      ? AppColors
-                            .cCardDarkColor // Use custom dark color
-                      : null, // Use default theme fill color for light mode (or specify one)
-                  contentPadding: const EdgeInsets.symmetric(
-                    vertical: 0,
-                    horizontal: 16,
-                  ), // Adjust padding
-                  suffixIcon: _searchQuery.isNotEmpty
-                      ? IconButton(
-                          icon: const Icon(Icons.clear),
-                          tooltip: 'Xóa nội dung tìm kiếm',
-                          onPressed: () {
-                            _searchController.clear();
-                            // _onSearchChanged will be called by the listener
-                          },
-                        )
-                      : null,
                 ),
               ),
-            ),
-            // Account List (Expanded to take remaining space)
-            Expanded(
-              child: BlocConsumer<AccountsBloc, AccountsState>(
-                listener: (context, state) {
-                  if (state is AccountsLoaded) {
-                    final accountIds = state.accounts
-                        .map((account) => account.id)
-                        .toSet();
-                    _codeCache.removeWhere(
-                      (accountId, _) => !accountIds.contains(accountId),
-                    );
-                    _currentCodes.removeWhere(
-                      (accountId, _) => !accountIds.contains(accountId),
-                    );
-                  }
-                  if (state is AccountsError) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Lỗi: ${state.message}')),
-                    );
-                  }
-                  // Optional: Show success messages for add/delete if specific states were used
-                },
-                builder: (context, state) {
-                  if (state is AccountsLoading || state is AccountsInitial) {
-                    return const Center(child: CircularProgressIndicator());
-                  } else if (state is AccountsLoaded) {
-                    // Filter accounts based on search query
-                    final List<AuthenticatorAccount> filteredAccounts = state
-                        .accounts
-                        .where((account) {
-                          final query = _searchQuery.toLowerCase();
-                          final issuerMatch = account.issuer
-                              .toLowerCase()
-                              .contains(query);
-                          final nameMatch = account.accountName
-                              .toLowerCase()
-                              .contains(query);
-                          return issuerMatch || nameMatch;
-                        })
-                        .toList();
+              // Account List (Expanded to take remaining space)
+              Expanded(
+                child: BlocConsumer<AccountsBloc, AccountsState>(
+                  listener: (context, state) {
+                    if (state is AccountsLoaded) {
+                      final accountIds = state.accounts
+                          .map((account) => account.id)
+                          .toSet();
+                      _codeCache.removeWhere(
+                        (accountId, _) => !accountIds.contains(accountId),
+                      );
+                      _currentCodes.removeWhere(
+                        (accountId, _) => !accountIds.contains(accountId),
+                      );
+                    }
+                    if (state is AccountDeleteSuccess) {
+                      if (mounted) {
+                        setState(() => _deleteInProgress = false);
+                      }
+                      ScaffoldMessenger.of(context)
+                        ..hideCurrentSnackBar()
+                        ..showSnackBar(
+                          const SnackBar(content: Text('Đã xóa tài khoản.')),
+                        );
+                    }
+                    if (state is AccountDeleteFailure) {
+                      if (mounted) {
+                        setState(() => _deleteInProgress = false);
+                      }
+                      ScaffoldMessenger.of(context)
+                        ..hideCurrentSnackBar()
+                        ..showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              'Không thể xóa tài khoản: ${state.message}',
+                            ),
+                          ),
+                        );
+                    }
+                    if (state is AccountsError) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Lỗi: ${state.message}')),
+                      );
+                    }
+                    // Optional: Show success messages for add/delete if specific states were used
+                  },
+                  builder: (context, state) {
+                    if (state is AccountsLoading ||
+                        state is AccountsInitial ||
+                        state is AccountDeleteSuccess ||
+                        state is AccountDeleteFailure) {
+                      return const Center(child: CircularProgressIndicator());
+                    } else if (state is AccountsLoaded) {
+                      // Filter accounts based on search query
+                      final List<AuthenticatorAccount> filteredAccounts = state
+                          .accounts
+                          .where((account) {
+                            final query = _searchQuery.toLowerCase();
+                            final issuerMatch = account.issuer
+                                .toLowerCase()
+                                .contains(query);
+                            final nameMatch = account.accountName
+                                .toLowerCase()
+                                .contains(query);
+                            return issuerMatch || nameMatch;
+                          })
+                          .toList();
 
-                    if (filteredAccounts.isEmpty) {
-                      // Check filtered list
-                      // Wrap empty state message with RefreshIndicator as well
-                      return RefreshIndicator(
-                        onRefresh: () async {
-                          context.read<AccountsBloc>().add(LoadAccounts());
-                        },
-                        child: LayoutBuilder(
-                          // Use LayoutBuilder to allow scrolling for refresh
-                          builder: (context, constraints) =>
-                              SingleChildScrollView(
-                                physics: const AlwaysScrollableScrollPhysics(),
-                                child: ConstrainedBox(
-                                  constraints: BoxConstraints(
-                                    minHeight: constraints.maxHeight,
-                                  ),
-                                  child: const Center(
-                                    child: Text(
-                                      'Không tìm thấy tài khoản phù hợp.',
+                      if (filteredAccounts.isEmpty) {
+                        return RefreshIndicator(
+                          onRefresh: () async {
+                            _refreshAccounts(context);
+                          },
+                          child: LayoutBuilder(
+                            // Use LayoutBuilder to allow scrolling for refresh
+                            builder: (context, constraints) =>
+                                SingleChildScrollView(
+                                  physics:
+                                      const AlwaysScrollableScrollPhysics(),
+                                  child: ConstrainedBox(
+                                    constraints: BoxConstraints(
+                                      minHeight: constraints.maxHeight,
+                                    ),
+                                    child: Center(
+                                      child: _AccountsEmptyState(
+                                        hasAccounts: state.accounts.isNotEmpty,
+                                        onAddAccount: () =>
+                                            context.push(AppRoutes.addAccount),
+                                        onClearSearch: _searchController.clear,
+                                      ),
                                     ),
                                   ),
                                 ),
-                              ),
-                        ),
-                      );
-                    }
-                    // Build the list view with Pull-to-Refresh inside a Card
-                    return Card(
-                      // Wrap with Card
-                      elevation: 1,
-                      color: isDarkMode
-                          ? AppColors
-                                .cCardDarkColor // Use custom dark color
-                          : Theme.of(
-                              context,
-                            ).cardColor, // Use default theme color for light mode
-                      margin: const EdgeInsets.only(
-                        top: 8.0,
-                        left: 16.0,
-                        right: 16.0,
-                        bottom: 16.0,
-                      ), // Increased margin
-                      clipBehavior:
-                          Clip.antiAlias, // Optional: Improves corner clipping
-                      child: RefreshIndicator(
-                        // Start RefreshIndicator
-                        onRefresh: () async {
-                          // Dispatch LoadAccounts event when pulled
-                          context.read<AccountsBloc>().add(LoadAccounts());
-                        },
-                        child: ListView.separated(
-                          // Change to ListView.separated
-                          // Start ListView.separated (child of RefreshIndicator)
-                          itemCount: filteredAccounts
-                              .length, // Use filtered list length
-                          separatorBuilder: (context, index) => const Divider(
-                            height: 1, // Make divider thin
-                            thickness: 1, // Explicit thickness
-                            // Optional: Add indent or endIndent if needed
-                            // indent: 16.0,
-                            // endIndent: 16.0,
                           ),
-                          itemBuilder: (context, index) {
-                            final account =
-                                filteredAccounts[index]; // Use filtered list item
-                            final timeWindow = TotpTimeWindow.fromEpochSeconds(
-                              epochSeconds: _epochSeconds,
-                              periodSeconds: account.period,
-                            );
-                            return FutureBuilder<String>(
-                              // Use future builder to get the code asynchronously
-                              future: _getCodeForAccount(account, timeWindow),
-                              builder: (context, snapshot) {
-                                String displayCode = "------"; // Placeholder
-                                if (snapshot.connectionState ==
-                                        ConnectionState.done &&
-                                    snapshot.hasData) {
-                                  displayCode = snapshot.data!;
-                                  // Format code with space
-                                  if (displayCode.length == 6) {
+                        );
+                      }
+                      // Build the list view with Pull-to-Refresh inside a Card
+                      return Card(
+                        // Màu lấy từ CardTheme của style đang chọn.
+                        elevation: 1,
+                        margin: const EdgeInsets.only(
+                          top: 8.0,
+                          left: 16.0,
+                          right: 16.0,
+                          bottom: 16.0,
+                        ), // Increased margin
+                        clipBehavior: Clip
+                            .antiAlias, // Optional: Improves corner clipping
+                        child: RefreshIndicator(
+                          // Start RefreshIndicator
+                          onRefresh: () async {
+                            // Dispatch LoadAccounts event when pulled
+                            _refreshAccounts(context);
+                          },
+                          child: ListView.separated(
+                            // Change to ListView.separated
+                            // Start ListView.separated (child of RefreshIndicator)
+                            itemCount: filteredAccounts
+                                .length, // Use filtered list length
+                            separatorBuilder: (context, index) => const Divider(
+                              height: 1, // Make divider thin
+                              thickness: 1, // Explicit thickness
+                              // Optional: Add indent or endIndent if needed
+                              // indent: 16.0,
+                              // endIndent: 16.0,
+                            ),
+                            itemBuilder: (context, index) {
+                              final account =
+                                  filteredAccounts[index]; // Use filtered list item
+                              final timeWindow =
+                                  TotpTimeWindow.fromEpochSeconds(
+                                    epochSeconds: _epochSeconds,
+                                    periodSeconds: account.period,
+                                  );
+                              return FutureBuilder<String>(
+                                // Use future builder to get the code asynchronously
+                                future: _getCodeForAccount(account, timeWindow),
+                                builder: (context, snapshot) {
+                                  String displayCode = "------"; // Placeholder
+                                  if (snapshot.connectionState ==
+                                          ConnectionState.done &&
+                                      snapshot.hasData) {
+                                    displayCode = snapshot.data!;
+                                    // Format code with space
+                                    if (displayCode.length == 6) {
+                                      displayCode =
+                                          '${displayCode.substring(0, 3)} ${displayCode.substring(3)}';
+                                    }
+                                    _currentCodes[account.id] =
+                                        displayCode; // Cache code
+                                  } else if (_currentCodes.containsKey(
+                                    account.id,
+                                  )) {
                                     displayCode =
-                                        '${displayCode.substring(0, 3)} ${displayCode.substring(3)}';
+                                        _currentCodes[account
+                                            .id]!; // Use cached code during refresh
                                   }
-                                  _currentCodes[account.id] =
-                                      displayCode; // Cache code
-                                } else if (_currentCodes.containsKey(
-                                  account.id,
-                                )) {
-                                  displayCode =
-                                      _currentCodes[account
-                                          .id]!; // Use cached code during refresh
-                                }
 
-                                return AccountCodeTile(
-                                  account: account,
-                                  displayCode: displayCode,
-                                  timeWindow: timeWindow,
-                                  onEdit: () => context.push(
-                                    AppRoutes.editAccount,
-                                    extra: account,
-                                  ),
-                                  onDelete: () => _showDeleteConfirmationDialog(
-                                    context,
-                                    account,
-                                  ),
-                                );
-                              }, // End FutureBuilder builder
-                            ); // End FutureBuilder
-                          }, // End itemBuilder
-                        ), // End ListView.separated
-                      ), // End RefreshIndicator
-                    ); // End Card
-                  } // End of `if (state is AccountsLoaded)`
-                  // Should not happen if states are handled, but provide fallback
-                  return const Center(
-                    child: Text('Ứng dụng gặp trạng thái không mong đợi.'),
-                  );
-                }, // End BlocConsumer builder
-              ), // End BlocConsumer
-            ), // End Expanded
-          ], // End Column children
-        ), // End Column
-      ), // End GestureDetector
+                                  return AccountCodeTile(
+                                    account: account,
+                                    displayCode: displayCode,
+                                    timeWindow: timeWindow,
+                                    onEdit: () => context.push(
+                                      AppRoutes.editAccount,
+                                      extra: account,
+                                    ),
+                                    onDelete: () =>
+                                        _showDeleteConfirmationDialog(
+                                          context,
+                                          account,
+                                        ),
+                                  );
+                                }, // End FutureBuilder builder
+                              ); // End FutureBuilder
+                            }, // End itemBuilder
+                          ), // End ListView.separated
+                        ), // End RefreshIndicator
+                      ); // End Card
+                    } // End of `if (state is AccountsLoaded)`
+                    // Should not happen if states are handled, but provide fallback
+                    return const Center(
+                      child: Text('Ứng dụng gặp trạng thái không mong đợi.'),
+                    );
+                  }, // End BlocConsumer builder
+                ), // End BlocConsumer
+              ), // End Expanded
+            ], // End Column children
+          ), // End Column
+        ), // End GestureDetector
+      ),
     ); // End Scaffold
   } // End build method
 
@@ -440,6 +465,14 @@ class _AccountsPageState extends State<AccountsPage>
     BuildContext context,
     AuthenticatorAccount account,
   ) {
+    if (_deleteInProgress) {
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          const SnackBar(content: Text('Một thao tác xóa đang được xử lý.')),
+        );
+      return;
+    }
     showDialog(
       context: context,
       builder: (BuildContext dialogContext) {
@@ -470,27 +503,29 @@ class _AccountsPageState extends State<AccountsPage>
               },
             ),
             TextButton(
-              style: TextButton.styleFrom(foregroundColor: Colors.red),
+              style: TextButton.styleFrom(
+                foregroundColor: Theme.of(context).colorScheme.error,
+              ),
               child: const Text('Xóa'),
               onPressed: () {
+                setState(() => _deleteInProgress = true);
                 context.read<AccountsBloc>().add(
                   DeleteAccountRequested(accountId: account.id),
                 );
-                Navigator.of(dialogContext).pop(); // Close dialog
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(
-                      'Đã xóa ${account.issuer} (${account.accountName})',
-                    ),
-                    duration: const Duration(seconds: 2),
-                  ),
-                );
+                Navigator.of(dialogContext).pop();
               },
             ),
           ],
         );
       },
     );
+  }
+
+  void _refreshAccounts(BuildContext context) {
+    context.read<AccountsBloc>().add(LoadAccounts());
+    if (sl.isRegistered<SyncBloc>()) {
+      sl<SyncBloc>().add(const SyncNowRequested());
+    }
   }
 } // End _AccountsPageState class
 
@@ -504,4 +539,66 @@ class _TotpCodeCacheEntry {
   final AuthenticatorAccount account;
   final int timeStep;
   final Future<String> future;
+}
+
+class _AccountsEmptyState extends StatelessWidget {
+  const _AccountsEmptyState({
+    required this.hasAccounts,
+    required this.onAddAccount,
+    required this.onClearSearch,
+  });
+
+  final bool hasAccounts;
+  final VoidCallback onAddAccount;
+  final VoidCallback onClearSearch;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.all(24),
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(
+          hasAccounts ? Icons.search_off_rounded : Icons.shield_outlined,
+          size: 48,
+          color: Theme.of(context).colorScheme.primary,
+        ),
+        const SizedBox(height: 16),
+        Text(
+          hasAccounts
+              ? 'Không tìm thấy tài khoản phù hợp'
+              : 'Chưa có tài khoản TOTP',
+          textAlign: TextAlign.center,
+          style: Theme.of(
+            context,
+          ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          hasAccounts
+              ? 'Thử từ khóa khác hoặc xóa nội dung tìm kiếm.'
+              : 'Quét mã QR hoặc nhập secret key để tạo mã xác thực đầu tiên.',
+          textAlign: TextAlign.center,
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
+        ),
+        const SizedBox(height: 20),
+        if (hasAccounts)
+          TextButton.icon(
+            key: AccountsPage.clearSearchButtonKey,
+            onPressed: onClearSearch,
+            icon: const Icon(Icons.clear),
+            label: const Text('Xóa tìm kiếm'),
+          )
+        else
+          FilledButton.icon(
+            key: AccountsPage.emptyAddAccountButtonKey,
+            onPressed: onAddAccount,
+            icon: const Icon(Icons.add),
+            label: const Text('Thêm tài khoản'),
+          ),
+      ],
+    ),
+  );
 }

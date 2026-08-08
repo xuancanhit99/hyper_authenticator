@@ -64,6 +64,24 @@ class AccountUpdateFailure extends AccountsState {
       'operationToken: [OPAQUE], message: [REDACTED])';
 }
 
+/// Delete đã persist thành công. State không mang account hoặc identifier.
+class AccountDeleteSuccess extends AccountsState {
+  const AccountDeleteSuccess();
+}
+
+/// Delete thất bại; message dành cho UI và được redacted khỏi diagnostics.
+class AccountDeleteFailure extends AccountsState {
+  const AccountDeleteFailure(this.message);
+
+  final String message;
+
+  @override
+  List<Object?> get props => [message];
+
+  @override
+  String toString() => 'AccountDeleteFailure(message: [REDACTED])';
+}
+
 /// State when accounts have been successfully loaded.
 class AccountsLoaded extends AccountsState {
   final List<AuthenticatorAccount> accounts;
@@ -83,7 +101,3 @@ class AccountsError extends AccountsState {
   @override
   List<Object?> get props => [message];
 }
-
-// Optional: Add a specific delete-success state if UI feedback needs to be bound
-// to that operation instead of the subsequent list reload.
-// class AccountDeletedSuccess extends AccountsState {}

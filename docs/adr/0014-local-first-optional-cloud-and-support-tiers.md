@@ -1,5 +1,8 @@
 # ADR-0014: Local-first, cloud tùy chọn và support tier
 
+> Local-first/support-tier vẫn hiệu lực. Session/device/rotation UI được nhắc ở
+> phần lịch sử bên dưới đã bị ADR-0019 loại bỏ.
+
 - Trạng thái: Chấp nhận
 - Ngày: 2026-07-23
 - Owner: HyperZ
