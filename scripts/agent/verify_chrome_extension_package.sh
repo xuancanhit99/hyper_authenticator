@@ -47,21 +47,21 @@ if [[ -e "$PACKAGE_DIR/flutter_service_worker.js" ]]; then
 fi
 
 if find "$PACKAGE_DIR" -type f \( -name '*.js' -o -name '*.mjs' \) \
-  -print0 | xargs -0 rg -a -n \
-    'https?://[[:alnum:]./_?&=:%#@+,-]+\.(?:js|wasm)(?:[?#][[:alnum:]./_?&=:%#@+,-]*)?'; then
+  -exec grep -a -n -E \
+    'https?://[[:alnum:]./_?&=:%#@+,-]+\.(js|wasm)([?#][[:alnum:]./_?&=:%#@+,-]*)?' {} +; then
   echo "Phát hiện executable code tải từ xa trong Chrome Extension package." >&2
   exit 1
 fi
 
 if find "$PACKAGE_DIR" -type f \( -name '*.js' -o -name '*.mjs' -o -name '*.html' \) \
-  -print0 | xargs -0 rg -a -n 'zxing-wasm|importScripts\(|<script[^>]+https?://'; then
+  -exec grep -a -n -E 'zxing-wasm|importScripts\(|<script[^>]+https?://' {} +; then
   echo "Phát hiện scanner CDN hoặc remote script trong Chrome Extension package." >&2
   exit 1
 fi
 
-if ! rg -q "generateKey\\(" "$PACKAGE_DIR/vault.js" ||
-  ! rg -q "false," "$PACKAGE_DIR/vault.js" ||
-  ! rg -q "AES-GCM" "$PACKAGE_DIR/vault.js"; then
+if ! grep -Fq 'generateKey(' "$PACKAGE_DIR/vault.js" ||
+  ! grep -Fq 'false,' "$PACKAGE_DIR/vault.js" ||
+  ! grep -Fq 'AES-GCM' "$PACKAGE_DIR/vault.js"; then
   echo "Chrome Extension vault không có contract WebCrypto AES-GCM key non-extractable." >&2
   exit 1
 fi
