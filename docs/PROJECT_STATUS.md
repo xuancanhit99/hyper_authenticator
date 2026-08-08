@@ -3,7 +3,7 @@
 Baseline được audit ngày **5 tháng 8 năm 2026** trên nhánh
 `codex/minimal-e2ee`. Tên nhánh là lịch sử; source đã chuyển sang
 account-managed automatic sync theo ADR-0020 và backend production đã được
-migrate cùng ngày.
+migrate cùng ngày. Evidence phát hành được cập nhật ngày **9 tháng 8 năm 2026**.
 
 ## Kết luận
 
@@ -103,6 +103,7 @@ Hyper Authenticator là ứng dụng TOTP Flutter đa nền tảng, local-first:
 | iOS Simulator account sync | UI auth giữ local vault + upload/download/tombstone + remote-only upsert/delete qua Realtime pass; isolated user cleanup verified ngày 05-08-2026 |
 | iOS physical Ad Hoc | `1.1.0 (13)` chứa client Realtime, ký Distribution và upgrade-install pass trên iPhone 16 Pro ngày 05-08-2026; device query xác nhận build 13, auto-launch chờ user unlock |
 | Android physical qua ADB Wi-Fi | Release-mode `1.1.0 (13)` ký lại bằng đúng debug certificate đang cài đã upgrade-install/launch pass ngày 05-08-2026, giữ app data; APK production-signing riêng đã verify nhưng không cài đè do signer khác |
+| GitHub Preview 7 | Public pre-release [`v1.1.0-preview.7`](https://github.com/xuancanhit99/hyper_authenticator/releases/tag/v1.1.0-preview.7) từ commit `feec221101ab40aa9cd89d5e151265bd901ca255`; exact tag CI run `31278011636` pass ngày 09-08-2026; public verifier xác nhận đúng 7 asset, digest/checksum/manifest, Android signer pin, Debian và Windows PE32 |
 | Production Supabase | ADR-0020 + ADR-0021 đã deploy; remote contract pass 26/26; final audit 0 test account/user/Vault orphan; health pass |
 | Backup Realtime rollout | Pre `supabase-20260805T154247Z` và post `supabase-20260805T161016Z`: checksum, full restore rehearsal và encrypted off-host copy pass |
 
@@ -119,8 +120,9 @@ Hyper Authenticator là ứng dụng TOTP Flutter đa nền tảng, local-first:
    account-sync acceptance; Linux/Web và physical multi-device runtime cũng
    chưa có evidence tương đương. Background vẫn chờ app resume vì OS có thể
    suspend WebSocket.
-5. **Phát hành:** build iOS Ad Hoc 13 đã cài trực tiếp nhưng client ADR-0020/0021
-   chưa được phát hành qua GitHub Releases/store cho người dùng khác.
+5. **Phát hành:** Android signed APK, Windows x64 installer và Linux amd64 Debian
+   package đã có trên GitHub Preview 7. Windows/Linux vẫn unsigned; iOS/macOS
+   chưa có GitHub binary và toàn bộ app-store rollout vẫn để sau.
 6. **Release inputs:** store signing/notarization, SMTP, public privacy/support URL
    và external alert destination vẫn để sau.
 

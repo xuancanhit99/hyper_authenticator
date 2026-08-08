@@ -103,6 +103,19 @@ không phải artifact phát hành.
 Workflow phải xuất đúng asset/checksum/signature contract. Android chỉ gọi signed
 khi certificate fingerprint khớp pin. Windows/Linux unsigned phải ghi Preview.
 
+Release đã xác minh hiện tại:
+
+- Public pre-release: [`v1.1.0-preview.7`](https://github.com/xuancanhit99/hyper_authenticator/releases/tag/v1.1.0-preview.7).
+- Package version `1.1.0+14`, source commit
+  `feec221101ab40aa9cd89d5e151265bd901ca255`.
+- Exact tag CI run `31278011636` pass toàn bộ Android/Apple/Web/Linux/Windows,
+  quality và secret-history jobs.
+- Public verifier tải lại như người dùng chưa đăng nhập và xác nhận đúng 7 asset,
+  GitHub digest, checksum/manifest, Android signer pin, Debian package và Windows
+  PE32 ngày 09-08-2026.
+- Android APK đã ký; Windows x64 installer và Linux amd64 Debian package chưa
+  code-sign. iOS/macOS không thuộc asset contract của Preview này.
+
 ## Web
 
 Flutter Web dùng public runtime config và Nginx serving contract. Account sync
