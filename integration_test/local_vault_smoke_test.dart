@@ -265,9 +265,10 @@ Future<void> _scrollUntilVisible(WidgetTester tester, Finder finder) async {
   await Scrollable.ensureVisible(
     tester.element(finder),
     alignment: 0.5,
-    duration: const Duration(milliseconds: 200),
+    duration: Duration.zero,
   );
-  // TOTP countdown keeps scheduling frames in the live app, so pumpAndSettle
-  // can wait until the test-level timeout even after this scroll has finished.
-  await tester.pump(const Duration(milliseconds: 300));
+  // An animated ensureVisible needs test pumps before its Future can complete,
+  // while the live TOTP countdown also makes pumpAndSettle unsafe. Jump first,
+  // then render one bounded frame instead.
+  await tester.pump();
 }

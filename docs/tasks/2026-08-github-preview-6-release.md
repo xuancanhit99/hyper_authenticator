@@ -69,7 +69,7 @@ provenance và public verification tái hiện được.
 | Fix Preview 7 vòng 2 | Center submit bằng ensureVisible; tap thật rồi dùng UI/vault outcome làm acceptance | 2026-08-09 |
 | Root cause UI | Submit ở cuối ListView có 0px bottom clearance; live Windows đặt tâm nút tại y=632/640 | 2026-08-09 |
 | Fix Preview 7 vòng 3 | Thêm 64px + safe-area trailing padding và regression khóa clearance >=48px | 2026-08-09 |
-| Fix Preview 7 vòng 4 | Bỏ `pumpAndSettle()` sau scroll vì TOTP countdown tiếp tục tạo frame; dùng pump 300ms có giới hạn và phase chẩn đoán trước scroll | 2026-08-09 |
+| Fix Preview 7 vòng 4 | Linux/Windows xác nhận animated `ensureVisible` deadlock khi Future chờ pump; đổi sang jump đồng bộ + một frame có giới hạn, đồng thời tránh `pumpAndSettle()` với TOTP countdown | 2026-08-09 |
 
 ## Tác động tài liệu
 
