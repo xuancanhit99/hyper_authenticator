@@ -63,6 +63,7 @@ provenance và public verification tái hiện được.
 | APK local `1.1.0+14` signer pin + metadata | Pass trước release candidate | 2026-08-09 |
 | `scripts/agent/check.sh full` | Pass: 203 Flutter test và toàn bộ backend/release/infra gate | 2026-08-09 |
 | Backend gate sau khi đợi final postmaster PID 1 | Pass; loại bỏ race với initdb server tạm | 2026-08-09 |
+| PR #35 Windows local-vault smoke | Phát hiện submit button chỉ partially visible; harness đang được harden và chạy lại | 2026-08-09 |
 
 ## Tác động tài liệu
 

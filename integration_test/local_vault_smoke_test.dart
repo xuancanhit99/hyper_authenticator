@@ -262,11 +262,16 @@ Future<void> _pumpUntil(
 
 Future<void> _scrollUntilVisible(WidgetTester tester, Finder finder) async {
   final listView = find.byType(ListView).last;
-  for (var attempt = 0; finder.evaluate().isEmpty && attempt < 10; attempt++) {
-    await tester.drag(listView, const Offset(0, -240), warnIfMissed: false);
-    await tester.pump(const Duration(milliseconds: 100));
-  }
   expect(finder, findsOneWidget);
   await tester.ensureVisible(finder);
   await tester.pump(const Duration(milliseconds: 100));
+  for (
+    var attempt = 0;
+    finder.hitTestable().evaluate().isEmpty && attempt < 10;
+    attempt++
+  ) {
+    await tester.drag(listView, const Offset(0, -120), warnIfMissed: false);
+    await tester.pump(const Duration(milliseconds: 100));
+  }
+  expect(finder.hitTestable(), findsOneWidget);
 }
