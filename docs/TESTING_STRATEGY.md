@@ -34,7 +34,8 @@ physical-device hoặc production evidence.
 - Chrome Extension: Supabase session/PKCE namespace đi qua secure-store; native
   local-vault regression vẫn pass sau storage abstraction. Package gate kiểm tra
   MV3 Side Panel/CSP/permission/host allowlist, local CanvasKit/WASM/Roboto,
-  không CDN executable/PWA worker và vault WebCrypto contract.
+  không CDN executable/PWA worker, không case-collision và vault WebCrypto
+  contract.
 
 ## Widget/navigation
 

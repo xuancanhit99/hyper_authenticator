@@ -257,6 +257,18 @@ if [[ "$require_chrome_extension_preview" == true ]]; then
     printf '%s\n' 'Public Chrome Extension ZIP chứa path không an toàn.' >&2
     exit 1
   fi
+  case_collisions=$(unzip -Z1 "$extension_path" | LC_ALL=C awk '
+    {
+      path = tolower($0)
+      if (seen[path]++) print $0
+    }
+  ')
+  if [[ -n "$case_collisions" ]]; then
+    printf '%s\n%s\n' \
+      'Public Chrome Extension ZIP chứa path xung đột trên filesystem không phân biệt hoa/thường:' \
+      "$case_collisions" >&2
+    exit 1
+  fi
   unzip -q "$extension_path" -d "$extension_unpack_dir"
   if find "$extension_unpack_dir" -type l -print -quit | grep -q .; then
     printf '%s\n' 'Public Chrome Extension ZIP không được chứa symbolic link.' >&2

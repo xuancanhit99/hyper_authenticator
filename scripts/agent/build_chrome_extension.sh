@@ -24,7 +24,7 @@ if [[ -n "$ENV_FILE" ]]; then
 fi
 
 rm -rf "$BUILD_ROOT"
-mkdir -p "$UNPACKED_DIR/icons"
+mkdir -p "$UNPACKED_DIR"
 
 BUILD_ARGS=(
   --release
@@ -42,7 +42,6 @@ cp "$ROOT/chrome_extension/manifest.json" "$UNPACKED_DIR/manifest.json"
 cp "$ROOT/chrome_extension/service_worker.js" "$UNPACKED_DIR/service_worker.js"
 cp "$ROOT/chrome_extension/index.html" "$UNPACKED_DIR/index.html"
 cp "$ROOT/chrome_extension/vault.js" "$UNPACKED_DIR/vault.js"
-cp "$ROOT/web/icons/Icon-192.png" "$UNPACKED_DIR/icons/icon-192.png"
 rm -f "$UNPACKED_DIR/flutter_service_worker.js"
 
 "$ROOT/scripts/agent/verify_chrome_extension_package.sh" "$UNPACKED_DIR"

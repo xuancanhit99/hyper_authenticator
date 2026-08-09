@@ -56,4 +56,24 @@ if "$VERIFIER" "$temporary_dir" >/dev/null 2>&1; then
   exit 1
 fi
 
+case_collision_dir="$temporary_dir/case-collision"
+mkdir -p "$case_collision_dir/icons"
+cp "$MANIFEST" "$case_collision_dir/manifest.json"
+touch "$case_collision_dir/icons/Icon-192.png" \
+  "$case_collision_dir/icons/icon-192.png"
+if [[ $(find "$case_collision_dir/icons" -type f | wc -l | tr -d ' ') -eq 2 ]]; then
+  if "$VERIFIER" "$case_collision_dir" > /dev/null \
+    2>"$temporary_dir/case-collision.stderr"; then
+    echo "Chrome Extension verifier không fail closed với path case collision." >&2
+    exit 1
+  fi
+  if ! rg -q 'xung đột.*hoa/thường' "$temporary_dir/case-collision.stderr"; then
+    echo "Chrome Extension verifier fail sai lý do với path case collision." >&2
+    exit 1
+  fi
+elif ! rg -q 'tolower\(\$0\)' "$VERIFIER"; then
+  echo "Chrome Extension verifier thiếu case-collision guard." >&2
+  exit 1
+fi
+
 printf '%s\n' '✓ Chrome Extension static contract harness pass'
