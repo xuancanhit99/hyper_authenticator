@@ -41,8 +41,9 @@ browser-page permission hoặc làm yếu local vault/security boundary.
 - Source: `lib/main_extension.dart`, `lib/chrome_extension`, `chrome_extension/`.
 - Build: `scripts/agent/build_chrome_extension.sh` tạo ZIP versioned + SHA-256 và
   unpacked; GitHub Preview publisher chỉ lấy ZIP từ exact successful tag CI;
-  verifier bắt buộc Roboto tiếng Việt nằm trong FontManifest để CanvasKit không
-  gọi Google Fonts vốn bị CSP chặn. Đây chưa phải runtime evidence.
+  verifier bắt buộc Roboto tiếng Việt nằm trong FontManifest và Noto Sans
+  fallback self-hosted để CanvasKit không gọi Google Fonts vốn bị CSP chặn.
+  Đây chưa phải runtime evidence.
 - Giả định: Chrome 114+ hỗ trợ Side Panel và structured-clone `CryptoKey` trong
   extension IndexedDB. Cần xác minh trên clean profile trước release.
 

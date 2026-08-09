@@ -51,10 +51,16 @@ test -f "$PACKAGE_DIR/index.html"
 test -f "$PACKAGE_DIR/service_worker.js"
 test -f "$PACKAGE_DIR/vault.js"
 test -f "$PACKAGE_DIR/main.dart.js"
+test -f "$PACKAGE_DIR/flutter_bootstrap.js"
 test -f "$PACKAGE_DIR/assets/FontManifest.json"
 test -f "$PACKAGE_DIR/assets/assets/fonts/Roboto-Regular.ttf"
 test -f "$PACKAGE_DIR/assets/assets/fonts/Roboto-Medium.ttf"
 test -f "$PACKAGE_DIR/assets/assets/fonts/Roboto-Bold.ttf"
+fallback_font="$PACKAGE_DIR/font-fallbacks/notosans/v37/o-0mIpQlx3QUlC5A4PNB6Ryti20_6n1iPHjcz6L1SoM-jCpoiyD9A99Y41P6zHtY.woff2"
+test -s "$fallback_font"
+test -s "$PACKAGE_DIR/font-fallbacks/OFL.txt"
+file "$fallback_font" | grep -Fq 'Web Open Font Format (Version 2)'
+grep -Fq 'SIL Open Font License' "$PACKAGE_DIR/font-fallbacks/OFL.txt"
 for icon_size in 16 32 48 128; do
   icon="$PACKAGE_DIR/icons/icon-$icon_size.png"
   test -f "$icon"
@@ -74,6 +80,22 @@ jq -e '
   echo "Chrome Extension thiếu Roboto đã bundle trong FontManifest." >&2
   exit 1
 }
+
+fallback_config="fontFallbackBaseUrl: 'font-fallbacks/'"
+fallback_config_count=$(awk -v token="$fallback_config" '
+  {
+    rest = $0
+    while ((offset = index(rest, token)) > 0) {
+      count++
+      rest = substr(rest, offset + length(token))
+    }
+  }
+  END { print count + 0 }
+' "$PACKAGE_DIR/flutter_bootstrap.js")
+if [[ "$fallback_config_count" != 1 ]]; then
+  echo 'Chrome Extension bootstrap không ép CanvasKit dùng font fallback local.' >&2
+  exit 1
+fi
 
 if [[ -e "$PACKAGE_DIR/flutter_service_worker.js" ]]; then
   echo "MV3 package không được chứa Flutter PWA service worker." >&2

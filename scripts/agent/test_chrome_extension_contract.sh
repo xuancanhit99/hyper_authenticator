@@ -34,7 +34,10 @@ fi
 if ! rg -q 'HYPER_CHROME_EXTENSION=true' "$BUILDER" ||
   ! rg -q 'vault.js' "$BUILDER" ||
   ! rg -q 'main_extension.dart' "$BUILDER" ||
-  ! rg -q 'ZIP_NAME.sha256' "$BUILDER"; then
+  ! rg -q 'ZIP_NAME.sha256' "$BUILDER" ||
+  ! rg -q "fontFallbackBaseUrl: 'font-fallbacks/'" "$BUILDER" ||
+  ! rg -q 'fallback_config_count' "$BUILDER" ||
+  ! rg -q 'fallback_config_count' "$VERIFIER"; then
   echo "Chrome Extension builder không có entrypoint/vault contract." >&2
   exit 1
 fi
@@ -51,6 +54,21 @@ for font in Roboto-Regular.ttf Roboto-Medium.ttf Roboto-Bold.ttf; do
     exit 1
   }
 done
+
+fallback_font="$ROOT/chrome_extension/font-fallbacks/notosans/v37/o-0mIpQlx3QUlC5A4PNB6Ryti20_6n1iPHjcz6L1SoM-jCpoiyD9A99Y41P6zHtY.woff2"
+test -s "$fallback_font" || {
+  echo 'Chrome Extension thiếu Noto Sans fallback local.' >&2
+  exit 1
+}
+file "$fallback_font" | grep -Fq 'Web Open Font Format (Version 2)' || {
+  echo 'Chrome Extension Noto Sans fallback không phải WOFF2 hợp lệ.' >&2
+  exit 1
+}
+test -s "$ROOT/chrome_extension/font-fallbacks/OFL.txt" &&
+  grep -Fq 'SIL Open Font License' "$ROOT/chrome_extension/font-fallbacks/OFL.txt" || {
+  echo 'Chrome Extension thiếu giấy phép Noto Sans OFL.' >&2
+  exit 1
+}
 
 for icon_size in 16 32 48 128; do
   icon="$ROOT/chrome_extension/icons/icon-$icon_size.png"

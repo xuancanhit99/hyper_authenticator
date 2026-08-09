@@ -39,10 +39,11 @@ của extension không tự chia sẻ với origin Web hoặc Keychain/Keystore 
 - MVP gồm list/search/copy/countdown, manual add/edit/delete, Settings và
   email/password account sync. Protected QR export và QR scanner/import bị
   loại khỏi extension route/UI.
-- Flutter engine/WASM và Roboto hỗ trợ tiếng Việt nằm trong ZIP. CSP không cho
-  phép Google Fonts hay executable code từ xa. Build harness fail nếu thiếu font
-  local hoặc còn remote JS/WASM, ZXing CDN, remote `<script>`, `importScripts`
-  hay PWA service worker.
+- Flutter engine/WASM, Roboto và đúng Noto Sans WOFF2 fallback mà CanvasKit có
+  thể yêu cầu nằm trong ZIP. Bootstrap đặt `fontFallbackBaseUrl` vào path nội bộ;
+  CSP không cho phép Google Fonts hay executable code từ xa. Build harness fail
+  nếu thiếu font local hoặc còn remote JS/WASM, ZXing CDN, remote `<script>`,
+  `importScripts` hay PWA service worker.
 
 ### Local vault và auth session
 

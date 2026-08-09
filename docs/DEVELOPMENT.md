@@ -116,6 +116,10 @@ profile test riêng và test account/secret fixture không production. Harness
 reject remote executable code/PWA worker/source map/debug artifact; nó không
 thay thế clean-profile, restart, tamper và auth-sync acceptance.
 
+CanvasKit fallback font cũng phải self-hosted: builder đóng gói Noto Sans WOFF2
+cùng OFL license và ghi `fontFallbackBaseUrl: 'font-fallbacks/'` vào bootstrap.
+Không thêm `fonts.gstatic.com` vào CSP để xử lý warning font.
+
 ## Android signing
 
 Keystore nằm ngoài repository. Local `android/key.properties` là ignored và chứa

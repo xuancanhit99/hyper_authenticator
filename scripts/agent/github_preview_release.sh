@@ -139,6 +139,8 @@ signing certificate của dự án; package Windows/Linux chưa code-sign.
   bao gồm migration nhiều QR.
 - Bổ sung ba visual style, light/dark mode và giao diện Settings gọn hơn.
 - Cải thiện điều hướng, privacy shield, accessibility và trải nghiệm scanner.
+- Chrome Extension tự bundle font fallback CanvasKit, không cần kết nối Google
+  Fonts và vẫn giữ CSP chỉ cho phép origin Supabase cần thiết.
 
 ## Tải xuống
 

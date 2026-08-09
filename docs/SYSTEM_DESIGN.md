@@ -49,8 +49,9 @@ hoặc protected QR export.
   ciphertext riêng; local vault v2 và sync metadata không đổi serialization;
 - Supabase session/PKCE storage extension dùng cùng vault namespace, không dùng
   `localStorage`.
-- CanvasKit extension bundle kèm Roboto có glyph tiếng Việt trong FontManifest;
-  không dựa vào Google Fonts vì MV3 CSP chỉ cho phép resource self-hosted.
+- CanvasKit extension bundle kèm Roboto trong FontManifest và đúng Noto Sans
+  WOFF2 fallback mà engine có thể yêu cầu; bootstrap ép fallback vào path
+  self-hosted, không dựa vào Google Fonts dù có glyph thiếu.
 
 Extension local vault không chia sẻ trực tiếp với website/native storage. Sau
 login, account-managed sync là đường chia sẻ duy nhất. Side Panel chạy countdown
