@@ -104,16 +104,16 @@ không phải artifact phát hành.
 Workflow phải xuất đúng asset/checksum/signature contract. Android chỉ gọi signed
 khi certificate fingerprint khớp pin. Windows/Linux unsigned phải ghi Preview.
 
-Lịch sử xác minh public của một release preview:
+Release public đã xác minh hiện tại:
 
-- Public pre-release: [`v1.1.0-preview.8`](https://github.com/xuancanhit99/hyper_authenticator/releases/tag/v1.1.0-preview.8).
-- Package version `1.1.0+14`, source commit
-  `ed0cd0167c232003126d25b3ac112c4d85aaa96f`.
-- Exact tag CI run `31284467915` pass toàn bộ Android/Apple/Web/Linux/Windows,
+- Public pre-release: [`v1.1.1-preview.1`](https://github.com/xuancanhit99/hyper_authenticator/releases/tag/v1.1.1-preview.1).
+- Package version `1.1.1+15`, source commit
+  `b3b4c0c2314aa3088995319adc4af1faf5dbb313`.
+- Exact tag CI run `31314025618` pass toàn bộ Android/Apple/Web/Linux/Windows,
   quality và secret-history jobs.
-- Public verifier tải lại như người dùng chưa đăng nhập và xác nhận đúng 7 asset,
-  GitHub digest, checksum/manifest, Android signer pin, Debian package và Windows
-  PE32 ngày 09-08-2026.
+- Public verifier tải lại như người dùng chưa đăng nhập và xác nhận đúng 9 asset,
+  GitHub digest, checksum/manifest, Android signer pin, Debian package, Windows
+  PE32 và Chrome Extension package ngày 09-08-2026.
 - Android APK đã ký; Windows x64 installer và Linux amd64 Debian package chưa
   code-sign. iOS/macOS không thuộc asset contract của Preview này.
 
