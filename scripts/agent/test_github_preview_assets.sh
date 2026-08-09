@@ -2,6 +2,7 @@
 set -euo pipefail
 
 ROOT=$(cd "$(dirname "$0")/../.." && pwd)
+PACKAGE_VERSION=$(awk '$1 == "version:" { print $2; exit }' "$ROOT/pubspec.yaml")
 WORK_ROOT=$(mktemp -d "${TMPDIR:-/tmp}/hyper-auth-preview-test.XXXXXX")
 cleanup() {
   find "$WORK_ROOT" -depth -delete
@@ -19,7 +20,7 @@ fi
 
 make_fixture() {
   local root=$1
-  local version=${2:-1.1.0+14}
+  local version=${2:-$PACKAGE_VERSION}
   local include_android=${3:-false}
   local include_chrome_extension=${4:-false}
   mkdir -p "$root/linux" "$root/windows" "$root/android" "$root/chrome-extension"
@@ -83,7 +84,7 @@ printf '%s\n' '✓ Valid fixture tạo đúng năm release asset'
 
 android_input="$WORK_ROOT/android-input"
 android_output="$WORK_ROOT/android-output"
-make_fixture "$android_input" '1.1.0+14' true
+make_fixture "$android_input" "$PACKAGE_VERSION" true
 mkdir -p "$android_output"
 REQUIRE_ANDROID_SIGNED_APK=true \
   "$ROOT/scripts/agent/check_github_preview_assets.sh" \
@@ -96,7 +97,7 @@ printf '%s\n' '✓ Signed Android fixture tạo đúng bảy release asset'
 
 extension_input="$WORK_ROOT/extension-input"
 extension_output="$WORK_ROOT/extension-output"
-make_fixture "$extension_input" '1.1.0+14' true true
+make_fixture "$extension_input" "$PACKAGE_VERSION" true true
 mkdir -p "$extension_output"
 REQUIRE_ANDROID_SIGNED_APK=true \
 REQUIRE_CHROME_EXTENSION_PREVIEW=true \
@@ -141,7 +142,7 @@ checksum_input="$WORK_ROOT/checksum-input"
 checksum_output="$WORK_ROOT/checksum-output"
 make_fixture "$checksum_input"
 printf '%s' 'TAMPERED' >> \
-  "$checksum_input/linux/hyper-authenticator_1.1.0+14_amd64.deb"
+  "$checksum_input/linux/hyper-authenticator_${PACKAGE_VERSION}_amd64.deb"
 mkdir -p "$checksum_output"
 expect_failure checksum \
   "$ROOT/scripts/agent/check_github_preview_assets.sh" \
@@ -174,9 +175,9 @@ expect_failure forbidden-artifact \
 target_input="$WORK_ROOT/target-input"
 target_output="$WORK_ROOT/target-output"
 make_fixture "$target_input"
-checksum_path="$target_input/linux/hyper-authenticator_1.1.0+14_amd64.deb.sha256"
+checksum_path="$target_input/linux/hyper-authenticator_${PACKAGE_VERSION}_amd64.deb.sha256"
 recorded_hash=$("${hash_command[@]}" \
-  "$target_input/linux/hyper-authenticator_1.1.0+14_amd64.deb" | awk '{print $1}')
+  "$target_input/linux/hyper-authenticator_${PACKAGE_VERSION}_amd64.deb" | awk '{print $1}')
 printf '%s  %s\n' "$recorded_hash" '../outside.deb' > "$checksum_path"
 mkdir -p "$target_output"
 expect_failure checksum-target \

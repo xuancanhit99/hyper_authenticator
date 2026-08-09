@@ -104,7 +104,7 @@ không phải artifact phát hành.
 Workflow phải xuất đúng asset/checksum/signature contract. Android chỉ gọi signed
 khi certificate fingerprint khớp pin. Windows/Linux unsigned phải ghi Preview.
 
-Release đã xác minh hiện tại:
+Lịch sử xác minh public của một release preview:
 
 - Public pre-release: [`v1.1.0-preview.8`](https://github.com/xuancanhit99/hyper_authenticator/releases/tag/v1.1.0-preview.8).
 - Package version `1.1.0+14`, source commit
@@ -149,7 +149,7 @@ Trước stable/store distribution cần:
    foreground wake-up bằng account isolated;
 3. review permission/CSP/source ZIP độc lập, checksum/provenance và no-secret log;
 4. public privacy policy, support/security contact, in-product cloud disclosure,
-   128 icon, promo/screenshot và Chrome developer/store review;
+   artwork store (screenshot/promo) và Chrome developer/store review;
 5. Trusted Testers/limited rollout trước public store.
 
 ## Signing material

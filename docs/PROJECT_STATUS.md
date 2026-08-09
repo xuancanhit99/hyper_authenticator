@@ -136,8 +136,9 @@ Hyper Authenticator là ứng dụng TOTP Flutter đa nền tảng, local-first:
    `owner-waived`; current-profile render/login/sync/session smoke đã có, nhưng
    còn Chrome clean-profile restart/tamper và cross-device Side Panel runtime với
    isolated user. Không dùng evidence này để gọi extension production-ready hoặc
-   Chrome Web Store ready; vẫn cần privacy/support URL, review độc lập và store
-   review.
+   Chrome Web Store ready; bộ icon HyperZ 16/32/48/128 đã có trong extension
+   package, nhưng vẫn cần privacy/support URL, review độc lập, screenshot/promo
+   assets và store review.
 
 ## Gate canonical
 

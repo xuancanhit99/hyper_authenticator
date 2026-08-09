@@ -33,6 +33,16 @@ jq -e '
   .side_panel.default_path == "index.html" and
   .permissions == ["sidePanel"] and
   .host_permissions == ["https://supabase-api.vnpay.dev/*"] and
+  .action.default_icon == {
+    "16": "icons/icon-16.png",
+    "32": "icons/icon-32.png"
+  } and
+  .icons == {
+    "16": "icons/icon-16.png",
+    "32": "icons/icon-32.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
+  } and
   (.content_security_policy.extension_pages | contains("script-src '\''self'\'' '\''wasm-unsafe-eval'\''")) and
   (.content_security_policy.extension_pages | contains("object-src '\''self'\''"))
 ' "$PACKAGE_DIR/manifest.json" >/dev/null
@@ -45,7 +55,11 @@ test -f "$PACKAGE_DIR/assets/FontManifest.json"
 test -f "$PACKAGE_DIR/assets/assets/fonts/Roboto-Regular.ttf"
 test -f "$PACKAGE_DIR/assets/assets/fonts/Roboto-Medium.ttf"
 test -f "$PACKAGE_DIR/assets/assets/fonts/Roboto-Bold.ttf"
-test -f "$PACKAGE_DIR/icons/Icon-192.png"
+for icon_size in 16 32 48 128; do
+  icon="$PACKAGE_DIR/icons/icon-$icon_size.png"
+  test -f "$icon"
+  file "$icon" | grep -Eq "PNG image data, ${icon_size} x ${icon_size},"
+done
 test -f "$PACKAGE_DIR/canvaskit/canvaskit.js"
 test -f "$PACKAGE_DIR/canvaskit/canvaskit.wasm"
 

@@ -12,7 +12,17 @@ jq -e '
   .minimum_chrome_version == "114" and
   .side_panel.default_path == "index.html" and
   .permissions == ["sidePanel"] and
-  .host_permissions == ["https://supabase-api.vnpay.dev/*"]
+  .host_permissions == ["https://supabase-api.vnpay.dev/*"] and
+  .action.default_icon == {
+    "16": "icons/icon-16.png",
+    "32": "icons/icon-32.png"
+  } and
+  .icons == {
+    "16": "icons/icon-16.png",
+    "32": "icons/icon-32.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
+  }
 ' "$MANIFEST" >/dev/null
 
 if rg -n 'content_scripts|activeTab|"tabs"|"scripting"|<all_urls>|chrome\.storage' \
@@ -42,6 +52,18 @@ for font in Roboto-Regular.ttf Roboto-Medium.ttf Roboto-Bold.ttf; do
   }
 done
 
+for icon_size in 16 32 48 128; do
+  icon="$ROOT/chrome_extension/icons/icon-$icon_size.png"
+  test -f "$icon" || {
+    echo "Chrome Extension thiếu icon $icon_size px." >&2
+    exit 1
+  }
+  file "$icon" | grep -Eq "PNG image data, ${icon_size} x ${icon_size}," || {
+    echo "Chrome Extension icon $icon_size px không đúng kích thước PNG." >&2
+    exit 1
+  }
+done
+
 if ! rg -q 'family: Roboto' "$ROOT/pubspec.yaml" ||
   ! rg -q 'assets/fonts/Roboto-Regular.ttf' "$ROOT/pubspec.yaml"; then
   echo "Chrome Extension không khai báo font Roboto local." >&2
@@ -59,8 +81,8 @@ fi
 case_collision_dir="$temporary_dir/case-collision"
 mkdir -p "$case_collision_dir/icons"
 cp "$MANIFEST" "$case_collision_dir/manifest.json"
-touch "$case_collision_dir/icons/Icon-192.png" \
-  "$case_collision_dir/icons/icon-192.png"
+touch "$case_collision_dir/icons/Icon-16.png" \
+  "$case_collision_dir/icons/icon-16.png"
 if [[ $(find "$case_collision_dir/icons" -type f | wc -l | tr -d ' ') -eq 2 ]]; then
   if "$VERIFIER" "$case_collision_dir" > /dev/null \
     2>"$temporary_dir/case-collision.stderr"; then

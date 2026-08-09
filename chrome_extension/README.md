@@ -1,7 +1,8 @@
 # Chrome Extension package
 
 `chrome_extension/` chỉ chứa static MV3 shell. Dart output không được commit;
-hãy tạo bằng:
+`icons/icon-{16,32,48,128}.png` là bộ icon HyperZ được đóng vào package, còn
+Dart output được tạo bằng:
 
 ```bash
 scripts/agent/build_chrome_extension.sh .env

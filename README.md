@@ -17,7 +17,7 @@ Realtime Broadcast đánh thức sync foreground nhưng không truyền TOTP pay
 ## Tải ứng dụng
 
 - Web: [authenticator.hyperz.xyz](https://authenticator.hyperz.xyz/).
-- GitHub Preview hiện tại: [v1.1.0-preview.7](https://github.com/xuancanhit99/hyper_authenticator/releases/tag/v1.1.0-preview.7).
+- GitHub Preview: [trang GitHub Releases](https://github.com/xuancanhit99/hyper_authenticator/releases).
 
 GitHub Preview có Android APK signed, Windows x64 installer và Linux amd64 Debian
 package. Luôn kiểm tra `SHA256SUMS.txt`; Android có thể yêu cầu cho phép cài từ
