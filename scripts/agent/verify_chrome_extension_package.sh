@@ -8,6 +8,25 @@ if [[ ! -d "$PACKAGE_DIR" || ! -f "$PACKAGE_DIR/manifest.json" ]]; then
   exit 2
 fi
 
+# ZIP được tạo trên Linux có thể chứa hai path chỉ khác hoa/thường. Khi người
+# dùng giải nén trên macOS/Windows mặc định, một trong hai file sẽ bị ghi đè.
+# Từ chối package đó trước khi kiểm tra contract còn lại.
+case_collisions=$( (
+  cd "$PACKAGE_DIR"
+  find . -mindepth 1 -print | LC_ALL=C awk '
+    {
+      path = tolower($0)
+      if (seen[path]++) print $0
+    }
+  '
+) )
+if [[ -n "$case_collisions" ]]; then
+  printf '%s\n%s\n' \
+    'Chrome Extension package chứa path xung đột trên filesystem không phân biệt hoa/thường:' \
+    "$case_collisions" >&2
+  exit 1
+fi
+
 jq -e '
   .manifest_version == 3 and
   .minimum_chrome_version == "114" and
@@ -26,6 +45,7 @@ test -f "$PACKAGE_DIR/assets/FontManifest.json"
 test -f "$PACKAGE_DIR/assets/assets/fonts/Roboto-Regular.ttf"
 test -f "$PACKAGE_DIR/assets/assets/fonts/Roboto-Medium.ttf"
 test -f "$PACKAGE_DIR/assets/assets/fonts/Roboto-Bold.ttf"
+test -f "$PACKAGE_DIR/icons/Icon-192.png"
 test -f "$PACKAGE_DIR/canvaskit/canvaskit.js"
 test -f "$PACKAGE_DIR/canvaskit/canvaskit.wasm"
 

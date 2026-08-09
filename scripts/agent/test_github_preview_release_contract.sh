@@ -84,6 +84,10 @@ if ! search_fixed 'verify_chrome_extension_package.sh' "$VERIFIER" >/dev/null; t
   printf '%s\n' 'Public verifier chưa kiểm tra lại Chrome Extension ZIP.' >&2
   exit 1
 fi
+if ! search_fixed 'filesystem không phân biệt hoa/thường' "$VERIFIER" >/dev/null; then
+  printf '%s\n' 'Public verifier chưa từ chối Chrome Extension ZIP case collision.' >&2
+  exit 1
+fi
 if ! search_fixed 'android/app-signing-certificate.sha256' \
   "$VERIFIER" >/dev/null; then
   printf '%s\n' 'Public verifier chưa pin Android signing fingerprint.' >&2

@@ -24,6 +24,6 @@
     "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'; connect-src 'self' https://supabase-api.vnpay.dev wss://supabase-api.vnpay.dev"
   },
   "icons": {
-    "128": "icons/icon-192.png"
+    "128": "icons/Icon-192.png"
   }
 }

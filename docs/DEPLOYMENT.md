@@ -128,8 +128,9 @@ không được gọi là native-equivalent secure storage hoặc E2EE.
 Chrome Extension foundation tạo ZIP qua `scripts/agent/build_chrome_extension.sh`.
 Manifest chỉ xin `sidePanel` và host permission Supabase production; không mở
 page access/autofill. Package verifier bắt buộc MV3, local CanvasKit/WASM,
-extension CSP, không remote executable/ZXing CDN/PWA worker và encrypted vault
-bridge có AES-GCM key non-extractable.
+extension CSP, không remote executable/ZXing CDN/PWA worker, không có path
+xung đột trên filesystem không phân biệt hoa/thường và encrypted vault bridge
+có AES-GCM key non-extractable.
 
 CI tạo artifact từ GitHub Actions Variables `SUPABASE_URL`,
 `SUPABASE_PUBLISHABLE_KEY` và `PASSWORD_RECOVERY_URL` qua file runtime tạm
