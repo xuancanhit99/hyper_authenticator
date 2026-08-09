@@ -11,6 +11,10 @@ on:
         description: Nhập PUBLISH_UNSIGNED_GITHUB_PREVIEW để xác nhận phát hành unsigned
         required: true
         type: string
+      chrome_extension_runtime_acceptance:
+        description: Nhập OWNER_WAIVED_CHROME_EXTENSION_RUNTIME_ACCEPTANCE để publish ZIP extension có known runtime gaps
+        required: true
+        type: string
 
 permissions:
   actions: read
@@ -34,7 +38,9 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ inputs.release_tag }}
           RELEASE_CONFIRMATION: ${{ inputs.confirmation }}
+          CHROME_EXTENSION_RUNTIME_ACCEPTANCE: ${{ inputs.chrome_extension_runtime_acceptance }}
         run: >-
           scripts/agent/github_preview_release.sh
           "$RELEASE_TAG"
           "$RELEASE_CONFIRMATION"
+          "$CHROME_EXTENSION_RUNTIME_ACCEPTANCE"

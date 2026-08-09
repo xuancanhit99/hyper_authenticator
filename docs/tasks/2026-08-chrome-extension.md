@@ -1,7 +1,7 @@
 # Task: Chrome Extension Side Panel foundation
 
-- Trạng thái: Source/package và current-profile smoke đã có; chưa có
-  clean-profile/tamper/cross-device Side Panel evidence
+- Trạng thái: Source/package và current-profile smoke đã có; GitHub Preview ZIP
+  theo owner waiver, chưa có clean-profile/tamper/cross-device Side Panel evidence
 - Bắt đầu: 2026-08-09
 - Owner: HyperZ
 - Issue hoặc ADR liên quan: ADR-0022
@@ -32,12 +32,15 @@ browser-page permission hoặc làm yếu local vault/security boundary.
 - [ ] Clean Chrome profile load unpacked, side panel render, restart/persist/tamper smoke.
 - [ ] Auth + cross-device account sync/realtime acceptance trên Chrome.
 - [ ] QR import chỉ sau khi local-bundle decoder + tests/permission review pass.
-- [ ] GitHub Preview asset/provenance và Chrome Store trusted-test rollout.
+- [x] GitHub Preview asset/provenance: ZIP versioned + checksum/static verifier;
+  runtime acceptance được owner waive và phải disclosure trong release note.
+- [ ] Chrome Store trusted-test rollout.
 
 ## Bằng chứng hiện tại
 
 - Source: `lib/main_extension.dart`, `lib/chrome_extension`, `chrome_extension/`.
-- Build: `scripts/agent/build_chrome_extension.sh` tạo ZIP/unpacked local-only;
+- Build: `scripts/agent/build_chrome_extension.sh` tạo ZIP versioned + SHA-256 và
+  unpacked; GitHub Preview publisher chỉ lấy ZIP từ exact successful tag CI;
   verifier bắt buộc Roboto tiếng Việt nằm trong FontManifest để CanvasKit không
   gọi Google Fonts vốn bị CSP chặn. Đây chưa phải runtime evidence.
 - Giả định: Chrome 114+ hỗ trợ Side Panel và structured-clone `CryptoKey` trong
@@ -59,7 +62,8 @@ browser-page permission hoặc làm yếu local vault/security boundary.
 - [x] Tách route contract và default-router registration khỏi extension entrypoint.
 - [x] Tạo encrypted storage abstraction/session adapter và package harness.
 - [ ] Load/test extension trong Chrome profile riêng, không dùng real TOTP secret.
-- [ ] Thêm runtime E2E/CI artifact contract và GitHub Preview asset.
+- [x] Thêm CI artifact contract và GitHub Preview asset/version/checksum verifier.
+- [ ] Thêm runtime E2E clean-profile/tamper/cross-device evidence.
 - [ ] Duyệt local-bundled QR import phase riêng.
 - [ ] Chuẩn bị store privacy/support/security contact, images và disclosure.
 
@@ -70,6 +74,7 @@ browser-page permission hoặc làm yếu local vault/security boundary.
 | `flutter analyze` | Pass, 0 issue | 2026-08-09 |
 | selected Dart regression tests | Pass sau refactor storage/router | 2026-08-09 |
 | `scripts/agent/build_chrome_extension.sh` | Pass, local-only package verifier | 2026-08-09 |
+| `scripts/agent/check.sh full` | Pass: docs/codegen/format/analyze, 206 Flutter test, migration/release/infra harness; ZIP version/checksum/public verifier contract | 2026-08-09 |
 | `scripts/supabase/test_remote_account_sync_contract.sh` | Pass 26/26 với hai isolated user; Realtime + cleanup verified | 2026-08-09 |
 | `scripts/agent/mobile_account_sync_operator.sh` trên iPhone 16 Pro Simulator | Auth session/local-vault + upload/download/Realtime/tombstone pass; isolated user cleanup verified | 2026-08-09 |
 
@@ -86,6 +91,7 @@ browser-page permission hoặc làm yếu local vault/security boundary.
 
 ## Bàn giao
 
-Không được gọi foundation này là Chrome Web Store release. Bàn giao phải ghi
-rõ build/package evidence, runtime profile evidence, cloud-sync test, limitation
-không QR/protected export và tình trạng public privacy/support URL.
+Không được gọi foundation này là Chrome Web Store hoặc production-ready release.
+Bàn giao phải ghi rõ build/package evidence, runtime profile evidence,
+clean-profile/tamper/cross-device gaps, limitation không QR/protected export và
+tình trạng public privacy/support URL.

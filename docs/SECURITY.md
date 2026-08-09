@@ -36,7 +36,7 @@ Web dùng cùng account-sync RPC. Browser profile, origin/XSS và implementation
 `flutter_secure_storage` là trust boundary local; không khẳng định tương đương
 Keychain/Keystore native.
 
-### Chrome Extension (foundation, chưa public release)
+### Chrome Extension (GitHub Preview có known runtime gaps)
 
 Manifest V3 Side Panel không xin quyền đọc tab/page/cookie, không có content
 script hay autofill. Package verifier chặn remote JS/WASM, ZXing CDN và PWA
@@ -134,7 +134,9 @@ hiển thị protected QR export.
 - Tombstone chưa có retention/compaction policy.
 - Browser/local secure storage và physical-device behavior cần runtime evidence.
 - Chrome Extension clean-profile/restart/tamper/auth-sync evidence và independent
-  security review chưa hoàn tất; không public/store release trước các gate này.
+  security review chưa hoàn tất. Owner có thể waive runtime acceptance chỉ cho
+  GitHub Preview khi release note nêu rõ; không được coi đó là stable/store
+  release approval.
 - External alert, public security contact và off-host restore SLA chưa hoàn tất.
 
 ## Release checklist

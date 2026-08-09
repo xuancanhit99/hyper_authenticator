@@ -46,6 +46,12 @@ if [[ -e "$PACKAGE_DIR/flutter_service_worker.js" ]]; then
   exit 1
 fi
 
+if find "$PACKAGE_DIR" -type f \( -name '*.map' -o -name '*.debug' -o -name '*.pdb' \) \
+  -print -quit | grep -q .; then
+  echo "Chrome Extension package không được chứa source-map/debug artifact." >&2
+  exit 1
+fi
+
 if find "$PACKAGE_DIR" -type f \( -name '*.js' -o -name '*.mjs' \) \
   -exec grep -a -n -E \
     'https?://[[:alnum:]./_?&=:%#@+,-]+\.(js|wasm)([?#][[:alnum:]./_?&=:%#@+,-]*)?' {} +; then

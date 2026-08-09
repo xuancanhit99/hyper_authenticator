@@ -108,13 +108,13 @@ Kết quả:
 
 - `build/chrome-extension/unpacked`: load qua `chrome://extensions` → bật
   Developer mode → **Load unpacked**;
-- `build/chrome-extension/hyper-authenticator-chrome-extension.zip`: preview
-  package, manifest ở root.
+- `build/chrome-extension/hyper-authenticator-<version>-chrome-extension.zip` và
+  file `.sha256`: preview package, manifest ở root.
 
 Không load extension với local vault thật ở giai đoạn foundation. Dùng Chrome
 profile test riêng và test account/secret fixture không production. Harness
-reject remote executable code/PWA worker; nó không thay thế clean-profile,
-restart, tamper và auth-sync acceptance.
+reject remote executable code/PWA worker/source map/debug artifact; nó không
+thay thế clean-profile, restart, tamper và auth-sync acceptance.
 
 ## Android signing
 

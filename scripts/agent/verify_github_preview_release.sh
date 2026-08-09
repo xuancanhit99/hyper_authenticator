@@ -30,7 +30,7 @@ if [[ -n "$EXPECTED_COMMIT" ]] &&
   exit 64
 fi
 
-for command in curl jq file cmp grep; do
+for command in curl jq file cmp grep unzip; do
   if ! command -v "$command" >/dev/null 2>&1; then
     printf 'Thiếu public release verification dependency: %s\n' "$command" >&2
     exit 69
@@ -51,6 +51,15 @@ case "$TAG" in
     ;;
   *)
     require_android_signed_apk=true
+    ;;
+esac
+case "$TAG" in
+  v1.1.0-preview.1|v1.1.0-preview.2|v1.1.0-preview.3|v1.1.0-preview.4|\
+  v1.1.0-preview.5|v1.1.0-preview.6|v1.1.0-preview.7|v1.1.0-preview.8)
+    require_chrome_extension_preview=false
+    ;;
+  *)
+    require_chrome_extension_preview=true
     ;;
 esac
 expected_android_fingerprint=$(tr -d ':[:space:]' \
@@ -176,6 +185,18 @@ if [[ "$require_android_signed_apk" == true ]]; then
     exit 1
   fi
 fi
+if [[ "$require_chrome_extension_preview" == true ]]; then
+  expected_names=$(printf '%s\n%s\n%s\n' \
+    "$expected_names" \
+    "hyper-authenticator-${package_version}-chrome-extension.zip" \
+    "hyper-authenticator-${package_version}-chrome-extension.zip.sha256" | LC_ALL=C sort)
+  if ! jq -e '
+    .body | contains("Chrome Extension runtime acceptance: `owner-waived`")
+  ' >/dev/null <<<"$release_json"; then
+    printf '%s\n' 'Release note thiếu disclosure Chrome Extension owner-waived.' >&2
+    exit 1
+  fi
+fi
 actual_names=$(jq -r '.assets[].name' <<<"$release_json" | LC_ALL=C sort)
 if [[ "$actual_names" != "$expected_names" ]]; then
   printf '%s\n' 'Public release asset allowlist không khớp.' >&2
@@ -221,11 +242,27 @@ done < <(jq -r '.assets[] | [.name, .browser_download_url, .digest] | @tsv' \
 
 PACKAGE_VERSION_OVERRIDE="$package_version" \
 REQUIRE_ANDROID_SIGNED_APK="$require_android_signed_apk" \
+REQUIRE_CHROME_EXTENSION_PREVIEW="$require_chrome_extension_preview" \
   scripts/agent/check_github_preview_assets.sh \
   "$download_dir" "$staging_dir" >/dev/null
 if ! cmp -s "$download_dir/SHA256SUMS.txt" "$staging_dir/SHA256SUMS.txt"; then
   printf '%s\n' 'Public SHA256SUMS.txt không khớp manifest tái tạo từ binary.' >&2
   exit 1
+fi
+
+if [[ "$require_chrome_extension_preview" == true ]]; then
+  extension_path="$download_dir/hyper-authenticator-${package_version}-chrome-extension.zip"
+  extension_unpack_dir="$work_dir/chrome-extension"
+  if unzip -Z1 "$extension_path" | grep -E '(^/|(^|/)\.\.(/|$))' >/dev/null; then
+    printf '%s\n' 'Public Chrome Extension ZIP chứa path không an toàn.' >&2
+    exit 1
+  fi
+  unzip -q "$extension_path" -d "$extension_unpack_dir"
+  if find "$extension_unpack_dir" -type l -print -quit | grep -q .; then
+    printf '%s\n' 'Public Chrome Extension ZIP không được chứa symbolic link.' >&2
+    exit 1
+  fi
+  scripts/agent/verify_chrome_extension_package.sh "$extension_unpack_dir" >/dev/null
 fi
 
 deb_path="$download_dir/hyper-authenticator_${package_version}_amd64.deb"
@@ -289,7 +326,11 @@ release_url=$(jq -r .html_url <<<"$release_json")
 printf '%s\n' "✓ Public GitHub Preview: $release_url"
 printf '%s\n' "✓ Tag commit: $tag_commit"
 printf '%s\n' "✓ Successful tag CI run: $run_id"
-if [[ "$require_android_signed_apk" == true ]]; then
+if [[ "$require_android_signed_apk" == true &&
+  "$require_chrome_extension_preview" == true ]]; then
+  printf '%s\n' '✓ Exact 9 assets, GitHub digest, checksum và manifest đều khớp'
+  printf '%s\n' '✓ Android signer, Linux Debian, Windows PE32 và Chrome Extension package đều hợp lệ'
+elif [[ "$require_android_signed_apk" == true ]]; then
   printf '%s\n' '✓ Exact 7 assets, GitHub digest, checksum và manifest đều khớp'
   printf '%s\n' '✓ Android signer, Linux Debian và Windows PE32 đều hợp lệ'
 else

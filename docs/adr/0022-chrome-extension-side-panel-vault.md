@@ -1,6 +1,7 @@
 # ADR-0022: Chrome Extension dùng MV3 Side Panel và encrypted IndexedDB vault
 
-- Trạng thái: Chấp nhận cho implementation foundation; chưa được phép public release
+- Trạng thái: Chấp nhận cho foundation; GitHub Preview chỉ theo owner waiver với
+  disclosure; Chrome Web Store chưa được phép
 - Ngày: 2026-08-09
 - Owner: HyperZ
 - Bổ sung: ADR-0002, ADR-0010, ADR-0020, ADR-0021
@@ -100,8 +101,11 @@ tăng disclosure và Chrome Web Store review surface. Cần ADR riêng.
 - Không có app lock/fresh OS auth tương đương native; protected export bị ẩn.
 - Side Panel đóng/suspend không hứa realtime/background sync. Reopen/resume,
   auth restore và mutation vẫn gọi full sync.
-- Chrome Web Store release bị chặn cho đến khi runtime smoke trên clean profile,
-  privacy/support URL, listing assets, disclosure và review hoàn tất.
+- GitHub Preview ZIP chỉ được phát hành khi owner xác nhận waiver runtime
+  acceptance và release note nói rõ clean-profile/tamper/cross-device evidence
+  còn thiếu. Chrome Web Store release vẫn bị chặn cho đến khi runtime smoke trên
+  clean profile, privacy/support URL, listing assets, disclosure và review hoàn
+  tất.
 
 ## Failure behavior và rollback
 

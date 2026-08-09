@@ -12,7 +12,7 @@ GitHub Releases là binary channel hiện tại; store rollout để sau.
 | Windows | Unsigned NSIS preview | code signing + physical runtime |
 | Linux | Unsigned `.deb` preview | representative desktop/keyring |
 | Web | HTTPS/Nginx | browser camera/storage/account-sync runtime |
-| Chrome Extension | MV3 Side Panel preview package | clean-profile vault/session/sync/restart evidence; privacy/support URL; Chrome Store review |
+| Chrome Extension | MV3 Side Panel ZIP GitHub Preview | clean-profile vault/session/sync/restart evidence trước stable/store; privacy/support URL và Chrome Store review |
 
 ## Release gate
 
@@ -106,10 +106,10 @@ khi certificate fingerprint khớp pin. Windows/Linux unsigned phải ghi Previe
 
 Release đã xác minh hiện tại:
 
-- Public pre-release: [`v1.1.0-preview.7`](https://github.com/xuancanhit99/hyper_authenticator/releases/tag/v1.1.0-preview.7).
+- Public pre-release: [`v1.1.0-preview.8`](https://github.com/xuancanhit99/hyper_authenticator/releases/tag/v1.1.0-preview.8).
 - Package version `1.1.0+14`, source commit
-  `feec221101ab40aa9cd89d5e151265bd901ca255`.
-- Exact tag CI run `31278011636` pass toàn bộ Android/Apple/Web/Linux/Windows,
+  `ed0cd0167c232003126d25b3ac112c4d85aaa96f`.
+- Exact tag CI run `31284467915` pass toàn bộ Android/Apple/Web/Linux/Windows,
   quality và secret-history jobs.
 - Public verifier tải lại như người dùng chưa đăng nhập và xác nhận đúng 7 asset,
   GitHub digest, checksum/manifest, Android signer pin, Debian package và Windows
@@ -136,8 +136,12 @@ CI tạo artifact từ GitHub Actions Variables `SUPABASE_URL`,
 0600. Đây là public client config; service-role, database/SSH/SMTP/Vault key
 không được truyền vào job hoặc package.
 
-Đây chưa phải artifact GitHub Preview hoặc Chrome Web Store release. Trước khi
-phân phối cần:
+ZIP được đưa vào GitHub Preview khi owner xác nhận waiver runtime acceptance qua
+workflow release; package phải có exact CI provenance, SHA-256, static verifier
+và release note bắt buộc nói rõ `owner-waived`. Waiver chỉ cho GitHub Preview,
+không phải bằng chứng security sign-off, stable release hoặc Chrome Web Store.
+
+Trước stable/store distribution cần:
 
 1. chạy clean profile load/unload/restart/tamper/local-vault smoke;
 2. test login/session restore, cross-device RPC sync/tombstone và Realtime

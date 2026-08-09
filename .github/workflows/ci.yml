@@ -201,7 +201,7 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: hyper-authenticator-chrome-extension-${{ github.sha }}
-          path: build/chrome-extension/hyper-authenticator-chrome-extension.zip
+          path: build/chrome-extension/hyper-authenticator-*-chrome-extension.zip*
           if-no-files-found: error
           retention-days: 14
           compression-level: 0

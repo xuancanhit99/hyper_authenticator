@@ -4,16 +4,25 @@ set -euo pipefail
 ROOT=$(cd "$(dirname "$0")/../.." && pwd)
 TAG=${1:-}
 CONFIRMATION=${2:-}
+CHROME_EXTENSION_RUNTIME_ACCEPTANCE=${3:-}
 EXPECTED_CONFIRMATION=PUBLISH_UNSIGNED_GITHUB_PREVIEW
+EXPECTED_CHROME_EXTENSION_RUNTIME_ACCEPTANCE=OWNER_WAIVED_CHROME_EXTENSION_RUNTIME_ACCEPTANCE
 
 usage() {
   printf '%s\n' \
-    'Usage: scripts/agent/github_preview_release.sh vX.Y.Z-preview.N CONFIRMATION' \
-    "Confirmation bắt buộc: $EXPECTED_CONFIRMATION" >&2
+    'Usage: scripts/agent/github_preview_release.sh vX.Y.Z-preview.N CONFIRMATION CHROME_EXTENSION_RUNTIME_ACCEPTANCE' \
+    "Confirmation bắt buộc: $EXPECTED_CONFIRMATION" \
+    "Chrome Extension acknowledgement bắt buộc: $EXPECTED_CHROME_EXTENSION_RUNTIME_ACCEPTANCE" >&2
 }
 
-if [[ -z "$TAG" || -z "$CONFIRMATION" ]]; then
+if [[ -z "$TAG" || -z "$CONFIRMATION" ||
+  -z "$CHROME_EXTENSION_RUNTIME_ACCEPTANCE" ]]; then
   usage
+  exit 64
+fi
+if [[ "$CHROME_EXTENSION_RUNTIME_ACCEPTANCE" != \
+  "$EXPECTED_CHROME_EXTENSION_RUNTIME_ACCEPTANCE" ]]; then
+  printf '%s\n' 'Từ chối publish: Chrome Extension runtime acknowledgement không khớp.' >&2
   exit 64
 fi
 if [[ "$CONFIRMATION" != "$EXPECTED_CONFIRMATION" ]]; then
@@ -88,7 +97,11 @@ trap cleanup EXIT
 
 artifact_root="$work_dir/artifacts"
 staging_dir="$work_dir/release"
-mkdir -p "$artifact_root/android" "$artifact_root/linux" "$artifact_root/windows"
+mkdir -p \
+  "$artifact_root/android" \
+  "$artifact_root/chrome-extension" \
+  "$artifact_root/linux" \
+  "$artifact_root/windows"
 gh run download "$run_id" --repo "$repo" \
   --name "hyper-authenticator-android-apk-$tag_commit" \
   --dir "$artifact_root/android"
@@ -98,8 +111,12 @@ gh run download "$run_id" --repo "$repo" \
 gh run download "$run_id" --repo "$repo" \
   --name "hyper-authenticator-windows-installer-$tag_commit" \
   --dir "$artifact_root/windows"
+gh run download "$run_id" --repo "$repo" \
+  --name "hyper-authenticator-chrome-extension-$tag_commit" \
+  --dir "$artifact_root/chrome-extension"
 
 REQUIRE_ANDROID_SIGNED_APK=true \
+REQUIRE_CHROME_EXTENSION_PREVIEW=true \
   scripts/agent/check_github_preview_assets.sh "$artifact_root" "$staging_dir"
 
 android_fingerprint=$(tr -d ':[:space:]' \
@@ -129,6 +146,8 @@ signing certificate của dự án; package Windows/Linux chưa code-sign.
 - Linux amd64: file \`*_amd64.deb\`.
 - Android: file \`*-android.apk\`; Android có thể yêu cầu cho phép cài app từ
   nguồn GitHub/browser đang dùng.
+- Chrome Extension: file \`*-chrome-extension.zip\`; giải nén vào thư mục riêng,
+  rồi dùng **Load unpacked** trong \`chrome://extensions\` của Chrome 114+.
 - Xác minh SHA-256 bằng file checksum cạnh từng installer hoặc \`SHA256SUMS.txt\`.
 - Flutter Web production: https://authenticator.hyperz.xyz/
 
@@ -138,6 +157,10 @@ signing certificate của dự án; package Windows/Linux chưa code-sign.
 - Debian package chưa được ký qua package repository; chỉ cài khi checksum khớp.
 - Android APK đã ký nhưng vẫn là preview; biometric/camera trên thiết bị thật và
   store review chưa hoàn tất. iOS và macOS chưa được đính kèm.
+- Chrome Extension là **owner-waived runtime acceptance preview**: build/package,
+  checksum và static security contract đã pass, nhưng clean-profile/restart/
+  tamper/cross-device runtime acceptance vẫn chưa có evidence. Chỉ dùng với dữ
+  liệu test hoặc bản sao có thể khôi phục; không phải Chrome Web Store release.
 - SMTP production chưa được owner cấu hình; email khôi phục mật khẩu có thể chưa tới mailbox thật.
 - Khi đăng nhập, mã được đồng bộ tự động qua Supabase Vault. Đây là mã hóa do
   server quản lý, không phải zero-knowledge E2EE.
@@ -151,6 +174,7 @@ signing certificate của dự án; package Windows/Linux chưa code-sign.
 - CI đã pass: $run_url
 - Package version: \`$package_version\`
 - Android app-signing certificate SHA-256: \`$android_fingerprint\`
+- Chrome Extension runtime acceptance: \`owner-waived\`
 EOF
 
 release_assets=()
