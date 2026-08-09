@@ -23,7 +23,8 @@ fi
 
 if ! rg -q 'HYPER_CHROME_EXTENSION=true' "$BUILDER" ||
   ! rg -q 'vault.js' "$BUILDER" ||
-  ! rg -q 'main_extension.dart' "$BUILDER"; then
+  ! rg -q 'main_extension.dart' "$BUILDER" ||
+  ! rg -q 'ZIP_NAME.sha256' "$BUILDER"; then
   echo "Chrome Extension builder không có entrypoint/vault contract." >&2
   exit 1
 fi

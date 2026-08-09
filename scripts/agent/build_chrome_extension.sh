@@ -5,6 +5,15 @@ ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
 ENV_FILE=${1:-}
 BUILD_ROOT="$ROOT/build/chrome-extension"
 UNPACKED_DIR="$BUILD_ROOT/unpacked"
+PACKAGE_VERSION=$(awk '$1 == "version:" { print $2; exit }' "$ROOT/pubspec.yaml")
+
+if [[ -z "$PACKAGE_VERSION" ]]; then
+  printf '%s\n' 'Không đọc được package version từ pubspec.yaml.' >&2
+  exit 65
+fi
+
+ZIP_NAME="hyper-authenticator-${PACKAGE_VERSION}-chrome-extension.zip"
+ZIP_PATH="$BUILD_ROOT/$ZIP_NAME"
 
 if [[ -n "$ENV_FILE" ]]; then
   if [[ ! -f "$ENV_FILE" ]]; then
@@ -40,8 +49,17 @@ rm -f "$UNPACKED_DIR/flutter_service_worker.js"
 
 (
   cd "$UNPACKED_DIR"
-  zip -X -q -r "$BUILD_ROOT/hyper-authenticator-chrome-extension.zip" .
+  zip -X -q -r "$ZIP_PATH" .
+)
+(
+  cd "$BUILD_ROOT"
+  if command -v sha256sum >/dev/null 2>&1; then
+    sha256sum "$ZIP_NAME" >"$ZIP_NAME.sha256"
+  else
+    shasum -a 256 "$ZIP_NAME" >"$ZIP_NAME.sha256"
+  fi
 )
 
 echo "Unpacked: $UNPACKED_DIR"
-echo "ZIP: $BUILD_ROOT/hyper-authenticator-chrome-extension.zip"
+echo "ZIP: $ZIP_PATH"
+echo "Checksum: $ZIP_PATH.sha256"

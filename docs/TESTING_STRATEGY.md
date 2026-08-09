@@ -88,7 +88,8 @@ Remote pass chỉ hợp lệ khi test row/user được cleanup và xác minh ab
 
 ## Release/infra
 
-- GitHub Preview asset/checksum/signature/public-download contract.
+- GitHub Preview asset/checksum/signature/public-download contract, gồm Chrome
+  Extension ZIP/version/checksum/static package verifier khi asset đó có mặt.
 - Web runtime + rollback contract.
 - Nginx Proxy Manager secrets/backup/deploy/route/rollback contract.
 - Supabase backup checksum/catalog/full restore rehearsal và health check.

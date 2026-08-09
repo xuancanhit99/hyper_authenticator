@@ -41,7 +41,7 @@ Tài liệu này lập chỉ mục quyết định bền vững. Quyết định
 | A-033 | Cloud E2EE tối giản chỉ giữ một HA1 recovery path | Bị thay thế bởi A-034 | [ADR-0019](adr/0019-minimal-e2ee-single-recovery-path.md) |
 | A-034 | Account-managed automatic sync dùng Supabase Vault, per-account CAS và tombstone; không recovery key | Chấp nhận; source và production đã triển khai | [ADR-0020](adr/0020-account-managed-automatic-sync.md) |
 | A-035 | Private Realtime Broadcast chỉ làm credential-free wake-up signal; RPC full sync vẫn là nguồn sự thật | Chấp nhận; source, production và iOS Simulator đã xác minh | [ADR-0021](adr/0021-private-realtime-sync-signal.md) |
-| A-036 | Chrome Extension dùng MV3 Side Panel, local-only executable package và encrypted IndexedDB vault; không page access/autofill trong MVP | Chấp nhận cho source foundation; chưa public release | [ADR-0022](adr/0022-chrome-extension-side-panel-vault.md) |
+| A-036 | Chrome Extension dùng MV3 Side Panel, local-only executable package và encrypted IndexedDB vault; không page access/autofill trong MVP | Chấp nhận; GitHub Preview chỉ theo owner waiver với disclosure, Chrome Web Store vẫn bị chặn | [ADR-0022](adr/0022-chrome-extension-side-panel-vault.md) |
 
 Đã áp dụng không đồng nghĩa production-ready; defect/risk nằm trong `PROJECT_STATUS.md`.
 

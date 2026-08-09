@@ -21,7 +21,8 @@ make_fixture() {
   local root=$1
   local version=${2:-1.1.0+14}
   local include_android=${3:-false}
-  mkdir -p "$root/linux" "$root/windows" "$root/android"
+  local include_chrome_extension=${4:-false}
+  mkdir -p "$root/linux" "$root/windows" "$root/android" "$root/chrome-extension"
   printf '%s' 'TEST_ONLY_DEBIAN_PACKAGE' \
     > "$root/linux/hyper-authenticator_${version}_amd64.deb"
   printf '%s' 'TEST_ONLY_WINDOWS_INSTALLER' \
@@ -44,6 +45,16 @@ make_fixture() {
       cd "$root/android"
       "${hash_command[@]}" "hyper-authenticator-${version}-android.apk" \
         > "hyper-authenticator-${version}-android.apk.sha256"
+    )
+  fi
+  if [[ "$include_chrome_extension" == true ]]; then
+    printf '%s' 'TEST_ONLY_CHROME_EXTENSION_ZIP' \
+      > "$root/chrome-extension/hyper-authenticator-${version}-chrome-extension.zip"
+    (
+      cd "$root/chrome-extension"
+      "${hash_command[@]}" \
+        "hyper-authenticator-${version}-chrome-extension.zip" \
+        > "hyper-authenticator-${version}-chrome-extension.zip.sha256"
     )
   fi
 }
@@ -83,6 +94,20 @@ if [[ $(find "$android_output" -maxdepth 1 -type f | wc -l | tr -d ' ') -ne 7 ]]
 fi
 printf '%s\n' '✓ Signed Android fixture tạo đúng bảy release asset'
 
+extension_input="$WORK_ROOT/extension-input"
+extension_output="$WORK_ROOT/extension-output"
+make_fixture "$extension_input" '1.1.0+14' true true
+mkdir -p "$extension_output"
+REQUIRE_ANDROID_SIGNED_APK=true \
+REQUIRE_CHROME_EXTENSION_PREVIEW=true \
+  "$ROOT/scripts/agent/check_github_preview_assets.sh" \
+  "$extension_input" "$extension_output" >/dev/null
+if [[ $(find "$extension_output" -maxdepth 1 -type f | wc -l | tr -d ' ') -ne 9 ]]; then
+  printf '%s\n' 'Chrome Extension fixture không tạo đúng chín release asset.' >&2
+  exit 1
+fi
+printf '%s\n' '✓ Chrome Extension fixture tạo đúng chín release asset'
+
 missing_android_input="$WORK_ROOT/missing-android-input"
 missing_android_output="$WORK_ROOT/missing-android-output"
 make_fixture "$missing_android_input"
@@ -92,11 +117,25 @@ expect_failure missing-android \
   "$ROOT/scripts/agent/check_github_preview_assets.sh" \
   "$missing_android_input" "$missing_android_output"
 
+missing_extension_output="$WORK_ROOT/missing-extension-output"
+mkdir -p "$missing_extension_output"
+expect_failure missing-chrome-extension \
+  env REQUIRE_ANDROID_SIGNED_APK=true REQUIRE_CHROME_EXTENSION_PREVIEW=true \
+  "$ROOT/scripts/agent/check_github_preview_assets.sh" \
+  "$android_input" "$missing_extension_output"
+
 unexpected_android_output="$WORK_ROOT/unexpected-android-output"
 mkdir -p "$unexpected_android_output"
 expect_failure unexpected-android-in-legacy-contract \
   "$ROOT/scripts/agent/check_github_preview_assets.sh" \
   "$android_input" "$unexpected_android_output"
+
+unexpected_extension_output="$WORK_ROOT/unexpected-extension-output"
+mkdir -p "$unexpected_extension_output"
+expect_failure unexpected-chrome-extension-without-contract \
+  env REQUIRE_ANDROID_SIGNED_APK=true \
+  "$ROOT/scripts/agent/check_github_preview_assets.sh" \
+  "$extension_input" "$unexpected_extension_output"
 
 checksum_input="$WORK_ROOT/checksum-input"
 checksum_output="$WORK_ROOT/checksum-output"

@@ -64,6 +64,26 @@ if ! search_fixed 'REQUIRE_ANDROID_SIGNED_APK=true' "$PUBLISHER" >/dev/null; the
   printf '%s\n' 'Publisher chưa bắt buộc signed Android APK.' >&2
   exit 1
 fi
+if ! search_fixed 'REQUIRE_CHROME_EXTENSION_PREVIEW=true' "$PUBLISHER" >/dev/null; then
+  printf '%s\n' 'Publisher chưa bắt buộc Chrome Extension preview ZIP.' >&2
+  exit 1
+fi
+if ! search_fixed 'EXPECTED_CHROME_EXTENSION_RUNTIME_ACCEPTANCE' \
+  "$PUBLISHER" >/dev/null ||
+  ! search_fixed 'OWNER_WAIVED_CHROME_EXTENSION_RUNTIME_ACCEPTANCE' \
+  "$ROOT/.github/workflows/release-preview.yml" >/dev/null; then
+  printf '%s\n' 'Chrome Extension preview thiếu explicit owner-waiver confirmation.' >&2
+  exit 1
+fi
+if ! search_fixed 'Chrome Extension runtime acceptance:' \
+  "$PUBLISHER" >/dev/null; then
+  printf '%s\n' 'Publisher thiếu disclosure Chrome Extension owner-waived.' >&2
+  exit 1
+fi
+if ! search_fixed 'verify_chrome_extension_package.sh' "$VERIFIER" >/dev/null; then
+  printf '%s\n' 'Public verifier chưa kiểm tra lại Chrome Extension ZIP.' >&2
+  exit 1
+fi
 if ! search_fixed 'android/app-signing-certificate.sha256' \
   "$VERIFIER" >/dev/null; then
   printf '%s\n' 'Public verifier chưa pin Android signing fingerprint.' >&2
