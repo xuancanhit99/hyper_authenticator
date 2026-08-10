@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:hyper_authenticator/core/localization/app_copy.dart';
 import 'package:hyper_authenticator/core/platform/platform_capabilities.dart';
 import 'package:hyper_authenticator/core/router/app_routes.dart';
 import 'package:hyper_authenticator/core/widgets/responsive_content.dart';
@@ -201,7 +202,7 @@ class _AccountsPageState extends State<AccountsPage>
                 child: TextField(
                   controller: _searchController,
                   decoration: InputDecoration(
-                    hintText: 'Tìm dịch vụ hoặc ứng dụng...',
+                    hintText: 'Tìm mã xác thực',
                     prefixIcon: const Icon(Icons.search),
                     // Define consistent border radius
                     border: OutlineInputBorder(
@@ -461,7 +462,7 @@ class _AccountsPageState extends State<AccountsPage>
           ),
           actions: <Widget>[
             TextButton(
-              child: const Text('Hủy'),
+              child: const Text(AppCopy.cancel),
               onPressed: () {
                 Navigator.of(dialogContext).pop();
               },

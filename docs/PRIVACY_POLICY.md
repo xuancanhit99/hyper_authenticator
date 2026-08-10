@@ -3,6 +3,10 @@
 Tài liệu mô tả source hiện tại. Owner phải công bố URL, pháp nhân, contact và ngày
 hiệu lực trước stable/store release.
 
+Settings hiện chỉ tóm tắt local-only, account sync và ranh giới xử lý dữ liệu
+trong mục Giới thiệu. Nội dung đó không thay thế privacy policy công khai; app
+không hiển thị privacy/support action cho tới khi có URL/contact production.
+
 ## Dữ liệu local
 
 - issuer, account label, TOTP secret, algorithm, digits, period;

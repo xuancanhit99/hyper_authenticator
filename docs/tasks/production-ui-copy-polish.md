@@ -1,6 +1,6 @@
 # Task: Hoàn thiện UI và copy cho production
 
-- Trạng thái: Đang thực hiện
+- Trạng thái: Hoàn thành trong source; privacy/support public input theo release gate
 - Bắt đầu: 2026-08-10
 - Owner: HyperZ
 - Issue hoặc ADR liên quan: Không có
@@ -25,6 +25,8 @@ bảo mật và tác động của thao tác phá hủy.
 - [x] Settings và bộ chọn giao diện gọn, responsive và có preview dễ hiểu.
 - [x] Component geometry nhất quán trong cả sáu theme.
 - [x] Có visual regression coverage cho viewport đại diện.
+- [x] Có mục Giới thiệu ngắn gọn và catalog cho thuật ngữ dùng lặp lại.
+- [x] Không tạo privacy/support link giả khi release input chưa tồn tại.
 
 ## Bằng chứng hiện tại
 
@@ -49,7 +51,8 @@ bảo mật và tác động của thao tác phá hủy.
 - [x] PR 2: Settings và appearance picker.
 - [x] PR 3: Add/Edit/Import/Export.
 - [x] PR 4: design token và golden visual regression.
-- [ ] PR 5: About/Privacy/Support và localization catalog.
+- [x] PR 5: Giới thiệu và catalog tiếng Việt; privacy/support public action chờ
+  release input đã được ghi trong `PROJECT_STATUS.md`.
 
 ## Nhật ký xác minh
 
@@ -66,6 +69,9 @@ bảo mật và tác động của thao tác phá hủy.
 | Linux golden PR 4 | 6 ảnh 390 × 844 tạo bằng Flutter 3.44.6 trên CI và đã review trực quan | 2026-08-10 |
 | `scripts/agent/check.sh quick` + `flutter test` PR 4 | Pass, analyze 0 issue và 223/223 test | 2026-08-10 |
 | `scripts/agent/check.sh full` PR 4 sau thêm baseline Linux | Pass, 223 Flutter test + migration/release/infra harness | 2026-08-10 |
+| Product info/copy PR 5 targeted | Pass 4/4: version contract + light/dark 320 px/200% a11y | 2026-08-10 |
+| `scripts/agent/check.sh quick` + `flutter test` PR 5 | Pass, analyze 0 issue và 227/227 test | 2026-08-10 |
+| `scripts/agent/check.sh full` PR 5 | Pass, 227 Flutter test + migration/release/infra harness | 2026-08-10 |
 
 ## Tác động tài liệu
 

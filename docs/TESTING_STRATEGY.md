@@ -32,6 +32,9 @@ physical-device hoặc production evidence.
 - Theme: six style/brightness combinations, transition opacity, persistence race,
   cache repair, geometry token, 320 px/200% accessibility và component-gallery
   golden ở viewport 390 × 844.
+- Product info/copy: version hiển thị phải khớp `pubspec.yaml`; bottom sheet
+  Giới thiệu phải pass contrast/tap-target ở light/dark, 320 px và text scale
+  200%.
 - Chrome Extension: Supabase session/PKCE namespace đi qua secure-store; native
   local-vault regression vẫn pass sau storage abstraction. Package gate kiểm tra
   MV3 Side Panel/CSP/permission/host allowlist, local CanvasKit/WASM/Roboto,

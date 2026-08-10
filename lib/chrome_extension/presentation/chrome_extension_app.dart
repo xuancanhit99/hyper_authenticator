@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:hyper_authenticator/core/localization/app_copy.dart';
 import 'package:hyper_authenticator/core/security/privacy_shield.dart';
 import 'package:hyper_authenticator/core/theme/app_theme.dart';
 import 'package:hyper_authenticator/core/theme/theme_cubit.dart';
@@ -47,7 +48,7 @@ class _ChromeExtensionAppState extends State<ChromeExtensionApp>
     final themeState = context.watch<ThemeCubit>().state;
 
     return MaterialApp.router(
-      title: 'Hyper Authenticator',
+      title: AppCopy.appName,
       locale: const Locale('vi'),
       supportedLocales: const [Locale('vi')],
       localizationsDelegates: const [

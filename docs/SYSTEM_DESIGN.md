@@ -184,6 +184,10 @@ cầu `AccountsBloc` reload list.
   button, TextField, dialog và bottom sheet lấy radius từ palette; TextField
   không dùng pill radius riêng. Card tự clip ripple, không có surface tint và
   layout bên ngoài sở hữu margin.
+- App chỉ phát hành locale tiếng Việt. `AppCopy` giữ tên sản phẩm và thuật ngữ
+  lặp lại giữa app chính/Chrome Extension; câu theo ngữ cảnh vẫn nằm gần widget.
+  `AppMetadata` hiển thị version trong Giới thiệu và có test khóa với version
+  canonical trong `pubspec.yaml`.
 - App Lock fail closed trên error/cancel.
 - Privacy Shield chặn interaction/semantics ngoài foreground nhưng không ngăn OS
   screenshot/recording.

@@ -75,10 +75,7 @@ void main() {
       expect(accountsBloc.state, isA<AccountsLoaded>());
       expect(find.text('Mã xác thực'), findsOneWidget);
       expect(find.byTooltip('Thêm tài khoản'), findsOneWidget);
-      expect(
-        find.widgetWithText(TextField, 'Tìm dịch vụ hoặc ứng dụng...'),
-        findsOneWidget,
-      );
+      expect(find.widgetWithText(TextField, 'Tìm mã xác thực'), findsOneWidget);
       expect(find.text('TEST_ONLY Issuer'), findsOneWidget);
       var countdown = tester.widget<CircularCountdownTimer>(
         find.byType(CircularCountdownTimer),

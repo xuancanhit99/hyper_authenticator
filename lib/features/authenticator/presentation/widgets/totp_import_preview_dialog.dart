@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hyper_authenticator/core/localization/app_copy.dart';
 import 'package:hyper_authenticator/features/authenticator/domain/services/totp_uri_parser.dart';
 import 'package:hyper_authenticator/features/authenticator/presentation/widgets/account_avatar.dart';
 
@@ -136,7 +137,7 @@ class TotpImportPreviewDialog extends StatelessWidget {
           key: cancelButtonKey,
           autofocus: true,
           onPressed: () => Navigator.of(context).pop(false),
-          child: const Text('Hủy'),
+          child: const Text(AppCopy.cancel),
         ),
         FilledButton.icon(
           key: confirmButtonKey,

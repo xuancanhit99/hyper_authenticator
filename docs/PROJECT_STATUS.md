@@ -67,6 +67,9 @@ Hyper Authenticator là ứng dụng TOTP Flutter đa nền tảng, local-first:
   giữ hướng dẫn cụ thể.
 - Accounts/Settings dùng `StatefulShellRoute.indexedStack`; theme có ba visual
   style × light/dark.
+- Settings có mục Giới thiệu gọn: version, local-only, account sync, ranh giới
+  xử lý dữ liệu và giấy phép mã nguồn mở. UI không tạo privacy/support action
+  cho tới khi owner cung cấp URL/contact production.
 - App Lock dùng local authentication khi platform hỗ trợ. Privacy Shield che nội
   dung ngoài foreground nhưng không phải active screenshot prevention.
 
@@ -105,9 +108,9 @@ Hyper Authenticator là ứng dụng TOTP Flutter đa nền tảng, local-first:
 | Gate | Kết quả |
 |---|---|
 | `flutter analyze` | Pass, 0 issue ngày 05-08-2026 |
-| `flutter test` | Pass 223 test ngày 10-08-2026 |
+| `flutter test` | Pass 227 test ngày 10-08-2026 |
 | `scripts/supabase/test_account_sync_migration.sh` | Pass trên đúng `supabase/postgres:17.6.1.136`: Vault/RPC/CAS/tombstone và authorization probe đúng Realtime 2.102.3 |
-| Full gate | `scripts/agent/check.sh full` pass ngày 10-08-2026: docs/codegen/format/analyze/platform, 223 Flutter test, migration/release/infra harness |
+| Full gate | `scripts/agent/check.sh full` pass ngày 10-08-2026: docs/codegen/format/analyze/platform, 227 Flutter test, migration/release/infra harness |
 | iOS Simulator account sync | UI auth giữ local vault + upload/download/tombstone + remote-only upsert/delete qua Realtime pass; isolated user cleanup verified ngày 05-08-2026 |
 | iOS Simulator account sync re-run | Isolated user: UI sign-in/sign-out vẫn giữ local vault, upload/fresh-device download/Realtime/tombstone pass và remote cleanup verified ngày 09-08-2026 |
 | Chrome Extension current profile | Owner manual smoke: Side Panel render sau local Roboto bundle, login Supabase, sync và session còn sau đóng/mở Chrome ngày 09-08-2026; không phải clean-profile/tamper evidence |

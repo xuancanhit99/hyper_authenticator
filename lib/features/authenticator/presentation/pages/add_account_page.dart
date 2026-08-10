@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:hyper_authenticator/core/localization/app_copy.dart';
 import 'package:hyper_authenticator/core/platform/platform_capabilities.dart';
 import 'package:hyper_authenticator/core/router/app_routes.dart';
 import 'package:hyper_authenticator/core/widgets/responsive_content.dart';
@@ -404,8 +405,8 @@ class _AddAccountPageState extends State<AddAccountPage> {
                 key: AddAccountPage.issuerFieldKey,
                 controller: _issuerController,
                 decoration: const InputDecoration(
-                  labelText: 'Dịch vụ',
-                  hintText: 'Ví dụ: Google',
+                  labelText: AppCopy.service,
+                  hintText: AppCopy.serviceExample,
                 ),
                 validator: (value) => (value == null || value.isEmpty)
                     ? 'Nhập tên dịch vụ.'
@@ -417,8 +418,8 @@ class _AddAccountPageState extends State<AddAccountPage> {
                 key: AddAccountPage.accountNameFieldKey,
                 controller: _accountNameController,
                 decoration: const InputDecoration(
-                  labelText: 'Tài khoản',
-                  hintText: 'Ví dụ: user@example.com',
+                  labelText: AppCopy.account,
+                  hintText: AppCopy.accountExample,
                 ),
                 validator: (value) => (value == null || value.isEmpty)
                     ? 'Nhập tên tài khoản.'
@@ -429,7 +430,7 @@ class _AddAccountPageState extends State<AddAccountPage> {
                 key: AddAccountPage.secretFieldKey,
                 controller: _secretController,
                 decoration: InputDecoration(
-                  labelText: 'Khóa thiết lập',
+                  labelText: AppCopy.setupKey,
                   helperText: 'Chuỗi ký tự nằm cạnh mã QR',
                   suffixIcon: IconButton(
                     tooltip: _obscureSecret
@@ -562,7 +563,7 @@ class _ScannerErrorView extends StatelessWidget {
                   FilledButton(
                     key: AddAccountPage.scannerRetryKey,
                     onPressed: () => unawaited(onRetry()),
-                    child: const Text('Thử lại'),
+                    child: const Text(AppCopy.retry),
                   ),
                 ],
               ),
