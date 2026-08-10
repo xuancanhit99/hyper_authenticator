@@ -105,7 +105,7 @@ Hyper Authenticator là ứng dụng TOTP Flutter đa nền tảng, local-first:
 | Gate | Kết quả |
 |---|---|
 | `flutter analyze` | Pass, 0 issue ngày 05-08-2026 |
-| `flutter test` | Pass 215 test ngày 10-08-2026 |
+| `flutter test` | Pass 223 test ngày 10-08-2026 |
 | `scripts/supabase/test_account_sync_migration.sh` | Pass trên đúng `supabase/postgres:17.6.1.136`: Vault/RPC/CAS/tombstone và authorization probe đúng Realtime 2.102.3 |
 | Full gate | `scripts/agent/check.sh full` pass ngày 10-08-2026: docs/codegen/format/analyze/platform, 215 Flutter test, migration/release/infra harness |
 | iOS Simulator account sync | UI auth giữ local vault + upload/download/tombstone + remote-only upsert/delete qua Realtime pass; isolated user cleanup verified ngày 05-08-2026 |

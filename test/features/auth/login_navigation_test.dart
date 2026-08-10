@@ -246,7 +246,7 @@ void main() {
     );
   });
 
-  testWidgets('auth form giữ max width và cùng border trên desktop', (
+  testWidgets('auth form giữ max width và cùng control radius trên desktop', (
     tester,
   ) async {
     await pumpApp(
@@ -286,7 +286,7 @@ void main() {
             as OutlineInputBorder;
 
     expect(recoveryBorder.borderRadius, loginBorder.borderRadius);
-    expect(recoveryBorder.borderRadius, BorderRadius.circular(100));
+    expect(recoveryBorder.borderRadius, BorderRadius.circular(20));
   });
 
   test('auth event/state string redact password và user identity', () {

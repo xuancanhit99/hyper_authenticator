@@ -8,12 +8,16 @@ import 'package:flutter/material.dart';
 class CFilledButtonTheme {
   CFilledButtonTheme._();
 
-  static final filledButtonTheme = FilledButtonThemeData(
-    style: FilledButton.styleFrom(
-      elevation: 0,
-      minimumSize: const Size(64, 48),
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-    ),
-  );
+  static FilledButtonThemeData themed({double radius = 20}) {
+    return FilledButtonThemeData(
+      style: FilledButton.styleFrom(
+        elevation: 0,
+        minimumSize: const Size(64, 48),
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(radius),
+        ),
+      ),
+    );
+  }
 }

@@ -23,8 +23,8 @@ bảo mật và tác động của thao tác phá hủy.
 - [x] Copy thêm/sửa/nhập/xuất dùng thuật ngữ tiếng Việt đã thống nhất.
 - [x] Xóa mã nói rõ tác động tới các thiết bị đang đồng bộ.
 - [x] Settings và bộ chọn giao diện gọn, responsive và có preview dễ hiểu.
-- [ ] Component geometry nhất quán trong cả sáu theme.
-- [ ] Có visual regression coverage cho viewport đại diện.
+- [x] Component geometry nhất quán trong cả sáu theme.
+- [x] Có visual regression coverage cho viewport đại diện.
 
 ## Bằng chứng hiện tại
 
@@ -48,7 +48,7 @@ bảo mật và tác động của thao tác phá hủy.
 - [x] PR 1: copy P0, error boundary và xác nhận xóa.
 - [x] PR 2: Settings và appearance picker.
 - [x] PR 3: Add/Edit/Import/Export.
-- [ ] PR 4: design token và golden visual regression.
+- [x] PR 4: design token và golden visual regression.
 - [ ] PR 5: About/Privacy/Support và localization catalog.
 
 ## Nhật ký xác minh
@@ -62,6 +62,8 @@ bảo mật và tác động của thao tác phá hủy.
 | `scripts/agent/check.sh quick` + `flutter test` PR 2 | Pass, analyze 0 issue và 213/213 test | 2026-08-10 |
 | Targeted PR 3 Add/Edit/Import/Export | Pass 41/41, gồm fresh-auth, expiry, atomic import và a11y | 2026-08-10 |
 | `scripts/agent/check.sh full` PR 3 | Pass, 215 Flutter test + migration/release/infra harness | 2026-08-10 |
+| Theme geometry + golden PR 4 | Pass 13/13, đủ 6 palette và 6 ảnh 390 × 844 | 2026-08-10 |
+| `scripts/agent/check.sh quick` + `flutter test` PR 4 | Pass, analyze 0 issue và 223/223 test | 2026-08-10 |
 
 ## Tác động tài liệu
 
