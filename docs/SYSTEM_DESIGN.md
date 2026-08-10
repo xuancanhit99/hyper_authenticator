@@ -174,10 +174,22 @@ cầu `AccountsBloc` reload list.
 ## Navigation, theme và privacy
 
 - `StatefulShellRoute.indexedStack` giữ Accounts/Settings branch state.
+  Startup/App Lock render trên root navigator nhưng vẫn thuộc Accounts branch
+  để shell không bị hủy trong lifecycle redirect. Khi người dùng chọn tab
+  Accounts, shell luôn mở initial location `/` thay vì restore một `/startup`
+  hoặc `/lock-screen` cũ có `returnTo=/settings`; nếu không redirect thành công
+  sau resume có thể đưa người dùng ngược lại Settings. State widget của trang
+  Accounts vẫn được indexed stack giữ lại và có regression test.
 - Theme có ba style persisted độc lập với ThemeMode. Settings hiển thị chúng
   bằng nhãn Mặc định, OLED và Indigo trong một bottom sheet có preview; enum
   name `securityMinimal`, `oledDark`, `darkCinema` được giữ ổn định để không
-  làm mất lựa chọn đã lưu. Theme áp dụng ngay, không có nút lưu.
+  làm mất lựa chọn đã lưu. Theme áp dụng ngay, không có nút lưu. Các bottom
+  sheet cấp ứng dụng trong Settings được đặt trên root navigator, không trở
+  thành history của riêng Settings branch hoặc lẫn vào state restoration của
+  branch khi đổi theme và qua lifecycle transition.
+- Preview style tách lớp border ngoài khỏi lớp clip nội dung để viền bo tròn
+  luôn kín. Choice chip của chế độ hiển thị dùng icon riêng và tắt checkmark
+  mặc định; trạng thái chọn vẫn được biểu đạt bằng màu nền, viền và semantics.
 - Settings là entry point duy nhất để đổi style/mode; Accounts AppBar dành cho
   thao tác mã xác thực và không lặp lại quick theme action.
 - `AppStylePalette` là nguồn visual token cho màu và geometry. Card, ba loại

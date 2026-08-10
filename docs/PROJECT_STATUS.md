@@ -66,7 +66,11 @@ Hyper Authenticator là ứng dụng TOTP Flutter đa nền tảng, local-first:
   Supabase/storage/network không đi vào UI. Validation local đã kiểm soát vẫn
   giữ hướng dẫn cụ thể.
 - Accounts/Settings dùng `StatefulShellRoute.indexedStack`; theme có ba visual
-  style × light/dark.
+  style × light/dark. Appearance/Product Info sheet dùng root navigator để
+  không giữ modal route trong history riêng của Settings branch; preview style
+  và mode chip có regression test cho border bo kín và icon không chồng lớp.
+  Tab Accounts luôn vào initial location để không restore startup/app-lock
+  overlay cũ rồi bị `returnTo=/settings` redirect ngược sau resume.
 - Settings có mục Giới thiệu gọn: version, local-only, account sync, ranh giới
   xử lý dữ liệu và giấy phép mã nguồn mở. UI không tạo privacy/support action
   cho tới khi owner cung cấp URL/contact production.

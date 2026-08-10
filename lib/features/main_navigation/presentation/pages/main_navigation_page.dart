@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:hyper_authenticator/core/localization/app_copy.dart';
 
 class MainNavigationPage extends StatelessWidget {
+  static const _accountsBranchIndex = 0;
   static const accountsTabKey = Key('main_navigation_accounts_tab');
   static const settingsTabKey = Key('main_navigation_settings_tab');
   static const navigationBarKey = Key('main_navigation_bar');
@@ -17,10 +18,14 @@ class MainNavigationPage extends StatelessWidget {
   void _onItemTapped(int index) {
     navigationShell.goBranch(
       index,
-      // Reselect tab hiện tại quay về root của branch. Đây là contract chuẩn
-      // của StatefulNavigationShell và cũng tự phục hồi branch nếu state route
-      // vừa được restore sau lifecycle transition.
-      initialLocation: index == navigationShell.currentIndex,
+      // Startup/lock là overlay root nhưng nằm trong history của Accounts
+      // branch để giữ shell sống qua lifecycle redirect. Khi app resume về
+      // Settings, history đã lưu của branch 0 có thể vẫn là `/startup`; restore
+      // history đó sẽ lập tức redirect ngược về Settings. Accounts vì vậy luôn
+      // mở initial location, còn các branch khác vẫn giữ state như bình thường.
+      initialLocation:
+          index == _accountsBranchIndex ||
+          index == navigationShell.currentIndex,
     );
   }
 
