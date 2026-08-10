@@ -123,10 +123,13 @@ Simulator/emulator bổ sung nhưng không thay physical camera/biometric eviden
 - UI sensitive flow phải có lifecycle/cancel/timeout test.
 - Không đưa real secret, full URI, password, email production hoặc token vào
   fixture/snapshot output.
-- Golden nằm tại `test/core/theme/goldens`. Chỉ cập nhật bằng
+- Golden macOS và Linux nằm tại `test/core/theme/goldens`; Linux dùng hậu tố
+  `_linux` vì rasterizer khác hệ điều hành. Chỉ cập nhật bằng
   `flutter test --update-goldens test/core/theme/app_theme_golden_test.dart`
-  sau khi review trực quan đủ sáu ảnh; luôn chạy lại test không có flag update
-  để chứng minh snapshot ổn định.
+  trên đúng hệ điều hành sau khi review trực quan đủ sáu ảnh tương ứng; luôn
+  chạy lại test không có flag update để chứng minh snapshot ổn định.
+- Quality gate lưu `test/core/theme/failures` thành artifact trong bảy ngày khi
+  golden fail để reviewer phân biệt thay đổi có chủ đích với sai khác renderer.
 
 ## Baseline hiện tại
 

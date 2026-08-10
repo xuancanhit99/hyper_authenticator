@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hyper_authenticator/core/theme/app_style.dart';
@@ -34,7 +36,8 @@ void main() {
         await expectLater(
           find.byKey(const Key('theme-component-gallery')),
           matchesGoldenFile(
-            'goldens/app_theme_${style.name}_${brightness.name}.png',
+            'goldens/app_theme_${style.name}_${brightness.name}'
+            '${Platform.isLinux ? '_linux' : ''}.png',
           ),
         );
       });
