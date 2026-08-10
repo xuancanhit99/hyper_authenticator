@@ -39,6 +39,8 @@ void main() {
             body: ListView(
               padding: const EdgeInsets.all(16),
               children: const [
+                Text('Bảo mật'),
+                SizedBox(height: 6),
                 Card(
                   child: ListTile(
                     leading: Icon(Icons.fingerprint),
@@ -46,16 +48,10 @@ void main() {
                     subtitle: Text('Dùng Face ID hoặc mã khóa thiết bị.'),
                   ),
                 ),
-                SizedBox(height: 12),
+                SizedBox(height: 20),
+                Text('Hiển thị'),
+                SizedBox(height: 6),
                 Card(child: AppearanceStylePicker()),
-                SizedBox(height: 12),
-                Card(
-                  child: ListTile(
-                    leading: Icon(Icons.folder_zip_outlined),
-                    title: Text('Nhập và xuất QR'),
-                    subtitle: Text('Portable offline, không cần Supabase.'),
-                  ),
-                ),
               ],
             ),
           ),
@@ -64,79 +60,80 @@ void main() {
     );
   }
 
-  Future<void> centerInViewport(WidgetTester tester, Finder finder) async {
-    final appBarBottom = tester.getBottomLeft(find.byType(AppBar)).dy;
-    final viewportBottom = tester.getRect(find.byType(Scaffold)).bottom;
-    const margin = 12.0;
-    final availableHeight = viewportBottom - appBarBottom - (margin * 2);
-    final scrollable = find.byType(Scrollable).first;
-    for (var attempt = 0; attempt < 20; attempt++) {
-      final target = tester.getRect(finder);
-      expect(target.height, lessThan(availableHeight));
-      final desiredTop =
-          appBarBottom + margin + ((availableHeight - target.height) / 2);
-      final delta = (desiredTop - target.top).clamp(-240.0, 240.0);
-      if (delta.abs() < 1) break;
-      await tester.drag(scrollable, Offset(0, delta));
-      await tester.pumpAndSettle();
-    }
+  Future<Finder> revealPickerRow(WidgetTester tester) async {
+    final tile = find.byKey(const Key('appearance-picker-tile'));
+    await tester.scrollUntilVisible(
+      tile,
+      120,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+    return tile;
   }
 
-  void expectFullyVisible(WidgetTester tester, Finder finder, String reason) {
+  Future<void> openSheet(WidgetTester tester) async {
+    final tile = await revealPickerRow(tester);
+    await tester.tap(tile);
+    await tester.pumpAndSettle();
+    expect(find.text('Chọn giao diện'), findsOneWidget);
+  }
+
+  Future<void> reveal(WidgetTester tester, Finder finder) async {
+    await tester.ensureVisible(finder);
+    await tester.pumpAndSettle();
     final rect = tester.getRect(finder);
-    final appBarBottom = tester.getBottomLeft(find.byType(AppBar)).dy;
-    final viewportBottom = tester.getRect(find.byType(Scaffold)).bottom;
-    expect(rect.top, greaterThan(appBarBottom + 8), reason: reason);
-    expect(rect.bottom, lessThan(viewportBottom - 8), reason: reason);
+    final screen = tester.getRect(find.byType(Scaffold));
+    expect(rect.top, greaterThanOrEqualTo(screen.top));
+    expect(rect.bottom, lessThanOrEqualTo(screen.bottom));
   }
 
-  testWidgets('dropdown gọn và không overflow ở 320px + text scale 200%', (
-    tester,
-  ) async {
+  testWidgets('Settings chỉ hiển thị một hàng giao diện gọn', (tester) async {
     tester.view.devicePixelRatio = 1;
     tester.view.physicalSize = const Size(320, 640);
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
 
     final cubit = await makeCubit();
+    addTearDown(cubit.close);
     await pumpPicker(tester, cubit, textScale: 2);
+    await revealPickerRow(tester);
 
-    expect(find.byType(RadioListTile<AppStyle>), findsNothing);
-    expect(find.byType(ChoiceChip), findsNothing);
-    expect(find.byKey(const Key('app-style-dropdown')), findsOneWidget);
-    expect(find.byKey(const Key('theme-mode-dropdown')), findsOneWidget);
-    final pickerCard = find
-        .ancestor(
-          of: find.byType(AppearanceStylePicker),
-          matching: find.byType(Card),
-        )
-        .first;
-    expect(tester.getSize(pickerCard).height, lessThan(440));
-    expect(tester.takeException(), isNull);
-
-    await centerInViewport(tester, find.byKey(const Key('app-style-dropdown')));
-    await tester.tap(find.byKey(const Key('app-style-dropdown')));
-    await tester.pumpAndSettle();
-    expect(tester.takeException(), isNull);
-    await tester.tap(find.byKey(const Key('app-style-option-oledDark')).last);
-    await tester.pumpAndSettle();
-    expect(cubit.state.style, AppStyle.oledDark);
-
-    await centerInViewport(
-      tester,
-      find.byKey(const Key('theme-mode-dropdown')),
+    expect(find.byType(DropdownButton<AppStyle>), findsNothing);
+    expect(find.byType(DropdownButton<ThemeMode>), findsNothing);
+    expect(find.text('Mặc định · Hệ thống'), findsOneWidget);
+    expect(
+      tester.getSize(find.byKey(const Key('appearance-picker-tile'))).height,
+      lessThan(300),
     );
-    await tester.tap(find.byKey(const Key('theme-mode-dropdown')));
-    await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
-    await tester.tap(find.byKey(const Key('theme-mode-option-dark')).last);
+  });
+
+  testWidgets('bottom sheet áp dụng style và mode ngay lập tức', (
+    tester,
+  ) async {
+    final cubit = await makeCubit();
+    addTearDown(cubit.close);
+    await pumpPicker(tester, cubit);
+    await openSheet(tester);
+
+    await tester.tap(find.byKey(const Key('app-style-option-darkCinema')));
+    await tester.pumpAndSettle();
+    expect(cubit.state.style, AppStyle.darkCinema);
+
+    final darkChoice = find.byKey(const Key('theme-mode-choice-dark'));
+    await reveal(tester, darkChoice);
+    await tester.tap(darkChoice);
     await tester.pumpAndSettle();
     expect(cubit.state.mode, ThemeMode.dark);
+
+    await tester.tap(find.byKey(const Key('close-appearance-sheet')));
+    await tester.pumpAndSettle();
+    expect(find.text('Indigo · Tối'), findsOneWidget);
   });
 
   for (final style in AppStyle.values) {
     for (final brightness in Brightness.values) {
-      testWidgets('dropdown a11y ${style.name}/${brightness.name}', (
+      testWidgets('sheet a11y ${style.name}/${brightness.name} ở 320px 200%', (
         tester,
       ) async {
         final semantics = tester.ensureSemantics();
@@ -146,42 +143,30 @@ void main() {
         addTearDown(tester.view.resetDevicePixelRatio);
 
         final cubit = await makeCubit(initialStyle: style);
+        addTearDown(cubit.close);
         final theme = brightness == Brightness.light
             ? AppTheme.light(style)
             : AppTheme.dark(style);
         await pumpPicker(tester, cubit, textScale: 2, theme: theme);
+        await openSheet(tester);
 
-        for (final key in const [
-          Key('app-style-dropdown'),
-          Key('theme-mode-dropdown'),
-        ]) {
-          final dropdown = find.byKey(key);
-          await centerInViewport(tester, dropdown);
-          expectFullyVisible(tester, dropdown, key.toString());
-          await expectLater(tester, meetsGuideline(textContrastGuideline));
-          await expectLater(tester, meetsGuideline(androidTapTargetGuideline));
+        for (final candidate in AppStyle.values) {
+          final option = find.byKey(Key('app-style-option-${candidate.name}'));
+          await reveal(tester, option);
+          expect(tester.takeException(), isNull);
         }
+
+        for (final mode in ThemeMode.values) {
+          await reveal(
+            tester,
+            find.byKey(Key('theme-mode-choice-${mode.name}')),
+          );
+        }
+
+        await expectLater(tester, meetsGuideline(textContrastGuideline));
+        await expectLater(tester, meetsGuideline(androidTapTargetGuideline));
         semantics.dispose();
       });
     }
   }
-
-  testWidgets('chọn style và mode cập nhật ThemeCubit', (tester) async {
-    final cubit = await makeCubit();
-    await pumpPicker(tester, cubit);
-
-    await tester.ensureVisible(find.byKey(const Key('app-style-dropdown')));
-    await tester.tap(find.byKey(const Key('app-style-dropdown')));
-    await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const Key('app-style-option-darkCinema')).last);
-    await tester.pumpAndSettle();
-    expect(cubit.state.style, AppStyle.darkCinema);
-
-    await tester.ensureVisible(find.byKey(const Key('theme-mode-dropdown')));
-    await tester.tap(find.byKey(const Key('theme-mode-dropdown')));
-    await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const Key('theme-mode-option-dark')).last);
-    await tester.pumpAndSettle();
-    expect(cubit.state.mode, ThemeMode.dark);
-  });
 }

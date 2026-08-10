@@ -20,14 +20,14 @@ enum AppStyle {
   }
 
   String get label => switch (this) {
-    AppStyle.securityMinimal => 'Security Minimal',
-    AppStyle.oledDark => 'OLED Dark',
-    AppStyle.darkCinema => 'Dark Cinema',
+    AppStyle.securityMinimal => 'Mặc định',
+    AppStyle.oledDark => 'OLED',
+    AppStyle.darkCinema => 'Indigo',
   };
 
   String get description => switch (this) {
-    AppStyle.securityMinimal => 'Xanh lá brand, phẳng, tương phản cao',
-    AppStyle.oledDark => 'Dark đen tuyền, OTP accent; Light nền trắng',
-    AppStyle.darkCinema => 'Tối cao cấp, accent indigo, bo góc lớn',
+    AppStyle.securityMinimal => 'Xanh lá, rõ ràng và tương phản cao',
+    AppStyle.oledDark => 'Nền đen tuyền khi dùng chế độ tối',
+    AppStyle.darkCinema => 'Tông chàm với bề mặt bo góc mềm',
   };
 }

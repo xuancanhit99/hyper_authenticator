@@ -79,7 +79,15 @@ class _SettingsView extends StatelessWidget {
             child: ListView(
               padding: const EdgeInsets.all(16),
               children: [
-                if (currentUser != null) _UserCard(currentUser),
+                const _SectionLabel('Tài khoản & đồng bộ'),
+                Card(
+                  child: _AccountSyncSection(
+                    currentUser: currentUser,
+                    cloudConfigured: cloudConfigured,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                const _SectionLabel('Bảo mật'),
                 Card(
                   child: loaded?.canCheckBiometrics == true
                       ? SwitchListTile(
@@ -101,15 +109,10 @@ class _SettingsView extends StatelessWidget {
                           ),
                         ),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 20),
+                const _SectionLabel('Hiển thị'),
                 const Card(child: AppearanceStylePicker()),
-                const SizedBox(height: 12),
-                Card(
-                  child: _CloudSyncSection(
-                    currentUser: currentUser,
-                    cloudConfigured: cloudConfigured,
-                  ),
-                ),
+                const SizedBox(height: 32),
               ],
             ),
           );
@@ -119,46 +122,28 @@ class _SettingsView extends StatelessWidget {
   }
 }
 
-class _UserCard extends StatelessWidget {
-  const _UserCard(this.user);
+class _SectionLabel extends StatelessWidget {
+  const _SectionLabel(this.label);
 
-  final UserEntity user;
+  final String label;
 
   @override
   Widget build(BuildContext context) {
-    final name = user.name?.trim();
-    final email = user.email?.trim();
-    final label = name?.isNotEmpty == true
-        ? name!
-        : email?.isNotEmpty == true
-        ? email!
-        : 'Tài khoản đồng bộ';
-    return Card(
-      margin: const EdgeInsets.only(bottom: 16),
-      child: Column(
-        children: [
-          ListTile(
-            leading: CircleAvatar(
-              child: Text(label.characters.first.toUpperCase()),
-            ),
-            title: Text(label),
-            subtitle: email?.isNotEmpty == true ? Text(email!) : null,
-          ),
-          Divider(
-            height: 1,
-            indent: 56,
-            endIndent: 24,
-            color: Theme.of(context).colorScheme.outlineVariant,
-          ),
-          CloudAccountActionTile(currentUser: user),
-        ],
+    return Padding(
+      padding: const EdgeInsetsDirectional.fromSTEB(8, 0, 8, 6),
+      child: Text(
+        label,
+        style: Theme.of(context).textTheme.titleSmall?.copyWith(
+          color: Theme.of(context).colorScheme.primary,
+          fontWeight: FontWeight.w700,
+        ),
       ),
     );
   }
 }
 
-class _CloudSyncSection extends StatelessWidget {
-  const _CloudSyncSection({
+class _AccountSyncSection extends StatelessWidget {
+  const _AccountSyncSection({
     required this.currentUser,
     required this.cloudConfigured,
   });
@@ -176,30 +161,28 @@ class _CloudSyncSection extends StatelessWidget {
       );
     }
 
+    if (currentUser == null) {
+      return const CloudAccountActionTile(currentUser: null);
+    }
+
     return BlocBuilder<SyncBloc, SyncState>(
       builder: (context, state) => Padding(
         padding: const EdgeInsets.symmetric(vertical: 8),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            _UserTile(currentUser!),
+            _divider(context),
             ListTile(
               leading: const Icon(Icons.cloud_sync_outlined),
-              title: const Text('Đồng bộ với tài khoản'),
+              title: const Text('Đồng bộ'),
               subtitle: Semantics(
                 container: true,
                 liveRegion: state is SyncInProgress || state is SyncFailure,
                 child: _status(context, state),
               ),
             ),
-            if (currentUser == null) ...[
-              Divider(
-                height: 1,
-                indent: 56,
-                endIndent: 24,
-                color: Theme.of(context).colorScheme.outlineVariant,
-              ),
-              const CloudAccountActionTile(currentUser: null),
-            ] else if (state is SyncFailure)
+            if (state is SyncFailure)
               Padding(
                 padding: const EdgeInsetsDirectional.fromSTEB(56, 0, 24, 8),
                 child: OutlinedButton.icon(
@@ -209,21 +192,25 @@ class _CloudSyncSection extends StatelessWidget {
                   label: const Text('Thử đồng bộ lại'),
                 ),
               ),
+            _divider(context),
+            CloudAccountActionTile(currentUser: currentUser),
           ],
         ),
       ),
     );
   }
 
+  Widget _divider(BuildContext context) => Divider(
+    height: 1,
+    indent: 56,
+    endIndent: 24,
+    color: Theme.of(context).colorScheme.outlineVariant,
+  );
+
   Widget _status(BuildContext context, SyncState state) {
-    if (currentUser == null || state is SyncSignedOut) {
-      return const Text(
-        'Bạn vẫn dùng được các mã trên thiết bị này. Đăng nhập để đồng bộ.',
-      );
-    }
     return switch (state) {
       SyncInitial() => const Text('Đang chuẩn bị đồng bộ…'),
-      SyncSignedOut() => const SizedBox.shrink(),
+      SyncSignedOut() => const Text('Đang kết nối…'),
       SyncInProgress() => const Row(
         children: [
           SizedBox(
@@ -247,4 +234,27 @@ class _CloudSyncSection extends StatelessWidget {
 
   String _format(DateTime value) =>
       DateFormat.yMd().add_Hm().format(value.toLocal());
+}
+
+class _UserTile extends StatelessWidget {
+  const _UserTile(this.user);
+
+  final UserEntity user;
+
+  @override
+  Widget build(BuildContext context) {
+    final name = user.name?.trim();
+    final email = user.email?.trim();
+    final label = name?.isNotEmpty == true
+        ? name!
+        : email?.isNotEmpty == true
+        ? email!
+        : 'Tài khoản đồng bộ';
+
+    return ListTile(
+      leading: CircleAvatar(child: Text(label.characters.first.toUpperCase())),
+      title: Text(label),
+      subtitle: email?.isNotEmpty == true ? Text(email!) : null,
+    );
+  }
 }
