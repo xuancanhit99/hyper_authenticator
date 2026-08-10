@@ -270,9 +270,9 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Chưa có tài khoản TOTP'), findsOneWidget);
+    expect(find.text('Chưa có mã xác thực'), findsOneWidget);
     expect(
-      find.text('Quét mã QR hoặc nhập secret key để tạo mã xác thực đầu tiên.'),
+      find.text('Quét mã QR hoặc nhập khóa thiết lập để thêm mã đầu tiên.'),
       findsOneWidget,
     );
     expect(find.byKey(AccountsPage.emptyAddAccountButtonKey), findsOneWidget);
@@ -312,16 +312,20 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Xóa'));
     await tester.pumpAndSettle();
-    expect(find.text('Xác nhận xóa'), findsOneWidget);
+    expect(find.text('Xóa mã xác thực?'), findsOneWidget);
+    expect(
+      find.textContaining('sẽ bị xóa khỏi các thiết bị khác'),
+      findsOneWidget,
+    );
     await tester.tap(find.widgetWithText(TextButton, 'Xóa'));
     await tester.pump();
 
-    expect(find.text('Đã xóa tài khoản.'), findsNothing);
+    expect(find.text('Đã xóa mã xác thực.'), findsNothing);
 
     deleteCompleter.complete(const Right(unit));
     await tester.pumpAndSettle();
 
-    expect(find.text('Đã xóa tài khoản.'), findsOneWidget);
+    expect(find.text('Đã xóa mã xác thực.'), findsOneWidget);
     expect(find.text('TEST_ONLY Delete Issuer'), findsNothing);
   });
 }

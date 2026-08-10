@@ -297,7 +297,7 @@ class _AddAccountPageState extends State<AddAccountPage> {
           context,
         ).scaffoldBackgroundColor, // Set background color
         elevation: 0, // Remove shadow
-        title: Text(_isScanning ? 'Quét mã QR' : 'Thêm tài khoản'),
+        title: Text(_isScanning ? 'Quét mã QR' : 'Thêm mã xác thực'),
         actions: [
           if (!_isScanning && PlatformCapabilities.supportsBarcodeImageAnalysis)
             IconButton(
@@ -316,18 +316,18 @@ class _AddAccountPageState extends State<AddAccountPage> {
       body: BlocListener<AccountsBloc, AccountsState>(
         listener: (context, state) {
           if (state is AccountAddSuccess) {
-            _finishSuccessfulOperation('Đã thêm tài khoản.');
+            _finishSuccessfulOperation('Đã thêm mã xác thực.');
           } else if (state is AccountImportSuccess) {
             final duplicateCopy = state.duplicateCount == 0
                 ? ''
-                : ' Bỏ qua ${state.duplicateCount} tài khoản trùng.';
+                : ' Bỏ qua ${state.duplicateCount} mã trùng.';
             _finishSuccessfulOperation(
-              'Đã import ${state.importedCount} tài khoản.$duplicateCopy',
+              'Đã nhập ${state.importedCount} mã.$duplicateCopy',
             );
           } else if (state is AccountsError && _isSubmitting) {
             if (mounted) {
               setState(() => _isSubmitting = false);
-              _showError('Không thể thêm tài khoản: ${state.message}');
+              _showError(state.message);
               if (_isScanning && mounted) {
                 Future.delayed(const Duration(milliseconds: 500), () {
                   if (mounted) unawaited(_scannerController.start());
@@ -404,11 +404,11 @@ class _AddAccountPageState extends State<AddAccountPage> {
                 key: AddAccountPage.issuerFieldKey,
                 controller: _issuerController,
                 decoration: const InputDecoration(
-                  labelText: 'Nhà cung cấp (ví dụ: Google, GitHub)',
-                  hintText: 'Nhập tên nhà cung cấp',
+                  labelText: 'Dịch vụ',
+                  hintText: 'Ví dụ: Google',
                 ),
                 validator: (value) => (value == null || value.isEmpty)
-                    ? 'Vui lòng nhập nhà cung cấp.'
+                    ? 'Nhập tên dịch vụ.'
                     : null,
                 // Listener is in initState to update preview dynamically
               ),
@@ -417,10 +417,11 @@ class _AddAccountPageState extends State<AddAccountPage> {
                 key: AddAccountPage.accountNameFieldKey,
                 controller: _accountNameController,
                 decoration: const InputDecoration(
-                  labelText: 'Tên tài khoản (ví dụ: user@example.com)',
+                  labelText: 'Tài khoản',
+                  hintText: 'Ví dụ: user@example.com',
                 ),
                 validator: (value) => (value == null || value.isEmpty)
-                    ? 'Vui lòng nhập tên tài khoản.'
+                    ? 'Nhập tên tài khoản.'
                     : null,
               ),
               const SizedBox(height: 16),
@@ -428,11 +429,12 @@ class _AddAccountPageState extends State<AddAccountPage> {
                 key: AddAccountPage.secretFieldKey,
                 controller: _secretController,
                 decoration: InputDecoration(
-                  labelText: 'Secret key (mã hóa Base32)',
+                  labelText: 'Khóa thiết lập',
+                  helperText: 'Chuỗi Base32 do dịch vụ cung cấp',
                   suffixIcon: IconButton(
                     tooltip: _obscureSecret
-                        ? 'Hiện secret key'
-                        : 'Ẩn secret key',
+                        ? 'Hiện khóa thiết lập'
+                        : 'Ẩn khóa thiết lập',
                     icon: Icon(
                       _obscureSecret
                           ? Icons.visibility_off_outlined
@@ -451,7 +453,7 @@ class _AddAccountPageState extends State<AddAccountPage> {
                 onFieldSubmitted: (_) => _submitManualEntry(),
                 validator: (value) {
                   if (value == null || value.isEmpty) {
-                    return 'Vui lòng nhập secret key.';
+                    return 'Nhập khóa thiết lập.';
                   }
                   // Optional: Add a more robust Base32 validation if needed
                   return null;
@@ -461,7 +463,7 @@ class _AddAccountPageState extends State<AddAccountPage> {
               ElevatedButton(
                 key: AddAccountPage.submitButtonKey,
                 onPressed: _isSubmitting ? null : _submitManualEntry,
-                child: Text(_isSubmitting ? 'Đang thêm…' : 'Thêm tài khoản'),
+                child: Text(_isSubmitting ? 'Đang thêm…' : 'Thêm mã'),
               ),
             ],
           ),

@@ -60,6 +60,9 @@ hiển thị protected QR export.
 - Secret field che mặc định; protected QR export cần fresh OS auth, có timeout và
   lifecycle cleanup.
 - Entity/event/state nhạy cảm redacted trong `toString`.
+- Presentation boundary không hiển thị raw exception hoặc message từ
+  Supabase/storage/network. Validation local đã kiểm soát mới được giữ copy chi
+  tiết để hướng dẫn sửa input.
 - Logout giữ local vault.
 
 ### Account sync
@@ -103,7 +106,8 @@ hiển thị protected QR export.
 ## Destructive semantics
 
 - Xóa account khi đang đăng nhập: local xóa trước, cloud tombstone retry tới khi
-  thành công; thiết bị khác xóa local ở lần sync kế tiếp.
+  thành công; thiết bị khác xóa local ở lần sync kế tiếp. Dialog xác nhận phải
+  công bố tác động đa thiết bị này trước khi phát event xóa.
 - Logout: dừng sync, không xóa local hoặc cloud.
 - Xóa Supabase user: cascade xóa record và trigger dọn live Vault secret.
 - Breaking migration từ Minimal E2EE drop snapshot/RPC cũ. Không thể decrypt/migrate

@@ -104,17 +104,46 @@ void main() {
     );
     expect(await loaded, isA<AccountsLoaded>());
   });
+
+  test('BLoC không đưa lỗi storage của import ra presentation state', () async {
+    final repository = _ImportRepository()
+      ..importFailure = const StorageFailure(
+        'TEST_ONLY SecureStorageException payload=internal',
+      );
+    final bloc = AccountsBloc(
+      getAccounts: GetAccounts(repository),
+      addAccount: AddAccount(repository),
+      deleteAccount: DeleteAccount(repository),
+      updateAccount: UpdateAccount(repository),
+      importAccounts: ImportAccounts(repository),
+    );
+    addTearDown(bloc.close);
+
+    bloc.add(ImportAccountsRequested(const [_parsedAccount]));
+    final state =
+        await bloc.stream.firstWhere((state) => state is AccountsError)
+            as AccountsError;
+
+    expect(state.message, isNot(contains('TEST_ONLY')));
+    expect(state.message, isNot(contains('SecureStorageException')));
+    expect(
+      state.message,
+      'Không thể nhập các mã đã chọn. Dữ liệu hiện có vẫn được giữ nguyên.',
+    );
+  });
 }
 
 class _ImportRepository implements AuthenticatorRepository {
   final List<AuthenticatorAccount> imported = [];
   int importCalls = 0;
+  Failure? importFailure;
 
   @override
   Future<Either<Failure, AccountImportSummary>> importAccounts(
     List<AuthenticatorAccount> accounts,
   ) async {
     importCalls++;
+    if (importFailure case final failure?) return Left(failure);
     imported
       ..clear()
       ..addAll(accounts);

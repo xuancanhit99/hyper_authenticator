@@ -141,6 +141,28 @@ void main() {
       expect(fixture.syncBloc.state, isA<SyncReady>());
     },
   );
+
+  test(
+    'sync failure không đưa message backend vào presentation state',
+    () async {
+      final fixture = _SyncBlocFixture();
+      addTearDown(fixture.close);
+      fixture.synchronizer.failure = const SyncOperationFailure(
+        'TEST_ONLY PostgrestException vault.secret_id=internal',
+      );
+
+      fixture.authBloc.add(AuthCheckRequested());
+      await _waitUntil(() => fixture.syncBloc.state is SyncFailure);
+      final state = fixture.syncBloc.state as SyncFailure;
+
+      expect(state.message, isNot(contains('TEST_ONLY')));
+      expect(state.message, isNot(contains('PostgrestException')));
+      expect(
+        state.message,
+        'Không thể đồng bộ lúc này. Các mã trên thiết bị vẫn an toàn.',
+      );
+    },
+  );
 }
 
 class _SyncBlocFixture {
@@ -186,10 +208,12 @@ Future<void> _waitUntil(bool Function() predicate) async {
 
 class _Synchronizer implements AccountSynchronizer {
   int calls = 0;
+  Failure? failure;
 
   @override
   Future<Either<Failure, AccountSyncResult>> call() async {
     calls++;
+    if (failure case final value?) return Left(value);
     return Right(
       AccountSyncCompleted(
         completedAt: DateTime.utc(2026, 8, 4),

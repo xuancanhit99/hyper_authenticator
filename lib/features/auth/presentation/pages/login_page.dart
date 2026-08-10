@@ -41,19 +41,19 @@ class _LoginPageState extends State<LoginPage> {
 
   String? _validateEmail(String? value) {
     if (value == null || value.isEmpty) {
-      return 'Vui lòng nhập email.';
+      return 'Nhập email.';
     }
     // Basic email validation regex
     final emailRegex = RegExp(r'^[^@]+@[^@]+\.[^@]+');
     if (!emailRegex.hasMatch(value)) {
-      return 'Vui lòng nhập địa chỉ email hợp lệ.';
+      return 'Email không hợp lệ.';
     }
     return null;
   }
 
   String? _validatePassword(String? value) {
     if (value == null || value.isEmpty) {
-      return 'Vui lòng nhập mật khẩu.';
+      return 'Nhập mật khẩu.';
     }
     return null;
   }
@@ -91,8 +91,8 @@ class _LoginPageState extends State<LoginPage> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   const AuthHeader(
-                    title: 'Chào mừng bạn trở lại!',
-                    subtitle: 'Đăng nhập để tiếp tục',
+                    title: 'Đồng bộ mã của bạn',
+                    subtitle: 'Đăng nhập để dùng cùng mã trên các thiết bị.',
                   ),
                   TextFormField(
                     controller: _emailController,

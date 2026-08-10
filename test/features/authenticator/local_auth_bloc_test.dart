@@ -66,7 +66,22 @@ void main() {
     );
     addTearDown(bloc.close);
 
-    final expectation = expectLater(bloc.stream, emits(isA<LocalAuthError>()));
+    final expectation = expectLater(
+      bloc.stream,
+      emits(
+        isA<LocalAuthError>()
+            .having(
+              (state) => state.message,
+              'message',
+              'Không thể kiểm tra khóa ứng dụng. Hãy thử lại.',
+            )
+            .having(
+              (state) => state.message,
+              'không lộ exception',
+              isNot(contains('TEST_ONLY')),
+            ),
+      ),
+    );
     bloc.add(CheckLocalAuth());
 
     await expectation;

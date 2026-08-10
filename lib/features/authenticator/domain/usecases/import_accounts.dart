@@ -21,7 +21,7 @@ class ImportAccounts
     ImportAccountsParams params,
   ) async {
     if (params.accounts.isEmpty) {
-      return const Left(ValidationFailure('Không có tài khoản nào để import.'));
+      return const Left(ValidationFailure('Không có mã nào để nhập.'));
     }
 
     final validated = <AuthenticatorAccount>[];
@@ -31,7 +31,7 @@ class ImportAccounts
         final accountName = account.accountName.trim();
         if (issuer.isEmpty || accountName.isEmpty) {
           throw const FormatException(
-            'Issuer và tên tài khoản không được để trống.',
+            'Dịch vụ và tài khoản không được để trống.',
           );
         }
         final secret = TotpValidator.normalizeSecret(account.secretKey);

@@ -37,10 +37,41 @@ class _SettingsView extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(title: const Text('Cài đặt')),
-      body: BlocBuilder<SettingsBloc, SettingsState>(
+      body: BlocConsumer<SettingsBloc, SettingsState>(
+        listenWhen: (previous, current) =>
+            previous is SettingsLoaded && current is SettingsError,
+        listener: (context, state) {
+          if (state case SettingsError(:final message)) {
+            ScaffoldMessenger.of(context)
+              ..hideCurrentSnackBar()
+              ..showSnackBar(SnackBar(content: Text(message)));
+          }
+        },
         builder: (context, state) {
           if (state is SettingsLoading) {
             return const Center(child: CircularProgressIndicator());
+          }
+          if (state is SettingsError) {
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.settings_backup_restore, size: 40),
+                    const SizedBox(height: 12),
+                    Text(state.message, textAlign: TextAlign.center),
+                    const SizedBox(height: 16),
+                    FilledButton.icon(
+                      onPressed: () =>
+                          context.read<SettingsBloc>().add(LoadSettings()),
+                      icon: const Icon(Icons.refresh),
+                      label: const Text('Thử lại'),
+                    ),
+                  ],
+                ),
+              ),
+            );
           }
           final loaded = state is SettingsLoaded ? state : null;
           return MaxWidthContent(
@@ -66,7 +97,7 @@ class _SettingsView extends StatelessWidget {
                           leading: Icon(Icons.fingerprint),
                           title: Text('Khóa bằng sinh trắc học'),
                           subtitle: Text(
-                            'Thiết bị hoặc platform không hỗ trợ.',
+                            'Thiết bị này không hỗ trợ khóa ứng dụng.',
                           ),
                         ),
                 ),
@@ -101,7 +132,7 @@ class _UserCard extends StatelessWidget {
         ? name!
         : email?.isNotEmpty == true
         ? email!
-        : 'Tài khoản Supabase';
+        : 'Tài khoản đồng bộ';
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
       child: Column(
@@ -140,10 +171,8 @@ class _CloudSyncSection extends StatelessWidget {
     if (!cloudConfigured) {
       return const ListTile(
         leading: Icon(Icons.cloud_off_outlined),
-        title: Text('Đang dùng local'),
-        subtitle: Text(
-          'Bản cài này chưa cấu hình Supabase. Mã TOTP vẫn hoạt động offline.',
-        ),
+        title: Text('Chỉ lưu trên thiết bị'),
+        subtitle: Text('Đồng bộ chưa khả dụng trong phiên bản này.'),
       );
     }
 
@@ -189,11 +218,11 @@ class _CloudSyncSection extends StatelessWidget {
   Widget _status(BuildContext context, SyncState state) {
     if (currentUser == null || state is SyncSignedOut) {
       return const Text(
-        'Không đăng nhập vẫn dùng local. Đăng nhập để tự đồng bộ mã trên các thiết bị.',
+        'Bạn vẫn dùng được các mã trên thiết bị này. Đăng nhập để đồng bộ.',
       );
     }
     return switch (state) {
-      SyncInitial() => const Text('Đang khởi tạo đồng bộ tự động.'),
+      SyncInitial() => const Text('Đang chuẩn bị đồng bộ…'),
       SyncSignedOut() => const SizedBox.shrink(),
       SyncInProgress() => const Row(
         children: [
@@ -203,7 +232,7 @@ class _CloudSyncSection extends StatelessWidget {
             child: CircularProgressIndicator(strokeWidth: 2),
           ),
           SizedBox(width: 8),
-          Expanded(child: Text('Đang đồng bộ mã TOTP...')),
+          Expanded(child: Text('Đang đồng bộ…')),
         ],
       ),
       SyncReady(:final completedAt) => Text(

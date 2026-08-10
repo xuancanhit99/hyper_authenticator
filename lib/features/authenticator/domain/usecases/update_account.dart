@@ -20,7 +20,7 @@ class UpdateAccount implements UseCase<Unit, UpdateAccountParams> {
     final accountName = account.accountName.trim();
     if (account.id.isEmpty || issuer.isEmpty || accountName.isEmpty) {
       return const Left(
-        ValidationFailure('ID, issuer và tên tài khoản không được để trống.'),
+        ValidationFailure('Không thể nhận diện mã, dịch vụ hoặc tài khoản.'),
       );
     }
 

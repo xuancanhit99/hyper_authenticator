@@ -291,7 +291,7 @@ class _AccountsPageState extends State<AccountsPage>
                       ScaffoldMessenger.of(context)
                         ..hideCurrentSnackBar()
                         ..showSnackBar(
-                          const SnackBar(content: Text('Đã xóa tài khoản.')),
+                          const SnackBar(content: Text('Đã xóa mã xác thực.')),
                         );
                     }
                     if (state is AccountDeleteFailure) {
@@ -300,18 +300,12 @@ class _AccountsPageState extends State<AccountsPage>
                       }
                       ScaffoldMessenger.of(context)
                         ..hideCurrentSnackBar()
-                        ..showSnackBar(
-                          SnackBar(
-                            content: Text(
-                              'Không thể xóa tài khoản: ${state.message}',
-                            ),
-                          ),
-                        );
+                        ..showSnackBar(SnackBar(content: Text(state.message)));
                     }
                     if (state is AccountsError) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Lỗi: ${state.message}')),
-                      );
+                      ScaffoldMessenger.of(
+                        context,
+                      ).showSnackBar(SnackBar(content: Text(state.message)));
                     }
                     // Optional: Show success messages for add/delete if specific states were used
                   },
@@ -479,22 +473,24 @@ class _AccountsPageState extends State<AccountsPage>
       context: context,
       builder: (BuildContext dialogContext) {
         return AlertDialog(
-          title: const Text('Xác nhận xóa'),
+          title: const Text('Xóa mã xác thực?'),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: <Widget>[
               AccountAvatar(issuer: account.issuer, size: 60),
               const SizedBox(height: 16),
               Text(
-                'Bạn có chắc muốn xóa tài khoản này?',
+                account.issuer,
+                style: const TextStyle(fontWeight: FontWeight.bold),
                 textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 8),
-              Text(
-                'Nhà cung cấp: ${account.issuer}',
-                style: const TextStyle(fontWeight: FontWeight.bold),
+              Text(account.accountName, textAlign: TextAlign.center),
+              const SizedBox(height: 16),
+              const Text(
+                'Mã sẽ bị xóa khỏi thiết bị này. Nếu đang đồng bộ, mã cũng '
+                'sẽ bị xóa khỏi các thiết bị khác.',
+                textAlign: TextAlign.center,
               ),
-              Text('Tài khoản: ${account.accountName}'),
             ],
           ),
           actions: <Widget>[
@@ -569,7 +565,7 @@ class _AccountsEmptyState extends StatelessWidget {
         Text(
           hasAccounts
               ? 'Không tìm thấy tài khoản phù hợp'
-              : 'Chưa có tài khoản TOTP',
+              : 'Chưa có mã xác thực',
           textAlign: TextAlign.center,
           style: Theme.of(
             context,
@@ -579,7 +575,7 @@ class _AccountsEmptyState extends StatelessWidget {
         Text(
           hasAccounts
               ? 'Thử từ khóa khác hoặc xóa nội dung tìm kiếm.'
-              : 'Quét mã QR hoặc nhập secret key để tạo mã xác thực đầu tiên.',
+              : 'Quét mã QR hoặc nhập khóa thiết lập để thêm mã đầu tiên.',
           textAlign: TextAlign.center,
           style: Theme.of(context).textTheme.bodyMedium?.copyWith(
             color: Theme.of(context).colorScheme.onSurfaceVariant,
@@ -598,7 +594,7 @@ class _AccountsEmptyState extends StatelessWidget {
             key: AccountsPage.emptyAddAccountButtonKey,
             onPressed: onAddAccount,
             icon: const Icon(Icons.add),
-            label: const Text('Thêm tài khoản'),
+            label: const Text('Thêm mã'),
           ),
       ],
     ),

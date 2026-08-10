@@ -100,9 +100,8 @@ class ChromeExtensionRouter {
       }
       return null;
     },
-    errorBuilder: (_, state) => Scaffold(
-      body: Center(child: Text('Không tìm thấy trang: ${state.error}')),
-    ),
+    errorBuilder: (_, state) =>
+        const Scaffold(body: Center(child: Text('Không tìm thấy trang này.'))),
   );
 }
 

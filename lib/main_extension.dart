@@ -64,8 +64,8 @@ class _ExtensionStartupFailureApp extends StatelessWidget {
         child: Padding(
           padding: EdgeInsets.all(24),
           child: Text(
-            'Không thể khởi động extension. Hãy mở lại Side Panel hoặc kiểm '
-            'tra cấu hình phát hành.',
+            'Không thể mở tiện ích. Hãy đóng rồi mở lại Side Panel. Nếu lỗi '
+            'vẫn còn, hãy cập nhật hoặc cài lại tiện ích.',
             textAlign: TextAlign.center,
           ),
         ),

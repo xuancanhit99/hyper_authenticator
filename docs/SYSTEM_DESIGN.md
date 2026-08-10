@@ -154,6 +154,9 @@ cầu `AccountsBloc` reload list.
 - Đăng nhập bật sync tự động; không có setup recovery key/manual backup/conflict
   dialog.
 - Logout chỉ kết thúc Supabase session, dừng sync và giữ local/app lock.
+- Copy hướng tới người dùng gọi record là “mã xác thực”, issuer là “dịch vụ” và
+  Base32 secret là “khóa thiết lập”; tên Supabase, storage và exception không
+  thuộc presentation contract.
 
 ## Portability
 
@@ -172,11 +175,17 @@ cầu `AccountsBloc` reload list.
 
 ## Failure behavior
 
+- `userFacingFailureMessage` là boundary chung từ typed `Failure` sang UI. Chỉ
+  `ValidationFailure` do ứng dụng kiểm soát được giữ hướng dẫn chi tiết; lỗi
+  server/storage/network dùng copy cố định theo thao tác và không render raw
+  `Failure.message`.
 - Cloud lỗi: local mutation vẫn thành công; sync báo retry được.
 - Metadata ownership lỗi: dừng trước network để tránh cross-account upload.
 - Remote payload sai format: không ghi đè local.
 - CAS conflict: refresh/retry một lần, sau đó giữ pending.
 - Tombstone: luôn thắng update offline; xóa local idempotent.
+- Xác nhận xóa nói rõ mã bị xóa trên thiết bị hiện tại và, khi đang đồng bộ,
+  được áp tới thiết bị khác.
 - Không log TOTP secret, payload, full `otpauth`, auth credential hay Vault key.
 
 ## Chưa triển khai

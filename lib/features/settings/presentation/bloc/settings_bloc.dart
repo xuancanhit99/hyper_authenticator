@@ -44,8 +44,8 @@ class SettingsBloc extends Bloc<SettingsEvent, SettingsState> {
           canCheckBiometrics: canCheck,
         ),
       );
-    } catch (e) {
-      emit(SettingsError('Không thể tải cài đặt: ${e.toString()}'));
+    } catch (_) {
+      emit(const SettingsError('Không thể tải cài đặt. Hãy thử lại.'));
     }
   }
 
@@ -89,10 +89,8 @@ class SettingsBloc extends Bloc<SettingsEvent, SettingsState> {
       // Then save to preferences
       await sharedPreferences.setBool(_biometricPrefKey, event.isEnabled);
       // No need to emit again if save is successful
-    } catch (e) {
-      emit(
-        SettingsError('Không thể lưu cài đặt sinh trắc học: ${e.toString()}'),
-      );
+    } catch (_) {
+      emit(const SettingsError('Không thể lưu thay đổi. Hãy thử lại.'));
       // Revert to previous state on error
       emit(
         SettingsLoaded(

@@ -1,6 +1,7 @@
 import 'package:bloc/bloc.dart';
 import 'package:equatable/equatable.dart';
 import 'package:hyper_authenticator/core/error/failures.dart';
+import 'package:hyper_authenticator/core/error/user_facing_failure.dart';
 import 'package:hyper_authenticator/core/usecases/usecase.dart';
 import 'package:hyper_authenticator/features/authenticator/domain/entities/authenticator_account.dart';
 import 'package:hyper_authenticator/features/authenticator/domain/services/totp_uri_parser.dart';
@@ -46,7 +47,11 @@ class AccountsBloc extends Bloc<AccountsEvent, AccountsState> {
   ) async {
     final result = await importAccounts(ImportAccountsParams(event.accounts));
     result.fold(
-      (failure) => emit(AccountsError(_mapFailureToMessage(failure))),
+      (failure) => emit(
+        AccountsError(
+          _mapFailureToMessage(failure, UserFailureContext.importAccounts),
+        ),
+      ),
       (summary) {
         emit(
           AccountImportSuccess(
@@ -66,7 +71,11 @@ class AccountsBloc extends Bloc<AccountsEvent, AccountsState> {
     emit(AccountsLoading());
     final failureOrAccounts = await getAccounts(NoParams());
     failureOrAccounts.fold(
-      (failure) => emit(AccountsError(_mapFailureToMessage(failure))),
+      (failure) => emit(
+        AccountsError(
+          _mapFailureToMessage(failure, UserFailureContext.loadAccounts),
+        ),
+      ),
       (accounts) => emit(AccountsLoaded(accounts)),
     );
   }
@@ -90,7 +99,11 @@ class AccountsBloc extends Bloc<AccountsEvent, AccountsState> {
     );
 
     await failureOrAccount.fold(
-      (failure) async => emit(AccountsError(_mapFailureToMessage(failure))),
+      (failure) async => emit(
+        AccountsError(
+          _mapFailureToMessage(failure, UserFailureContext.addAccount),
+        ),
+      ),
       (_) async {
         emit(const AccountAddSuccess());
         // After successfully adding, reload the list to show the new account
@@ -116,7 +129,11 @@ class AccountsBloc extends Bloc<AccountsEvent, AccountsState> {
 
     await failureOrSuccess.fold(
       (failure) async {
-        emit(AccountDeleteFailure(_mapFailureToMessage(failure)));
+        emit(
+          AccountDeleteFailure(
+            _mapFailureToMessage(failure, UserFailureContext.deleteAccount),
+          ),
+        );
         add(LoadAccounts());
       },
       (_) async {
@@ -127,14 +144,8 @@ class AccountsBloc extends Bloc<AccountsEvent, AccountsState> {
   }
 
   // Helper to convert Failure objects to user-friendly messages
-  String _mapFailureToMessage(Failure failure) {
-    if (failure is StorageFailure ||
-        failure is AccountNotFoundFailure ||
-        failure is ValidationFailure) {
-      return failure.message;
-    }
-    return 'Đã xảy ra lỗi không mong đợi.';
-  }
+  String _mapFailureToMessage(Failure failure, UserFailureContext context) =>
+      userFacingFailureMessage(failure, context: context);
 
   Future<void> _onUpdateAccountRequested(
     UpdateAccountRequested event,
@@ -150,7 +161,7 @@ class AccountsBloc extends Bloc<AccountsEvent, AccountsState> {
       (failure) async => emit(
         AccountUpdateFailure(
           event.operationToken,
-          _mapFailureToMessage(failure),
+          _mapFailureToMessage(failure, UserFailureContext.updateAccount),
         ),
       ),
       (_) async {

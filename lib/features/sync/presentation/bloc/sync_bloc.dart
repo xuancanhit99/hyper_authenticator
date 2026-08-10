@@ -4,6 +4,7 @@ import 'package:bloc/bloc.dart';
 import 'package:equatable/equatable.dart';
 import 'package:fpdart/fpdart.dart';
 import 'package:hyper_authenticator/core/error/failures.dart';
+import 'package:hyper_authenticator/core/error/user_facing_failure.dart';
 import 'package:hyper_authenticator/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:hyper_authenticator/features/authenticator/presentation/bloc/accounts_bloc.dart';
 import 'package:hyper_authenticator/features/sync/domain/entities/account_sync_result.dart';
@@ -137,30 +138,35 @@ class SyncBloc extends Bloc<SyncEvent, SyncState> {
     Either<Failure, AccountSyncResult> either,
     Emitter<SyncState> emit,
   ) async {
-    await either.fold((failure) async => emit(SyncFailure(failure.message)), (
-      result,
-    ) async {
-      switch (result) {
-        case AccountSyncSignedOut():
-          emit(const SyncSignedOut());
-        case AccountSyncCompleted(
-          :final completedAt,
-          :final uploadedCount,
-          :final downloadedCount,
-          :final deletedCount,
-        ):
-          if (downloadedCount > 0 || deletedCount > 0) {
-            _accountsBloc.add(LoadAccounts());
-          }
-          emit(
-            SyncReady(
-              completedAt: completedAt,
-              uploadedCount: uploadedCount,
-              downloadedCount: downloadedCount,
-              deletedCount: deletedCount,
-            ),
-          );
-      }
-    });
+    await either.fold(
+      (failure) async => emit(
+        SyncFailure(
+          userFacingFailureMessage(failure, context: UserFailureContext.sync),
+        ),
+      ),
+      (result) async {
+        switch (result) {
+          case AccountSyncSignedOut():
+            emit(const SyncSignedOut());
+          case AccountSyncCompleted(
+            :final completedAt,
+            :final uploadedCount,
+            :final downloadedCount,
+            :final deletedCount,
+          ):
+            if (downloadedCount > 0 || deletedCount > 0) {
+              _accountsBloc.add(LoadAccounts());
+            }
+            emit(
+              SyncReady(
+                completedAt: completedAt,
+                uploadedCount: uploadedCount,
+                downloadedCount: downloadedCount,
+                deletedCount: deletedCount,
+              ),
+            );
+        }
+      },
+    );
   }
 }

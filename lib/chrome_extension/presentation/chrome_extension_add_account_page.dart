@@ -74,7 +74,7 @@ class _ChromeExtensionAddAccountPageState
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('Thêm tài khoản')),
+    appBar: AppBar(title: const Text('Thêm mã xác thực')),
     body: BlocListener<AccountsBloc, AccountsState>(
       listener: (context, state) {
         if (state is AccountAddSuccess && _isSubmitting) {
@@ -82,10 +82,10 @@ class _ChromeExtensionAddAccountPageState
           context.go(AppRoutes.main);
           ScaffoldMessenger.of(
             context,
-          ).showSnackBar(const SnackBar(content: Text('Đã thêm tài khoản.')));
+          ).showSnackBar(const SnackBar(content: Text('Đã thêm mã xác thực.')));
         } else if (state is AccountsError && _isSubmitting) {
           setState(() => _isSubmitting = false);
-          _showError('Không thể thêm tài khoản: ${state.message}');
+          _showError(state.message);
         }
       },
       child: MaxWidthContent(
@@ -108,31 +108,34 @@ class _ChromeExtensionAddAccountPageState
                 TextFormField(
                   controller: _issuerController,
                   decoration: const InputDecoration(
-                    labelText: 'Nhà cung cấp (ví dụ: Google, GitHub)',
+                    labelText: 'Dịch vụ',
+                    hintText: 'Ví dụ: Google',
                   ),
                   validator: (value) => value == null || value.trim().isEmpty
-                      ? 'Vui lòng nhập nhà cung cấp.'
+                      ? 'Nhập tên dịch vụ.'
                       : null,
                 ),
                 const SizedBox(height: 16),
                 TextFormField(
                   controller: _accountNameController,
                   decoration: const InputDecoration(
-                    labelText: 'Tên tài khoản (ví dụ: user@example.com)',
+                    labelText: 'Tài khoản',
+                    hintText: 'Ví dụ: user@example.com',
                   ),
                   validator: (value) => value == null || value.trim().isEmpty
-                      ? 'Vui lòng nhập tên tài khoản.'
+                      ? 'Nhập tên tài khoản.'
                       : null,
                 ),
                 const SizedBox(height: 16),
                 TextFormField(
                   controller: _secretController,
                   decoration: InputDecoration(
-                    labelText: 'Secret key (mã hóa Base32)',
+                    labelText: 'Khóa thiết lập',
+                    helperText: 'Chuỗi Base32 do dịch vụ cung cấp',
                     suffixIcon: IconButton(
                       tooltip: _obscureSecret
-                          ? 'Hiện secret key'
-                          : 'Ẩn secret key',
+                          ? 'Hiện khóa thiết lập'
+                          : 'Ẩn khóa thiết lập',
                       icon: Icon(
                         _obscureSecret
                             ? Icons.visibility_off_outlined
@@ -148,7 +151,7 @@ class _ChromeExtensionAddAccountPageState
                   enableIMEPersonalizedLearning: false,
                   textCapitalization: TextCapitalization.characters,
                   validator: (value) => value == null || value.trim().isEmpty
-                      ? 'Vui lòng nhập secret key.'
+                      ? 'Nhập khóa thiết lập.'
                       : null,
                   onFieldSubmitted: (_) => _submit(),
                 ),
@@ -162,12 +165,11 @@ class _ChromeExtensionAddAccountPageState
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
                       : const Icon(Icons.add),
-                  label: const Text('Thêm tài khoản'),
+                  label: const Text('Thêm mã'),
                 ),
                 const SizedBox(height: 16),
                 const Text(
-                  'Quét hoặc import QR sẽ được bổ sung khi decoder được đóng '
-                  'gói hoàn toàn trong extension.',
+                  'Chrome Extension hiện hỗ trợ nhập khóa thiết lập.',
                   textAlign: TextAlign.center,
                 ),
               ],

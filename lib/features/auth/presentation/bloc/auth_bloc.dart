@@ -2,6 +2,7 @@
 import 'dart:async';
 import 'package:bloc/bloc.dart';
 import 'package:equatable/equatable.dart';
+import 'package:hyper_authenticator/core/error/user_facing_failure.dart';
 import 'package:injectable/injectable.dart';
 import 'package:hyper_authenticator/features/auth/domain/entities/user_entity.dart';
 import 'package:hyper_authenticator/features/auth/domain/repositories/auth_repository.dart';
@@ -40,7 +41,14 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   ) async {
     final result = await _authRepository.getCurrentUserEntity();
     result.fold(
-      (failure) => emit(AuthFailure(failure.message)),
+      (failure) => emit(
+        AuthFailure(
+          userFacingFailureMessage(
+            failure,
+            context: UserFailureContext.authCheck,
+          ),
+        ),
+      ),
       (userEntity) => emit(
         userEntity != null
             ? AuthAuthenticated(userEntity)
@@ -71,7 +79,11 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       password: event.password,
     );
     result.fold(
-      (failure) => emit(AuthFailure(failure.message)),
+      (failure) => emit(
+        AuthFailure(
+          userFacingFailureMessage(failure, context: UserFailureContext.signIn),
+        ),
+      ),
       (user) => emit(AuthAuthenticated(user)),
     );
   }
@@ -86,7 +98,11 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       password: event.password,
     );
     result.fold(
-      (failure) => emit(AuthFailure(failure.message)),
+      (failure) => emit(
+        AuthFailure(
+          userFacingFailureMessage(failure, context: UserFailureContext.signUp),
+        ),
+      ),
       (user) => emit(
         _authRepository.currentUserEntity == null
             ? AuthSignUpSuccess()
@@ -102,7 +118,14 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     emit(AuthLoading());
     final result = await _authRepository.recoverPassword(event.email);
     result.fold(
-      (failure) => emit(AuthFailure(failure.message)),
+      (failure) => emit(
+        AuthFailure(
+          userFacingFailureMessage(
+            failure,
+            context: UserFailureContext.recoverPassword,
+          ),
+        ),
+      ),
       (_) => emit(AuthPasswordResetEmailSent()),
     );
   }
@@ -114,7 +137,14 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     emit(AuthLoading());
     final result = await _authRepository.signOut();
     await result.fold((failure) {
-      emit(AuthFailure(failure.message));
+      emit(
+        AuthFailure(
+          userFacingFailureMessage(
+            failure,
+            context: UserFailureContext.signOut,
+          ),
+        ),
+      );
     }, (_) async => emit(AuthUnauthenticated()));
   }
 
@@ -127,7 +157,14 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     // Assuming a new method in the repository
     final result = await _authRepository.updatePassword(event.newPassword);
     result.fold(
-      (failure) => emit(AuthFailure(failure.message)),
+      (failure) => emit(
+        AuthFailure(
+          userFacingFailureMessage(
+            failure,
+            context: UserFailureContext.updatePassword,
+          ),
+        ),
+      ),
       (_) => emit(AuthPasswordUpdateSuccess()),
     );
   }
