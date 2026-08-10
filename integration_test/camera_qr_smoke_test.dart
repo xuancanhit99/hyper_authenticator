@@ -41,7 +41,7 @@ void main() {
         final accountsBloc = di.sl<AccountsBloc>();
         await _replaceVault(repository, const []);
         accountsBloc.add(LoadAccounts());
-        await _pumpUntil(tester, find.text('Chưa có tài khoản TOTP'));
+        await _pumpUntil(tester, find.text('Chưa có mã xác thực'));
 
         await tester.tap(find.byTooltip('Thêm tài khoản'));
         await _pumpUntil(tester, find.byKey(AddAccountPage.issuerFieldKey));

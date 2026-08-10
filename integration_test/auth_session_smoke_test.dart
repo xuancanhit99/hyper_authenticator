@@ -57,7 +57,7 @@ void main() {
         );
 
         await tester.tap(find.byKey(MainNavigationPage.settingsTabKey).last);
-        await _tapVisible(tester, find.text('Đăng nhập để đồng bộ mã'));
+        await _tapVisible(tester, find.text('Đăng nhập để đồng bộ'));
         await _pumpUntil(tester, find.text('Chào mừng bạn trở lại!'));
 
         final emailField = find.widgetWithText(TextFormField, 'Email');
@@ -93,7 +93,7 @@ void main() {
           authBloc,
           (state) => state is AuthUnauthenticated,
         );
-        await _pumpUntil(tester, find.text('Đăng nhập để đồng bộ mã'));
+        await _pumpUntil(tester, find.text('Đăng nhập để đồng bộ'));
 
         expect(authBloc.state, isA<AuthUnauthenticated>());
         expect(
