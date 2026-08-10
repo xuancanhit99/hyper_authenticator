@@ -106,15 +106,15 @@ khi certificate fingerprint khớp pin. Windows/Linux unsigned phải ghi Previe
 
 Release public đã xác minh hiện tại:
 
-- Public pre-release: [`v1.1.2-preview.1`](https://github.com/xuancanhit99/hyper_authenticator/releases/tag/v1.1.2-preview.1).
+- Public pre-release: [`v1.1.2-preview.2`](https://github.com/xuancanhit99/hyper_authenticator/releases/tag/v1.1.2-preview.2).
 - Package version `1.1.2+16`, source commit
-  `4f7781c7d97e4ccf79f59c30c4c62ea88ff240dd`.
-- Exact tag CI run [`31316900626`](https://github.com/xuancanhit99/hyper_authenticator/actions/runs/31316900626)
+  `35772c4dae0bf222d7530342d16b7a4e39a6976f`.
+- Exact tag CI run [`31368043015`](https://github.com/xuancanhit99/hyper_authenticator/actions/runs/31368043015)
   pass 8/8 Android/Apple/Web/Linux/Windows/Extension, quality và secret-history.
-- Public verifier [`31317354030`](https://github.com/xuancanhit99/hyper_authenticator/actions/runs/31317354030)
+- Public verifier [`31368861723`](https://github.com/xuancanhit99/hyper_authenticator/actions/runs/31368861723)
   tải lại như người dùng chưa đăng nhập và xác nhận đúng 9 asset, GitHub digest,
   checksum/manifest, Android signer pin, Debian package, Windows PE32 và Chrome
-  Extension package ngày 09-08-2026.
+  Extension package ngày 10-08-2026.
 - Android APK đã ký; Windows x64 installer và Linux amd64 Debian package chưa
   code-sign. iOS/macOS không thuộc asset contract của Preview này.
 
