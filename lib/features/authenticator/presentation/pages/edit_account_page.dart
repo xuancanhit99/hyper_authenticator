@@ -15,6 +15,7 @@ class EditAccountPage extends StatefulWidget {
   static const algorithmFieldKey = Key('edit-account-algorithm');
   static const digitsFieldKey = Key('edit-account-digits');
   static const periodFieldKey = Key('edit-account-period');
+  static const advancedOptionsKey = Key('edit-account-advanced-options');
 
   final AuthenticatorAccount account;
 
@@ -35,6 +36,8 @@ class _EditAccountPageState extends State<EditAccountPage> {
   late TextEditingController _algorithmController;
   late TextEditingController _digitsController;
   late TextEditingController _periodController;
+  final ExpansibleController _advancedOptionsController =
+      ExpansibleController();
   bool _isSubmitting = false;
   bool _obscureSecret = true;
   Object? _activeOperationToken;
@@ -72,6 +75,7 @@ class _EditAccountPageState extends State<EditAccountPage> {
     _algorithmController.dispose();
     _digitsController.dispose();
     _periodController.dispose();
+    _advancedOptionsController.dispose();
     super.dispose();
   }
 
@@ -106,6 +110,8 @@ class _EditAccountPageState extends State<EditAccountPage> {
           operationToken: operationToken,
         ),
       );
+    } else if (!_advancedOptionsController.isExpanded) {
+      _advancedOptionsController.expand();
     }
   }
 
@@ -224,7 +230,7 @@ class _EditAccountPageState extends State<EditAccountPage> {
                     controller: _secretController,
                     decoration: InputDecoration(
                       labelText: 'Khóa thiết lập',
-                      helperText: 'Chuỗi Base32 do dịch vụ cung cấp',
+                      helperText: 'Chuỗi ký tự nằm cạnh mã QR',
                       suffixIcon: IconButton(
                         tooltip: _obscureSecret
                             ? 'Hiện khóa thiết lập'
@@ -250,70 +256,81 @@ class _EditAccountPageState extends State<EditAccountPage> {
                       return null;
                     },
                   ),
-                  const SizedBox(height: 24),
-                  const Text(
-                    'Tùy chọn nâng cao (chỉ sửa khi hiểu rõ):',
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 8),
-                  TextFormField(
-                    key: EditAccountPage.algorithmFieldKey,
-                    controller: _algorithmController,
-                    decoration: const InputDecoration(
-                      labelText: 'Thuật toán (SHA1, SHA256, SHA512)',
+                  const SizedBox(height: 20),
+                  Card(
+                    clipBehavior: Clip.antiAlias,
+                    child: ExpansionTile(
+                      key: EditAccountPage.advancedOptionsKey,
+                      controller: _advancedOptionsController,
+                      maintainState: true,
+                      leading: const Icon(Icons.tune),
+                      title: const Text('Tùy chọn nâng cao'),
+                      subtitle: const Text('Thuật toán, số chữ số và chu kỳ'),
+                      childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                      children: [
+                        TextFormField(
+                          key: EditAccountPage.algorithmFieldKey,
+                          controller: _algorithmController,
+                          decoration: const InputDecoration(
+                            labelText: 'Thuật toán',
+                            helperText: 'SHA1, SHA256 hoặc SHA512',
+                          ),
+                          validator: (value) {
+                            if (value == null || value.isEmpty) {
+                              return 'Nhập thuật toán.';
+                            }
+                            if (![
+                              'SHA1',
+                              'SHA256',
+                              'SHA512',
+                            ].contains(value.toUpperCase())) {
+                              return 'Dùng SHA1, SHA256 hoặc SHA512.';
+                            }
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 16),
+                        TextFormField(
+                          key: EditAccountPage.digitsFieldKey,
+                          controller: _digitsController,
+                          decoration: const InputDecoration(
+                            labelText: 'Số chữ số',
+                            helperText: '6, 7 hoặc 8',
+                          ),
+                          keyboardType: TextInputType.number,
+                          validator: (value) {
+                            if (value == null || value.isEmpty) {
+                              return 'Nhập số chữ số.';
+                            }
+                            final n = int.tryParse(value);
+                            if (n == null || n < 6 || n > 8) {
+                              return 'Dùng 6, 7 hoặc 8 chữ số.';
+                            }
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 16),
+                        TextFormField(
+                          key: EditAccountPage.periodFieldKey,
+                          controller: _periodController,
+                          decoration: const InputDecoration(
+                            labelText: 'Chu kỳ',
+                            suffixText: 'giây',
+                          ),
+                          keyboardType: TextInputType.number,
+                          validator: (value) {
+                            if (value == null || value.isEmpty) {
+                              return 'Nhập chu kỳ.';
+                            }
+                            final n = int.tryParse(value);
+                            if (n == null || n <= 0) {
+                              return 'Chu kỳ phải lớn hơn 0.';
+                            }
+                            return null;
+                          },
+                        ),
+                      ],
                     ),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Vui lòng nhập thuật toán.';
-                      }
-                      if (![
-                        'SHA1',
-                        'SHA256',
-                        'SHA512',
-                      ].contains(value.toUpperCase())) {
-                        return 'Thuật toán không hợp lệ. Dùng SHA1, SHA256 hoặc SHA512.';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 16),
-                  TextFormField(
-                    key: EditAccountPage.digitsFieldKey,
-                    controller: _digitsController,
-                    decoration: const InputDecoration(
-                      labelText: 'Số chữ số (ví dụ: 6 hoặc 8)',
-                    ),
-                    keyboardType: TextInputType.number,
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Vui lòng nhập số chữ số.';
-                      }
-                      final n = int.tryParse(value);
-                      if (n == null) return 'Số không hợp lệ.';
-                      if (n < 6 || n > 8) {
-                        return 'Số chữ số phải là 6, 7 hoặc 8.';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 16),
-                  TextFormField(
-                    key: EditAccountPage.periodFieldKey,
-                    controller: _periodController,
-                    decoration: const InputDecoration(
-                      labelText: 'Chu kỳ (giây, ví dụ: 30)',
-                    ),
-                    keyboardType: TextInputType.number,
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Vui lòng nhập chu kỳ.';
-                      }
-                      final n = int.tryParse(value);
-                      if (n == null || n <= 0) {
-                        return 'Chu kỳ phải là số dương.';
-                      }
-                      return null;
-                    },
                   ),
                   const SizedBox(height: 32),
                   ElevatedButton(

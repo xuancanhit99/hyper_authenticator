@@ -160,7 +160,7 @@ class _AccountsPageState extends State<AccountsPage>
           if (PlatformCapabilities.supportsProtectedExport)
             IconButton(
               icon: const Icon(Icons.ios_share_outlined),
-              tooltip: 'Xuất tài khoản',
+              tooltip: 'Xuất mã xác thực',
               onPressed: () => context.push(AppRoutes.exportAccounts),
             ),
           Padding(

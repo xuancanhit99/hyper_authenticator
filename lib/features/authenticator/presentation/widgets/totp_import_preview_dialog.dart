@@ -3,12 +3,12 @@ import 'package:hyper_authenticator/features/authenticator/domain/services/totp_
 import 'package:hyper_authenticator/features/authenticator/presentation/widgets/account_avatar.dart';
 
 enum TotpImportSource {
-  googleAuthenticator('Google Authenticator'),
-  otpauth('Chuẩn otpauth');
+  googleAuthenticator('từ Google Authenticator'),
+  otpauth('trong mã QR');
 
-  const TotpImportSource(this.label);
+  const TotpImportSource(this.originCopy);
 
-  final String label;
+  final String originCopy;
 }
 
 class TotpImportPreviewDialog extends StatelessWidget {
@@ -49,7 +49,7 @@ class TotpImportPreviewDialog extends StatelessWidget {
         .clamp(200.0, 480.0)
         .toDouble();
     return AlertDialog(
-      title: const Text('Import tài khoản'),
+      title: const Text('Kiểm tra mã sẽ nhập'),
       content: SizedBox(
         width: 480,
         height: contentHeight,
@@ -61,8 +61,7 @@ class TotpImportPreviewDialog extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    '${source.label}: đã đọc ${accounts.length} tài '
-                    'khoản. Kiểm tra danh sách trước khi lưu vào thiết bị này.',
+                    'Đã tìm thấy ${accounts.length} mã ${source.originCopy}.',
                   ),
                   const SizedBox(height: 12),
                   DecoratedBox(
@@ -79,9 +78,8 @@ class TotpImportPreviewDialog extends StatelessWidget {
                           SizedBox(width: 10),
                           Expanded(
                             child: Text(
-                              'QR export chứa credential TOTP. Secret không '
-                              'được hiển thị và chỉ được ghi sau khi bạn xác '
-                              'nhận.',
+                              'Khóa thiết lập được giữ ẩn. Chỉ nhập những mã '
+                              'bạn tin cậy.',
                             ),
                           ),
                         ],
@@ -118,12 +116,6 @@ class TotpImportPreviewDialog extends StatelessWidget {
                                   ),
                                   const SizedBox(height: 4),
                                   Text(account.accountName),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    '${account.algorithm} · '
-                                    '${account.digits} chữ số · '
-                                    '${account.period} giây',
-                                  ),
                                 ],
                               ),
                             ),
@@ -150,7 +142,7 @@ class TotpImportPreviewDialog extends StatelessWidget {
           key: confirmButtonKey,
           onPressed: () => Navigator.of(context).pop(true),
           icon: const Icon(Icons.download_done_outlined),
-          label: const Text('Import'),
+          label: Text('Nhập ${accounts.length} mã'),
         ),
       ],
     );

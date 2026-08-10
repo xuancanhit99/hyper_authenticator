@@ -164,6 +164,12 @@ cầu `AccountsBloc` reload list.
   append; protected export một QR/account.
 - Google migration QR: bounded multi-part assembly, preview và atomic append;
   export chỉ nhận semantics Google biểu diễn được.
+- Presentation gọi hai đích xuất là “Google Authenticator” và “Ứng dụng khác”;
+  chi tiết protocol (`otpauth`, algorithm, digits, period) không xuất hiện trong
+  luồng chính. Edit vẫn cho sửa tham số TOTP trong “Tùy chọn nâng cao” thu gọn.
+- Import preview chỉ hiện dịch vụ/tài khoản, luôn giữ khóa thiết lập ngoài
+  widget tree và chỉ commit sau xác nhận. Export giữ fresh OS auth, QR expiry và
+  xóa QR khi ứng dụng ra nền dù copy đã được rút gọn.
 
 ## Navigation, theme và privacy
 

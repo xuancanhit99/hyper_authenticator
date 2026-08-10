@@ -70,7 +70,9 @@ void main() {
     expect(authenticator.calls, 1);
     expect(find.byType(QrImageView), findsOneWidget);
     expect(
-      find.bySemanticsLabel('Mã QR export Google Authenticator, phần 1 trên 1'),
+      find.bySemanticsLabel(
+        'Mã QR chuyển sang Google Authenticator, phần 1 trên 1',
+      ),
       findsOneWidget,
     );
     expect(
@@ -82,7 +84,7 @@ void main() {
     await tester.pump();
 
     expect(find.byType(QrImageView), findsNothing);
-    expect(find.textContaining('không còn ở foreground'), findsOneWidget);
+    expect(find.textContaining('chuyển sang nền'), findsOneWidget);
     tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
     await tester.pumpWidget(const SizedBox.shrink());
   });
@@ -121,7 +123,7 @@ void main() {
     await tester.pump();
 
     expect(find.byType(QrImageView), findsNothing);
-    expect(find.textContaining('chưa có QR nào được tạo'), findsOneWidget);
+    expect(find.textContaining('Chưa tạo mã QR'), findsOneWidget);
   });
 
   testWidgets('otpauth export tạo một QR mỗi account và giữ custom semantics', (
@@ -167,14 +169,14 @@ void main() {
 
     expect(find.byType(QrImageView), findsOneWidget);
     expect(
-      find.bySemanticsLabel('Mã QR export chuẩn otpauth, tài khoản 1 trên 2'),
+      find.bySemanticsLabel('Mã QR chuyển sang ứng dụng khác, mã 1 trên 2'),
       findsOneWidget,
     );
 
     await tester.tap(find.byTooltip('QR tiếp theo'));
     await tester.pump();
     expect(
-      find.bySemanticsLabel('Mã QR export chuẩn otpauth, tài khoản 2 trên 2'),
+      find.bySemanticsLabel('Mã QR chuyển sang ứng dụng khác, mã 2 trên 2'),
       findsOneWidget,
     );
     expect(
@@ -215,7 +217,7 @@ void main() {
     );
     await tester.tap(accountFinder);
     await tester.pump();
-    expect(find.text('1 đã chọn'), findsOneWidget);
+    expect(find.text('1 mã đã chọn'), findsOneWidget);
 
     await tester.scrollUntilVisible(
       find.byKey(const Key('export-format-google')),
@@ -225,11 +227,8 @@ void main() {
     await tester.tap(find.byKey(const Key('export-format-google')));
     await tester.pump();
 
-    expect(find.text('0 đã chọn'), findsOneWidget);
-    expect(
-      find.textContaining('Google transfer yêu cầu period 30 giây'),
-      findsOneWidget,
-    );
+    expect(find.text('0 mã đã chọn'), findsOneWidget);
+    expect(find.textContaining('Chỉ hỗ trợ mã 30 giây'), findsOneWidget);
   });
 
   testWidgets('auth success sau khi app vào background vẫn không tạo QR', (
@@ -272,7 +271,7 @@ void main() {
     tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
     await tester.pump();
     expect(find.byType(QrImageView), findsNothing);
-    expect(find.textContaining('không còn ở foreground'), findsOneWidget);
+    expect(find.textContaining('Ứng dụng đang ở nền'), findsOneWidget);
   });
 
   testWidgets('auth hệ điều hành chờ lifecycle resumed trước khi tạo QR', (
@@ -350,10 +349,7 @@ void main() {
     await tester.pump();
 
     expect(find.byType(QrImageView), findsNothing);
-    expect(
-      find.textContaining('Danh sách tài khoản vừa thay đổi'),
-      findsOneWidget,
-    );
+    expect(find.textContaining('Danh sách mã vừa thay đổi'), findsOneWidget);
   });
 
   testWidgets('QR tự hết hạn và bị xóa khỏi widget tree', (tester) async {
@@ -463,7 +459,7 @@ void main() {
     await tester.pump();
     await tester.pump();
 
-    expect(find.textContaining('chưa có ranh giới'), findsOneWidget);
+    expect(find.textContaining('chưa hỗ trợ xác thực'), findsOneWidget);
     expect(find.byKey(const Key('authenticate-and-export')), findsNothing);
     expect(authenticator.calls, 0);
   });

@@ -212,7 +212,7 @@ void main() {
           await tester.pump();
 
           await pressTab(tester);
-          expectPrimaryFocusWithin(find.byTooltip('Xuất tài khoản'));
+          expectPrimaryFocusWithin(find.byTooltip('Xuất mã xác thực'));
           await pressTab(tester);
           expectPrimaryFocusWithin(find.byTooltip('Thêm tài khoản'));
           await pressTab(tester);
