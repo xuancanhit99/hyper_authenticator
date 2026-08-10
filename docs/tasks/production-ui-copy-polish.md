@@ -63,7 +63,9 @@ bảo mật và tác động của thao tác phá hủy.
 | Targeted PR 3 Add/Edit/Import/Export | Pass 41/41, gồm fresh-auth, expiry, atomic import và a11y | 2026-08-10 |
 | `scripts/agent/check.sh full` PR 3 | Pass, 215 Flutter test + migration/release/infra harness | 2026-08-10 |
 | Theme geometry + golden PR 4 | Pass 13/13, đủ 6 palette và 6 ảnh 390 × 844 trên macOS | 2026-08-10 |
+| Linux golden PR 4 | 6 ảnh 390 × 844 tạo bằng Flutter 3.44.6 trên CI và đã review trực quan | 2026-08-10 |
 | `scripts/agent/check.sh quick` + `flutter test` PR 4 | Pass, analyze 0 issue và 223/223 test | 2026-08-10 |
+| `scripts/agent/check.sh full` PR 4 sau thêm baseline Linux | Pass, 223 Flutter test + migration/release/infra harness | 2026-08-10 |
 
 ## Tác động tài liệu
 

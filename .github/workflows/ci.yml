@@ -56,15 +56,6 @@ jobs:
           channel: stable
           cache: true
       - run: flutter pub get
-      - name: Tạo Linux golden candidate
-        run: flutter test --update-goldens test/core/theme/app_theme_golden_test.dart
-      - name: Lưu Linux golden candidate
-        uses: actions/upload-artifact@v7
-        with:
-          name: flutter-linux-goldens-${{ github.sha }}
-          path: test/core/theme/goldens/*_linux.png
-          if-no-files-found: error
-          retention-days: 7
       - run: bash scripts/agent/check.sh full
       - name: Lưu Flutter golden diff khi quality gate lỗi
         if: failure()

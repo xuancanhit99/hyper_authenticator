@@ -10,40 +10,44 @@ void main() {
 
   for (final style in AppStyle.values) {
     for (final brightness in Brightness.values) {
-      testWidgets('component gallery ${style.name}/${brightness.name}', (
-        tester,
-      ) async {
-        tester.view.devicePixelRatio = 1;
-        tester.view.physicalSize = const Size(390, 844);
-        addTearDown(tester.view.resetDevicePixelRatio);
-        addTearDown(tester.view.resetPhysicalSize);
-        final previousDisableShadows = debugDisableShadows;
-        debugDisableShadows = true;
-        addTearDown(() => debugDisableShadows = previousDisableShadows);
+      testWidgets(
+        'component gallery ${style.name}/${brightness.name}',
+        (tester) async {
+          tester.view.devicePixelRatio = 1;
+          tester.view.physicalSize = const Size(390, 844);
+          addTearDown(tester.view.resetDevicePixelRatio);
+          addTearDown(tester.view.resetPhysicalSize);
+          final previousDisableShadows = debugDisableShadows;
+          debugDisableShadows = true;
+          addTearDown(() => debugDisableShadows = previousDisableShadows);
 
-        final theme = brightness == Brightness.light
-            ? AppTheme.light(style)
-            : AppTheme.dark(style);
-        await tester.pumpWidget(
-          MaterialApp(
-            debugShowCheckedModeBanner: false,
-            theme: theme,
-            home: const _ComponentGallery(),
-          ),
-        );
-        await tester.pumpAndSettle();
+          final theme = brightness == Brightness.light
+              ? AppTheme.light(style)
+              : AppTheme.dark(style);
+          await tester.pumpWidget(
+            MaterialApp(
+              debugShowCheckedModeBanner: false,
+              theme: theme,
+              home: const _ComponentGallery(),
+            ),
+          );
+          await tester.pumpAndSettle();
 
-        await expectLater(
-          find.byKey(const Key('theme-component-gallery')),
-          matchesGoldenFile(
-            'goldens/app_theme_${style.name}_${brightness.name}'
-            '${Platform.isLinux ? '_linux' : ''}.png',
-          ),
-        );
-      });
+          await expectLater(
+            find.byKey(const Key('theme-component-gallery')),
+            matchesGoldenFile(
+              'goldens/app_theme_${style.name}_${brightness.name}'
+              '${Platform.isLinux ? '_linux' : ''}.png',
+            ),
+          );
+        },
+        skip: !_supportsGoldenPlatform,
+      );
     }
   }
 }
+
+final bool _supportsGoldenPlatform = Platform.isMacOS || Platform.isLinux;
 
 class _ComponentGallery extends StatelessWidget {
   const _ComponentGallery();
