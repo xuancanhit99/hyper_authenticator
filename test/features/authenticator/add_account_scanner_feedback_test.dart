@@ -66,7 +66,7 @@ void main() {
       );
       expect(find.byKey(AddAccountPage.scannerLoadingKey), findsOneWidget);
       expect(find.text('Đang khởi động camera…'), findsOneWidget);
-      expect(find.textContaining('hãy chọn Cho phép'), findsOneWidget);
+      expect(find.textContaining('cho phép truy cập camera'), findsOneWidget);
       expect(controller.startCount, 1);
     },
   );
@@ -86,7 +86,7 @@ void main() {
       await tester.pump();
 
       expect(find.byKey(AddAccountPage.scannerErrorKey), findsOneWidget);
-      expect(find.textContaining('chưa có quyền dùng camera'), findsOneWidget);
+      expect(find.textContaining('Chưa có quyền dùng camera'), findsOneWidget);
 
       await tester.tap(find.byKey(AddAccountPage.scannerRetryKey));
       await tester.pump();
@@ -268,7 +268,7 @@ void main() {
       _scan(tester, _googleSingleBatchUri);
       await tester.pumpAndSettle();
 
-      expect(find.text('Import tài khoản'), findsOneWidget);
+      expect(find.text('Kiểm tra mã sẽ nhập'), findsOneWidget);
       expect(find.text('Example'), findsOneWidget);
       expect(find.textContaining('alice@example.invalid'), findsOneWidget);
       expect(find.textContaining('KRCVGVC7'), findsNothing);
@@ -306,7 +306,7 @@ void main() {
     _scan(tester, _standardTotpUri);
     await tester.pumpAndSettle();
 
-    expect(find.text('Import tài khoản'), findsOneWidget);
+    expect(find.text('Kiểm tra mã sẽ nhập'), findsOneWidget);
     expect(find.text('TEST_ONLY Standard'), findsOneWidget);
     expect(find.text('user@example.invalid'), findsOneWidget);
     expect(find.textContaining('JBSWY3DPEHPK3PXP'), findsNothing);
@@ -446,7 +446,7 @@ void main() {
 
     _scan(tester, _googleBatchPartZeroUri);
     await tester.pumpAndSettle();
-    expect(find.text('Import tài khoản'), findsOneWidget);
+    expect(find.text('Kiểm tra mã sẽ nhập'), findsOneWidget);
     await tester.tap(find.byKey(TotpImportPreviewDialog.confirmButtonKey));
     await tester.pumpAndSettle();
 

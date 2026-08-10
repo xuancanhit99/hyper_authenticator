@@ -94,9 +94,7 @@ class _ExportAccountsPageState extends State<ExportAccountsPage>
         state == AppLifecycleState.hidden ||
         state == AppLifecycleState.detached) {
       if (_parts != null) {
-        _closeExport(
-          message: 'Phiên export đã đóng vì ứng dụng không còn ở foreground.',
-        );
+        _closeExport(message: 'Đã đóng mã QR vì ứng dụng chuyển sang nền.');
       }
     }
   }
@@ -159,8 +157,11 @@ class _ExportAccountsPageState extends State<ExportAccountsPage>
         case AccountExportFormat.otpauth:
           TotpUriExporter.validateAccounts(selected);
       }
-    } on FormatException catch (error) {
-      setState(() => _statusMessage = error.message.toString());
+    } on FormatException {
+      setState(() {
+        _statusMessage =
+            'Không thể tạo mã QR cho lựa chọn này. Hãy kiểm tra lại các mã.';
+      });
       return;
     }
 
@@ -177,9 +178,9 @@ class _ExportAccountsPageState extends State<ExportAccountsPage>
         _authenticating = false;
         _statusMessage = switch (result) {
           SensitiveActionAuthenticationResult.canceled =>
-            'Bạn đã hủy xác thực; chưa có QR nào được tạo.',
+            'Đã hủy xác thực. Chưa tạo mã QR.',
           SensitiveActionAuthenticationResult.unavailable =>
-            'Thiết bị chưa cấu hình phương thức xác thực hệ điều hành.',
+            'Hãy thiết lập khóa màn hình trên thiết bị rồi thử lại.',
           SensitiveActionAuthenticationResult.failed =>
             'Không thể xác thực an toàn. Hãy thử lại.',
           SensitiveActionAuthenticationResult.success => null,
@@ -193,27 +194,31 @@ class _ExportAccountsPageState extends State<ExportAccountsPage>
     if (!resumed) {
       setState(() {
         _authenticating = false;
-        _statusMessage =
-            'Ứng dụng không còn ở foreground; chưa có QR nào được tạo.';
+        _statusMessage = 'Ứng dụng đang ở nền. Chưa tạo mã QR.';
+      });
+      return;
+    }
+
+    final currentState = context.read<AccountsBloc>().state;
+    if (currentState is! AccountsLoaded) {
+      setState(() {
+        _authenticating = false;
+        _statusMessage = 'Danh sách mã vừa thay đổi. Hãy chọn lại.';
+      });
+      return;
+    }
+    final currentAccounts = currentState.accounts
+        .where((account) => selectedIds.contains(account.id))
+        .toList(growable: false);
+    if (currentAccounts.length != selectedIds.length) {
+      setState(() {
+        _authenticating = false;
+        _statusMessage = 'Danh sách mã vừa thay đổi. Hãy chọn lại.';
       });
       return;
     }
 
     try {
-      final currentState = context.read<AccountsBloc>().state;
-      if (currentState is! AccountsLoaded) {
-        throw const FormatException(
-          'Danh sách tài khoản vừa thay đổi. Hãy tải lại và chọn lại.',
-        );
-      }
-      final currentAccounts = currentState.accounts
-          .where((account) => selectedIds.contains(account.id))
-          .toList(growable: false);
-      if (currentAccounts.length != selectedIds.length) {
-        throw const FormatException(
-          'Danh sách tài khoản vừa thay đổi. Hãy chọn lại trước khi export.',
-        );
-      }
       final parts = _exportParts(format, currentAccounts);
       if (!mounted || generation != _authenticationGeneration) return;
       setState(() {
@@ -224,10 +229,11 @@ class _ExportAccountsPageState extends State<ExportAccountsPage>
         _statusMessage = null;
       });
       _startExpiryTimer();
-    } on FormatException catch (error) {
+    } on FormatException {
       setState(() {
         _authenticating = false;
-        _statusMessage = error.message.toString();
+        _statusMessage =
+            'Không thể tạo mã QR cho lựa chọn này. Hãy kiểm tra lại các mã.';
       });
     }
   }
@@ -284,9 +290,7 @@ class _ExportAccountsPageState extends State<ExportAccountsPage>
     _expiryTimer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (!mounted || _parts == null) return;
       if (_secondsRemaining <= 1) {
-        _closeExport(
-          message: 'QR export đã hết hạn và được xóa khỏi màn hình.',
-        );
+        _closeExport(message: 'Mã QR đã hết hạn và được xóa khỏi màn hình.');
         return;
       }
       setState(() => _secondsRemaining--);
@@ -310,7 +314,7 @@ class _ExportAccountsPageState extends State<ExportAccountsPage>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Xuất tài khoản')),
+      appBar: AppBar(title: const Text('Xuất mã xác thực')),
       body: SafeArea(
         child: MaxWidthContent(
           maxWidth: 760,
@@ -327,7 +331,7 @@ class _ExportAccountsPageState extends State<ExportAccountsPage>
                   child: Padding(
                     padding: const EdgeInsets.all(24),
                     child: Text(
-                      'Không thể tải tài khoản để export.',
+                      'Không thể tải danh sách mã.',
                       textAlign: TextAlign.center,
                     ),
                   ),
@@ -361,8 +365,7 @@ class _ExportAccountsPageState extends State<ExportAccountsPage>
               Icon(Icons.phonelink_lock_outlined, size: 48),
               SizedBox(height: 16),
               Text(
-                'Export chưa khả dụng trên nền tảng này vì chưa có ranh giới '
-                'xác thực hệ điều hành an toàn.',
+                'Thiết bị này chưa hỗ trợ xác thực để xuất mã.',
                 textAlign: TextAlign.center,
               ),
             ],
@@ -393,13 +396,13 @@ class _ExportAccountsPageState extends State<ExportAccountsPage>
                     Icon(Icons.warning_amber_rounded),
                     SizedBox(height: 8),
                     Text(
-                      'QR export chứa khóa bí mật TOTP',
+                      'Mã QR chứa khóa thiết lập',
                       style: TextStyle(fontWeight: FontWeight.w600),
                     ),
                     SizedBox(height: 8),
                     Text(
-                      'Người quét được QR có thể tạo mã xác thực của bạn. '
-                      'Không chụp màn hình, chia sẻ màn hình hoặc gửi QR qua chat.',
+                      'Bất kỳ ai quét được đều có thể tạo mã của bạn. Không '
+                      'chụp, chia sẻ hoặc gửi mã QR cho người khác.',
                     ),
                   ],
                 ),
@@ -417,7 +420,7 @@ class _ExportAccountsPageState extends State<ExportAccountsPage>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Định dạng export',
+                      'Dùng với',
                       style: Theme.of(context).textTheme.titleMedium,
                     ),
                     const SizedBox(height: 10),
@@ -427,7 +430,7 @@ class _ExportAccountsPageState extends State<ExportAccountsPage>
                       children: [
                         ChoiceChip(
                           key: const Key('export-format-google'),
-                          label: const Text('Google transfer'),
+                          label: const Text('Google Authenticator'),
                           selected:
                               _format ==
                               AccountExportFormat.googleAuthenticator,
@@ -440,7 +443,7 @@ class _ExportAccountsPageState extends State<ExportAccountsPage>
                         ),
                         ChoiceChip(
                           key: const Key('export-format-otpauth'),
-                          label: const Text('Chuẩn otpauth'),
+                          label: const Text('Ứng dụng khác'),
                           selected: _format == AccountExportFormat.otpauth,
                           onSelected: _authenticating
                               ? null
@@ -454,10 +457,8 @@ class _ExportAccountsPageState extends State<ExportAccountsPage>
                     const SizedBox(height: 10),
                     Text(
                       _format == AccountExportFormat.googleAuthenticator
-                          ? 'Có thể gộp nhiều tài khoản; chỉ hỗ trợ period '
-                                '30 giây và mã 6 hoặc 8 chữ số.'
-                          : 'Mỗi QR chứa một tài khoản và giữ nguyên algorithm, '
-                                'digits cùng period.',
+                          ? 'Gộp nhiều mã vào một lần chuyển.'
+                          : 'Tạo một mã QR riêng cho từng mã xác thực.',
                     ),
                   ],
                 ),
@@ -493,7 +494,7 @@ class _ExportAccountsPageState extends State<ExportAccountsPage>
                     textAlign: TextAlign.center,
                   ),
                 ),
-                Text('${_selectedIds.length} đã chọn'),
+                Text('${_selectedIds.length} mã đã chọn'),
               ],
             ),
           ),
@@ -502,7 +503,7 @@ class _ExportAccountsPageState extends State<ExportAccountsPage>
           const SliverToBoxAdapter(
             child: Padding(
               padding: EdgeInsets.all(24),
-              child: Center(child: Text('Chưa có tài khoản để export.')),
+              child: Center(child: Text('Chưa có mã để xuất.')),
             ),
           )
         else
@@ -530,8 +531,8 @@ class _ExportAccountsPageState extends State<ExportAccountsPage>
                 subtitle: Text(
                   compatible
                       ? account.accountName
-                      : '${account.accountName} · Không tương thích: '
-                            '${_format == AccountExportFormat.googleAuthenticator ? 'Google transfer yêu cầu period 30 giây, mã 6 hoặc 8 chữ số và dữ liệu TOTP hợp lệ.' : 'dữ liệu TOTP không hợp lệ hoặc quá dài cho QR standard.'}',
+                      : '${account.accountName} · '
+                            '${_format == AccountExportFormat.googleAuthenticator ? 'Chỉ hỗ trợ mã 30 giây, gồm 6 hoặc 8 chữ số.' : 'Không thể tạo QR cho mã này.'}',
                 ),
               );
             },
@@ -551,11 +552,7 @@ class _ExportAccountsPageState extends State<ExportAccountsPage>
                         dimension: 24,
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
-                    : Text(
-                        'Xác thực và tạo QR '
-                        '(${widget.sessionDuration.inSeconds} giây)',
-                        textAlign: TextAlign.center,
-                      ),
+                    : const Text('Tạo mã QR'),
               ),
             ),
           ),
@@ -590,16 +587,16 @@ class _ExportAccountsPageState extends State<ExportAccountsPage>
               AccountExportFormat.googleAuthenticator =>
                 parts.length == 1
                     ? 'Quét QR này trong Google Authenticator'
-                    : 'Quét lần lượt đủ ${parts.length} QR trong cùng một phiên',
+                    : 'Quét lần lượt đủ ${parts.length} mã QR',
               AccountExportFormat.otpauth =>
                 parts.length == 1
-                    ? 'Quét QR này bằng ứng dụng hỗ trợ chuẩn otpauth'
-                    : 'Quét lần lượt ${parts.length} QR; mỗi QR là một tài khoản',
+                    ? 'Quét QR này bằng ứng dụng xác thực khác'
+                    : 'Quét lần lượt ${parts.length} mã QR',
             }, textAlign: TextAlign.center),
             const SizedBox(height: 20),
             Semantics(
               label:
-                  '${part.format == AccountExportFormat.googleAuthenticator ? 'Mã QR export Google Authenticator, phần' : 'Mã QR export chuẩn otpauth, tài khoản'} '
+                  '${part.format == AccountExportFormat.googleAuthenticator ? 'Mã QR chuyển sang Google Authenticator, phần' : 'Mã QR chuyển sang ứng dụng khác, mã'} '
                   '${part.index + 1} trên ${part.total}',
               image: true,
               child: ExcludeSemantics(
@@ -617,7 +614,7 @@ class _ExportAccountsPageState extends State<ExportAccountsPage>
                     padding: const EdgeInsets.all(16),
                     backgroundColor: Colors.white,
                     errorCorrectionLevel: QrErrorCorrectLevel.M,
-                    semanticsLabel: 'Mã QR export được bảo vệ',
+                    semanticsLabel: 'Mã QR chuyển mã xác thực',
                     errorStateBuilder: (_, _) => SizedBox(
                       width: qrSize,
                       height: qrSize,
@@ -655,10 +652,9 @@ class _ExportAccountsPageState extends State<ExportAccountsPage>
               ),
             const SizedBox(height: 12),
             OutlinedButton.icon(
-              onPressed: () =>
-                  _closeExport(message: 'QR export đã được đóng theo yêu cầu.'),
+              onPressed: () => _closeExport(message: 'Đã đóng mã QR.'),
               icon: const Icon(Icons.close),
-              label: const Text('Đóng QR ngay'),
+              label: const Text('Đóng mã QR'),
             ),
           ],
         ),

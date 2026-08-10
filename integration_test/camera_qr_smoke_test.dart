@@ -49,13 +49,13 @@ void main() {
 
         await _pumpUntil(
           tester,
-          find.text('Import tài khoản'),
+          find.text('Kiểm tra mã sẽ nhập'),
           timeout: const Duration(minutes: 2),
         );
         expect(find.text(_testIssuer), findsOneWidget);
         expect(find.text(_testAccountName), findsOneWidget);
         expect(find.textContaining(_testSecret), findsNothing);
-        await tester.tap(find.widgetWithText(FilledButton, 'Import'));
+        await tester.tap(find.widgetWithText(FilledButton, 'Nhập 1 mã'));
         await _pumpUntil(tester, find.text(_testIssuer));
 
         final accounts = await _readVault(repository);

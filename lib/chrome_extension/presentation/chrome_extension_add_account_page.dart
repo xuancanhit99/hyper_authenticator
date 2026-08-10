@@ -131,7 +131,7 @@ class _ChromeExtensionAddAccountPageState
                   controller: _secretController,
                   decoration: InputDecoration(
                     labelText: 'Khóa thiết lập',
-                    helperText: 'Chuỗi Base32 do dịch vụ cung cấp',
+                    helperText: 'Chuỗi ký tự nằm cạnh mã QR',
                     suffixIcon: IconButton(
                       tooltip: _obscureSecret
                           ? 'Hiện khóa thiết lập'
@@ -166,11 +166,6 @@ class _ChromeExtensionAddAccountPageState
                         )
                       : const Icon(Icons.add),
                   label: const Text('Thêm mã'),
-                ),
-                const SizedBox(height: 16),
-                const Text(
-                  'Chrome Extension hiện hỗ trợ nhập khóa thiết lập.',
-                  textAlign: TextAlign.center,
                 ),
               ],
             ),

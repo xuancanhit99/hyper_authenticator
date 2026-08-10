@@ -136,8 +136,8 @@ class _AddAccountPageState extends State<AddAccountPage> {
           if (mounted) {
             setState(() {});
             _showInfo(
-              'Đã quét ${progress.scannedParts}/${progress.totalParts} mã QR '
-              'trong đợt export.',
+              'Đã quét ${progress.scannedParts}/${progress.totalParts} mã. '
+              'Hãy quét mã tiếp theo.',
             );
           }
           await _restartScannerAfterFeedback();
@@ -430,7 +430,7 @@ class _AddAccountPageState extends State<AddAccountPage> {
                 controller: _secretController,
                 decoration: InputDecoration(
                   labelText: 'Khóa thiết lập',
-                  helperText: 'Chuỗi Base32 do dịch vụ cung cấp',
+                  helperText: 'Chuỗi ký tự nằm cạnh mã QR',
                   suffixIcon: IconButton(
                     tooltip: _obscureSecret
                         ? 'Hiện khóa thiết lập'
@@ -476,13 +476,11 @@ class _AddAccountPageState extends State<AddAccountPage> {
 String _scannerErrorMessage(MobileScannerErrorCode errorCode) {
   return switch (errorCode) {
     MobileScannerErrorCode.permissionDenied =>
-      'Ứng dụng chưa có quyền dùng camera. Hãy cho phép camera trong cài đặt '
-          'của trình duyệt hoặc hệ điều hành rồi thử lại.',
+      'Chưa có quyền dùng camera. Hãy cấp quyền trong Cài đặt rồi thử lại.',
     MobileScannerErrorCode.unsupported =>
-      'Thiết bị hoặc trình duyệt này không hỗ trợ quét mã QR bằng camera.',
+      'Thiết bị này không hỗ trợ quét mã QR bằng camera.',
     _ =>
-      'Không thể khởi động camera. Hãy kiểm tra camera đang không bị ứng dụng '
-          'khác sử dụng rồi thử lại.',
+      'Không thể mở camera. Hãy đóng ứng dụng khác đang dùng camera rồi thử lại.',
   };
 }
 
@@ -509,7 +507,7 @@ class _ScannerLoadingView extends StatelessWidget {
               ),
               SizedBox(height: 8),
               Text(
-                'Nếu trình duyệt hoặc hệ điều hành hỏi quyền camera, hãy chọn Cho phép.',
+                'Nếu được hỏi, hãy cho phép truy cập camera.',
                 textAlign: TextAlign.center,
                 style: TextStyle(color: Colors.white70),
               ),

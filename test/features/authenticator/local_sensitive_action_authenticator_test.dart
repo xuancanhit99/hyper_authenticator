@@ -26,7 +26,7 @@ void main() {
       expect(localAuth.lastSensitiveTransaction, isTrue);
       expect(localAuth.lastPersistAcrossBackgrounding, isFalse);
       expect(localAuth.lastBiometricOnly, isFalse);
-      expect(localAuth.lastLocalizedReason, 'Xác thực để xuất credential TOTP');
+      expect(localAuth.lastLocalizedReason, 'Xác thực để xuất mã xác thực');
     },
   );
 

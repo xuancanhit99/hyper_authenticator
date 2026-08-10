@@ -62,6 +62,77 @@ void main() {
     expect(find.byTooltip('Ẩn khóa thiết lập'), findsOneWidget);
   });
 
+  testWidgets('tùy chọn nâng cao mặc định thu gọn và có thể mở', (
+    tester,
+  ) async {
+    final repository = _MemoryAuthenticatorRepository();
+    final accountsBloc = _accountsBloc(repository);
+    addTearDown(accountsBloc.close);
+
+    await tester.pumpWidget(
+      BlocProvider.value(
+        value: accountsBloc,
+        child: const MaterialApp(home: EditAccountPage(account: _account)),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.text('Tùy chọn nâng cao'), findsOneWidget);
+    expect(
+      find.byKey(EditAccountPage.algorithmFieldKey).hitTestable(),
+      findsNothing,
+    );
+
+    await tester.ensureVisible(find.byKey(EditAccountPage.advancedOptionsKey));
+    await tester.tap(find.byKey(EditAccountPage.advancedOptionsKey));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(EditAccountPage.algorithmFieldKey).hitTestable(),
+      findsOneWidget,
+    );
+    expect(find.text('SHA1, SHA256 hoặc SHA512'), findsOneWidget);
+  });
+
+  testWidgets('lỗi nâng cao tự mở nhóm tùy chọn trước khi lưu', (tester) async {
+    final repository = _MemoryAuthenticatorRepository();
+    final accountsBloc = _accountsBloc(repository);
+    addTearDown(accountsBloc.close);
+    const invalidAccount = AuthenticatorAccount(
+      id: 'invalid-advanced',
+      issuer: 'TEST_ONLY Issuer',
+      accountName: 'user@example.invalid',
+      secretKey: 'JBSWY3DPEHPK3PXP',
+      algorithm: 'MD5',
+    );
+
+    await tester.pumpWidget(
+      BlocProvider.value(
+        value: accountsBloc,
+        child: const MaterialApp(
+          home: EditAccountPage(account: invalidAccount),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    final submit = find.byKey(EditAccountPage.submitButtonKey);
+    await tester.scrollUntilVisible(
+      submit,
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.tap(submit);
+    await tester.pumpAndSettle();
+
+    expect(repository.updateCalls, 0);
+    expect(find.text('Dùng SHA1, SHA256 hoặc SHA512.'), findsOneWidget);
+    expect(
+      find.byKey(EditAccountPage.algorithmFieldKey).hitTestable(),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('nút lưu vào trọn vùng chạm ở viewport Windows 384x640', (
     tester,
   ) async {

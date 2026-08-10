@@ -24,7 +24,7 @@ class LocalSensitiveActionAuthenticator
         return SensitiveActionAuthenticationResult.unavailable;
       }
       final authenticated = await _localAuthentication.authenticate(
-        localizedReason: 'Xác thực để xuất credential TOTP',
+        localizedReason: 'Xác thực để xuất mã xác thực',
         biometricOnly: false,
         sensitiveTransaction: true,
         persistAcrossBackgrounding: false,
