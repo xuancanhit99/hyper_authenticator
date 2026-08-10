@@ -5,7 +5,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hyper_authenticator/core/platform/platform_capabilities.dart';
 import 'package:hyper_authenticator/core/router/app_routes.dart';
-import 'package:hyper_authenticator/core/theme/theme_cubit.dart';
 import 'package:hyper_authenticator/core/widgets/responsive_content.dart';
 import 'package:hyper_authenticator/features/authenticator/domain/entities/authenticator_account.dart';
 import 'package:hyper_authenticator/features/authenticator/domain/usecases/generate_totp_code.dart';
@@ -152,45 +151,12 @@ class _AccountsPageState extends State<AccountsPage>
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final themeMode = context.watch<ThemeCubit>().state.mode;
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         elevation: 0,
         title: const Text('Mã xác thực'),
         actions: [
-          PopupMenuButton<ThemeMode>(
-            icon: Icon(switch (themeMode) {
-              ThemeMode.light => Icons.light_mode_outlined,
-              ThemeMode.dark => Icons.dark_mode_outlined,
-              ThemeMode.system => Icons.brightness_auto_outlined,
-            }, color: colorScheme.onSurface),
-            tooltip: 'Đổi giao diện',
-            onSelected: context.read<ThemeCubit>().setThemeMode,
-            itemBuilder: (context) => const [
-              PopupMenuItem(
-                value: ThemeMode.system,
-                child: ListTile(
-                  leading: Icon(Icons.brightness_auto_outlined),
-                  title: Text('Theo hệ thống'),
-                ),
-              ),
-              PopupMenuItem(
-                value: ThemeMode.light,
-                child: ListTile(
-                  leading: Icon(Icons.light_mode_outlined),
-                  title: Text('Sáng'),
-                ),
-              ),
-              PopupMenuItem(
-                value: ThemeMode.dark,
-                child: ListTile(
-                  leading: Icon(Icons.dark_mode_outlined),
-                  title: Text('Tối'),
-                ),
-              ),
-            ],
-          ),
           if (PlatformCapabilities.supportsProtectedExport)
             IconButton(
               icon: const Icon(Icons.ios_share_outlined),

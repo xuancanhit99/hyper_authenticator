@@ -168,7 +168,12 @@ cầu `AccountsBloc` reload list.
 ## Navigation, theme và privacy
 
 - `StatefulShellRoute.indexedStack` giữ Accounts/Settings branch state.
-- Theme có Security Minimal, OLED Dark và Dark Cinema độc lập với ThemeMode.
+- Theme có ba style persisted độc lập với ThemeMode. Settings hiển thị chúng
+  bằng nhãn Mặc định, OLED và Indigo trong một bottom sheet có preview; enum
+  name `securityMinimal`, `oledDark`, `darkCinema` được giữ ổn định để không
+  làm mất lựa chọn đã lưu. Theme áp dụng ngay, không có nút lưu.
+- Settings là entry point duy nhất để đổi style/mode; Accounts AppBar dành cho
+  thao tác mã xác thực và không lặp lại quick theme action.
 - App Lock fail closed trên error/cancel.
 - Privacy Shield chặn interaction/semantics ngoài foreground nhưng không ngăn OS
   screenshot/recording.
