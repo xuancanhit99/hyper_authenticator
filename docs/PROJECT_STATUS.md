@@ -66,7 +66,11 @@ Hyper Authenticator là ứng dụng TOTP Flutter đa nền tảng, local-first:
   Supabase/storage/network không đi vào UI. Validation local đã kiểm soát vẫn
   giữ hướng dẫn cụ thể.
 - Accounts/Settings dùng `StatefulShellRoute.indexedStack`; theme có ba visual
-  style × light/dark.
+  style × light/dark. Appearance/Product Info sheet dùng root navigator để
+  không giữ modal route trong history riêng của Settings branch; preview style
+  và mode chip có regression test cho border bo kín và icon không chồng lớp.
+  Tab Accounts luôn vào initial location để không restore startup/app-lock
+  overlay cũ rồi bị `returnTo=/settings` redirect ngược sau resume.
 - Settings có mục Giới thiệu gọn: version, local-only, account sync, ranh giới
   xử lý dữ liệu và giấy phép mã nguồn mở. UI không tạo privacy/support action
   cho tới khi owner cung cấp URL/contact production.
@@ -108,9 +112,9 @@ Hyper Authenticator là ứng dụng TOTP Flutter đa nền tảng, local-first:
 | Gate | Kết quả |
 |---|---|
 | `flutter analyze` | Pass, 0 issue ngày 05-08-2026 |
-| `flutter test` | Pass 227 test ngày 10-08-2026 |
+| `flutter test` | Pass 231 test ngày 10-08-2026 |
 | `scripts/supabase/test_account_sync_migration.sh` | Pass trên đúng `supabase/postgres:17.6.1.136`: Vault/RPC/CAS/tombstone và authorization probe đúng Realtime 2.102.3 |
-| Full gate | `scripts/agent/check.sh full` pass ngày 10-08-2026: docs/codegen/format/analyze/platform, 227 Flutter test, migration/release/infra harness |
+| Full gate | `scripts/agent/check.sh full` pass ngày 10-08-2026: docs/codegen/format/analyze/platform, 231 Flutter test, migration/release/infra harness |
 | iOS Simulator account sync | UI auth giữ local vault + upload/download/tombstone + remote-only upsert/delete qua Realtime pass; isolated user cleanup verified ngày 05-08-2026 |
 | iOS Simulator account sync re-run | Isolated user: UI sign-in/sign-out vẫn giữ local vault, upload/fresh-device download/Realtime/tombstone pass và remote cleanup verified ngày 09-08-2026 |
 | Chrome Extension current profile | Owner manual smoke: Side Panel render sau local Roboto bundle, login Supabase, sync và session còn sau đóng/mở Chrome ngày 09-08-2026; không phải clean-profile/tamper evidence |

@@ -46,7 +46,12 @@ physical-device hoặc production evidence.
 - Add/Edit/Delete/search/countdown/account actions.
 - App Lock success/cancel/error và lifecycle relock.
 - Privacy Shield opaque/interaction/semantics behavior.
-- Stateful shell tab state, reselect-to-root và resume responsiveness.
+- Stateful shell tab state, reselect-to-root và resume responsiveness. Luồng
+  regression Settings phải cover mở appearance sheet trên root navigator, đổi
+  liên tiếp style/mode, background lâu, resume, đóng sheet rồi chuyển về
+  Accounts. Test router riêng phải tái hiện startup overlay thuộc Accounts
+  branch với `returnTo=/settings`, rồi xác nhận tab Accounts không restore route
+  startup cũ và không bị redirect ngược về Settings.
 - Settings cloud states: local-only, automatic sync progress/success/failure và
   retry; source/widget không được tái xuất hiện recovery/setup controls.
 - Cloud auth entry: khách mở Login với `returnTo=/settings`; đăng xuất cần xác

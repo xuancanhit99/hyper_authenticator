@@ -29,6 +29,7 @@ class AppearanceStylePicker extends StatelessWidget {
     final cubit = context.read<ThemeCubit>();
     return showModalBottomSheet<void>(
       context: context,
+      useRootNavigator: true,
       isScrollControlled: true,
       useSafeArea: true,
       showDragHandle: true,
@@ -99,6 +100,7 @@ class _AppearanceSheet extends StatelessWidget {
                         avatar: Icon(_modeIcon(mode), size: 18),
                         label: Text(_modeLabel(mode)),
                         selected: state.mode == mode,
+                        showCheckmark: false,
                         onSelected: (_) => cubit.setThemeMode(mode),
                       ),
                   ],
@@ -192,51 +194,59 @@ class _StylePreview extends StatelessWidget {
 
     return ExcludeSemantics(
       child: MediaQuery.withNoTextScaling(
-        child: Container(
+        child: SizedBox(
+          key: Key('app-style-preview-${style.name}'),
           width: 56,
           height: 48,
-          clipBehavior: Clip.antiAlias,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: Theme.of(
-                context,
-              ).colorScheme.onSurface.withValues(alpha: 0.16),
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: Theme.of(
+                  context,
+                ).colorScheme.onSurface.withValues(alpha: 0.16),
+              ),
             ),
-          ),
-          child: Row(
-            children: [
-              Expanded(
-                child: ColoredBox(
-                  color: light.background,
-                  child: Center(
-                    child: Container(
-                      width: 12,
-                      height: 12,
-                      decoration: BoxDecoration(
-                        color: light.primary,
-                        shape: BoxShape.circle,
+            child: Padding(
+              padding: const EdgeInsets.all(1),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(11),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: ColoredBox(
+                        color: light.background,
+                        child: Center(
+                          child: Container(
+                            width: 12,
+                            height: 12,
+                            decoration: BoxDecoration(
+                              color: light.primary,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                        ),
                       ),
                     ),
-                  ),
-                ),
-              ),
-              Expanded(
-                child: ColoredBox(
-                  color: dark.background,
-                  child: Center(
-                    child: Text(
-                      '12',
-                      style: TextStyle(
-                        color: dark.otpCode ?? dark.textPrimary,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
+                    Expanded(
+                      child: ColoredBox(
+                        color: dark.background,
+                        child: Center(
+                          child: Text(
+                            '12',
+                            style: TextStyle(
+                              color: dark.otpCode ?? dark.textPrimary,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
                       ),
                     ),
-                  ),
+                  ],
                 ),
               ),
-            ],
+            ),
           ),
         ),
       ),

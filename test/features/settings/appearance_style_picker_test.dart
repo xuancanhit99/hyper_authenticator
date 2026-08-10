@@ -131,6 +131,40 @@ void main() {
     expect(find.text('Indigo · Tối'), findsOneWidget);
   });
 
+  testWidgets('preview bo kín và mode không chồng checkmark lên icon', (
+    tester,
+  ) async {
+    final cubit = await makeCubit();
+    addTearDown(cubit.close);
+    await pumpPicker(tester, cubit);
+    await openSheet(tester);
+
+    for (final style in AppStyle.values) {
+      final preview = find.byKey(Key('app-style-preview-${style.name}'));
+      expect(preview, findsOneWidget);
+      expect(tester.getSize(preview), const Size(56, 48));
+
+      final clip = find.descendant(
+        of: preview,
+        matching: find.byType(ClipRRect),
+      );
+      expect(clip, findsOneWidget);
+      final outerRect = tester.getRect(preview);
+      final clipRect = tester.getRect(clip);
+      expect(clipRect.left, greaterThan(outerRect.left));
+      expect(clipRect.top, greaterThan(outerRect.top));
+      expect(clipRect.right, lessThan(outerRect.right));
+      expect(clipRect.bottom, lessThan(outerRect.bottom));
+    }
+
+    for (final mode in ThemeMode.values) {
+      final chip = tester.widget<ChoiceChip>(
+        find.byKey(Key('theme-mode-choice-${mode.name}')),
+      );
+      expect(chip.showCheckmark, isFalse);
+    }
+  });
+
   for (final style in AppStyle.values) {
     for (final brightness in Brightness.values) {
       testWidgets('sheet a11y ${style.name}/${brightness.name} ở 320px 200%', (
