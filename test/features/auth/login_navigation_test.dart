@@ -99,8 +99,11 @@ void main() {
   testWidgets('đăng nhập trực tiếp rời Login về Accounts', (tester) async {
     await pumpApp(tester, initialLocation: '/login');
 
-    expect(find.text('Chào mừng bạn trở lại!'), findsOneWidget);
-    expect(find.text('Đăng nhập để tiếp tục'), findsOneWidget);
+    expect(find.text('Đồng bộ mã của bạn'), findsOneWidget);
+    expect(
+      find.text('Đăng nhập để dùng cùng mã trên các thiết bị.'),
+      findsOneWidget,
+    );
     expect(find.text('Ghi nhớ đăng nhập'), findsNothing);
     expect(find.text('Quên mật khẩu?'), findsOneWidget);
     expect(find.text('Welcome Back!'), findsNothing);

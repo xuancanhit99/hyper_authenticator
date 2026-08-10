@@ -57,6 +57,29 @@ void main() {
     expect(bloc.state, isA<AuthAuthenticated>());
   });
 
+  test('sign in không đưa lỗi backend vào AuthFailure', () async {
+    repository.signInFailure = const AuthServerFailure(
+      'TEST_ONLY invalid_grant host=auth.internal',
+    );
+
+    bloc.add(
+      const AuthSignInRequested(
+        email: 'user@example.invalid',
+        password: 'TEST_ONLY_password',
+      ),
+    );
+    final state =
+        await bloc.stream.firstWhere((state) => state is AuthFailure)
+            as AuthFailure;
+
+    expect(state.message, isNot(contains('TEST_ONLY')));
+    expect(state.message, isNot(contains('invalid_grant')));
+    expect(
+      state.message,
+      'Không thể đăng nhập. Kiểm tra email, mật khẩu và kết nối rồi thử lại.',
+    );
+  });
+
   test('sign up yêu cầu xác minh email không mắc kẹt ở loading', () async {
     repository.hasSessionAfterSignUp = false;
     final states = expectLater(
@@ -102,6 +125,7 @@ class _FakeAuthRepository implements AuthRepository {
   final _changes = StreamController<UserEntity?>.broadcast();
   UserEntity? _currentUser;
   bool hasSessionAfterSignUp = true;
+  Failure? signInFailure;
 
   Future<void> close() => _changes.close();
 
@@ -122,6 +146,7 @@ class _FakeAuthRepository implements AuthRepository {
     required String email,
     required String password,
   }) async {
+    if (signInFailure case final failure?) return Left(failure);
     _currentUser = user;
     return const Right(user);
   }

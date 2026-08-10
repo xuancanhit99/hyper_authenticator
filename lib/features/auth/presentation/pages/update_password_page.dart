@@ -47,7 +47,7 @@ class _UpdatePasswordPageState extends State<UpdatePasswordPage> {
 
   String? _validatePassword(String? value) {
     if (value == null || value.isEmpty) {
-      return 'Vui lòng nhập mật khẩu mới.';
+      return 'Nhập mật khẩu mới.';
     }
     if (value.length < 6) {
       return 'Mật khẩu phải có ít nhất 6 ký tự.';
@@ -57,7 +57,7 @@ class _UpdatePasswordPageState extends State<UpdatePasswordPage> {
 
   String? _validateConfirmPassword(String? value) {
     if (value == null || value.isEmpty) {
-      return 'Vui lòng xác nhận mật khẩu mới.';
+      return 'Nhập lại mật khẩu mới.';
     }
     if (value != _passwordController.text) {
       return 'Mật khẩu xác nhận không khớp.';

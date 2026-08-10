@@ -57,7 +57,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Đăng nhập để đồng bộ mã'));
+    await tester.tap(find.text('Đăng nhập để đồng bộ'));
     await tester.pumpAndSettle();
 
     expect(find.text('Login returnTo=/settings'), findsOneWidget);
@@ -87,7 +87,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Xác nhận đăng xuất'), findsOneWidget);
     expect(
-      find.textContaining('Dữ liệu TOTP local và app lock'),
+      find.textContaining('Các mã đã lưu vẫn được giữ lại'),
       findsOneWidget,
     );
 

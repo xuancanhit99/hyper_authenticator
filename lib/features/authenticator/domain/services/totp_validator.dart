@@ -5,7 +5,9 @@ abstract final class TotpValidator {
   static String normalizeSecret(String value) {
     final secret = value.replaceAll(RegExp(r'[\s-]+'), '').toUpperCase();
     if (secret.isEmpty || !_base32Pattern.hasMatch(secret)) {
-      throw const FormatException('Secret key không đúng định dạng Base32.');
+      throw const FormatException(
+        'Khóa thiết lập không đúng định dạng Base32.',
+      );
     }
     return secret;
   }
@@ -20,12 +22,10 @@ abstract final class TotpValidator {
 
   static void validateParameters({required int digits, required int period}) {
     if (digits < 6 || digits > 8) {
-      throw const FormatException('Số chữ số OTP phải nằm trong khoảng 6–8.');
+      throw const FormatException('Số chữ số của mã phải từ 6 đến 8.');
     }
     if (period <= 0 || period > 300) {
-      throw const FormatException(
-        'Chu kỳ OTP phải nằm trong khoảng 1–300 giây.',
-      );
+      throw const FormatException('Thời gian làm mới phải từ 1 đến 300 giây.');
     }
   }
 }

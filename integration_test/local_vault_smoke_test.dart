@@ -53,7 +53,7 @@ void main() {
         final accountsBloc = di.sl<AccountsBloc>();
         await _replaceVault(repository, const []);
         accountsBloc.add(LoadAccounts());
-        await _pumpUntil(tester, find.text('Chưa có tài khoản TOTP'));
+        await _pumpUntil(tester, find.text('Chưa có mã xác thực'));
         _phase('empty-vault-ready');
 
         await tester.tap(find.byTooltip('Thêm tài khoản'));
@@ -152,9 +152,9 @@ void main() {
         await tester.tap(updatedActions);
         await _pumpUntil(tester, find.text('Xóa'));
         await tester.tap(find.text('Xóa'));
-        await _pumpUntil(tester, find.text('Xác nhận xóa'));
+        await _pumpUntil(tester, find.text('Xóa mã xác thực?'));
         await tester.tap(find.widgetWithText(TextButton, 'Xóa'));
-        await _pumpUntil(tester, find.text('Chưa có tài khoản TOTP'));
+        await _pumpUntil(tester, find.text('Chưa có mã xác thực'));
         expect(await _readVault(repository), isEmpty);
         _phase('account-delete-persisted');
       } finally {

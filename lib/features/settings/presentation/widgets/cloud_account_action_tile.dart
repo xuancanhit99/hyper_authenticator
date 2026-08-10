@@ -20,9 +20,9 @@ class CloudAccountActionTile extends StatelessWidget {
       return ListTile(
         key: const Key('cloud-sign-in-action'),
         leading: const Icon(Icons.login),
-        title: const Text('Đăng nhập để đồng bộ mã'),
+        title: const Text('Đăng nhập để đồng bộ'),
         subtitle: const Text(
-          'Mã TOTP vẫn hoạt động local khi không đăng nhập.',
+          'Bạn vẫn có thể dùng mã trên thiết bị này khi chưa đăng nhập.',
         ),
         onTap: () => context.push(
           Uri(
@@ -38,7 +38,7 @@ class CloudAccountActionTile extends StatelessWidget {
       key: const Key('cloud-sign-out-action'),
       leading: Icon(Icons.logout, color: destructiveColor),
       title: Text('Đăng xuất', style: TextStyle(color: destructiveColor)),
-      subtitle: const Text('Mã TOTP local và app lock được giữ nguyên.'),
+      subtitle: const Text('Các mã trên thiết bị này vẫn được giữ lại.'),
       onTap: () => _confirmLogout(context),
     );
   }
@@ -50,7 +50,7 @@ class CloudAccountActionTile extends StatelessWidget {
         scrollable: true,
         title: const Text('Xác nhận đăng xuất'),
         content: const Text(
-          'Phiên cloud sẽ kết thúc. Dữ liệu TOTP local và app lock trên thiết bị này không bị xóa.',
+          'Bạn sẽ ngừng đồng bộ trên thiết bị này. Các mã đã lưu vẫn được giữ lại.',
         ),
         actions: [
           TextButton(

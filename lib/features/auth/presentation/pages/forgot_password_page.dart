@@ -36,11 +36,11 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
 
   String? _validateEmail(String? value) {
     if (value == null || value.trim().isEmpty) {
-      return 'Vui lòng nhập email.';
+      return 'Nhập email.';
     }
     final emailRegex = RegExp(r'^[^@]+@[^@]+\.[^@]+');
     if (!emailRegex.hasMatch(value.trim())) {
-      return 'Vui lòng nhập địa chỉ email hợp lệ.';
+      return 'Email không hợp lệ.';
     }
     return null;
   }

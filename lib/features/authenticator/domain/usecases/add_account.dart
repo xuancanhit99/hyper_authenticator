@@ -21,7 +21,7 @@ class AddAccount implements UseCase<AuthenticatorAccount, AddAccountParams> {
     final accountName = params.accountName.trim();
     if (issuer.isEmpty || accountName.isEmpty) {
       return Left(
-        ValidationFailure('Issuer và tên tài khoản không được để trống.'),
+        ValidationFailure('Dịch vụ và tài khoản không được để trống.'),
       );
     }
 

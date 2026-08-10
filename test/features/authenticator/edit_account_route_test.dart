@@ -54,12 +54,12 @@ void main() {
     expect(secretField.enableSuggestions, isFalse);
     expect(secretField.enableIMEPersonalizedLearning, isFalse);
 
-    await tester.tap(find.byTooltip('Hiện secret key'));
+    await tester.tap(find.byTooltip('Hiện khóa thiết lập'));
     await tester.pump();
 
     secretField = tester.widget<EditableText>(secretInput);
     expect(secretField.obscureText, isFalse);
-    expect(find.byTooltip('Ẩn secret key'), findsOneWidget);
+    expect(find.byTooltip('Ẩn khóa thiết lập'), findsOneWidget);
   });
 
   testWidgets('nút lưu vào trọn vùng chạm ở viewport Windows 384x640', (
@@ -162,7 +162,7 @@ void main() {
     expect(repository.updatedAccount, _account);
     expect(find.byType(EditAccountPage), findsNothing);
     expect(find.text('Mở form sửa test'), findsOneWidget);
-    expect(find.text('Đã cập nhật tài khoản.'), findsOneWidget);
+    expect(find.text('Đã cập nhật mã xác thực.'), findsOneWidget);
   });
 
   testWidgets(
@@ -205,7 +205,7 @@ void main() {
 
       expect(repository.updateCalls, 1);
       expect(find.text('Main test route'), findsOneWidget);
-      expect(find.text('Đã cập nhật tài khoản.'), findsOneWidget);
+      expect(find.text('Đã cập nhật mã xác thực.'), findsOneWidget);
       expect(tester.takeException(), isNull);
     },
   );
@@ -232,7 +232,7 @@ void main() {
 
       expect(repository.updateCalls, 1);
       expect(find.byType(EditAccountPage), findsOneWidget);
-      expect(find.text('Đã cập nhật tài khoản.'), findsNothing);
+      expect(find.text('Đã cập nhật mã xác thực.'), findsNothing);
     },
   );
 
@@ -324,7 +324,7 @@ void main() {
     expect(find.byType(EditAccountPage), findsOneWidget);
     expect(find.text('Lưu thay đổi'), findsOneWidget);
     expect(
-      find.text('Không thể cập nhật tài khoản: TEST_ONLY storage failure'),
+      find.text('Không thể lưu thay đổi. Mã hiện tại vẫn được giữ nguyên.'),
       findsOneWidget,
     );
     expect(

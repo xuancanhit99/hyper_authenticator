@@ -48,11 +48,9 @@ class LocalAuthBloc extends Bloc<LocalAuthEvent, LocalAuthState> {
       } else {
         emit(LocalAuthSuccess());
       }
-    } catch (e) {
+    } catch (_) {
       emit(
-        LocalAuthError(
-          'Không thể kiểm tra khả năng xác thực trên thiết bị: ${e.toString()}',
-        ),
+        const LocalAuthError('Không thể kiểm tra khóa ứng dụng. Hãy thử lại.'),
       );
     }
   }
@@ -63,7 +61,7 @@ class LocalAuthBloc extends Bloc<LocalAuthEvent, LocalAuthState> {
   ) async {
     try {
       final bool didAuthenticate = await auth.authenticate(
-        localizedReason: 'Xác thực để truy cập các tài khoản của bạn',
+        localizedReason: 'Xác thực để mở các mã của bạn',
         persistAcrossBackgrounding: true,
       );
 
@@ -79,12 +77,12 @@ class LocalAuthBloc extends Bloc<LocalAuthEvent, LocalAuthState> {
         return;
       }
       emit(
-        LocalAuthError(
-          'Không thể xác thực trên thiết bị (${error.code.name}).',
-        ),
+        const LocalAuthError('Không thể xác thực trên thiết bị. Hãy thử lại.'),
       );
-    } catch (e) {
-      emit(LocalAuthError('Đã xảy ra lỗi không mong muốn khi xác thực.'));
+    } catch (_) {
+      emit(
+        const LocalAuthError('Không thể xác thực trên thiết bị. Hãy thử lại.'),
+      );
     }
   }
 

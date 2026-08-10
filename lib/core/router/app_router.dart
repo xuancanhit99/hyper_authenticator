@@ -203,8 +203,8 @@ class AppRouter {
           cloudEnabled: appConfig.cloudEnabled,
         );
       },
-      errorBuilder: (context, state) => Scaffold(
-        body: Center(child: Text('Không tìm thấy trang: ${state.error}')),
+      errorBuilder: (context, state) => const Scaffold(
+        body: Center(child: Text('Không tìm thấy trang này.')),
       ),
     );
   }

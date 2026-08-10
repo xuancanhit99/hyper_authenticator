@@ -62,6 +62,9 @@ Hyper Authenticator là ứng dụng TOTP Flutter đa nền tảng, local-first:
 - Settings chỉ còn trạng thái “Đồng bộ với tài khoản”, login/logout và retry;
   không còn recovery/conflict/remove-cloud UI.
 - Auth còn email/password, đăng ký, session restore, quên/đổi mật khẩu.
+- Presentation error boundary chỉ hiển thị copy cố định theo thao tác; raw lỗi
+  Supabase/storage/network không đi vào UI. Validation local đã kiểm soát vẫn
+  giữ hướng dẫn cụ thể.
 - Accounts/Settings dùng `StatefulShellRoute.indexedStack`; theme có ba visual
   style × light/dark.
 - App Lock dùng local authentication khi platform hỗ trợ. Privacy Shield che nội
@@ -102,9 +105,9 @@ Hyper Authenticator là ứng dụng TOTP Flutter đa nền tảng, local-first:
 | Gate | Kết quả |
 |---|---|
 | `flutter analyze` | Pass, 0 issue ngày 05-08-2026 |
-| `flutter test` | Pass 206 test ngày 09-08-2026 |
+| `flutter test` | Pass 213 test ngày 10-08-2026 |
 | `scripts/supabase/test_account_sync_migration.sh` | Pass trên đúng `supabase/postgres:17.6.1.136`: Vault/RPC/CAS/tombstone và authorization probe đúng Realtime 2.102.3 |
-| Full gate | `scripts/agent/check.sh full` pass ngày 09-08-2026: docs/codegen/format/analyze/platform, 206 Flutter test, migration/release/infra harness |
+| Full gate | `scripts/agent/check.sh full` pass ngày 10-08-2026: docs/codegen/format/analyze/platform, 213 Flutter test, migration/release/infra harness |
 | iOS Simulator account sync | UI auth giữ local vault + upload/download/tombstone + remote-only upsert/delete qua Realtime pass; isolated user cleanup verified ngày 05-08-2026 |
 | iOS Simulator account sync re-run | Isolated user: UI sign-in/sign-out vẫn giữ local vault, upload/fresh-device download/Realtime/tombstone pass và remote cleanup verified ngày 09-08-2026 |
 | Chrome Extension current profile | Owner manual smoke: Side Panel render sau local Roboto bundle, login Supabase, sync và session còn sau đóng/mở Chrome ngày 09-08-2026; không phải clean-profile/tamper evidence |

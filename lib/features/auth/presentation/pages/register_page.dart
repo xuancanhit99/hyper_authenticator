@@ -45,11 +45,11 @@ class _RegisterPageState extends State<RegisterPage> {
 
   String? _validateEmail(String? value) {
     if (value == null || value.trim().isEmpty) {
-      return 'Vui lòng nhập email.';
+      return 'Nhập email.';
     }
     final emailRegex = RegExp(r'^[^@]+@[^@]+\.[^@]+');
     if (!emailRegex.hasMatch(value.trim())) {
-      return 'Vui lòng nhập địa chỉ email hợp lệ.';
+      return 'Email không hợp lệ.';
     }
     return null;
   }
@@ -58,7 +58,7 @@ class _RegisterPageState extends State<RegisterPage> {
 
   String? _validatePassword(String? value) {
     if (value == null || value.isEmpty) {
-      return 'Vui lòng nhập mật khẩu.';
+      return 'Nhập mật khẩu.';
     }
     if (value.length < 6) {
       // Example: Enforce minimum length
@@ -70,7 +70,7 @@ class _RegisterPageState extends State<RegisterPage> {
 
   String? _validateConfirmPassword(String? value) {
     if (value == null || value.isEmpty) {
-      return 'Vui lòng xác nhận mật khẩu.';
+      return 'Nhập lại mật khẩu.';
     }
     if (value != _passwordController.text) {
       return 'Mật khẩu xác nhận không khớp.';
@@ -112,7 +112,7 @@ class _RegisterPageState extends State<RegisterPage> {
                 children: [
                   const AuthHeader(
                     title: 'Tạo tài khoản',
-                    subtitle: 'Đăng ký để bắt đầu',
+                    subtitle: 'Tạo tài khoản để bật đồng bộ.',
                   ),
                   TextFormField(
                     controller: _emailController,

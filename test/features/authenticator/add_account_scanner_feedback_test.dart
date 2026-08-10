@@ -50,7 +50,7 @@ void main() {
       expect(
         find.descendant(
           of: find.byType(AppBar),
-          matching: find.text('Thêm tài khoản'),
+          matching: find.text('Thêm mã xác thực'),
         ),
         findsOneWidget,
       );
@@ -157,7 +157,7 @@ void main() {
     await tester.enterText(secretField, 'JBSWY3DPEHPK3PXP');
 
     await pressTab(tester);
-    expectPrimaryFocusWithin(find.byTooltip('Hiện secret key'));
+    expectPrimaryFocusWithin(find.byTooltip('Hiện khóa thiết lập'));
     await pressTab(tester);
     expectPrimaryFocusWithin(submit);
     await tester.sendKeyEvent(LogicalKeyboardKey.enter);
@@ -193,12 +193,12 @@ void main() {
     expect(secretField.enableSuggestions, isFalse);
     expect(secretField.enableIMEPersonalizedLearning, isFalse);
 
-    await tester.tap(find.byTooltip('Hiện secret key'));
+    await tester.tap(find.byTooltip('Hiện khóa thiết lập'));
     await tester.pump();
 
     secretField = tester.widget<EditableText>(secretInput);
     expect(secretField.obscureText, isFalse);
-    expect(find.byTooltip('Ẩn secret key'), findsOneWidget);
+    expect(find.byTooltip('Ẩn khóa thiết lập'), findsOneWidget);
   });
 
   testWidgets('chỉ đóng add route sau success đúng operation', (tester) async {
@@ -251,7 +251,7 @@ void main() {
 
     expect(find.byType(AddAccountPage), findsNothing);
     expect(find.text('Mở form test'), findsOneWidget);
-    expect(find.text('Đã thêm tài khoản.'), findsOneWidget);
+    expect(find.text('Đã thêm mã xác thực.'), findsOneWidget);
   });
 
   testWidgets(
@@ -288,7 +288,7 @@ void main() {
 
       expect(repository.importCallCount, 1);
       expect(repository.importedAccounts, hasLength(2));
-      expect(find.text('Đã import 2 tài khoản.'), findsOneWidget);
+      expect(find.text('Đã nhập 2 mã.'), findsOneWidget);
     },
   );
 
@@ -352,7 +352,7 @@ void main() {
         period: 60,
       ),
     );
-    expect(find.text('Đã import 1 tài khoản.'), findsOneWidget);
+    expect(find.text('Đã nhập 1 mã.'), findsOneWidget);
   });
 
   testWidgets('hủy Google migration preview không mutate repository', (

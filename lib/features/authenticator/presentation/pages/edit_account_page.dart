@@ -133,7 +133,7 @@ class _EditAccountPageState extends State<EditAccountPage> {
       Navigator.of(context).maybePop();
     }
     messenger.showSnackBar(
-      const SnackBar(content: Text('Đã cập nhật tài khoản.')),
+      const SnackBar(content: Text('Đã cập nhật mã xác thực.')),
     );
   }
 
@@ -155,7 +155,7 @@ class _EditAccountPageState extends State<EditAccountPage> {
       appBar: AppBar(
         backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         elevation: 0,
-        title: const Text('Chỉnh sửa tài khoản'),
+        title: const Text('Sửa mã xác thực'),
       ),
       body: BlocListener<AccountsBloc, AccountsState>(
         listener: (context, state) {
@@ -171,7 +171,7 @@ class _EditAccountPageState extends State<EditAccountPage> {
                 _isSubmitting = false;
                 _activeOperationToken = null;
               });
-              _showError('Không thể cập nhật tài khoản: ${state.message}');
+              _showError(state.message);
             }
           }
         },
@@ -199,11 +199,11 @@ class _EditAccountPageState extends State<EditAccountPage> {
                     key: EditAccountPage.issuerFieldKey,
                     controller: _issuerController,
                     decoration: const InputDecoration(
-                      labelText: 'Nhà cung cấp (ví dụ: Google, GitHub)',
-                      hintText: 'Nhập tên nhà cung cấp',
+                      labelText: 'Dịch vụ',
+                      hintText: 'Ví dụ: Google',
                     ),
                     validator: (value) => (value == null || value.isEmpty)
-                        ? 'Vui lòng nhập nhà cung cấp.'
+                        ? 'Nhập tên dịch vụ.'
                         : null,
                   ),
                   const SizedBox(height: 16),
@@ -211,10 +211,11 @@ class _EditAccountPageState extends State<EditAccountPage> {
                     key: EditAccountPage.accountNameFieldKey,
                     controller: _accountNameController,
                     decoration: const InputDecoration(
-                      labelText: 'Tên tài khoản (ví dụ: user@example.com)',
+                      labelText: 'Tài khoản',
+                      hintText: 'Ví dụ: user@example.com',
                     ),
                     validator: (value) => (value == null || value.isEmpty)
-                        ? 'Vui lòng nhập tên tài khoản.'
+                        ? 'Nhập tên tài khoản.'
                         : null,
                   ),
                   const SizedBox(height: 16),
@@ -222,11 +223,12 @@ class _EditAccountPageState extends State<EditAccountPage> {
                     key: EditAccountPage.secretFieldKey,
                     controller: _secretController,
                     decoration: InputDecoration(
-                      labelText: 'Secret key (mã hóa Base32)',
+                      labelText: 'Khóa thiết lập',
+                      helperText: 'Chuỗi Base32 do dịch vụ cung cấp',
                       suffixIcon: IconButton(
                         tooltip: _obscureSecret
-                            ? 'Hiện secret key'
-                            : 'Ẩn secret key',
+                            ? 'Hiện khóa thiết lập'
+                            : 'Ẩn khóa thiết lập',
                         icon: Icon(
                           _obscureSecret
                               ? Icons.visibility_off_outlined
@@ -243,7 +245,7 @@ class _EditAccountPageState extends State<EditAccountPage> {
                     textCapitalization: TextCapitalization.characters,
                     validator: (value) {
                       if (value == null || value.isEmpty) {
-                        return 'Vui lòng nhập secret key.';
+                        return 'Nhập khóa thiết lập.';
                       }
                       return null;
                     },
