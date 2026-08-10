@@ -103,6 +103,18 @@ hiển thị protected QR export.
 - Partial config hoặc service-role-looking config fail release validation.
 - `.env`, `.env.server`, signing/key material ignored và không vào artifact.
 
+### Provider logo asset
+
+- Logo provider được bundle local từ snapshot Sentinel Icons đã pin; runtime
+  không tải ảnh, không gửi issuer cho CDN/dịch vụ thứ ba.
+- Source commit, MIT License, mapping hash và checksum từng PNG được theo dõi;
+  LicensePage hiển thị entry `sentinel-icons`.
+- Logo/trademark thuộc chủ sở hữu tương ứng và chỉ dùng để nhận diện dịch vụ,
+  không ngụ ý liên kết/chứng thực. Update phải review contribution provenance và
+  trademark-purpose; khi có khiếu nại có thể xóa asset mà không chạm TOTP data.
+- Hai mapping upstream chưa có asset (`bingotp`, `wppokta`) fail-safe về avatar
+  ký tự thay vì fuzzy-match sang logo có thể sai.
+
 ## Destructive semantics
 
 - Xóa account khi đang đăng nhập: local xóa trước, cloud tombstone retry tới khi

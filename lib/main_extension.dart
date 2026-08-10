@@ -4,10 +4,12 @@ import 'package:hyper_authenticator/chrome_extension/data/secure_supabase_storag
 import 'package:hyper_authenticator/chrome_extension/presentation/chrome_extension_app.dart';
 import 'package:hyper_authenticator/chrome_extension/presentation/chrome_extension_router.dart';
 import 'package:hyper_authenticator/core/config/app_config.dart';
+import 'package:hyper_authenticator/core/licenses/third_party_asset_licenses.dart';
 import 'package:hyper_authenticator/core/storage/secure_key_value_store.dart';
 import 'package:hyper_authenticator/core/theme/theme_cubit.dart';
 import 'package:hyper_authenticator/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:hyper_authenticator/features/authenticator/presentation/bloc/accounts_bloc.dart';
+import 'package:hyper_authenticator/features/authenticator/presentation/services/provider_logo_catalog.dart';
 import 'package:hyper_authenticator/features/sync/presentation/bloc/sync_bloc.dart';
 import 'package:hyper_authenticator/injection_container.dart' as di;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -17,8 +19,10 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 /// `--dart-define=HYPER_CHROME_EXTENSION=true` via the extension harness.
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  registerThirdPartyAssetLicenses();
 
   try {
+    await ProviderLogoCatalog.instance.loadBestEffort();
     await di.configureDependencies();
     final appConfig = di.sl<AppConfig>();
     if (appConfig.cloudEnabled) {

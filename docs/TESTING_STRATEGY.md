@@ -14,6 +14,11 @@ physical-device hoặc production evidence.
 | Schema Supabase | `scripts/agent/check.sh backend` + remote contract sau deploy |
 | Platform-specific | Build và runtime smoke target đó |
 
+`scripts/agent/check_provider_logo_catalog.sh` nằm trong quick/full gate: xác
+minh source pin, mapping/license SHA-256, checksum 1.076 image, payload chỉ
+PNG/JPEG, không có filename collision và unresolved mapping chỉ đúng allowlist đã
+review.
+
 `full = app + backend + release + infra`.
 
 ## Unit/domain
@@ -35,6 +40,8 @@ physical-device hoặc production evidence.
 - Product info/copy: version hiển thị phải khớp `pubspec.yaml`; bottom sheet
   Giới thiệu phải pass contrast/tap-target ở light/dark, 320 px và text scale
   200%.
+- Provider logo: exact/`.com`/first-word normalization, case-sensitive asset,
+  local typo override, provider mới/cũ, unknown/missing fallback và clip tròn.
 - Chrome Extension: Supabase session/PKCE namespace đi qua secure-store; native
   local-vault regression vẫn pass sau storage abstraction. Package gate kiểm tra
   MV3 Side Panel/CSP/permission/host allowlist, local CanvasKit/WASM/Roboto,

@@ -132,6 +132,14 @@ signing certificate của dự án; package Windows/Linux chưa code-sign.
 
 ## Điểm mới
 
+- Tài khoản TOTP của provider đã nhận diện tự hiển thị logo local: catalog có
+  1.076 logo và 1.201 issuer/alias, gồm Google, Microsoft, GitHub, Vercel và
+  nhiều dịch vụ phổ biến khác.
+- Provider chưa nhận diện hoặc asset lỗi vẫn fallback về avatar chữ cái; logo
+  không được lưu vào account, không đổi dữ liệu local/cloud và không cần tải từ
+  Internet khi chạy.
+- Catalog Sentinel Icons được pin theo source commit, kèm MIT License, checksum
+  và integrity gate trong CI.
 - Đăng nhập là tùy chọn: không đăng nhập vẫn dùng vault local bình thường.
 - Khi đăng nhập, tài khoản TOTP tự đồng bộ qua cloud và nhận tín hiệu thay đổi
   Realtime; thêm/sửa/xóa được áp dụng cho cùng tài khoản trên các thiết bị.
@@ -165,6 +173,9 @@ signing certificate của dự án; package Windows/Linux chưa code-sign.
   checksum và static security contract đã pass, nhưng clean-profile/restart/
   tamper/cross-device runtime acceptance vẫn chưa có evidence. Chỉ dùng với dữ
   liệu test hoặc bản sao có thể khôi phục; không phải Chrome Web Store release.
+- Catalog provider logo làm artifact lớn hơn khoảng 28,5 MB raw. Brand mark chỉ
+  dùng để nhận diện dịch vụ; upstream có MIT License ở cấp repository nhưng
+  không cung cấp provenance/license riêng cho từng brand mark.
 - SMTP production chưa được owner cấu hình; email khôi phục mật khẩu có thể chưa tới mailbox thật.
 - Khi đăng nhập, mã được đồng bộ tự động qua Supabase Vault. Đây là mã hóa do
   server quản lý, không phải zero-knowledge E2EE.

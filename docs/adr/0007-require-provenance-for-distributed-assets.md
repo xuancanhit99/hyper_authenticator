@@ -36,3 +36,10 @@ Asset bên thứ ba mới phải đi kèm:
 - `rg` không còn reference Averta/logo map.
 - `flutter analyze`, `flutter test` và platform build pass.
 - `pubspec.yaml` chỉ bundle branding được dùng bởi app/splash/launcher.
+
+## Diễn tiến
+
+ADR-0023 ngày 10-08-2026 không hoàn tác provenance rule này. Sau khi xác định
+được nguồn snapshot lịch sử, owner chấp nhận vendor một snapshot Sentinel Icons
+mới có commit pin, MIT License, NOTICE và checksum. Bộ không rõ nguồn năm 2025
+vẫn không được khôi phục trực tiếp.
