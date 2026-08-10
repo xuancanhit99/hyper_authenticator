@@ -124,7 +124,7 @@ Hyper Authenticator là ứng dụng TOTP Flutter đa nền tảng, local-first:
 | Chrome Extension current profile | Owner manual smoke: Side Panel render sau local Roboto bundle, login Supabase, sync và session còn sau đóng/mở Chrome ngày 09-08-2026; không phải clean-profile/tamper evidence |
 | iOS physical Ad Hoc | `1.1.0 (13)` chứa client Realtime, ký Distribution và upgrade-install pass trên iPhone 16 Pro ngày 05-08-2026; device query xác nhận build 13, auto-launch chờ user unlock |
 | Android physical qua ADB Wi-Fi | Release-mode `1.1.0 (13)` ký lại bằng đúng debug certificate đang cài đã upgrade-install/launch pass ngày 05-08-2026, giữ app data; APK production-signing riêng đã verify nhưng không cài đè do signer khác |
-| GitHub Preview 1.1.2 | Public pre-release [`v1.1.2-preview.3`](https://github.com/xuancanhit99/hyper_authenticator/releases/tag/v1.1.2-preview.3) từ commit `b0a0d983ced69b405c5c3063a2ef90219772470e`; exact tag CI run [`31394148750`](https://github.com/xuancanhit99/hyper_authenticator/actions/runs/31394148750) pass 8/8 và publish run [`31395060378`](https://github.com/xuancanhit99/hyper_authenticator/actions/runs/31395060378) pass ngày 10-08-2026; public verifier độc lập [`31395351977`](https://github.com/xuancanhit99/hyper_authenticator/actions/runs/31395351977) xác nhận đúng 9 asset, digest/checksum/manifest, Android signer pin, Debian, Windows PE32 và Chrome Extension package |
+| GitHub Preview 1.1.3 | Public pre-release [`v1.1.3-preview.1`](https://github.com/xuancanhit99/hyper_authenticator/releases/tag/v1.1.3-preview.1) từ commit `0a2105d1a7f7ecd92a537284977026fa94fcad34`; exact tag CI run [`31406851631`](https://github.com/xuancanhit99/hyper_authenticator/actions/runs/31406851631) pass 8/8 và publish run [`31407810354`](https://github.com/xuancanhit99/hyper_authenticator/actions/runs/31407810354) pass ngày 10-08-2026; public verifier độc lập [`31407979891`](https://github.com/xuancanhit99/hyper_authenticator/actions/runs/31407979891) xác nhận đúng 9 asset, digest/checksum/manifest, Android signer pin, Debian, Windows PE32 và Chrome Extension package |
 | Production Supabase | ADR-0020 + ADR-0021 đã deploy; remote contract pass 26/26; final audit 0 test account/user/Vault orphan; health pass |
 | Backup Realtime rollout | Pre `supabase-20260805T154247Z` và post `supabase-20260805T161016Z`: checksum, full restore rehearsal và encrypted off-host copy pass |
 
@@ -142,7 +142,7 @@ Hyper Authenticator là ứng dụng TOTP Flutter đa nền tảng, local-first:
    chưa có evidence tương đương. Background vẫn chờ app resume vì OS có thể
    suspend WebSocket.
 5. **Phát hành:** Android signed APK, Windows x64 installer và Linux amd64 Debian
-   package đã có trên GitHub Preview 8. Windows/Linux vẫn unsigned; iOS/macOS
+   package đã có trên GitHub Preview hiện tại. Windows/Linux vẫn unsigned; iOS/macOS
    chưa có GitHub binary và toàn bộ app-store rollout vẫn để sau.
 6. **Release inputs:** store signing/notarization, SMTP, public privacy/support URL
    và external alert destination vẫn để sau.
