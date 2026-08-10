@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:hyper_authenticator/app.dart';
 import 'package:hyper_authenticator/core/config/app_config.dart';
+import 'package:hyper_authenticator/core/licenses/third_party_asset_licenses.dart';
 import 'package:hyper_authenticator/core/router/app_router_registration.dart';
 import 'package:hyper_authenticator/core/router/app_url_strategy.dart';
 import 'package:hyper_authenticator/core/storage/windows_storage_migrator.dart';
@@ -10,6 +11,7 @@ import 'package:hyper_authenticator/core/theme/theme_cubit.dart';
 import 'package:hyper_authenticator/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:hyper_authenticator/features/authenticator/presentation/bloc/accounts_bloc.dart';
 import 'package:hyper_authenticator/features/authenticator/presentation/bloc/local_auth_bloc.dart';
+import 'package:hyper_authenticator/features/authenticator/presentation/services/provider_logo_catalog.dart';
 import 'package:hyper_authenticator/features/sync/presentation/bloc/sync_bloc.dart';
 import 'package:hyper_authenticator/injection_container.dart' as di;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -18,8 +20,10 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   configureAppUrlStrategy();
+  registerThirdPartyAssetLicenses();
 
   try {
+    await ProviderLogoCatalog.instance.loadBestEffort();
     await migrateWindowsStorageLayout();
     await di.configureDependencies();
     registerDefaultAppRouter();

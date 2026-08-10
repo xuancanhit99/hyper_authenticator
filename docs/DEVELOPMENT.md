@@ -68,9 +68,27 @@ flutter test
 scripts/agent/check.sh quick
 ```
 
+Provider logo catalog có gate riêng:
+
+```bash
+scripts/agent/check_provider_logo_catalog.sh
+```
+
+Catalog được pin tại `third_party/sentinel-icons/SOURCE.json`. Khi nâng phiên bản:
+
+1. checkout chính xác commit Sentinel Icons dự kiến, không copy trực tiếp `main`;
+2. review icon/mapping thêm, xóa, đổi cùng license và provenance của contribution;
+3. thay PNG + mapping nguyên bản, chỉ thêm local override có giải thích;
+4. cập nhật `SOURCE.json`, `SHA256SUMS`, NOTICE và ADR/task evidence;
+5. chạy catalog gate, full gate, build và visual smoke trên target/extension.
+
+Không đổi resolver thành tải logo qua network vì issuer có thể là metadata nhạy
+cảm và app phải hoạt động offline.
+
 Khi tăng `version` trong `pubspec.yaml`, cập nhật cùng lúc
-`AppMetadata.versionName/buildNumber`. Test metadata sẽ fail nếu hai nguồn lệch
-nhau; version hiển thị trong Settings không được nhập riêng ngoài contract này.
+`AppMetadata.versionName/buildNumber` và `chrome_extension/manifest.json`.
+Test metadata sẽ fail nếu ba nguồn lệch nhau; version hiển thị trong Settings
+không được nhập riêng ngoài contract này.
 
 Scope auth/storage/sync/routing/plugin/platform:
 

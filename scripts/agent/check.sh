@@ -103,6 +103,8 @@ run_infra_harness() {
 run_quick() {
   local status=0
   run_docs || status=1
+  printf '\n%s\n' "== Provider logo catalog gate =="
+  scripts/agent/check_provider_logo_catalog.sh || status=1
   run_generated || status=1
   printf '\n%s\n' "== Formatting gate =="
   dart format --output=none --set-exit-if-changed \

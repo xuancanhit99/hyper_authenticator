@@ -1,7 +1,7 @@
 name: hyper_authenticator
 description: Ứng dụng xác thực TOTP đa nền tảng.
 publish_to: 'none'
-version: 1.1.2+16
+version: 1.1.3+17
 
 environment:
   sdk: ^3.12.0
@@ -66,6 +66,10 @@ flutter:
   assets:
     - assets/fonts/
     - assets/logos/
+    - assets/logos/authenticators/
+    - assets/data/authenticator_logo_map.json
+    - assets/data/authenticator_logo_overrides.json
+    - third_party/sentinel-icons/LICENSE
   fonts:
     # Extension MV3 CSP intentionally blocks remote Google Fonts. Bundle the
     # default Material family so CanvasKit can render Vietnamese offline.

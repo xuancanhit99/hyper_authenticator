@@ -19,6 +19,8 @@
 - `secretKey`: Base32 credential, không log/analytics.
 - `algorithm`: SHA1/SHA256/SHA512; `digits`: 6–8; `period`: số giây dương.
 - Legacy record thiếu optional parameter đọc theo SHA1/6/30 và phải round-trip.
+- Provider logo không thuộc `AuthenticatorAccount`, vault hoặc cloud payload. UI
+  chỉ suy ra asset từ `issuer`; thay/loại catalog không cần data migration.
 
 ## Local vault v2
 

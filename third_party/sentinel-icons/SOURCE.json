@@ -1,0 +1,13 @@
+{
+  "repository": "https://github.com/tommycarpi/sentinel-icons",
+  "commit": "626fd8d8014168fbd2e39b6ede8c8a9a50dc8432",
+  "commitDate": "2026-07-19T15:58:34+02:00",
+  "retrievedDate": "2026-08-10",
+  "mappingPath": "icons/index.json",
+  "mappingSha256": "439f174115adc63806f0edc4211268f7cf82c4c1bf43febadd8d8ff59ca0680e",
+  "licenseSha256": "944dcb819de7fe2a8973d2cdb60cdea389f9968a84cbb9ef759713eb9db8e3b6",
+  "assetCount": 1076,
+  "assetBytes": 28490433,
+  "pngPayloadCount": 1038,
+  "jpegPayloadCountWithPngExtension": 38
+}

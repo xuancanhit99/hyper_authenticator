@@ -198,11 +198,27 @@ cầu `AccountsBloc` reload list.
   layout bên ngoài sở hữu margin.
 - App chỉ phát hành locale tiếng Việt. `AppCopy` giữ tên sản phẩm và thuật ngữ
   lặp lại giữa app chính/Chrome Extension; câu theo ngữ cảnh vẫn nằm gần widget.
-  `AppMetadata` hiển thị version trong Giới thiệu và có test khóa với version
-  canonical trong `pubspec.yaml`.
+  `AppMetadata` hiển thị version trong Giới thiệu và có test khóa cả UI metadata
+  lẫn Chrome Extension manifest với version canonical trong `pubspec.yaml`.
 - App Lock fail closed trên error/cancel.
 - Privacy Shield chặn interaction/semantics ngoài foreground nhưng không ngăn OS
   screenshot/recording.
+
+## Provider logo catalog
+
+`ProviderLogoCatalog` load mapping và inventory asset local trước `runApp` cho cả
+ứng dụng chính lẫn Chrome Extension. Resolver chuẩn hóa issuer theo exact value,
+biến thể bỏ `.com` và first-word fallback; lookup không gửi request mạng hoặc ghi
+log issuer. Mapping chỉ quyết định presentation:
+
+- match hợp lệ: `AccountAvatar` render PNG trong clip tròn;
+- issuer/mapping/asset không hợp lệ: render avatar ký tự hoặc shield;
+- catalog bootstrap lỗi: toàn bộ app tiếp tục bằng fallback, local TOTP không bị
+  chặn.
+
+Snapshot Sentinel Icons, source commit, MIT License, checksum và local typo
+override nằm trong `third_party/sentinel-icons` theo ADR-0023. Logo không phải
+persisted field và dialog chọn logo cũ không được khôi phục.
 
 ## Failure behavior
 

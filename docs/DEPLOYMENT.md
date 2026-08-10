@@ -120,6 +120,11 @@ Release public đã xác minh hiện tại:
 - Android APK đã ký; Windows x64 installer và Linux amd64 Debian package chưa
   code-sign. iOS/macOS không thuộc asset contract của Preview này.
 
+Release candidate kế tiếp là package `1.1.3+17`, dự kiến tag
+`v1.1.3-preview.1`, bổ sung provider logo catalog local. Candidate chỉ được gọi
+là public release sau khi exact-tag CI, publish workflow và public verifier đều
+pass; section release public phía trên vẫn là nguồn sự thật cho tới lúc đó.
+
 ## Web
 
 Flutter Web dùng public runtime config và Nginx serving contract. Account sync

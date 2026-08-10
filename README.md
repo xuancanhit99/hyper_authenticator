@@ -148,6 +148,8 @@ Trạng thái production rollout được ghi riêng trong
 ## Đóng góp và giấy phép
 
 Đọc [Hướng dẫn đóng góp](CONTRIBUTING.md). Source do dự án sở hữu được phát hành
-theo [Apache License 2.0](LICENSE). Release chỉ bundle branding do owner kiểm soát;
-asset bên thứ ba mới phải có provenance/license/NOTICE theo
+theo [Apache License 2.0](LICENSE). Provider logo vendored từ Sentinel Icons có
+source pin, MIT License và checksum trong `third_party/sentinel-icons`; trademark
+thuộc chủ sở hữu tương ứng và chỉ dùng để nhận diện dịch vụ. Asset bên thứ ba
+khác vẫn phải có provenance/license/NOTICE theo
 [ADR-0007](docs/adr/0007-require-provenance-for-distributed-assets.md).
