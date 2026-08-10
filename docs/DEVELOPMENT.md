@@ -68,6 +68,10 @@ flutter test
 scripts/agent/check.sh quick
 ```
 
+Khi tăng `version` trong `pubspec.yaml`, cập nhật cùng lúc
+`AppMetadata.versionName/buildNumber`. Test metadata sẽ fail nếu hai nguồn lệch
+nhau; version hiển thị trong Settings không được nhập riêng ngoài contract này.
+
 Scope auth/storage/sync/routing/plugin/platform:
 
 ```bash

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:hyper_authenticator/core/localization/app_copy.dart';
 import 'package:hyper_authenticator/core/platform/system_ui_interaction_guard.dart';
 import 'package:hyper_authenticator/core/router/app_router.dart';
 import 'package:hyper_authenticator/core/security/privacy_shield.dart';
@@ -61,7 +62,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     final themeState = context.watch<ThemeCubit>().state;
 
     return MaterialApp.router(
-      title: 'Hyper Authenticator',
+      title: AppCopy.appName,
       locale: const Locale('vi'),
       supportedLocales: const [Locale('vi')],
       localizationsDelegates: const [

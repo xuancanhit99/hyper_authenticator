@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:hyper_authenticator/core/config/app_config.dart';
+import 'package:hyper_authenticator/core/localization/app_copy.dart';
 import 'package:hyper_authenticator/core/widgets/responsive_content.dart';
 import 'package:hyper_authenticator/features/auth/domain/entities/user_entity.dart';
 import 'package:hyper_authenticator/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:hyper_authenticator/features/settings/presentation/bloc/settings_bloc.dart';
 import 'package:hyper_authenticator/features/settings/presentation/widgets/appearance_style_picker.dart';
 import 'package:hyper_authenticator/features/settings/presentation/widgets/cloud_account_action_tile.dart';
+import 'package:hyper_authenticator/features/settings/presentation/widgets/product_info_tile.dart';
 import 'package:hyper_authenticator/features/sync/presentation/bloc/sync_bloc.dart';
 import 'package:hyper_authenticator/injection_container.dart';
 import 'package:intl/intl.dart';
@@ -36,7 +38,7 @@ class _SettingsView extends StatelessWidget {
     final cloudConfigured = sl<AppConfig>().cloudEnabled;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Cài đặt')),
+      appBar: AppBar(title: const Text(AppCopy.settings)),
       body: BlocConsumer<SettingsBloc, SettingsState>(
         listenWhen: (previous, current) =>
             previous is SettingsLoaded && current is SettingsError,
@@ -66,7 +68,7 @@ class _SettingsView extends StatelessWidget {
                       onPressed: () =>
                           context.read<SettingsBloc>().add(LoadSettings()),
                       icon: const Icon(Icons.refresh),
-                      label: const Text('Thử lại'),
+                      label: const Text(AppCopy.retry),
                     ),
                   ],
                 ),
@@ -112,6 +114,9 @@ class _SettingsView extends StatelessWidget {
                 const SizedBox(height: 20),
                 const _SectionLabel('Hiển thị'),
                 const Card(child: AppearanceStylePicker()),
+                const SizedBox(height: 20),
+                const _SectionLabel('Thông tin'),
+                const Card(child: ProductInfoTile()),
                 const SizedBox(height: 32),
               ],
             ),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:hyper_authenticator/core/localization/app_copy.dart';
 
 class MainNavigationPage extends StatelessWidget {
   static const accountsTabKey = Key('main_navigation_accounts_tab');
@@ -41,12 +42,12 @@ class MainNavigationPage extends StatelessWidget {
                   NavigationRailDestination(
                     icon: Icon(Icons.shield_outlined, key: accountsTabKey),
                     selectedIcon: Icon(Icons.shield, key: accountsTabKey),
-                    label: Text('Tài khoản'),
+                    label: Text(AppCopy.accounts),
                   ),
                   NavigationRailDestination(
                     icon: Icon(Icons.settings_outlined, key: settingsTabKey),
                     selectedIcon: Icon(Icons.settings, key: settingsTabKey),
-                    label: Text('Cài đặt'),
+                    label: Text(AppCopy.settings),
                   ),
                 ],
               ),
@@ -71,13 +72,13 @@ class MainNavigationPage extends StatelessWidget {
               key: accountsTabKey,
               icon: Icon(Icons.shield_outlined),
               selectedIcon: Icon(Icons.shield),
-              label: 'Tài khoản',
+              label: AppCopy.accounts,
             ),
             NavigationDestination(
               key: settingsTabKey,
               icon: Icon(Icons.settings_outlined),
               selectedIcon: Icon(Icons.settings),
-              label: 'Cài đặt',
+              label: AppCopy.settings,
             ),
           ],
         ),
