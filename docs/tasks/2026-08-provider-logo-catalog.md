@@ -56,10 +56,13 @@ hiển thị avatar chữ cái an toàn.
 | `scripts/agent/check.sh full` | Pass: docs/codegen/format/analyze/platform, 242 Flutter test, backend/release/infra | 2026-08-10 |
 | `scripts/agent/build_chrome_extension.sh` | Pass package verifier; ZIP 42.460.896 byte, đủ 1.076 logo + MIT License | 2026-08-10 |
 | `scripts/agent/check_secrets.sh` | Pass, không phát hiện leak | 2026-08-10 |
+| Exact-tag CI `31406851631` | Pass 8/8 trên tag `v1.1.3-preview.1` tại commit `0a2105d` | 2026-08-10 |
+| Publish `31407810354` + public verifier `31407979891` | Pass; public non-draft pre-release đủ 9 asset | 2026-08-10 |
 
-Package source được nâng thành `1.1.3+17`; GitHub Preview dự kiến là
-`v1.1.3-preview.1`. Trạng thái public chỉ được cập nhật sau exact-tag CI và
-public verifier, không suy ra từ việc build local.
+Package `1.1.3+17` đã phát hành tại
+[`v1.1.3-preview.1`](https://github.com/xuancanhit99/hyper_authenticator/releases/tag/v1.1.3-preview.1).
+Exact-tag CI, publish workflow và public verifier đều pass; release có Android,
+Windows, Linux và Chrome Extension cùng checksum, chưa có iOS/macOS binary.
 
 ## Tác động tài liệu
 

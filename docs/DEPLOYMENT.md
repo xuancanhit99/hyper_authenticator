@@ -106,24 +106,22 @@ khi certificate fingerprint khớp pin. Windows/Linux unsigned phải ghi Previe
 
 Release public đã xác minh hiện tại:
 
-- Public pre-release: [`v1.1.2-preview.3`](https://github.com/xuancanhit99/hyper_authenticator/releases/tag/v1.1.2-preview.3).
-- Package version `1.1.2+16`, source commit
-  `b0a0d983ced69b405c5c3063a2ef90219772470e`.
-- Exact tag CI run [`31394148750`](https://github.com/xuancanhit99/hyper_authenticator/actions/runs/31394148750)
+- Public pre-release: [`v1.1.3-preview.1`](https://github.com/xuancanhit99/hyper_authenticator/releases/tag/v1.1.3-preview.1).
+- Package version `1.1.3+17`, source commit
+  `0a2105d1a7f7ecd92a537284977026fa94fcad34`.
+- Exact tag CI run [`31406851631`](https://github.com/xuancanhit99/hyper_authenticator/actions/runs/31406851631)
   pass 8/8 Android/Apple/Web/Linux/Windows/Extension, quality và secret-history.
-- Publish workflow [`31395060378`](https://github.com/xuancanhit99/hyper_authenticator/actions/runs/31395060378)
+- Publish workflow [`31407810354`](https://github.com/xuancanhit99/hyper_authenticator/actions/runs/31407810354)
   pass và tạo public non-draft pre-release từ exact tag artifact.
-- Public verifier [`31395351977`](https://github.com/xuancanhit99/hyper_authenticator/actions/runs/31395351977)
+- Public verifier [`31407979891`](https://github.com/xuancanhit99/hyper_authenticator/actions/runs/31407979891)
   tải lại như người dùng chưa đăng nhập và xác nhận đúng 9 asset, GitHub digest,
   checksum/manifest, Android signer pin, Debian package, Windows PE32 và Chrome
   Extension package ngày 10-08-2026.
 - Android APK đã ký; Windows x64 installer và Linux amd64 Debian package chưa
   code-sign. iOS/macOS không thuộc asset contract của Preview này.
 
-Release candidate kế tiếp là package `1.1.3+17`, dự kiến tag
-`v1.1.3-preview.1`, bổ sung provider logo catalog local. Candidate chỉ được gọi
-là public release sau khi exact-tag CI, publish workflow và public verifier đều
-pass; section release public phía trên vẫn là nguồn sự thật cho tới lúc đó.
+Preview này bổ sung provider logo catalog local đã pin; Chrome Extension ZIP có
+42.460.989 byte và Android APK có 100.997.481 byte sau khi bundle catalog.
 
 ## Web
 
