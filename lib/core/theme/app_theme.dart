@@ -48,6 +48,9 @@ class AppTheme {
       cardTheme: CardThemeData(
         clipBehavior: Clip.antiAlias,
         color: palette.surfaceCard,
+        surfaceTintColor: Colors.transparent,
+        margin: EdgeInsets.zero,
+        elevation: 1,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(palette.cardRadius),
         ),
@@ -61,9 +64,34 @@ class AppTheme {
         onPrimary: palette.onPrimary,
         radius: palette.controlRadius,
       ),
-      filledButtonTheme: CFilledButtonTheme.filledButtonTheme,
+      filledButtonTheme: CFilledButtonTheme.themed(
+        radius: palette.controlRadius,
+      ),
       inputDecorationTheme: CTextFormFieldTheme.themed(
         primary: palette.primary,
+        radius: palette.controlRadius,
+      ),
+      dividerTheme: DividerThemeData(
+        color: palette.textSecondary.withValues(alpha: 0.24),
+        space: 1,
+        thickness: 1,
+      ),
+      dialogTheme: DialogThemeData(
+        backgroundColor: palette.surfaceCard,
+        surfaceTintColor: Colors.transparent,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(palette.dialogRadius),
+        ),
+      ),
+      bottomSheetTheme: BottomSheetThemeData(
+        backgroundColor: palette.surfaceCard,
+        modalBackgroundColor: palette.surfaceCard,
+        surfaceTintColor: Colors.transparent,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(
+            top: Radius.circular(palette.sheetRadius),
+          ),
+        ),
       ),
       navigationBarTheme: NavigationBarThemeData(
         backgroundColor: palette.background,

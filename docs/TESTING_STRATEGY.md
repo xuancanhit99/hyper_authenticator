@@ -30,7 +30,8 @@ physical-device hoặc production evidence.
 - Realtime wake-up: auth subscribe/switch/logout, reconnect, debounce, error
   fallback, own-topic authorization, client-send denial và payload allowlist.
 - Theme: six style/brightness combinations, transition opacity, persistence race,
-  cache repair và 320 px/200% accessibility.
+  cache repair, geometry token, 320 px/200% accessibility và component-gallery
+  golden ở viewport 390 × 844.
 - Chrome Extension: Supabase session/PKCE namespace đi qua secure-store; native
   local-vault regression vẫn pass sau storage abstraction. Package gate kiểm tra
   MV3 Side Panel/CSP/permission/host allowlist, local CanvasKit/WASM/Roboto,
@@ -122,6 +123,13 @@ Simulator/emulator bổ sung nhưng không thay physical camera/biometric eviden
 - UI sensitive flow phải có lifecycle/cancel/timeout test.
 - Không đưa real secret, full URI, password, email production hoặc token vào
   fixture/snapshot output.
+- Golden macOS và Linux nằm tại `test/core/theme/goldens`; Linux dùng hậu tố
+  `_linux` vì rasterizer khác hệ điều hành. Chỉ cập nhật bằng
+  `flutter test --update-goldens test/core/theme/app_theme_golden_test.dart`
+  trên đúng hệ điều hành sau khi review trực quan đủ sáu ảnh tương ứng; luôn
+  chạy lại test không có flag update để chứng minh snapshot ổn định.
+- Quality gate lưu `test/core/theme/failures` thành artifact trong bảy ngày khi
+  golden fail để reviewer phân biệt thay đổi có chủ đích với sai khác renderer.
 
 ## Baseline hiện tại
 

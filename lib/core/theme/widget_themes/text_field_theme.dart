@@ -3,13 +3,17 @@ import 'package:flutter/material.dart';
 class CTextFormFieldTheme {
   CTextFormFieldTheme._();
 
-  static InputDecorationTheme themed({required Color primary}) {
+  static InputDecorationTheme themed({
+    required Color primary,
+    double radius = 20,
+  }) {
+    final borderRadius = BorderRadius.circular(radius);
     return InputDecorationTheme(
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(100)),
+      border: OutlineInputBorder(borderRadius: borderRadius),
       prefixIconColor: primary,
       floatingLabelStyle: TextStyle(color: primary),
       focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(100),
+        borderRadius: borderRadius,
         borderSide: BorderSide(width: 2, color: primary),
       ),
     );

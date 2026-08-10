@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:hyper_authenticator/core/theme/app_style.dart';
 
-/// Resolved color tokens for one [AppStyle] × [Brightness] combination.
+/// Resolved visual tokens for one [AppStyle] × [Brightness] combination.
 ///
 /// [AppTheme] consumes these instead of reading [AppColors] directly so every
 /// style stays a pure data swap on top of the same widget structure.
@@ -18,6 +18,8 @@ class AppStylePalette {
     this.otpCode,
     this.cardRadius = 16,
     this.controlRadius = 20,
+    this.dialogRadius = 24,
+    this.sheetRadius = 28,
   });
 
   final Color primary;
@@ -42,6 +44,8 @@ class AppStylePalette {
 
   final double cardRadius;
   final double controlRadius;
+  final double dialogRadius;
+  final double sheetRadius;
 
   static AppStylePalette of(AppStyle style, Brightness brightness) {
     return switch ((style, brightness)) {

@@ -180,6 +180,10 @@ cầu `AccountsBloc` reload list.
   làm mất lựa chọn đã lưu. Theme áp dụng ngay, không có nút lưu.
 - Settings là entry point duy nhất để đổi style/mode; Accounts AppBar dành cho
   thao tác mã xác thực và không lặp lại quick theme action.
+- `AppStylePalette` là nguồn visual token cho màu và geometry. Card, ba loại
+  button, TextField, dialog và bottom sheet lấy radius từ palette; TextField
+  không dùng pill radius riêng. Card tự clip ripple, không có surface tint và
+  layout bên ngoài sở hữu margin.
 - App Lock fail closed trên error/cancel.
 - Privacy Shield chặn interaction/semantics ngoài foreground nhưng không ngăn OS
   screenshot/recording.

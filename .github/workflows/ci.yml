@@ -57,6 +57,14 @@ jobs:
           cache: true
       - run: flutter pub get
       - run: bash scripts/agent/check.sh full
+      - name: Lưu Flutter golden diff khi quality gate lỗi
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: flutter-golden-failures-${{ github.sha }}
+          path: test/core/theme/failures
+          if-no-files-found: ignore
+          retention-days: 7
 
   android:
     name: Android debug and tagged signed APK
