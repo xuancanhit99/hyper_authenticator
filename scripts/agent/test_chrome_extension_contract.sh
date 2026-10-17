@@ -5,8 +5,10 @@ ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
 MANIFEST="$ROOT/chrome_extension/manifest.json"
 BUILDER="$ROOT/scripts/agent/build_chrome_extension.sh"
 VERIFIER="$ROOT/scripts/agent/verify_chrome_extension_package.sh"
+PREPARER="$ROOT/scripts/agent/prepare_chrome_extension_font_fallbacks.sh"
+FALLBACK_LOCK="$ROOT/chrome_extension/font-fallbacks/sources.lock"
 
-bash -n "$BUILDER" "$VERIFIER"
+bash -n "$BUILDER" "$VERIFIER" "$PREPARER"
 jq -e '
   .manifest_version == 3 and
   .minimum_chrome_version == "114" and
@@ -37,6 +39,8 @@ if ! rg -q 'HYPER_CHROME_EXTENSION=true' "$BUILDER" ||
   ! rg -q 'ZIP_NAME.sha256' "$BUILDER" ||
   ! rg -q "fontFallbackBaseUrl: 'font-fallbacks/'" "$BUILDER" ||
   ! rg -q 'fallback_config_count' "$BUILDER" ||
+  ! rg -q 'prepare_chrome_extension_font_fallbacks.sh' "$BUILDER" ||
+  ! rg -q 'sources.lock' "$BUILDER" ||
   ! rg -q 'fallback_config_count' "$VERIFIER"; then
   echo "Chrome Extension builder không có entrypoint/vault contract." >&2
   exit 1
@@ -55,20 +59,19 @@ for font in Roboto-Regular.ttf Roboto-Medium.ttf Roboto-Bold.ttf; do
   }
 done
 
-fallback_font="$ROOT/chrome_extension/font-fallbacks/notosans/v37/o-0mIpQlx3QUlC5A4PNB6Ryti20_6n1iPHjcz6L1SoM-jCpoiyD9A99Y41P6zHtY.woff2"
-test -s "$fallback_font" || {
-  echo 'Chrome Extension thiếu Noto Sans fallback local.' >&2
+test -s "$FALLBACK_LOCK" || {
+  echo 'Chrome Extension thiếu font fallback lock.' >&2
   exit 1
 }
-file "$fallback_font" | grep -Fq 'Web Open Font Format (Version 2)' || {
-  echo 'Chrome Extension Noto Sans fallback không phải WOFF2 hợp lệ.' >&2
+if [[ $(awk -F '\t' '$3 ~ /\.woff2$/ { count++ } END { print count + 0 }' "$FALLBACK_LOCK") != 724 ]] ||
+  [[ $(awk -F '\t' '$3 ~ /^licenses\/[a-z0-9]+\/OFL\.txt$/ { count++ } END { print count + 0 }' "$FALLBACK_LOCK") != 144 ]]; then
+  echo 'Chrome Extension font fallback lock không cover đủ engine catalog/license.' >&2
   exit 1
-}
-test -s "$ROOT/chrome_extension/font-fallbacks/OFL.txt" &&
-  grep -Fq 'SIL Open Font License' "$ROOT/chrome_extension/font-fallbacks/OFL.txt" || {
-  echo 'Chrome Extension thiếu giấy phép Noto Sans OFL.' >&2
+fi
+if ! rg -q 'notosanshk/v32/.*\.119\.woff2' "$FALLBACK_LOCK"; then
+  echo 'Chrome Extension thiếu regression pin Noto Sans HK 104.' >&2
   exit 1
-}
+fi
 
 for icon_size in 16 32 48 128; do
   icon="$ROOT/chrome_extension/icons/icon-$icon_size.png"
@@ -90,6 +93,12 @@ fi
 
 temporary_dir=$(mktemp -d "${TMPDIR:-/tmp}/hyper-chrome-extension-contract.XXXXXX")
 trap 'rm -rf "$temporary_dir"' EXIT
+invalid_lock="$temporary_dir/missing-font.lock"
+sed '/notosanshk\/v32\/.*\.119\.woff2/d' "$FALLBACK_LOCK" >"$invalid_lock"
+if "$PREPARER" "$temporary_dir/cache" "$invalid_lock" >/dev/null 2>&1; then
+  echo 'Font fallback preparer không fail closed khi lock thiếu HK 104.' >&2
+  exit 1
+fi
 cp "$MANIFEST" "$temporary_dir/manifest.json"
 if "$VERIFIER" "$temporary_dir" >/dev/null 2>&1; then
   echo "Chrome Extension verifier không fail closed với package thiếu file." >&2

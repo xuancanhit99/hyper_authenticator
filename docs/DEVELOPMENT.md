@@ -25,6 +25,23 @@ scripts/agent/context.sh
 Đọc `AGENTS.md`, `docs/PROJECT_STATUS.md` và tài liệu canonical của subsystem.
 Không reset/format thay đổi không liên quan trong working tree.
 
+## Skill UI/UX theo repository
+
+**Đã triển khai:** `.agents/skills/ui-ux-pro-max` chứa hướng dẫn và bộ tra cứu
+UI/UX local, gồm guideline cho Flutter. Skill được version cùng source để các
+agent dùng chung; không phải dependency runtime và không vào app artifact.
+Nguồn/license cùng giới hạn provenance nằm trong `NOTICE.md` và `LICENSE` của
+skill. Khuyến nghị phải tuân thủ `AGENTS.md`, theme token và security contract
+hiện tại của dự án.
+
+Tra cứu và kiểm tra từ repository root bằng Python 3 (không cần package ngoài):
+
+```bash
+python3 .agents/skills/ui-ux-pro-max/scripts/search.py "navigation accessibility" --stack flutter
+python3 .agents/skills/ui-ux-pro-max/scripts/validate_data.py
+python3 -m unittest discover -s .agents/skills/ui-ux-pro-max/scripts/tests -v
+```
+
 ## Dependency và codegen
 
 ```bash
@@ -123,13 +140,20 @@ evidence cho hai platform đó.
 Foundation MV3 có entrypoint riêng và không dùng `.env.server`:
 
 ```bash
-scripts/agent/build_chrome_extension.sh .env
+scripts/agent/rebuild_chrome_extension_for_local_load.sh
 ```
+
+Lệnh maintainer này mặc định đọc `.env`, bắt buộc đủ public cloud config rồi gọi
+builder/package verifier. Có thể truyền một public config khác làm argument. Nó
+không chấp nhận local-only để tránh âm thầm ghi đè thư mục Chrome đang load bằng
+bản hiện “Đồng bộ chưa khả dụng”. Builder thấp tầng vẫn là
+`scripts/agent/build_chrome_extension.sh <public-config>` cho CI/harness.
 
 Kết quả:
 
 - `build/chrome-extension/unpacked`: load qua `chrome://extensions` → bật
-  Developer mode → **Load unpacked**;
+  Developer mode → **Load unpacked**; nếu đã load đường dẫn này thì bấm
+  **Reload** sau mỗi lần chạy command;
 - `build/chrome-extension/hyper-authenticator-<version>-chrome-extension.zip` và
   file `.sha256`: preview package, manifest ở root.
 
@@ -138,9 +162,18 @@ profile test riêng và test account/secret fixture không production. Harness
 reject remote executable code/PWA worker/source map/debug artifact; nó không
 thay thế clean-profile, restart, tamper và auth-sync acceptance.
 
-CanvasKit fallback font cũng phải self-hosted: builder đóng gói Noto Sans WOFF2
-cùng OFL license và ghi `fontFallbackBaseUrl: 'font-fallbacks/'` vào bootstrap.
-Không thêm `fonts.gstatic.com` vào CSP để xử lý warning font.
+CanvasKit fallback font cũng phải self-hosted: builder chuẩn bị đủ catalog đã pin
+cho Flutter engine 3.44.6 (724 WOFF2 + 144 OFL), verify SHA-256 rồi ghi
+`fontFallbackBaseUrl: 'font-fallbacks/'` vào bootstrap. Lần build đầu tải khoảng
+23 MB vào cache ignored `.dart_tool/chrome_extension_font_fallbacks`; các lần
+sau dùng lại cache đã verify. Không thêm `fonts.gstatic.com` vào CSP để xử lý
+warning font. Khi nâng Flutter, phải regenerate/review
+`chrome_extension/font-fallbacks/sources.lock` theo catalog engine mới.
+
+Chrome không chạy trực tiếp Dart source và không tự lấy artifact từ GitHub
+Release. `Load unpacked` luôn chạy snapshot cuối trong
+`build/chrome-extension/unpacked`; pull/merge source mới mà chưa chạy command
+trên thì UI vẫn là bản cũ.
 
 ## Android signing
 

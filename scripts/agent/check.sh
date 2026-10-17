@@ -58,14 +58,18 @@ run_release_harness() {
     scripts/agent/test_ide_run_config.sh \
     scripts/agent/web_runtime_smoke.sh \
     scripts/agent/build_chrome_extension.sh \
+    scripts/agent/rebuild_chrome_extension_for_local_load.sh \
+    scripts/agent/prepare_chrome_extension_font_fallbacks.sh \
     scripts/agent/verify_chrome_extension_package.sh \
-    scripts/agent/test_chrome_extension_contract.sh
+    scripts/agent/test_chrome_extension_contract.sh \
+    scripts/agent/test_chrome_extension_local_rebuild_contract.sh
   node --check tool/agent/web_runtime_probe.mjs
   scripts/agent/test_ide_run_config.sh
   scripts/agent/test_separate_local_env.sh
   scripts/agent/test_github_preview_assets.sh
   scripts/agent/test_github_preview_release_contract.sh
   scripts/agent/test_chrome_extension_contract.sh
+  scripts/agent/test_chrome_extension_local_rebuild_contract.sh
   web-deployment/test-production-rollback-contract.sh
 }
 

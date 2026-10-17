@@ -149,8 +149,9 @@ signing certificate của dự án; package Windows/Linux chưa code-sign.
 - Sửa preview phong cách bị hở viền bo góc, icon chế độ hiển thị bị checkmark
   chồng lớp và tab Tài khoản không phản hồi sau khi resume từ Cài đặt.
 - Cải thiện điều hướng, privacy shield, accessibility và trải nghiệm scanner.
-- Chrome Extension tự bundle font fallback CanvasKit, không cần kết nối Google
-  Fonts và vẫn giữ CSP chỉ cho phép origin Supabase cần thiết.
+- Chrome Extension tự bundle đủ catalog fallback CanvasKit đã pin checksum,
+  không cần kết nối Google Fonts và vẫn giữ CSP chỉ cho phép origin Supabase cần
+  thiết.
 
 ## Tải xuống
 
@@ -162,6 +163,14 @@ signing certificate của dự án; package Windows/Linux chưa code-sign.
   rồi dùng **Load unpacked** trong \`chrome://extensions\` của Chrome 114+.
 - Xác minh SHA-256 bằng file checksum cạnh từng installer hoặc \`SHA256SUMS.txt\`.
 - Flutter Web production: https://authenticator.hyperz.xyz/
+
+## Maintainer dùng Load unpacked từ project
+
+GitHub Release không tự cập nhật thư mục build local. Sau khi cập nhật
+\`master\`, chạy
+\`scripts/agent/rebuild_chrome_extension_for_local_load.sh\`, rồi mở
+\`chrome://extensions\` và bấm **Reload** ở Hyper Authenticator. Command bắt
+buộc public cloud config trong \`.env\` để không âm thầm tạo bản local-only.
 
 ## Cảnh báo bắt buộc
 

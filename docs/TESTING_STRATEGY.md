@@ -42,11 +42,18 @@ review.
   200%.
 - Provider logo: exact/`.com`/first-word normalization, case-sensitive asset,
   local typo override, provider mới/cũ, unknown/missing fallback và clip tròn.
+
+- Local rebuild harness:
+  `scripts/agent/test_chrome_extension_local_rebuild_contract.sh` khóa lệnh
+  **Load unpacked** mặc định dùng `.env`, bắt buộc cloud config, gọi đúng builder
+  và hướng dẫn Reload/path. Config local-only phải bị từ chối trước khi ghi đè
+  output Chrome đang dùng.
 - Chrome Extension: Supabase session/PKCE namespace đi qua secure-store; native
   local-vault regression vẫn pass sau storage abstraction. Package gate kiểm tra
   MV3 Side Panel/CSP/permission/host allowlist, local CanvasKit/WASM/Roboto,
   không CDN executable/PWA worker, không case-collision và vault WebCrypto
-  contract.
+  contract. Font gate khóa đúng 724 WOFF2 + 144 OFL theo URL/SHA-256, reject
+  thiếu/thừa/tamper và có regression riêng cho `Noto Sans HK 104`.
 
 ## Widget/navigation
 

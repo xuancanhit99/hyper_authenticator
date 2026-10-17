@@ -2,6 +2,19 @@
 set -euo pipefail
 
 PACKAGE_DIR=${1:?"Usage: verify_chrome_extension_package.sh <unpacked-dir>"}
+ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
+SOURCE_FALLBACK_LOCK="$ROOT/chrome_extension/font-fallbacks/sources.lock"
+EXPECTED_FALLBACK_ENTRIES=868
+EXPECTED_FALLBACK_FONTS=724
+EXPECTED_FALLBACK_LICENSES=144
+
+sha256_file() {
+  if command -v sha256sum >/dev/null 2>&1; then
+    sha256sum "$1" | awk '{print $1}'
+  else
+    shasum -a 256 "$1" | awk '{print $1}'
+  fi
+}
 
 if [[ ! -d "$PACKAGE_DIR" || ! -f "$PACKAGE_DIR/manifest.json" ]]; then
   echo "Chrome Extension package thiếu manifest.json ở root." >&2
@@ -56,11 +69,65 @@ test -f "$PACKAGE_DIR/assets/FontManifest.json"
 test -f "$PACKAGE_DIR/assets/assets/fonts/Roboto-Regular.ttf"
 test -f "$PACKAGE_DIR/assets/assets/fonts/Roboto-Medium.ttf"
 test -f "$PACKAGE_DIR/assets/assets/fonts/Roboto-Bold.ttf"
-fallback_font="$PACKAGE_DIR/font-fallbacks/notosans/v37/o-0mIpQlx3QUlC5A4PNB6Ryti20_6n1iPHjcz6L1SoM-jCpoiyD9A99Y41P6zHtY.woff2"
-test -s "$fallback_font"
-test -s "$PACKAGE_DIR/font-fallbacks/OFL.txt"
-file "$fallback_font" | grep -Fq 'Web Open Font Format (Version 2)'
-grep -Fq 'SIL Open Font License' "$PACKAGE_DIR/font-fallbacks/OFL.txt"
+fallback_root="$PACKAGE_DIR/font-fallbacks"
+fallback_lock="$fallback_root/sources.lock"
+if [[ ! -s "$SOURCE_FALLBACK_LOCK" ]] ||
+  [[ ! -s "$fallback_lock" ]] ||
+  ! cmp -s "$SOURCE_FALLBACK_LOCK" "$fallback_lock"; then
+  echo 'Chrome Extension font fallback lock thiếu hoặc không khớp source pin.' >&2
+  exit 1
+fi
+
+fallback_entries=$(awk -F '\t' 'NF { count++ } END { print count + 0 }' "$fallback_lock")
+fallback_fonts=$(awk -F '\t' '$3 ~ /\.woff2$/ { count++ } END { print count + 0 }' "$fallback_lock")
+fallback_licenses=$(awk -F '\t' '$3 ~ /^licenses\/[a-z0-9]+\/OFL\.txt$/ { count++ } END { print count + 0 }' "$fallback_lock")
+if [[ "$fallback_entries" != "$EXPECTED_FALLBACK_ENTRIES" ]] ||
+  [[ "$fallback_fonts" != "$EXPECTED_FALLBACK_FONTS" ]] ||
+  [[ "$fallback_licenses" != "$EXPECTED_FALLBACK_LICENSES" ]]; then
+  echo 'Chrome Extension font fallback inventory không đầy đủ.' >&2
+  exit 1
+fi
+
+expected_fallback_paths=$(mktemp "${TMPDIR:-/tmp}/hyper-fallback-expected.XXXXXX")
+actual_fallback_paths=$(mktemp "${TMPDIR:-/tmp}/hyper-fallback-actual.XXXXXX")
+trap 'rm -f "$expected_fallback_paths" "$actual_fallback_paths"' EXIT
+{
+  printf '%s\n' 'sources.lock'
+  cut -f3 "$fallback_lock"
+} | LC_ALL=C sort >"$expected_fallback_paths"
+(
+  cd "$fallback_root"
+  find . -type f -print | sed 's#^\./##' | LC_ALL=C sort
+) >"$actual_fallback_paths"
+if ! cmp -s "$expected_fallback_paths" "$actual_fallback_paths"; then
+  echo 'Chrome Extension font fallback package thiếu hoặc thừa file.' >&2
+  exit 1
+fi
+
+while IFS=$'\t' read -r expected_sha _ relative_path; do
+  fallback_file="$fallback_root/$relative_path"
+  if [[ ! -s "$fallback_file" ]] ||
+    [[ $(sha256_file "$fallback_file") != "$expected_sha" ]]; then
+    printf 'Chrome Extension font fallback sai checksum: %s\n' "$relative_path" >&2
+    exit 1
+  fi
+  if [[ "$relative_path" == *.woff2 ]]; then
+    file "$fallback_file" | grep -Fq 'Web Open Font Format (Version 2)' || {
+      printf 'Chrome Extension fallback không phải WOFF2: %s\n' "$relative_path" >&2
+      exit 1
+    }
+  else
+    grep -Fq 'SIL Open Font License' "$fallback_file" || {
+      printf 'Chrome Extension fallback thiếu OFL: %s\n' "$relative_path" >&2
+      exit 1
+    }
+  fi
+done <"$fallback_lock"
+
+test -s "$fallback_root/notosanshk/v32/nKKF-GM_FYFRJvXzVXaAPe97P1KHynJFP716qHB--oD7kYrUzT7-NvA3pTohjc3XVtNXX8A7gG1LO2KAPAw.119.woff2" || {
+  echo 'Chrome Extension thiếu regression font Noto Sans HK 104.' >&2
+  exit 1
+}
 for icon_size in 16 32 48 128; do
   icon="$PACKAGE_DIR/icons/icon-$icon_size.png"
   test -f "$icon"

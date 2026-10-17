@@ -24,6 +24,22 @@ Ngoài gate tự động: build bằng public production config, verify signer/c
 provenance, install/upgrade/launch smoke, kiểm tra artifact/log không chứa secret,
 và cập nhật release notes/known limitations.
 
+Sau mỗi lần phát hành, maintainer đang dùng **Load unpacked** từ project phải cập
+nhật source rồi build lại snapshot local:
+
+```bash
+git switch master
+git pull --ff-only
+scripts/agent/rebuild_chrome_extension_for_local_load.sh
+```
+
+Sau đó mở `chrome://extensions` và bấm **Reload** ở Hyper Authenticator. GitHub
+Release và thay đổi Dart source không tự cập nhật
+`build/chrome-extension/unpacked`; command fail closed nếu `.env` thiếu public
+cloud config. Lần build đầu còn chuẩn bị khoảng 23 MB font fallback đã pin vào
+cache `.dart_tool`; package chỉ được tạo sau khi đủ 724 WOFF2 + 144 OFL và mọi
+checksum đều đúng.
+
 ## Public config
 
 Cloud-enabled build cần HTTPS Supabase URL, publishable key và HTTPS password
