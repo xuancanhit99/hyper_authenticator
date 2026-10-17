@@ -11,15 +11,24 @@ const allowedKeys = <String>{
 };
 
 void main(List<String> arguments) {
-  if (arguments.length != 1) {
+  final bool requireCloud;
+  final String configPath;
+  if (arguments.length == 1 && arguments.single != '--require-cloud') {
+    requireCloud = false;
+    configPath = arguments.single;
+  } else if (arguments.length == 2 && arguments.first == '--require-cloud') {
+    requireCloud = true;
+    configPath = arguments.last;
+  } else {
     stderr.writeln(
-      'Cách dùng: dart run tool/agent/check_release_config.dart <env-file>',
+      'Cách dùng: dart run tool/agent/check_release_config.dart '
+      '[--require-cloud] <env-file>',
     );
     exitCode = 64;
     return;
   }
 
-  final file = File(arguments.single);
+  final file = File(configPath);
   if (!file.existsSync()) {
     stderr.writeln('Không tìm thấy release config file.');
     exitCode = 66;
@@ -49,6 +58,11 @@ void main(List<String> arguments) {
       passwordRecoveryUrl: values['PASSWORD_RECOVERY_URL'] ?? '',
       releaseMode: true,
     );
+    if (requireCloud && !config.cloudEnabled) {
+      throw StateError(
+        'Build này bắt buộc đủ public cloud config; local-only không hợp lệ',
+      );
+    }
     stdout.writeln(
       config.cloudEnabled
           ? 'Release config pass: cloud dùng public key và HTTPS URL.'

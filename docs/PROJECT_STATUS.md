@@ -3,7 +3,8 @@
 Baseline được audit ngày **5 tháng 8 năm 2026** trên nhánh
 `codex/minimal-e2ee`. Tên nhánh là lịch sử; source đã chuyển sang
 account-managed automatic sync theo ADR-0020 và backend production đã được
-migrate cùng ngày. Evidence phát hành được cập nhật ngày **9 tháng 8 năm 2026**.
+migrate cùng ngày. Evidence source/package được cập nhật ngày **11 tháng 8 năm
+2026**.
 
 ## Kết luận
 
@@ -78,6 +79,12 @@ Hyper Authenticator là ứng dụng TOTP Flutter đa nền tảng, local-first:
   commit `626fd8d`: 1.076 image/1.201 issuer-alias, có MIT License, checksum và
   integrity gate. Provider không nhận diện hoặc asset lỗi fallback avatar ký tự;
   logo không nằm trong account/sync data.
+- Maintainer có command fail-closed để rebuild snapshot Chrome **Load unpacked**
+  từ source hiện tại với `.env` cloud-enabled; release/source mới không còn được
+  mô tả như thể tự cập nhật thư mục output local.
+- Chrome package self-host đủ catalog fallback của Flutter 3.44.6 bằng source
+  lock URL/SHA-256 (724 WOFF2 + 144 OFL); verifier reject inventory sai/tamper,
+  gồm regression `Noto Sans HK 104` thay cho contract một font Latin trước đây.
 - App Lock dùng local authentication khi platform hỗ trợ. Privacy Shield che nội
   dung ngoài foreground nhưng không phải active screenshot prevention.
 
@@ -116,9 +123,11 @@ Hyper Authenticator là ứng dụng TOTP Flutter đa nền tảng, local-first:
 | Gate | Kết quả |
 |---|---|
 | `flutter analyze` | Pass, 0 issue ngày 05-08-2026 |
-| `flutter test` | Pass 242 test ngày 10-08-2026 |
+| `flutter test` | Pass 242 test ngày 18-10-2026 |
 | `scripts/supabase/test_account_sync_migration.sh` | Pass trên đúng `supabase/postgres:17.6.1.136`: Vault/RPC/CAS/tombstone và authorization probe đúng Realtime 2.102.3 |
-| Full gate | `scripts/agent/check.sh full` pass ngày 10-08-2026: docs/codegen/format/analyze/platform, 242 Flutter test, migration/release/infra harness |
+| Full gate | `scripts/agent/check.sh full` pass ngày 11-08-2026: docs/codegen/format/analyze/platform, 242 Flutter test, migration/release/infra harness |
+| Kiểm tra trước commit ngày 18-10-2026 | `scripts/agent/check.sh full`: docs/codegen/format/analyze/platform, 242 Flutter test và release/infra harness pass; backend migration gate chưa chạy được vì Docker daemon local đang tắt. Không có thay đổi schema/backend trong diff này. |
+| Chrome Extension font package | Local cloud-enabled `1.1.3+17` build + package verifier pass ngày 11-08-2026: 724 WOFF2, 144 OFL, exact lock/checksum và tamper regression `Noto Sans HK 104`; runtime sau Reload chờ owner xác nhận |
 | iOS Simulator account sync | UI auth giữ local vault + upload/download/tombstone + remote-only upsert/delete qua Realtime pass; isolated user cleanup verified ngày 05-08-2026 |
 | iOS Simulator account sync re-run | Isolated user: UI sign-in/sign-out vẫn giữ local vault, upload/fresh-device download/Realtime/tombstone pass và remote cleanup verified ngày 09-08-2026 |
 | Chrome Extension current profile | Owner manual smoke: Side Panel render sau local Roboto bundle, login Supabase, sync và session còn sau đóng/mở Chrome ngày 09-08-2026; không phải clean-profile/tamper evidence |
@@ -151,8 +160,10 @@ Hyper Authenticator là ứng dụng TOTP Flutter đa nền tảng, local-first:
    còn Chrome clean-profile restart/tamper và cross-device Side Panel runtime với
    isolated user. Không dùng evidence này để gọi extension production-ready hoặc
    Chrome Web Store ready; bộ icon HyperZ 16/32/48/128 đã có trong extension
-   package, nhưng vẫn cần privacy/support URL, review độc lập, screenshot/promo
-   assets và store review.
+   package. Source/package mới đã sửa incomplete fallback catalog nhưng console
+   sau **Reload** chưa có runtime evidence do trang nội bộ Extension không cho
+   automation truy cập; ngoài ra vẫn cần privacy/support URL, review độc lập,
+   screenshot/promo assets và store review.
 8. **Provider logo:** full catalog tăng khoảng 28,5 MB raw cho mọi artifact và
    mở rộng trademark review surface. Repository upstream dùng MIT nhưng không có
    provenance/license riêng cho từng brand mark; release phải giữ pin/NOTICE,

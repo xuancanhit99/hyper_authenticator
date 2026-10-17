@@ -6,19 +6,22 @@ ENV_FILE=${1:-}
 BUILD_ROOT="$ROOT/build/chrome-extension"
 UNPACKED_DIR="$BUILD_ROOT/unpacked"
 PACKAGE_VERSION=$(awk '$1 == "version:" { print $2; exit }' "$ROOT/pubspec.yaml")
-FONT_FALLBACK_DIR="$ROOT/chrome_extension/font-fallbacks"
-FONT_FALLBACK_PATH="notosans/v37/o-0mIpQlx3QUlC5A4PNB6Ryti20_6n1iPHjcz6L1SoM-jCpoiyD9A99Y41P6zHtY.woff2"
+FONT_FALLBACK_SOURCE_DIR="$ROOT/chrome_extension/font-fallbacks"
+FONT_FALLBACK_LOCK="$FONT_FALLBACK_SOURCE_DIR/sources.lock"
+FONT_FALLBACK_CACHE="$ROOT/.dart_tool/chrome_extension_font_fallbacks"
 FONT_FALLBACK_CONFIG="fontFallbackBaseUrl: 'font-fallbacks/'"
 
 if [[ -z "$PACKAGE_VERSION" ]]; then
   printf '%s\n' 'Không đọc được package version từ pubspec.yaml.' >&2
   exit 65
 fi
-if [[ ! -s "$FONT_FALLBACK_DIR/$FONT_FALLBACK_PATH" ]] ||
-  [[ ! -s "$FONT_FALLBACK_DIR/OFL.txt" ]]; then
-  printf '%s\n' 'Thiếu Noto Sans fallback hoặc giấy phép trong Chrome Extension source.' >&2
+if [[ ! -s "$FONT_FALLBACK_LOCK" ]]; then
+  printf '%s\n' 'Thiếu font fallback lock của Chrome Extension.' >&2
   exit 65
 fi
+
+"$ROOT/scripts/agent/prepare_chrome_extension_font_fallbacks.sh" \
+  "$FONT_FALLBACK_CACHE" "$FONT_FALLBACK_LOCK"
 
 ZIP_NAME="hyper-authenticator-${PACKAGE_VERSION}-chrome-extension.zip"
 ZIP_PATH="$BUILD_ROOT/$ZIP_NAME"
@@ -76,7 +79,9 @@ cp "$ROOT/chrome_extension/index.html" "$UNPACKED_DIR/index.html"
 cp "$ROOT/chrome_extension/vault.js" "$UNPACKED_DIR/vault.js"
 rm -rf "$UNPACKED_DIR/icons"
 cp -R "$ROOT/chrome_extension/icons" "$UNPACKED_DIR/icons"
-cp -R "$FONT_FALLBACK_DIR" "$UNPACKED_DIR/font-fallbacks"
+mkdir -p "$UNPACKED_DIR/font-fallbacks"
+cp -R "$FONT_FALLBACK_CACHE/." "$UNPACKED_DIR/font-fallbacks/"
+cp "$FONT_FALLBACK_LOCK" "$UNPACKED_DIR/font-fallbacks/sources.lock"
 rm -f "$UNPACKED_DIR/favicon.png"
 rm -f "$UNPACKED_DIR/flutter_service_worker.js"
 

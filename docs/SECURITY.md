@@ -40,8 +40,10 @@ Keychain/Keystore native.
 
 Manifest V3 Side Panel không xin quyền đọc tab/page/cookie, không có content
 script hay autofill. Package verifier chặn remote JS/WASM, ZXing CDN và PWA
-service worker; Flutter engine/WASM, Roboto, Noto Sans fallback WOFF2 cùng bridge
-vault đều ở trong ZIP. CSP không được nới để tải font/code từ Internet.
+service worker; Flutter engine/WASM, Roboto, catalog fallback WOFF2 + OFL đã pin
+checksum cùng bridge vault đều ở trong ZIP. Build có thể tải font từ hai origin
+allowlist nhưng chỉ nhận đúng URL/SHA-256 trong lock; runtime không tải font/code
+từ Internet và CSP không được nới.
 
 Extension vault dùng IndexedDB/WebCrypto AES-256-GCM, nonce mới 96-bit/AAD theo
 logical key và `CryptoKey` non-extractable. Supabase session + PKCE cũng đi qua

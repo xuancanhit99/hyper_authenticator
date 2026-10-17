@@ -49,9 +49,11 @@ hoặc protected QR export.
   ciphertext riêng; local vault v2 và sync metadata không đổi serialization;
 - Supabase session/PKCE storage extension dùng cùng vault namespace, không dùng
   `localStorage`.
-- CanvasKit extension bundle kèm Roboto trong FontManifest và đúng Noto Sans
-  WOFF2 fallback mà engine có thể yêu cầu; bootstrap ép fallback vào path
-  self-hosted, không dựa vào Google Fonts dù có glyph thiếu.
+- CanvasKit extension bundle kèm Roboto trong FontManifest và toàn bộ catalog
+  fallback được Flutter engine 3.44.6 tham chiếu (724 WOFF2 + 144 OFL). URL và
+  SHA-256 nằm trong source lock; build cache/download chỉ là bước chuẩn bị,
+  package verifier bắt buộc inventory/checksum đầy đủ và bootstrap ép runtime
+  vào path self-hosted. Extension không gọi Google Fonts khi gặp glyph thiếu.
 
 Extension local vault không chia sẻ trực tiếp với website/native storage. Sau
 login, account-managed sync là đường chia sẻ duy nhất. Side Panel chạy countdown
