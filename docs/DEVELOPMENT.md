@@ -25,6 +25,23 @@ scripts/agent/context.sh
 Đọc `AGENTS.md`, `docs/PROJECT_STATUS.md` và tài liệu canonical của subsystem.
 Không reset/format thay đổi không liên quan trong working tree.
 
+## Skill UI/UX theo repository
+
+**Đã triển khai:** `.agents/skills/ui-ux-pro-max` chứa hướng dẫn và bộ tra cứu
+UI/UX local, gồm guideline cho Flutter. Skill được version cùng source để các
+agent dùng chung; không phải dependency runtime và không vào app artifact.
+Nguồn/license cùng giới hạn provenance nằm trong `NOTICE.md` và `LICENSE` của
+skill. Khuyến nghị phải tuân thủ `AGENTS.md`, theme token và security contract
+hiện tại của dự án.
+
+Tra cứu và kiểm tra từ repository root bằng Python 3 (không cần package ngoài):
+
+```bash
+python3 .agents/skills/ui-ux-pro-max/scripts/search.py "navigation accessibility" --stack flutter
+python3 .agents/skills/ui-ux-pro-max/scripts/validate_data.py
+python3 -m unittest discover -s .agents/skills/ui-ux-pro-max/scripts/tests -v
+```
+
 ## Dependency và codegen
 
 ```bash
