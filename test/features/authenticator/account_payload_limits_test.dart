@@ -1,3 +1,7 @@
+import 'dart:convert';
+import 'dart:typed_data';
+
+import 'package:base32/base32.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fpdart/fpdart.dart';
 import 'package:hyper_authenticator/core/error/failures.dart';
@@ -11,19 +15,24 @@ import 'package:hyper_authenticator/features/authenticator/domain/usecases/impor
 import 'package:hyper_authenticator/features/authenticator/domain/usecases/update_account.dart';
 
 void main() {
+  // Public RFC 4648/ASCII fixtures, generated from readable non-credential text.
+  final paddedFooBar = base32.encode(Uint8List.fromList(utf8.encode('foobar')));
+  final paddedDigits = base32.encode(
+    Uint8List.fromList(utf8.encode('12345678')),
+  );
   test(
     'cloud validation preserves valid padded legacy and Unicode boundary',
     () {
       final padded = _account(
         issuer: '😀' * 256,
         accountName: '😀' * 512,
-        secret: 'MZXW6YTBOI======',
+        secret: paddedFooBar,
       );
       expect(
         () => AccountPayloadValidator.validateCloudAccount(padded),
         returnsNormally,
       );
-      expect(padded.secretKey, 'MZXW6YTBOI======');
+      expect(padded.secretKey, paddedFooBar);
       for (final secret in [
         'A',
         'A' * 1032,
@@ -104,7 +113,7 @@ void main() {
     'editing padded legacy key does not change key bytes or break RPC bounds',
     () async {
       final repository = _RecordingRepository();
-      final legacy = _account(issuer: 'Renamed', secret: 'GEZDGNBVGY3TQ===');
+      final legacy = _account(issuer: 'Renamed', secret: paddedDigits);
       final result = await UpdateAccount(repository)(
         UpdateAccountParams(account: legacy),
       );
@@ -113,7 +122,7 @@ void main() {
       expect(repository.last?.issuer, 'Renamed');
       expect(
         AccountPayloadValidator.normalizeSecretForStorage('MZXW6YTBOI'),
-        'MZXW6YTBOI======',
+        paddedFooBar,
       );
     },
   );

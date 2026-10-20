@@ -18,3 +18,8 @@ without an independent backup; preserving ciphertext does not recreate that key.
 Regression: Android Robolectric PreservationTest; Dart plugin option test and
 local datasource read-failure tests. Do not replace this path dependency with an
 unpatched release until equivalent behavior is verified.
+
+Five upstream public storage-identifier/algorithm constants carry line-scoped
+gitleaks allow comments. These names are not key material; secret scanning stays
+enabled for the rest of the vendored implementation. Imported text line endings
+and trailing whitespace are normalized without changing runtime behavior.
