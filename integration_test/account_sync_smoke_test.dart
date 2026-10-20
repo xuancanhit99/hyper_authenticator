@@ -1,4 +1,5 @@
 import 'dart:math';
+import '../test/support/memory_local_vault.dart';
 import 'dart:typed_data';
 
 import 'package:base32/base32.dart';
@@ -13,7 +14,6 @@ import 'package:hyper_authenticator/features/authenticator/domain/entities/authe
 import 'package:hyper_authenticator/features/authenticator/domain/repositories/authenticator_repository.dart';
 import 'package:hyper_authenticator/features/sync/domain/entities/account_sync_metadata.dart';
 import 'package:hyper_authenticator/features/sync/domain/entities/account_sync_result.dart';
-import 'package:hyper_authenticator/features/sync/domain/repositories/account_sync_metadata_repository.dart';
 import 'package:hyper_authenticator/features/sync/domain/repositories/cloud_account_repository.dart';
 import 'package:hyper_authenticator/features/sync/domain/usecases/synchronize_accounts.dart';
 import 'package:hyper_authenticator/injection_container.dart' as di;
@@ -73,16 +73,21 @@ void main() {
       _right(await local.replaceAccounts(const []));
       _right(await local.saveAccount(account));
       final uploaded = _right(await sync()) as AccountSyncCompleted;
-      expect(uploaded.uploadedCount, 1);
+      // Auth/resume may already have queued the automatic cycle. Assert the
+      // durable remote state below rather than which cycle won the upload.
+      expect(uploaded.uploadedCount, inInclusiveRange(0, 1));
       final remoteRows = await remote.list(userId: user.id);
       expect(remoteRows.where((row) => !row.isDeleted), hasLength(1));
 
       final freshLocal = _MemoryAccountRepository();
       final freshSync = SynchronizeAccounts(
         _CurrentUserAuthRepository(user),
-        freshLocal,
+        MemoryLocalVault(
+          freshLocal.accounts,
+          () => const AccountSyncMetadata({}),
+          (_) {},
+        ),
         remote,
-        _MemoryMetadataRepository(),
       );
       final downloaded = _right(await freshSync()) as AccountSyncCompleted;
       expect(downloaded.downloadedCount, 1);
@@ -118,7 +123,7 @@ void main() {
 
       _right(await local.deleteAccount(account.id));
       final deleted = _right(await sync()) as AccountSyncCompleted;
-      expect(deleted.deletedCount, 1);
+      expect(deleted.deletedCount, inInclusiveRange(0, 1));
       final tombstone = (await remote.list(
         userId: user.id,
       )).singleWhere((row) => row.accountId == account.id);
@@ -156,18 +161,6 @@ T _right<T>(Either<Failure, T> result) => result.fold(
   (value) => value,
 );
 
-class _MemoryMetadataRepository implements AccountSyncMetadataRepository {
-  AccountSyncMetadata value = const AccountSyncMetadata({});
-
-  @override
-  Future<AccountSyncMetadata> read() async => value;
-
-  @override
-  Future<void> write(AccountSyncMetadata metadata) async {
-    value = AccountSyncMetadata(Map.unmodifiable(metadata.records));
-  }
-}
-
 class _CurrentUserAuthRepository implements AuthRepository {
   const _CurrentUserAuthRepository(this.user);
 
@@ -192,6 +185,9 @@ class _CurrentUserAuthRepository implements AuthRepository {
     required String email,
     required String password,
   }) => throw UnimplementedError();
+
+  @override
+  Future<Either<Failure, void>> signInWithGoogle() async => const Right(null);
 
   @override
   Future<Either<Failure, void>> signOut() => throw UnimplementedError();

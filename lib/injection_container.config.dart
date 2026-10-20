@@ -43,18 +43,15 @@ import 'features/authenticator/domain/usecases/update_account.dart' as _i827;
 import 'features/authenticator/presentation/bloc/accounts_bloc.dart' as _i467;
 import 'features/authenticator/presentation/bloc/local_auth_bloc.dart' as _i534;
 import 'features/settings/presentation/bloc/settings_bloc.dart' as _i421;
-import 'features/sync/data/datasources/account_sync_metadata_store.dart'
-    as _i194;
 import 'features/sync/data/datasources/cloud_account_remote_data_source.dart'
     as _i146;
 import 'features/sync/data/datasources/supabase_account_sync_signal_repository.dart'
     as _i139;
-import 'features/sync/domain/repositories/account_sync_metadata_repository.dart'
-    as _i41;
 import 'features/sync/domain/repositories/account_sync_signal_repository.dart'
     as _i1000;
 import 'features/sync/domain/repositories/cloud_account_repository.dart'
     as _i817;
+import 'features/sync/domain/repositories/local_vault_repository.dart' as _i115;
 import 'features/sync/domain/usecases/synchronize_accounts.dart' as _i747;
 import 'features/sync/presentation/bloc/sync_bloc.dart' as _i416;
 import 'injection_module.dart' as _i212;
@@ -128,9 +125,6 @@ extension GetItInjectableX on _i174.GetIt {
         gh<_i152.LocalAuthentication>(),
       ),
     );
-    gh.lazySingleton<_i41.AccountSyncMetadataRepository>(
-      () => _i194.AccountSyncMetadataStore(gh<_i697.SecureKeyValueStore>()),
-    );
     gh.factory<_i356.AddAccount>(
       () => _i356.AddAccount(gh<_i608.AuthenticatorRepository>()),
     );
@@ -163,12 +157,16 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i363.AuthBloc>(
       () => _i363.AuthBloc(gh<_i1015.AuthRepository>()),
     );
+    gh.lazySingleton<_i115.LocalVaultRepository>(
+      () => registerModule.localVaultRepository(
+        gh<_i674.AuthenticatorLocalDataSource>(),
+      ),
+    );
     gh.lazySingleton<_i747.AccountSynchronizer>(
       () => _i747.SynchronizeAccounts(
         gh<_i1015.AuthRepository>(),
-        gh<_i608.AuthenticatorRepository>(),
+        gh<_i115.LocalVaultRepository>(),
         gh<_i817.CloudAccountRepository>(),
-        gh<_i41.AccountSyncMetadataRepository>(),
       ),
     );
     gh.lazySingleton<_i416.SyncBloc>(

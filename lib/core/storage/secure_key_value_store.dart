@@ -1,10 +1,38 @@
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'dart:async';
+
+abstract interface class ExclusiveSecureKeyValueStore {
+  Future<T> runExclusive<T>(Future<T> Function() operation);
+}
+
+Future<void> _storageTail = Future<void>.value();
+
+/// Shared by datasource instances. Browser extensions additionally coordinate
+/// through Web Locks across Dart isolates/pages; no network is held inside it.
+Future<T> runStorageExclusive<T>(
+  SecureKeyValueStore storage,
+  Future<T> Function() operation,
+) {
+  final result = Completer<T>();
+  _storageTail = _storageTail.then((_) async {
+    try {
+      result.complete(
+        await (storage is ExclusiveSecureKeyValueStore
+            ? (storage as ExclusiveSecureKeyValueStore).runExclusive(operation)
+            : operation()),
+      );
+    } catch (error, stack) {
+      result.completeError(error, stack);
+    }
+  });
+  return result.future;
+}
 
 /// Small, platform-neutral boundary for credential-bearing local records.
 ///
 /// Feature data sources depend on this contract rather than a plugin so the
 /// Chrome Extension can use its dedicated IndexedDB/WebCrypto vault without
-/// changing the local-vault v2 or sync-metadata formats.
+/// changing the shared local-vault serialization contract.
 abstract interface class SecureKeyValueStore {
   Future<String?> read({required String key});
 

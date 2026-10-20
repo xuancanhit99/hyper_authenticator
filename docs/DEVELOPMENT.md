@@ -2,6 +2,12 @@
 
 ## Yêu cầu
 
+Google OAuth dùng cùng public Supabase config hiện tại; không thêm Google secret
+vào `.env` client hoặc dart-define. Web/native dùng browser ngoài, desktop mở
+loopback listener tạm thời. Extension thêm quyền `identity`; bản unpacked chuyển
+đường dẫn/máy có thể đổi extension ID, khi đó operator phải allowlist callback
+`https://<id>.chromiumapp.org/auth/callback` đúng ID đó. Xem ADR-0025.
+
 - Flutter stable/Dart theo `pubspec.lock` và CI.
 - Xcode/Cocoa tooling cho iOS/macOS.
 - Android SDK/JDK cho Android.

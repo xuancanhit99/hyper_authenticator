@@ -5,6 +5,7 @@ import 'package:hyper_authenticator/core/router/app_routes.dart';
 import 'package:hyper_authenticator/core/widgets/responsive_content.dart';
 import 'package:hyper_authenticator/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:hyper_authenticator/features/auth/presentation/widgets/auth_header.dart';
+import 'package:hyper_authenticator/features/auth/presentation/widgets/google_sign_in_button.dart';
 
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
@@ -37,7 +38,7 @@ class _RegisterPageState extends State<RegisterPage> {
       context.read<AuthBloc>().add(
         AuthSignUpRequested(
           email: _emailController.text.trim(),
-          password: _passwordController.text.trim(),
+          password: _passwordController.text,
         ),
       );
     }
@@ -114,6 +115,7 @@ class _RegisterPageState extends State<RegisterPage> {
                     title: 'Tạo tài khoản',
                     subtitle: 'Tạo tài khoản để bật đồng bộ.',
                   ),
+                  const GoogleSignInButton(),
                   TextFormField(
                     controller: _emailController,
                     decoration: const InputDecoration(

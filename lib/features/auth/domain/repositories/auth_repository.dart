@@ -8,6 +8,9 @@ abstract class AuthRepository {
 
   Stream<UserEntity?> get authEntityChanges;
 
+  /// Starts Google OAuth; authentication is confirmed by the session stream.
+  Future<Either<Failure, void>> signInWithGoogle();
+
   Future<Either<Failure, UserEntity?>> getCurrentUserEntity();
 
   Future<Either<Failure, UserEntity>> signInWithPassword({

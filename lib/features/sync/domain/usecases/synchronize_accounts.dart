@@ -7,11 +7,11 @@ import 'package:hyper_authenticator/core/error/exceptions.dart';
 import 'package:hyper_authenticator/core/error/failures.dart';
 import 'package:hyper_authenticator/features/auth/domain/repositories/auth_repository.dart';
 import 'package:hyper_authenticator/features/authenticator/domain/entities/authenticator_account.dart';
-import 'package:hyper_authenticator/features/authenticator/domain/repositories/authenticator_repository.dart';
+import 'package:hyper_authenticator/features/sync/domain/repositories/local_vault_repository.dart';
+import 'package:hyper_authenticator/features/authenticator/domain/services/account_payload_validator.dart';
 import 'package:hyper_authenticator/features/sync/domain/entities/account_sync_metadata.dart';
 import 'package:hyper_authenticator/features/sync/domain/entities/account_sync_result.dart';
 import 'package:hyper_authenticator/features/sync/domain/entities/cloud_account_record.dart';
-import 'package:hyper_authenticator/features/sync/domain/repositories/account_sync_metadata_repository.dart';
 import 'package:hyper_authenticator/features/sync/domain/repositories/cloud_account_repository.dart';
 import 'package:injectable/injectable.dart';
 
@@ -26,17 +26,11 @@ abstract class AccountSynchronizer {
 
 @LazySingleton(as: AccountSynchronizer)
 class SynchronizeAccounts implements AccountSynchronizer {
-  SynchronizeAccounts(
-    this._authRepository,
-    this._local,
-    this._remote,
-    this._metadataStore,
-  );
+  SynchronizeAccounts(this._authRepository, this._local, this._remote);
 
   final AuthRepository _authRepository;
-  final AuthenticatorRepository _local;
+  final LocalVaultRepository _local;
   final CloudAccountRepository _remote;
-  final AccountSyncMetadataRepository _metadataStore;
   final Sha256 _sha256 = Sha256();
 
   Future<void> _operationTail = Future<void>.value();
@@ -46,7 +40,16 @@ class SynchronizeAccounts implements AccountSynchronizer {
     final completer = Completer<Either<Failure, AccountSyncResult>>();
     _operationTail = _operationTail.then((_) async {
       try {
-        completer.complete(Right(await _synchronize()));
+        AccountSyncResult? result;
+        for (var attempt = 0; attempt < 3; attempt++) {
+          try {
+            result = await _synchronize();
+            break;
+          } on LocalVaultConflict {
+            if (attempt == 2) rethrow;
+          }
+        }
+        completer.complete(Right(result!));
       } on AccountSyncMetadataException {
         completer.complete(
           const Left(
@@ -83,8 +86,33 @@ class SynchronizeAccounts implements AccountSynchronizer {
     if (user == null) return const AccountSyncSignedOut();
     final userId = user.id;
 
-    final metadata = (await _metadataStore.read()).mutableCopy();
-    final localAccounts = _value(await _local.getAccounts());
+    var changedSession = false;
+    final subscription = _authRepository.authEntityChanges.listen((next) {
+      if (next?.id != userId) changedSession = true;
+    });
+    bool canCommit() =>
+        !changedSession && _authRepository.currentUserEntity?.id == userId;
+    try {
+      return await _synchronizeUser(
+        userId,
+        _GuardedCloudRepository(_remote, canCommit),
+        canCommit,
+      );
+    } finally {
+      await subscription.cancel();
+    }
+  }
+
+  Future<AccountSyncResult> _synchronizeUser(
+    String userId,
+    CloudAccountRepository remote,
+    bool Function() canCommit,
+  ) async {
+    final snapshot = await _local.readVault();
+    var generation = snapshot.generation;
+    final metadata = snapshot.metadata.mutableCopy();
+    final deleteIntents = Set<String>.of(snapshot.deletedAccountIds);
+    final localAccounts = snapshot.accounts;
     final localById = <String, AuthenticatorAccount>{
       for (final account in localAccounts) account.id: account,
     };
@@ -105,10 +133,16 @@ class SynchronizeAccounts implements AccountSynchronizer {
       }
     }
     if (ownershipChanged) {
-      await _metadataStore.write(metadata);
+      generation = await _local.commitVault(
+        expectedGeneration: generation,
+        accounts: localAccounts,
+        metadata: metadata,
+        deletedAccountIds: deleteIntents,
+        canCommit: canCommit,
+      );
     }
 
-    final remoteRecords = await _remote.list(userId: userId);
+    final remoteRecords = await remote.list(userId: userId);
     final remoteById = <String, CloudAccountRecord>{};
     for (final record in remoteRecords) {
       if (remoteById.containsKey(record.accountId)) {
@@ -120,6 +154,13 @@ class SynchronizeAccounts implements AccountSynchronizer {
     var uploadedCount = 0;
     var downloadedCount = 0;
     var deletedCount = 0;
+    final blockedAccountIds = <String>{
+      for (final record in remoteRecords)
+        if (record.isBlocked &&
+            (metadata.records[record.accountId] == null ||
+                metadata.records[record.accountId]!.ownerUserId == userId))
+          record.accountId,
+    };
 
     // Tombstone là deletion intent bền vững và luôn thắng update offline.
     for (final remoteRecord in remoteRecords.where((row) => row.isDeleted)) {
@@ -128,9 +169,9 @@ class SynchronizeAccounts implements AccountSynchronizer {
         continue;
       }
       if (localById.remove(remoteRecord.accountId) != null) {
-        await _deleteLocalIfPresent(remoteRecord.accountId);
         deletedCount++;
       }
+      deleteIntents.remove(remoteRecord.accountId);
       metadata.records[remoteRecord.accountId] = SyncedAccountMetadata(
         ownerUserId: userId,
         remoteRevision: remoteRecord.revision,
@@ -141,7 +182,9 @@ class SynchronizeAccounts implements AccountSynchronizer {
 
     // Áp remote live record lên local sạch hoặc thiết bị mới. Local dirty được
     // giữ lại để push ở pha sau.
-    for (final remoteRecord in remoteRecords.where((row) => !row.isDeleted)) {
+    for (final remoteRecord in remoteRecords.where(
+      (row) => !row.isDeleted && !row.isBlocked,
+    )) {
       final remoteAccount = remoteRecord.account!;
       final existingMetadata = metadata.records[remoteRecord.accountId];
       if (existingMetadata != null && existingMetadata.ownerUserId != userId) {
@@ -151,12 +194,11 @@ class SynchronizeAccounts implements AccountSynchronizer {
       final remoteFingerprint = await _fingerprint(remoteAccount);
 
       if (localAccount == null) {
-        if (existingMetadata != null && !existingMetadata.isDeleted) {
+        if (deleteIntents.contains(remoteAccount.id)) {
           // Metadata tồn tại nhưng local không còn: đây là delete local đang
           // chờ đẩy lên cloud, không phải thiết bị mới.
           continue;
         }
-        _value(await _local.saveAccount(remoteAccount));
         localById[remoteAccount.id] = remoteAccount;
         metadata.records[remoteAccount.id] = SyncedAccountMetadata(
           ownerUserId: userId,
@@ -183,7 +225,6 @@ class SynchronizeAccounts implements AccountSynchronizer {
       } else if (localFingerprint == existingMetadata.syncedFingerprint &&
           (existingMetadata.remoteRevision < remoteRecord.revision ||
               localFingerprint != remoteFingerprint)) {
-        _value(await _local.saveAccount(remoteAccount));
         localById[remoteAccount.id] = remoteAccount;
         metadata.records[remoteAccount.id] = existingMetadata.copyWith(
           remoteRevision: remoteRecord.revision,
@@ -199,6 +240,15 @@ class SynchronizeAccounts implements AccountSynchronizer {
     for (final account in List<AuthenticatorAccount>.from(localById.values)) {
       var recordMetadata = metadata.records[account.id]!;
       if (recordMetadata.ownerUserId != userId) continue;
+      try {
+        AccountPayloadValidator.validateCloudAccount(account);
+      } on FormatException {
+        // Legacy data stays local and retains ownership/pending intent. Only a
+        // known permanent payload rejection is isolated; network/auth failures
+        // still abort the cycle through the existing failure boundary.
+        blockedAccountIds.add(account.id);
+        continue;
+      }
       final fingerprint = await _fingerprint(account);
       if (!recordMetadata.isDeleted &&
           recordMetadata.syncedFingerprint == fingerprint) {
@@ -209,15 +259,15 @@ class SynchronizeAccounts implements AccountSynchronizer {
           remoteById[account.id]?.revision ?? recordMetadata.remoteRevision;
       CloudAccountRecord published;
       try {
-        published = await _remote.upsert(
+        published = await remote.upsert(
           userId: userId,
           account: account,
           expectedRevision: expectedRevision,
         );
       } on CloudAccountRevisionConflictException {
-        final latest = await _findRemote(userId, account.id);
+        final latest = await _findRemote(remote, userId, account.id);
         if (latest?.isDeleted == true) {
-          await _deleteLocalIfPresent(account.id);
+          deleteIntents.remove(account.id);
           localById.remove(account.id);
           metadata.records[account.id] = SyncedAccountMetadata(
             ownerUserId: userId,
@@ -225,18 +275,19 @@ class SynchronizeAccounts implements AccountSynchronizer {
             syncedFingerprint: null,
             isDeleted: true,
           );
+          blockedAccountIds.remove(account.id);
           deletedCount++;
           continue;
         }
         expectedRevision = latest?.revision ?? 0;
-        published = await _remote.upsert(
+        published = await remote.upsert(
           userId: userId,
           account: account,
           expectedRevision: expectedRevision,
         );
       } on CloudAccountTombstonedException {
-        final latest = await _findRemote(userId, account.id);
-        await _deleteLocalIfPresent(account.id);
+        final latest = await _findRemote(remote, userId, account.id);
+        deleteIntents.remove(account.id);
         localById.remove(account.id);
         metadata.records[account.id] = SyncedAccountMetadata(
           ownerUserId: userId,
@@ -244,6 +295,7 @@ class SynchronizeAccounts implements AccountSynchronizer {
           syncedFingerprint: null,
           isDeleted: true,
         );
+        blockedAccountIds.remove(account.id);
         deletedCount++;
         continue;
       }
@@ -255,10 +307,11 @@ class SynchronizeAccounts implements AccountSynchronizer {
       );
       metadata.records[account.id] = recordMetadata;
       remoteById[account.id] = published;
+      blockedAccountIds.remove(account.id);
       uploadedCount++;
     }
 
-    // Metadata có live record nhưng local đã biến mất là local delete intent.
+    // Only a durable, explicit local deletion may publish a tombstone.
     for (final entry in List<MapEntry<String, SyncedAccountMetadata>>.from(
       metadata.records.entries,
     )) {
@@ -266,32 +319,31 @@ class SynchronizeAccounts implements AccountSynchronizer {
       var recordMetadata = entry.value;
       if (recordMetadata.ownerUserId != userId ||
           recordMetadata.isDeleted ||
+          !deleteIntents.contains(accountId) ||
           localById.containsKey(accountId)) {
         continue;
       }
       final remoteRecord = remoteById[accountId];
-      if (remoteRecord == null && recordMetadata.remoteRevision == 0) {
-        metadata.records.remove(accountId);
-        continue;
-      }
       CloudAccountRecord deleted;
       try {
-        deleted = await _remote.delete(
+        deleted = await remote.delete(
           userId: userId,
           accountId: accountId,
           expectedRevision:
               remoteRecord?.revision ?? recordMetadata.remoteRevision,
         );
       } on CloudAccountRevisionConflictException {
-        final latest = await _findRemote(userId, accountId);
+        final latest = await _findRemote(remote, userId, accountId);
         if (latest == null) {
-          metadata.records.remove(accountId);
-          continue;
-        }
-        if (latest.isDeleted) {
+          deleted = await remote.delete(
+            userId: userId,
+            accountId: accountId,
+            expectedRevision: 0,
+          );
+        } else if (latest.isDeleted) {
           deleted = latest;
         } else {
-          deleted = await _remote.delete(
+          deleted = await remote.delete(
             userId: userId,
             accountId: accountId,
             expectedRevision: latest.revision,
@@ -304,38 +356,38 @@ class SynchronizeAccounts implements AccountSynchronizer {
         isDeleted: true,
       );
       metadata.records[accountId] = recordMetadata;
+      deleteIntents.remove(accountId);
+      blockedAccountIds.remove(accountId);
       deletedCount++;
     }
 
-    await _metadataStore.write(metadata);
+    await _local.commitVault(
+      expectedGeneration: generation,
+      accounts: localById.values.toList(),
+      metadata: metadata,
+      deletedAccountIds: deleteIntents,
+      canCommit: canCommit,
+    );
     return AccountSyncCompleted(
       completedAt: DateTime.now().toUtc(),
       uploadedCount: uploadedCount,
       downloadedCount: downloadedCount,
       deletedCount: deletedCount,
+      blockedAccountCount: blockedAccountIds.length,
     );
   }
 
   Future<CloudAccountRecord?> _findRemote(
+    CloudAccountRepository remote,
     String userId,
     String accountId,
   ) async {
-    final records = await _remote.list(userId: userId);
+    final records = await remote.list(userId: userId);
     for (final record in records) {
       if (record.accountId == accountId) return record;
     }
     return null;
   }
-
-  Future<void> _deleteLocalIfPresent(String accountId) async {
-    final result = await _local.deleteAccount(accountId);
-    result.fold((failure) {
-      if (failure is! AccountNotFoundFailure) throw _FailureSignal(failure);
-    }, (_) {});
-  }
-
-  T _value<T>(Either<Failure, T> either) =>
-      either.fold((failure) => throw _FailureSignal(failure), (value) => value);
 
   Future<String> _fingerprint(AuthenticatorAccount account) async {
     final canonical = jsonEncode({
@@ -356,4 +408,52 @@ class _FailureSignal implements Exception {
   const _FailureSignal(this.failure);
 
   final Failure failure;
+}
+
+class _GuardedCloudRepository implements CloudAccountRepository {
+  _GuardedCloudRepository(this.inner, this.canContinue);
+  final CloudAccountRepository inner;
+  final bool Function() canContinue;
+  Future<T> _checked<T>(Future<T> Function() action) async {
+    if (!canContinue()) {
+      throw const _FailureSignal(
+        SyncOperationFailure('Phiên đăng nhập đã thay đổi; đã dừng đồng bộ.'),
+      );
+    }
+    final value = await action();
+    if (!canContinue()) {
+      throw const _FailureSignal(
+        SyncOperationFailure('Phiên đăng nhập đã thay đổi; đã dừng đồng bộ.'),
+      );
+    }
+    return value;
+  }
+
+  @override
+  Future<List<CloudAccountRecord>> list({required String userId}) =>
+      _checked(() => inner.list(userId: userId));
+  @override
+  Future<CloudAccountRecord> upsert({
+    required String userId,
+    required AuthenticatorAccount account,
+    required int expectedRevision,
+  }) => _checked(
+    () => inner.upsert(
+      userId: userId,
+      account: account,
+      expectedRevision: expectedRevision,
+    ),
+  );
+  @override
+  Future<CloudAccountRecord> delete({
+    required String userId,
+    required String accountId,
+    required int expectedRevision,
+  }) => _checked(
+    () => inner.delete(
+      userId: userId,
+      accountId: accountId,
+      expectedRevision: expectedRevision,
+    ),
+  );
 }

@@ -14,6 +14,16 @@ class AuthRepositoryImpl implements AuthRepository {
 
   AuthRepositoryImpl({required this.remoteDataSource});
 
+  @override
+  Future<Either<Failure, void>> signInWithGoogle() async {
+    try {
+      await remoteDataSource.signInWithGoogle();
+      return const Right(null);
+    } catch (_) {
+      return const Left(AuthServerFailure('Google sign-in was not completed.'));
+    }
+  }
+
   UserEntity? _mapSupabaseUserToEntity(User? supabaseUser) {
     return supabaseUser == null
         ? null

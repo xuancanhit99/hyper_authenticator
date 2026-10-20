@@ -52,3 +52,16 @@ class SyncFailure extends SyncState {
   @override
   String toString() => 'SyncFailure(message: [REDACTED])';
 }
+
+class SyncPartial extends SyncState {
+  const SyncPartial({
+    required this.completedAt,
+    required this.blockedAccountCount,
+  });
+
+  final DateTime completedAt;
+  final int blockedAccountCount;
+
+  @override
+  List<Object?> get props => [completedAt, blockedAccountCount];
+}

@@ -163,6 +163,22 @@ void main() {
       );
     },
   );
+
+  test(
+    'blocked records emit partial instead of fully synced and retry can clear it',
+    () async {
+      final fixture = _SyncBlocFixture();
+      addTearDown(fixture.close);
+      fixture.synchronizer.blockedAccountCount = 2;
+      fixture.authBloc.add(AuthCheckRequested());
+      await _waitUntil(() => fixture.syncBloc.state is SyncPartial);
+      expect((fixture.syncBloc.state as SyncPartial).blockedAccountCount, 2);
+      fixture.synchronizer.blockedAccountCount = 0;
+      fixture.syncBloc.add(const SyncNowRequested());
+      await _waitUntil(() => fixture.syncBloc.state is SyncReady);
+      expect(fixture.synchronizer.calls, 2);
+    },
+  );
 }
 
 class _SyncBlocFixture {
@@ -209,6 +225,7 @@ Future<void> _waitUntil(bool Function() predicate) async {
 class _Synchronizer implements AccountSynchronizer {
   int calls = 0;
   Failure? failure;
+  int blockedAccountCount = 0;
 
   @override
   Future<Either<Failure, AccountSyncResult>> call() async {
@@ -220,6 +237,7 @@ class _Synchronizer implements AccountSynchronizer {
         uploadedCount: 0,
         downloadedCount: 0,
         deletedCount: 0,
+        blockedAccountCount: blockedAccountCount,
       ),
     );
   }
@@ -285,6 +303,9 @@ class _AuthRepository implements AuthRepository {
     required String email,
     required String password,
   }) async => Right(current!);
+
+  @override
+  Future<Either<Failure, void>> signInWithGoogle() async => const Right(null);
 
   @override
   Future<Either<Failure, void>> signOut() async => const Right(null);

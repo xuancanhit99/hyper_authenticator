@@ -1,5 +1,6 @@
 // lib/main.dart
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:hyper_authenticator/app.dart';
 import 'package:hyper_authenticator/core/config/app_config.dart';
@@ -7,6 +8,8 @@ import 'package:hyper_authenticator/core/licenses/third_party_asset_licenses.dar
 import 'package:hyper_authenticator/core/router/app_router_registration.dart';
 import 'package:hyper_authenticator/core/router/app_url_strategy.dart';
 import 'package:hyper_authenticator/core/storage/windows_storage_migrator.dart';
+import 'package:hyper_authenticator/core/storage/native_auth_storage.dart';
+import 'package:hyper_authenticator/core/storage/secure_key_value_store.dart';
 import 'package:hyper_authenticator/core/theme/theme_cubit.dart';
 import 'package:hyper_authenticator/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:hyper_authenticator/features/authenticator/presentation/bloc/accounts_bloc.dart';
@@ -29,9 +32,22 @@ Future<void> main() async {
     registerDefaultAppRouter();
     final appConfig = di.sl<AppConfig>();
     if (appConfig.cloudEnabled) {
+      final nativeAuth = kIsWeb
+          ? null
+          : NativeAuthValues(
+              di.sl<SecureKeyValueStore>(),
+              di.sl<SharedPreferences>(),
+              appConfig.supabaseUrl!,
+            );
       await Supabase.initialize(
         url: appConfig.supabaseUrl!,
         publishableKey: appConfig.supabasePublishableKey!,
+        authOptions: nativeAuth == null
+            ? const FlutterAuthClientOptions()
+            : FlutterAuthClientOptions(
+                localStorage: NativeSupabaseLocalStorage(nativeAuth),
+                pkceAsyncStorage: NativeSupabasePkceStorage(nativeAuth),
+              ),
       );
     }
 

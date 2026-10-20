@@ -13,7 +13,7 @@ jq -e '
   .manifest_version == 3 and
   .minimum_chrome_version == "114" and
   .side_panel.default_path == "index.html" and
-  .permissions == ["sidePanel"] and
+  .permissions == ["sidePanel", "identity"] and
   .host_permissions == ["https://supabase-api.vnpay.dev/*"] and
   .action.default_icon == {
     "16": "icons/icon-16.png",

@@ -19,9 +19,33 @@ app local-only; partial/non-HTTPS config fail closed.
 
 ## Authentication
 
-- Supabase sở hữu session persistence.
+- Login/Register có **Tiếp tục với Google**, qua Supabase PKCE với scope
+  `openid email profile`. Supabase tạo user cho Google identity mới; app không tự
+  merge user/vault. Mở browser thành công chưa phải authenticated session.
+- Client Secret chỉ nằm trong private server environment. Google Web client
+  callback: `https://supabase-api.vnpay.dev/auth/v1/callback`. Provider đã enabled
+  production ngày 21-10-2026; signup enabled, redirect allowlist giữ recovery cũ.
+- App callback: hosted Web `/login?returnTo=%2Fsettings`, mobile
+  `app.hyperz.authenticator://auth/callback`, desktop
+  `http://127.0.0.1:<ephemeral>/auth/callback/<random>`, extension
+  `https://<extension-id>.chromiumapp.org/auth/callback`. Extension ID mới cần
+  thêm đúng callback vào server; không dùng wildcard mọi extension.
+- Google Cloud Audience/Test users/Publishing vẫn do owner quản lý. Không xem
+  authorize redirect thành công là bằng chứng đã hoàn tất Google consent/session.
+  Thiết kế và rollback ở [ADR-0025](adr/0025-google-oauth-pkce.md).
+
+- Supabase dùng custom native session/PKCE storage: secure envelopes theo origin,
+  verify-before-remove migration từ SharedPreferences và null tombstone khi logout.
+  Secure storage lỗi thì fail closed; không chọn plaintext fallback. Hosted Web
+  giữ browser persistence boundary; extension dùng encrypted IDB namespace riêng.
 - Login/register/reset/update password đi qua Auth repository.
+- Giữ nguyên từng ký tự password; chỉ email trim. Không đổi password cũ trên server.
 - Session restore/sign-in kích hoạt sync tự động.
+
+Local vault v3 commit payload/ownership/ack/delete intent cùng nhau, generation
+CAS sau network và abort khi session đổi. Remote RPC schema không đổi; từng
+request pin Authorization của session đã kiểm tra để không đổi sang user khác
+trong async HTTP auth hook. Chi tiết migration/rollback ở ADR-0024.
 - Logout dừng sync nhưng giữ local TOTP và cloud data.
 
 ## Canonical database contract
@@ -79,6 +103,14 @@ Server có quyền decrypt; không gọi contract này là E2EE.
 - Upsert tombstone: `PT410/account_deleted`, không revive.
 - Delete vắng với expected 0 tạo tombstone revision 1; delete tombstone idempotent.
 - Payload sai schema/bounds: SQLSTATE `22023`.
+
+Client dùng `AccountPayloadValidator` cho admission, preflight upload và remote
+decode: issuer tối đa 256, accountName 1–512 Unicode code point, secret 16–1024
+ký tự mã hóa; label không NUL/surrogate lỗi, SHA1/256/512, digits 6–8, period 1–300.
+Không cắt ngắn dữ liệu để vượt gate. SQL chưa kiểm canonical Base32/pad bits nên
+client kiểm chặt hơn: live row legacy sai payload được quarantine bằng safe
+metadata và tính vào partial status; row hợp lệ khác vẫn được xử lý. Mutation
+response, metadata và tombstone lỗi vẫn fail closed. Không đổi migration/server.
 
 ## Breaking migration
 

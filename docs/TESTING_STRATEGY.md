@@ -6,6 +6,14 @@ physical-device hoặc production evidence.
 
 ## Gate
 
+Google OAuth có unit/widget regression cho launch-versus-session, callback race,
+stream errors, retry/double click, callback exact-match, loopback reject/timeout/
+listener-close và UI 200% text/keyboard. `node --test
+tool/agent/extension_oauth_test.mjs` kiểm tra identity bridge allowlist, PKCE,
+concurrency/cancel và error redaction; release harness gọi test này. Real Web
+Google login được owner xác nhận; extension mới có chooser/cancel acceptance,
+native mới có build/callback-resolution/launch, chưa Google session end-to-end.
+
 | Scope thay đổi | Command tối thiểu |
 |---|---|
 | Tài liệu | `scripts/agent/check.sh docs` |
@@ -23,7 +31,22 @@ review.
 
 ## Unit/domain
 
+P1 regressions dùng real datasource: fault record/manifest/commit (kể cả exception
+sau durable commit), restart/user switch, edit/delete/add trong list/upsert,
+stale generation giữa instances, v2 ownership/delete migration. Native auth test
+verify-before-remove, failed/dropped writes và logout tombstone.
+
+Android: `cd android && ./gradlew :flutter_secure_storage:testDebugUnitTest` chạy
+Robolectric preservation/migration tests. Chrome isolated-profile runtime:
+`node tool/agent/extension_vault_concurrency_test.mjs` (Windows Chrome mặc định;
+platform khác set `CHROME_PATH`). Harness tạo profile riêng, hai context và cold
+key barrier; kiểm reopen/decrypt, mutation lock và missing key. Không dùng profile
+hay credential thật. Physical Android/Apple và full extension package acceptance
+vẫn cần riêng; browser bridge test không thay thế toàn bộ Side Panel runtime.
+
 - TOTP: Base32, algorithm, digits, period, bounded URI và duplicate parameter.
+- Base32: invalid residual length, exact optional padding, nonzero pad bits,
+  decode nonempty, RFC 6238 vectors và short-key HMAC độc lập; issuer-less URI.
 - Standard/Google import: parse, batch assembly, preview, exact dedupe, cancel và
   validate-all before commit.
 - Export: unsupported semantics, multi-part split, timeout/lifecycle cleanup và
@@ -32,6 +55,10 @@ review.
   fallback, write/delete/import/replace atomicity và compaction.
 - Account sync: first-login ownership, merge upload/download, dirty-vs-clean,
   cross-user isolation, offline failure, CAS retry và deletion tombstone.
+- Payload: admission/remote bounds tại Unicode code point boundary, NUL/unpaired
+  surrogate rejection; legacy padded-key rename; invalid local đầu queue không
+  chặn valid upload/delete/retry. Quarantine invalid live remote payload giữ
+  metadata/data, valid rows tiếp tục; mutation/metadata/tombstone vẫn fail closed.
 - Realtime wake-up: auth subscribe/switch/logout, reconnect, debounce, error
   fallback, own-topic authorization, client-send denial và payload allowlist.
 - Theme: six style/brightness combinations, transition opacity, persistence race,
@@ -68,6 +95,11 @@ review.
   startup cũ và không bị redirect ngược về Settings.
 - Settings cloud states: local-only, automatic sync progress/success/failure và
   retry; source/widget không được tái xuất hiện recovery/setup controls.
+- Partial sync phải hiển thị count chưa đồng bộ, không báo full success; sửa
+  record/retry có thể về ready. Network failure không được nuốt thành partial.
+- Auth raw password (khoảng trắng/Unicode) qua login, register→login và
+  update→login; email tiếp tục trim. Clipboard success chỉ sau acknowledgement,
+  denial không unhandled Future/false success, unmount trước completion an toàn.
 - Cloud auth entry: khách mở Login với `returnTo=/settings`; đăng xuất cần xác
   nhận và integration smoke phải chứng minh local vault còn nguyên.
 - Accessibility: text contrast, 48 px tap target, keyboard focus, text scale 200%
@@ -136,6 +168,16 @@ runbook phải lưu runtime evidence riêng.
 | Chrome Extension | MV3 ZIP/unpacked | clean profile, Side Panel, IndexedDB vault restart/tamper, session restore và foreground sync |
 
 Simulator/emulator bổ sung nhưng không thay physical camera/biometric evidence.
+
+Runtime acceptance 21-10-2026 dùng namespace CompanyName/ProductName riêng trên
+Windows; Linux dùng private XDG/DBus/Secret Service và Xvfb; Android dùng AVD mới.
+Tài khoản Supabase test riêng được tạo, dùng cho upload/new-device download,
+Realtime/tombstone và browser cross-client sync rồi xóa có verify. Không chạy
+suite reset vault trên profile/điện thoại thật. Physical chỉ upgrade cùng signer
+và launch; chưa xác minh nội dung vault, camera hay biometric của owner.
+Test sync kiểm tra trạng thái remote bền vững thay vì ép uploaded/deletedCount=1:
+automatic cycle có thể chạy trước manual cycle và trả count=0 hợp lệ.
+Chi tiết trong [task runtime](tasks/2026-10-21-deploy-runtime.md).
 
 ## Regression rule
 

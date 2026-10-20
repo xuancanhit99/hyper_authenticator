@@ -26,10 +26,10 @@ REMOTE_HOST=$(read_env_value REMOTE_HOST)
 REMOTE_PORT=$(read_env_value REMOTE_PORT)
 REMOTE_USER=$(read_env_value REMOTE_USER)
 SSH_KEY_PATH=$(read_env_value SSH_KEY_PATH)
-recipient=$(grep -m1 '^age1' "$AGE_RECIPIENT_FILE")
+grep -Eq '^(age1|ssh-ed25519 )' "$AGE_RECIPIENT_FILE"
 
 [[ -n "$REMOTE_HOST" && -n "$REMOTE_PORT" && -n "$REMOTE_USER" ]]
-[[ -f "$SSH_KEY_PATH" && -n "$recipient" ]]
+[[ -f "$SSH_KEY_PATH" ]]
 
 umask 077
 mkdir -p "$DESTINATION_ROOT"
@@ -64,7 +64,7 @@ if [[ ! -f "$final_output" ]]; then
   temporary_output=$(mktemp "$DESTINATION_ROOT/.${output_name}.XXXXXX")
   ssh "${ssh_options[@]}" "$remote_target" \
     "sudo -n tar -C '$REMOTE_BACKUP_ROOT' -czf - '$latest_backup'" \
-    | age -r "$recipient" -o "$temporary_output"
+    | age -R "$AGE_RECIPIENT_FILE" -o "$temporary_output"
   chmod 600 "$temporary_output"
   mv "$temporary_output" "$final_output"
   temporary_output=''
@@ -72,8 +72,8 @@ fi
 
 (
   cd "$DESTINATION_ROOT"
-  shasum -a 256 "$output_name" >"$output_name.sha256"
-  shasum -a 256 -c "$output_name.sha256" >/dev/null
+  sha256sum "$output_name" >"$output_name.sha256"
+  sha256sum -c "$output_name.sha256" >/dev/null
 )
 
 if [[ -n "$AGE_IDENTITY_FILE" ]]; then

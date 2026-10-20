@@ -64,6 +64,7 @@ run_release_harness() {
     scripts/agent/test_chrome_extension_contract.sh \
     scripts/agent/test_chrome_extension_local_rebuild_contract.sh
   node --check tool/agent/web_runtime_probe.mjs
+  node --test tool/agent/extension_oauth_test.mjs
   scripts/agent/test_ide_run_config.sh
   scripts/agent/test_separate_local_env.sh
   scripts/agent/test_github_preview_assets.sh

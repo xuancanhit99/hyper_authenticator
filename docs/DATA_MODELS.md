@@ -22,7 +22,20 @@
 - Provider logo không thuộc `AuthenticatorAccount`, vault hoặc cloud payload. UI
   chỉ suy ra asset từ `issuer`; thay/loại catalog không cần data migration.
 
-## Local vault v2
+Admission add/update/import kiểm tra trước khi ghi: issuer không trống, tối đa
+256 Unicode code point; accountName 1–512 code point; secretKey lưu có 16–1024
+ký tự Base32; period 1–300. Label không chứa NUL/surrogate lỗi vì PostgreSQL jsonb
+không nhận chúng. RPC vẫn cho issuer rỗng với dữ liệu lịch sử.
+
+Base32 phải giải mã thành ít nhất một byte, đúng residual length, padding và pad
+bits. Codec chuẩn hóa chữ hoa, bỏ khoảng trắng/dấu gạch nối và trả unpadded.
+Admission dùng unpadded khi dài ít nhất 16 ký tự; key ngắn hơn dùng canonical
+padding trước khi kiểm giới hạn SQL, để legacy padded key vẫn sửa tên được.
+Padding không thay đổi byte của key. Record cũ không được tự rewrite hoặc xóa;
+key sai định dạng báo lỗi sinh mã. URI standard thiếu issuer dùng display name
+`Không xác định`, giữ accountName/secret; export sau đó mang tên mặc định này.
+
+## Local vault v3 (key prefix v2)
 
 ```text
 ha:v2:record:<record-id>
@@ -32,11 +45,18 @@ ha:v2:commit:<generation>:<transaction-id>
 
 Commit marker publish một generation đã verify. Reader có thể lùi về generation
 hợp lệ trước; compaction giữ hai generation gần nhất. Write/delete/import/replace
-được serialize.
+được serialize. Manifest/commit mới mang `formatVersion: 3`; manifest chứa thêm
+`syncMetadata` (shape v1 bên dưới) và `deletedAccountIds` (list stable ID).
+Payload, ownership, fingerprint/revision và explicit delete intent publish cùng
+một commit. Generation CAS chặn network snapshot cũ ghi đè local mutation.
+
+Migration đọc v1/v2 + metadata key cũ rồi publish v3 trước network. Missing local
+với live metadata cũ được chuyển một lần thành delete intent. V3 hợp lệ không đọc
+lại metadata key cũ. Không downgrade writer v2; xem ADR-0024 về rollback.
 
 ## Chrome Extension encrypted store
 
-Chrome Extension không đổi key/JSON của local vault v2 hoặc sync metadata. Nó
+Chrome Extension dùng cùng manifest v3/migration như native. Nó
 đổi **container** phía dưới thành IndexedDB origin của extension:
 
 ```text
@@ -45,7 +65,7 @@ keys[vault-key]     = CryptoKey AES-256-GCM, extractable=false
 records[logicalKey] = { iv: ArrayBuffer(12), ciphertext: ArrayBuffer }
 ```
 
-`logicalKey` giữ nguyên `ha:v2:*`, `ha:cloud-sync:v1:metadata` hoặc namespace
+`logicalKey` giữ nguyên `ha:v2:*`, legacy metadata chỉ đọc khi migrate, hoặc namespace
 Supabase extension. AAD là `hyper-authenticator-extension-v1:<logicalKey>`;
 copy ciphertext giữa key khác phải decrypt fail. Raw key không có serialization,
 không ghi vào localStorage/chrome.storage và không portable sang profile khác.
@@ -53,9 +73,9 @@ không ghi vào localStorage/chrome.storage và không portable sang profile kh�
 Supabase session/PKCE record là implementation detail tách namespace, không là
 model account/cloud protocol và không được log.
 
-## Sync metadata v1
+## Sync metadata v1 embedded trong vault v3
 
-Secure-storage key:
+Legacy secure-storage key (chỉ đọc khi migrate):
 
 ```text
 ha:cloud-sync:v1:metadata

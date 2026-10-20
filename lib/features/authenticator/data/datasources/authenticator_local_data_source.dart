@@ -5,6 +5,8 @@ import 'package:hyper_authenticator/core/storage/secure_key_value_store.dart';
 import 'package:hyper_authenticator/features/authenticator/domain/entities/account_import_summary.dart';
 import 'package:hyper_authenticator/features/authenticator/domain/entities/authenticator_account.dart';
 import 'package:injectable/injectable.dart';
+import 'package:hyper_authenticator/features/sync/domain/entities/account_sync_metadata.dart';
+import 'package:hyper_authenticator/features/sync/domain/repositories/local_vault_repository.dart';
 import 'package:uuid/uuid.dart';
 
 typedef _AccountFingerprint = ({
@@ -44,9 +46,10 @@ abstract class AuthenticatorLocalDataSource {
 }
 
 @LazySingleton(as: AuthenticatorLocalDataSource)
-class AuthenticatorLocalDataSourceImpl implements AuthenticatorLocalDataSource {
+class AuthenticatorLocalDataSourceImpl
+    implements AuthenticatorLocalDataSource, LocalVaultRepository {
   static const _legacyAccountIndexKey = 'authenticator_account_index';
-  static const _formatVersion = 2;
+  static const _formatVersion = 3;
   static const _namespace = 'ha:v2:';
   static const _recordPrefix = '${_namespace}record:';
   static const _manifestPrefix = '${_namespace}manifest:';
@@ -65,6 +68,51 @@ class AuthenticatorLocalDataSourceImpl implements AuthenticatorLocalDataSource {
   AuthenticatorLocalDataSourceImpl({
     required this.secureStorage,
     required this.uuid,
+  });
+
+  @override
+  Future<LocalVaultSnapshot> readVault() => _serialized(() async {
+    final current = await _ensureV2Snapshot();
+    return LocalVaultSnapshot(
+      generation: current.generation,
+      accounts: List.unmodifiable(current.accounts),
+      metadata: current.metadata,
+      deletedAccountIds: Set.unmodifiable(current.deletedAccountIds),
+    );
+  });
+
+  @override
+  Future<int> commitVault({
+    required int expectedGeneration,
+    required List<AuthenticatorAccount> accounts,
+    required AccountSyncMetadata metadata,
+    required Set<String> deletedAccountIds,
+    required bool Function() canCommit,
+  }) => _serialized(() async {
+    final current = await _ensureV2Snapshot();
+    if (current.generation != expectedGeneration || !canCommit()) {
+      throw const LocalVaultConflict();
+    }
+    if (jsonEncode(accounts.map((a) => a.toJson()).toList()) ==
+            jsonEncode(current.accounts.map((a) => a.toJson()).toList()) &&
+        jsonEncode(metadata.toJson()) ==
+            jsonEncode(current.metadata.toJson()) &&
+        deletedAccountIds.length == current.deletedAccountIds.length &&
+        deletedAccountIds.containsAll(current.deletedAccountIds)) {
+      return current.generation;
+    }
+    final next = await _commitSnapshot(
+      previous: current,
+      accounts: accounts,
+      changedAccountIds: accounts
+          .where((a) => current.entriesById[a.id]?.account != a)
+          .map((a) => a.id)
+          .toSet(),
+      metadata: metadata,
+      deletedAccountIds: deletedAccountIds,
+      canCommit: canCommit,
+    );
+    return next.generation;
   });
 
   @override
@@ -188,6 +236,7 @@ class AuthenticatorLocalDataSourceImpl implements AuthenticatorLocalDataSource {
         previous: current,
         accounts: accounts,
         changedAccountIds: const <String>{},
+        deletedAccountIds: {...current.deletedAccountIds, id},
       );
     } on AccountNotFoundException {
       rethrow;
@@ -237,6 +286,12 @@ class AuthenticatorLocalDataSourceImpl implements AuthenticatorLocalDataSource {
             previous: current,
             accounts: replacement,
             changedAccountIds: replacement.map((account) => account.id).toSet(),
+            deletedAccountIds: {
+              ...current.deletedAccountIds,
+              ...current.accounts
+                  .where((a) => !replacement.any((b) => b.id == a.id))
+                  .map((a) => a.id),
+            },
           );
         } catch (_) {
           throw StorageWriteException();
@@ -246,15 +301,26 @@ class AuthenticatorLocalDataSourceImpl implements AuthenticatorLocalDataSource {
   Future<_V2Snapshot> _ensureV2Snapshot() async {
     final storedValues = await secureStorage.readAll();
     final existing = _loadLatestCommittedSnapshot(storedValues);
-    if (existing != null) {
+    if (existing != null && existing.hasSyncState) {
       return existing;
     }
 
-    final legacyAccounts = _loadLegacyAccounts(storedValues);
+    final legacyAccounts =
+        existing?.accounts ?? _loadLegacyAccounts(storedValues);
+    final encodedMetadata = storedValues['ha:cloud-sync:v1:metadata'];
+    final metadata = encodedMetadata == null
+        ? const AccountSyncMetadata({})
+        : AccountSyncMetadata.fromJson(jsonDecode(encodedMetadata));
     return _commitSnapshot(
-      previous: null,
+      previous: existing,
       accounts: legacyAccounts,
       changedAccountIds: legacyAccounts.map((account) => account.id).toSet(),
+      metadata: metadata,
+      deletedAccountIds: {
+        for (final e in metadata.records.entries)
+          if (!e.value.isDeleted && !legacyAccounts.any((a) => a.id == e.key))
+            e.key,
+      },
     );
   }
 
@@ -280,7 +346,7 @@ class AuthenticatorLocalDataSourceImpl implements AuthenticatorLocalDataSource {
       try {
         final decoded = jsonDecode(entry.value);
         if (decoded is! Map<String, dynamic> ||
-            decoded['formatVersion'] != _formatVersion ||
+            ![2, _formatVersion].contains(decoded['formatVersion']) ||
             decoded['generation'] is! int ||
             decoded['manifestKey'] is! String) {
           continue;
@@ -327,7 +393,7 @@ class AuthenticatorLocalDataSourceImpl implements AuthenticatorLocalDataSource {
 
     final decoded = jsonDecode(manifestJson);
     if (decoded is! Map<String, dynamic> ||
-        decoded['formatVersion'] != _formatVersion ||
+        ![2, _formatVersion].contains(decoded['formatVersion']) ||
         decoded['generation'] != candidate.generation ||
         decoded['records'] is! List<dynamic>) {
       throw const FormatException('Manifest shape is invalid.');
@@ -369,7 +435,21 @@ class AuthenticatorLocalDataSourceImpl implements AuthenticatorLocalDataSource {
       generation: candidate.generation,
       accounts: accounts,
       entriesById: entriesById,
+      hasSyncState: decoded['formatVersion'] == _formatVersion,
+      metadata: decoded['formatVersion'] == _formatVersion
+          ? AccountSyncMetadata.fromJson(decoded['syncMetadata'])
+          : const AccountSyncMetadata({}),
+      deletedAccountIds: _decodeDeleteIntents(decoded),
     );
+  }
+
+  Set<String> _decodeDeleteIntents(Map<String, dynamic> manifest) {
+    if (manifest['formatVersion'] == 2) return {};
+    final value = manifest['deletedAccountIds'];
+    if (value is! List || value.any((id) => id is! String || id.isEmpty)) {
+      throw const FormatException('Delete intent is invalid.');
+    }
+    return value.cast<String>().toSet();
   }
 
   List<AuthenticatorAccount> _loadLegacyAccounts(
@@ -444,6 +524,9 @@ class AuthenticatorLocalDataSourceImpl implements AuthenticatorLocalDataSource {
     required _V2Snapshot? previous,
     required List<AuthenticatorAccount> accounts,
     required Set<String> changedAccountIds,
+    AccountSyncMetadata? metadata,
+    Set<String>? deletedAccountIds,
+    bool Function()? canCommit,
   }) async {
     final generation = (previous?.generation ?? 0) + 1;
     final transactionId = uuid.v4();
@@ -486,6 +569,14 @@ class AuthenticatorLocalDataSourceImpl implements AuthenticatorLocalDataSource {
       'formatVersion': _formatVersion,
       'generation': generation,
       'records': recordDescriptors,
+      'syncMetadata':
+          (metadata ?? previous?.metadata ?? const AccountSyncMetadata({}))
+              .toJson(),
+      'deletedAccountIds':
+          (deletedAccountIds ?? previous?.deletedAccountIds ?? <String>{})
+              .difference(accounts.map((a) => a.id).toSet())
+              .toList()
+            ..sort(),
     });
     await secureStorage.write(key: manifestKey, value: manifestJson);
     if (await secureStorage.read(key: manifestKey) != manifestJson) {
@@ -498,6 +589,7 @@ class AuthenticatorLocalDataSourceImpl implements AuthenticatorLocalDataSource {
       'generation': generation,
       'manifestKey': manifestKey,
     });
+    if (canCommit != null && !canCommit()) throw const LocalVaultConflict();
     await secureStorage.write(key: commitKey, value: commitJson);
     if (await secureStorage.read(key: commitKey) != commitJson) {
       throw const FormatException('Commit verification failed.');
@@ -527,7 +619,7 @@ class AuthenticatorLocalDataSourceImpl implements AuthenticatorLocalDataSource {
       try {
         final decoded = jsonDecode(entry.value);
         if (decoded is Map<String, dynamic> &&
-            decoded['formatVersion'] == _formatVersion &&
+            [2, _formatVersion].contains(decoded['formatVersion']) &&
             decoded['generation'] is int &&
             decoded['manifestKey'] is String) {
           candidates.add(
@@ -583,7 +675,7 @@ class AuthenticatorLocalDataSourceImpl implements AuthenticatorLocalDataSource {
     final completer = Completer<T>();
     _operationTail = _operationTail.then((_) async {
       try {
-        completer.complete(await operation());
+        completer.complete(await runStorageExclusive(secureStorage, operation));
       } catch (error, stackTrace) {
         completer.completeError(error, stackTrace);
       }
@@ -596,11 +688,17 @@ class _V2Snapshot {
   final int generation;
   final List<AuthenticatorAccount> accounts;
   final Map<String, _V2RecordEntry> entriesById;
+  final AccountSyncMetadata metadata;
+  final Set<String> deletedAccountIds;
+  final bool hasSyncState;
 
   const _V2Snapshot({
     required this.generation,
     required this.accounts,
     required this.entriesById,
+    required this.metadata,
+    required this.deletedAccountIds,
+    required this.hasSyncState,
   });
 }
 

@@ -15,6 +15,7 @@ const String _biometricPrefKey = 'biometric_enabled';
 class LocalAuthBloc extends Bloc<LocalAuthEvent, LocalAuthState> {
   final LocalAuthentication auth;
   final SharedPreferences sharedPreferences;
+  int _lockEpoch = 0;
 
   LocalAuthBloc({required this.auth, required this.sharedPreferences})
     : super(LocalAuthInitial()) {
@@ -30,25 +31,38 @@ class LocalAuthBloc extends Bloc<LocalAuthEvent, LocalAuthState> {
     if (state is LocalAuthSuccess) {
       return;
     }
-    if (!PlatformCapabilities.supportsLocalAuthentication) {
-      emit(LocalAuthSuccess());
-      return;
-    }
+    final epoch = _lockEpoch;
 
     try {
+      final enabled = sharedPreferences.getBool(_biometricPrefKey) ?? false;
+      if (!enabled) {
+        emit(LocalAuthSuccess());
+        return;
+      }
+      if (!PlatformCapabilities.supportsLocalAuthentication) {
+        emit(
+          const LocalAuthError(
+            'Khóa ứng dụng chưa khả dụng trên thiết bị. Hãy thử lại.',
+          ),
+        );
+        return;
+      }
       final bool canAuthenticateWithBiometrics = await auth.canCheckBiometrics;
       final bool canAuthenticate =
           canAuthenticateWithBiometrics || await auth.isDeviceSupported();
 
-      final bool isBiometricEnabled =
-          sharedPreferences.getBool(_biometricPrefKey) ?? false;
-
-      if (canAuthenticate && isBiometricEnabled) {
+      if (epoch != _lockEpoch) return;
+      if (canAuthenticate) {
         emit(LocalAuthRequired());
       } else {
-        emit(LocalAuthSuccess());
+        emit(
+          const LocalAuthError(
+            'Khóa ứng dụng chưa khả dụng trên thiết bị. Hãy thử lại.',
+          ),
+        );
       }
     } catch (_) {
+      if (epoch != _lockEpoch) return;
       emit(
         const LocalAuthError('Không thể kiểm tra khóa ứng dụng. Hãy thử lại.'),
       );
@@ -59,18 +73,21 @@ class LocalAuthBloc extends Bloc<LocalAuthEvent, LocalAuthState> {
     Authenticate event,
     Emitter<LocalAuthState> emit,
   ) async {
+    final epoch = _lockEpoch;
     try {
       final bool didAuthenticate = await auth.authenticate(
         localizedReason: 'Xác thực để mở các mã của bạn',
         persistAcrossBackgrounding: true,
       );
 
+      if (epoch != _lockEpoch) return;
       if (didAuthenticate) {
         emit(LocalAuthSuccess());
       } else {
         emit(LocalAuthRequired());
       }
     } on LocalAuthException catch (error) {
+      if (epoch != _lockEpoch) return;
       if (error.code == LocalAuthExceptionCode.userCanceled ||
           error.code == LocalAuthExceptionCode.systemCanceled) {
         emit(LocalAuthRequired());
@@ -80,6 +97,7 @@ class LocalAuthBloc extends Bloc<LocalAuthEvent, LocalAuthState> {
         const LocalAuthError('Không thể xác thực trên thiết bị. Hãy thử lại.'),
       );
     } catch (_) {
+      if (epoch != _lockEpoch) return;
       emit(
         const LocalAuthError('Không thể xác thực trên thiết bị. Hãy thử lại.'),
       );
@@ -87,6 +105,7 @@ class LocalAuthBloc extends Bloc<LocalAuthEvent, LocalAuthState> {
   }
 
   void _onResetAuthStatus(ResetAuthStatus event, Emitter<LocalAuthState> emit) {
+    _lockEpoch++;
     if (state is! LocalAuthInitial && state is! LocalAuthRequired) {
       emit(LocalAuthInitial());
     }

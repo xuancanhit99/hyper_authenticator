@@ -189,6 +189,9 @@ class _FakeAuthRepository implements AuthRepository {
       throw UnimplementedError();
 
   @override
+  Future<Either<Failure, void>> signInWithGoogle() async => const Right(null);
+
+  @override
   Future<Either<Failure, void>> signOut() async {
     signOutCalls += 1;
     _currentUser = null;

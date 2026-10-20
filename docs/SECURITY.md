@@ -2,6 +2,12 @@
 
 ## Tài sản cần bảo vệ
 
+Google OAuth dùng external browser và Supabase PKCE. Secret chỉ ở server; app
+giữ verifier theo native/extension/browser storage boundary hiện hành. Desktop
+listener chỉ bind loopback, random port/path, timeout và exact callback validation;
+extension chỉ mở authorize origin/provider/redirect đã pin. Không đưa raw callback,
+code hay provider error lên UI. Xem [ADR-0025](adr/0025-google-oauth-pkce.md).
+
 - TOTP `secretKey`, full `otpauth` URI và local vault plaintext.
 - Payload account trong lúc authenticated RPC decrypt.
 - Supabase session/password-reset token.
@@ -55,6 +61,23 @@ hiển thị protected QR export.
 
 ## Control đã triển khai
 
+Theo ADR-0024, v3 manifest giữ account và owner/delete intent cùng generation;
+network result stale không publish qua CAS. Extension init key dùng IDB atomic
+transaction, mutation có Web Locks qua contexts, missing key giữ ciphertext và
+báo lỗi. Browser/extension code đang chạy vẫn có thể đọc plaintext.
+
+Native session/PKCE không còn nằm trong SharedPreferences sau migration thành
+công. Secure write được đọc verify trước khi xóa bản cũ; logout tombstone chặn
+legacy restore sau interruption. Migration chưa hoàn tất có thể còn plaintext
+cũ để bảo toàn session; app dừng nếu không verify/cleanup được.
+
+Android secure storage giữ namespace/cipher và tắt reset-on-error. Bản vendor
+abort corrupt backup entry, verify target và dùng verified migration state để
+resume cleanup. Crypto error không được biến thành kho rỗng. Keystore key mất
+vẫn không thể tái tạo chỉ từ ciphertext; cần backup độc lập. Configured app lock
+giữ locked khi support/plugin mất, và auth result trước background reset không
+thể mở khóa trở lại. Physical-device acceptance vẫn tách khỏi unit checks.
+
 ### Local và disclosure
 
 - Local vault versioned copy-on-write, serialized mutation và rollback
@@ -66,6 +89,10 @@ hiển thị protected QR export.
   Supabase/storage/network. Validation local đã kiểm soát mới được giữ copy chi
   tiết để hướng dẫn sửa input.
 - Logout giữ local vault.
+- Password không trim/normalize ở login/register/reset/update; chỉ email trim.
+- Base32 được kiểm byte giải mã/canonical padding/pad bits trước sinh mã; không
+  dùng empty/truncated key khi record legacy lỗi. Không tự sửa key đã lưu.
+- Clipboard feedback chờ API hoàn tất; lỗi không đưa code/exception vào thông báo.
 
 ### Account sync
 
@@ -75,6 +102,9 @@ hiển thị protected QR export.
 - Tombstone thắng update offline và không thể revive qua RPC.
 - Cloud failure không rollback local; pending intent retry ở lần sync sau.
 - Remote payload được validate/bounded trước lưu và validate lại khi parse client.
+- Admission và sync dùng cùng bounds Unicode/JSON với RPC. Live remote payload
+  lỗi được cô lập chỉ bằng metadata; giữ cloud/local nguyên trạng và báo partial,
+  không tạo deletion intent. Metadata/tombstone sai vẫn dừng toàn bộ chu kỳ.
 - Corrupt metadata/payload fail closed, không reset ownership âm thầm.
 - Private Realtime chỉ gửi version/generated ID trên own-user topic; không gửi
   account ID, revision, issuer/name, Vault reference hoặc TOTP payload.

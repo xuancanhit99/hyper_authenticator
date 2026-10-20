@@ -24,6 +24,68 @@ void main() {
   });
 
   test(
+    'Google browser launch không giả authenticated; session stream hoàn tất',
+    () async {
+      bloc.add(AuthGoogleSignInRequested());
+      await bloc.stream.firstWhere((s) => s is AuthGoogleRedirectStarted);
+      expect(repository.googleCalls, 1);
+      expect(repository.currentUserEntity, isNull);
+      repository.completeGoogle();
+      await bloc.stream.firstWhere((s) => s is AuthAuthenticated);
+      expect(bloc.state, isA<AuthAuthenticated>());
+    },
+  );
+
+  test('Google callback trước launch completion không bị ghi đè', () async {
+    repository.googleGate = Completer<void>();
+    bloc.add(AuthGoogleSignInRequested());
+    await bloc.stream.firstWhere((s) => s is AuthLoading);
+    repository.completeGoogle();
+    await bloc.stream.firstWhere((s) => s is AuthAuthenticated);
+    repository.googleGate!.complete();
+    await Future<void>.delayed(Duration.zero);
+    expect(bloc.state, isA<AuthAuthenticated>());
+  });
+
+  test(
+    'Google double click chỉ mở một flow; failure/cancel cho phép retry',
+    () async {
+      repository.googleGate = Completer<void>();
+      bloc.add(AuthGoogleSignInRequested());
+      await bloc.stream.firstWhere((s) => s is AuthLoading);
+      bloc.add(AuthGoogleSignInRequested());
+      await Future<void>.delayed(Duration.zero);
+      expect(repository.googleCalls, 1);
+      repository.googleFailure = const AuthServerFailure(
+        'TEST_ONLY private provider error',
+      );
+      repository.googleGate!.complete();
+      final failed =
+          await bloc.stream.firstWhere((s) => s is AuthFailure) as AuthFailure;
+      expect(failed.message, isNot(contains('TEST_ONLY')));
+      repository.googleGate = null;
+      repository.googleFailure = null;
+      bloc.add(AuthGoogleSignInRequested());
+      await bloc.stream.firstWhere((s) => s is AuthGoogleRedirectStarted);
+      expect(repository.googleCalls, 2);
+    },
+  );
+
+  test(
+    'OAuth callback stream error được xử lý an toàn, retry không crash',
+    () async {
+      final failed = bloc.stream.firstWhere((s) => s is AuthFailure);
+      repository.emitError();
+      expect(
+        (await failed as AuthFailure).message,
+        isNot(contains('TEST_ONLY')),
+      );
+      bloc.add(AuthGoogleSignInRequested());
+      await bloc.stream.firstWhere((s) => s is AuthGoogleRedirectStarted);
+    },
+  );
+
+  test(
     'sign in emit trạng thái authenticated không phụ thuộc auth stream',
     () async {
       final states = expectLater(
@@ -126,6 +188,16 @@ class _FakeAuthRepository implements AuthRepository {
   UserEntity? _currentUser;
   bool hasSessionAfterSignUp = true;
   Failure? signInFailure;
+  int googleCalls = 0;
+  Completer<void>? googleGate;
+  Failure? googleFailure;
+
+  void completeGoogle() {
+    _currentUser = user;
+    _changes.add(user);
+  }
+
+  void emitError() => _changes.addError(StateError('TEST_ONLY callback error'));
 
   Future<void> close() => _changes.close();
 
@@ -163,6 +235,14 @@ class _FakeAuthRepository implements AuthRepository {
   @override
   Future<Either<Failure, void>> recoverPassword(String email) async =>
       const Right(null);
+
+  @override
+  Future<Either<Failure, void>> signInWithGoogle() async {
+    googleCalls++;
+    if (googleGate != null) await googleGate!.future;
+    if (googleFailure case final failure?) return Left(failure);
+    return const Right(null);
+  }
 
   @override
   Future<Either<Failure, void>> signOut() async {

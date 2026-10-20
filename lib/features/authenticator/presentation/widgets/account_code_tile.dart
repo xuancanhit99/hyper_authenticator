@@ -84,13 +84,17 @@ class AccountCodeTile extends StatelessWidget {
     );
   }
 
-  void _copyCode(BuildContext context, String rawCode) {
-    Clipboard.setData(ClipboardData(text: rawCode));
+  Future<void> _copyCode(BuildContext context, String rawCode) async {
+    var message = 'Đã sao chép mã TOTP.';
+    try {
+      await Clipboard.setData(ClipboardData(text: rawCode));
+    } catch (_) {
+      message = 'Không thể sao chép mã TOTP. Hãy thử lại.';
+    }
+    if (!context.mounted) return;
+
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Đã sao chép mã TOTP.'),
-        duration: Duration(seconds: 1),
-      ),
+      SnackBar(content: Text(message), duration: const Duration(seconds: 1)),
     );
   }
 }

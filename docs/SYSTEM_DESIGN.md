@@ -1,5 +1,11 @@
 # Thiết kế hệ thống
 
+Auth repository hỗ trợ password và Google OAuth PKCE theo
+[ADR-0025](adr/0025-google-oauth-pkce.md). Login/Register dùng chung Google button;
+data layer chọn hosted Web redirect, native mobile app callback, desktop loopback
+hoặc MV3 identity bridge. AuthBloc chỉ phát authenticated từ verified session;
+browser-launch không kích hoạt sync. User/vault/remote data contract giữ nguyên.
+
 Tài liệu này mô tả source runtime sau ADR-0020. Trạng thái deploy nằm trong
 [PROJECT_STATUS.md](PROJECT_STATUS.md).
 
@@ -25,8 +31,8 @@ Domain
   └── AccountSynchronizer
         │
 Data
-  ├── FlutterSecureStorage local vault v2
-  ├── secure ownership/revision/fingerprint metadata
+  ├── FlutterSecureStorage local vault v3
+  ├── atomic ownership/revision/fingerprint/delete intent
   └── Supabase Auth + Vault-backed authenticated RPC
 ```
 
@@ -80,7 +86,11 @@ evidence chưa có, xem ADR-0022 và `tasks/2026-08-chrome-extension.md`.
 3. publish commit marker;
 4. giữ generation rollback gần nhất và compact bản cũ.
 
-Add/update/delete/import/replace serialize trong process. Logout không xóa vault.
+Add/update/delete/import/replace và generation CAS serialize trong process;
+extension thêm Web Locks qua contexts. Network không giữ storage lock. Manifest
+v3 commit accounts, ownership và delete intent cùng một marker; rollback luôn
+cùng generation. Logout không xóa vault. Native hai process ghi cùng kho chưa
+được hỗ trợ. Xem ADR-0024 cho migration/rollback.
 
 ## Account-managed sync
 
@@ -109,17 +119,30 @@ log. Metadata corrupt/write-verify fail làm sync dừng fail-safe.
 ### Trình tự sync
 
 1. Nếu chưa đăng nhập, trả `signedOut` và không gọi network.
-2. Đọc local vault + metadata.
+2. Đọc một committed local vault snapshot gồm accounts + metadata + delete intent.
 3. Bind mọi account chưa có owner với user hiện hành và verify metadata **trước
    network**.
 4. List toàn bộ remote record của user.
 5. Áp tombstone trước; tombstone thắng local dirty update.
-6. Tải live record về nếu local chưa có hoặc local đang clean.
-7. Upload local create/update dirty bằng CAS; conflict refresh rồi retry một lần.
-8. Local record đã mất nhưng metadata còn live được publish thành tombstone.
-9. Verify/persist metadata; lỗi giữ pending intent cho lần sau.
+6. Stage live record trong bộ nhớ nếu local chưa có hoặc local đang clean.
+7. Validate payload local bằng cùng giới hạn RPC; record legacy không hợp lệ
+   được giữ nguyên và bỏ qua. Upload dirty hợp lệ bằng CAS; conflict refresh rồi
+   retry một lần.
+8. Explicit local delete intent được publish thành tombstone.
+9. Commit payload/owner/ack/delete intent với generation CAS. Nếu local đã đổi,
+   đọc lại và reconcile tối đa ba lần; còn cạnh tranh báo retry, giữ local.
+   Network failure không publish partial download. Đổi user/sign-out abort chu kỳ;
+   mỗi RPC giữ token của identity đã kiểm tra.
 
 Account thuộc user khác bị bỏ qua trong phiên hiện hành và vẫn dùng local.
+
+List remote cô lập live payload lỗi thành record `isBlocked` chỉ giữ ID/revision/
+timestamp, không giữ plaintext payload hoặc tạo local deletion intent. Metadata
+sai và tombstone sai vẫn fail closed. Các record hợp lệ tiếp tục sync. Kết quả
+đếm union ID bị chặn local/remote; Settings hiển thị `SyncPartial` và retry thay
+vì báo hoàn tất toàn bộ. Dirty local hợp lệ hoặc delete intent đã có có thể sửa/
+xóa record cloud bị chặn qua CAS. Network/auth failure vẫn là failure, không
+bị chuyển thành partial success.
 
 ### Trigger
 
@@ -152,6 +175,9 @@ cầu `AccountsBloc` reload list.
 ## Auth và Settings
 
 - Auth hỗ trợ login/register/password recovery/update/session restore.
+- Mật khẩu là chuỗi nguyên vẹn ở mọi luồng; chỉ email được trim. Không thử lại
+  tự động bằng mật khẩu đã trim. Account lịch sử giữ nguyên password thực trên
+  server; không migration credential.
 - Settings hiển thị local-only khi chưa cấu hình hoặc chưa đăng nhập.
 - Đăng nhập bật sync tự động; không có setup recovery key/manual backup/conflict
   dialog.
@@ -159,6 +185,8 @@ cầu `AccountsBloc` reload list.
 - Copy hướng tới người dùng gọi record là “mã xác thực”, issuer là “dịch vụ” và
   Base32 secret là “khóa thiết lập”; tên Supabase, storage và exception không
   thuộc presentation contract.
+- Clipboard chỉ báo sao chép thành công sau khi platform API xác nhận; lỗi dùng
+  copy cố định, completion sau unmount không hiển thị feedback.
 
 ## Portability
 

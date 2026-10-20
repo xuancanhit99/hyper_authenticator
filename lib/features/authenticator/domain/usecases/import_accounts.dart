@@ -7,6 +7,7 @@ import 'package:hyper_authenticator/features/authenticator/domain/entities/authe
 import 'package:hyper_authenticator/features/authenticator/domain/repositories/authenticator_repository.dart';
 import 'package:hyper_authenticator/features/authenticator/domain/services/totp_uri_parser.dart';
 import 'package:hyper_authenticator/features/authenticator/domain/services/totp_validator.dart';
+import 'package:hyper_authenticator/features/authenticator/domain/services/account_payload_validator.dart';
 import 'package:injectable/injectable.dart';
 
 @injectable
@@ -34,7 +35,14 @@ class ImportAccounts
             'Dịch vụ và tài khoản không được để trống.',
           );
         }
-        final secret = TotpValidator.normalizeSecret(account.secretKey);
+        final secret = AccountPayloadValidator.normalizeSecretForStorage(
+          account.secretKey,
+        );
+        AccountPayloadValidator.validateBounds(
+          issuer: issuer,
+          accountName: accountName,
+          secretKey: secret,
+        );
         final algorithm = TotpValidator.normalizeAlgorithm(account.algorithm);
         TotpValidator.validateParameters(
           digits: account.digits,

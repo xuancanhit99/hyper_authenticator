@@ -5,6 +5,8 @@ import 'package:hyper_authenticator/core/storage/secure_key_value_store.dart';
 import 'package:hyper_authenticator/features/authenticator/data/datasources/authenticator_local_data_source.dart';
 import 'package:hyper_authenticator/features/authenticator/domain/entities/authenticator_account.dart';
 import 'package:uuid/uuid.dart';
+import 'package:hyper_authenticator/features/sync/domain/entities/account_sync_metadata.dart';
+import 'package:hyper_authenticator/features/sync/domain/repositories/local_vault_repository.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -19,6 +21,85 @@ void main() {
       uuid: const Uuid(),
     );
   });
+
+  test(
+    'two datasource instances serialize mutations and reject stale CAS',
+    () async {
+      final other = AuthenticatorLocalDataSourceImpl(
+        secureStorage: storage,
+        uuid: const Uuid(),
+      );
+      final stale = await dataSource.readVault();
+      final one = _account(
+        id: '00000000-0000-4000-8000-000000000001',
+        issuer: 'One',
+      );
+      final two = _account(
+        id: '00000000-0000-4000-8000-000000000002',
+        issuer: 'Two',
+      );
+      storage.writeDelay = const Duration(milliseconds: 1);
+      await Future.wait([dataSource.saveAccount(one), other.saveAccount(two)]);
+      await expectLater(
+        dataSource.commitVault(
+          expectedGeneration: stale.generation,
+          accounts: [],
+          metadata: stale.metadata,
+          deletedAccountIds: {},
+          canCommit: () => true,
+        ),
+        throwsA(isA<LocalVaultConflict>()),
+      );
+      expect((await other.readVault()).accounts.toSet(), {one, two});
+      await other.deleteAccount(one.id);
+      final reopened = AuthenticatorLocalDataSourceImpl(
+        secureStorage: storage,
+        uuid: const Uuid(),
+      );
+      expect((await reopened.readVault()).deletedAccountIds, contains(one.id));
+    },
+  );
+
+  test(
+    'v2 migration atomically preserves owner and legacy pending delete',
+    () async {
+      final one = _account(
+        id: '00000000-0000-4000-8000-000000000001',
+        issuer: 'One',
+      );
+      await dataSource.saveAccount(one);
+      for (final entry in Map.of(storage.values).entries) {
+        final value = jsonDecode(entry.value) as Map<String, dynamic>;
+        if (value.containsKey('formatVersion')) {
+          value['formatVersion'] = 2;
+          value.remove('syncMetadata');
+          value.remove('deletedAccountIds');
+          storage.values[entry.key] = jsonEncode(value);
+        }
+      }
+      const owned = SyncedAccountMetadata(
+        ownerUserId: 'TEST_ONLY_A',
+        remoteRevision: 1,
+        syncedFingerprint: null,
+        isDeleted: false,
+      );
+      storage.values['ha:cloud-sync:v1:metadata'] = jsonEncode(
+        AccountSyncMetadata({
+          one.id: owned,
+          'TEST_ONLY_DELETED': owned,
+        }).toJson(),
+      );
+      final migrated = await dataSource.readVault();
+      expect(migrated.accounts, [one]);
+      expect(migrated.metadata.records[one.id]?.ownerUserId, 'TEST_ONLY_A');
+      expect(migrated.deletedAccountIds, {'TEST_ONLY_DELETED'});
+      storage.values['ha:cloud-sync:v1:metadata'] = 'TEST_ONLY_stale_legacy';
+      expect(
+        (await dataSource.readVault()).metadata.records[one.id]?.ownerUserId,
+        'TEST_ONLY_A',
+      );
+    },
+  );
 
   test(
     'migrate legacy record, recover orphan và không xóa dữ liệu v1',

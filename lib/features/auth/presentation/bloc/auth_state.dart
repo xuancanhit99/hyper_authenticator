@@ -13,6 +13,9 @@ class AuthInitial extends AuthState {}
 // When checking auth status or performing login/signup/logout
 class AuthLoading extends AuthState {}
 
+/// Opening a browser is not evidence that Google authenticated the user.
+class AuthGoogleRedirectStarted extends AuthState {}
+
 // User is logged in
 class AuthAuthenticated extends AuthState {
   final UserEntity user; // Changed from Supabase User to UserEntity

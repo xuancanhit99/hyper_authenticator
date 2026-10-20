@@ -4,6 +4,7 @@ import 'package:hyper_authenticator/core/usecases/usecase.dart';
 import 'package:hyper_authenticator/features/authenticator/domain/entities/authenticator_account.dart';
 import 'package:hyper_authenticator/features/authenticator/domain/repositories/authenticator_repository.dart';
 import 'package:hyper_authenticator/features/authenticator/domain/services/totp_validator.dart';
+import 'package:hyper_authenticator/features/authenticator/domain/services/account_payload_validator.dart';
 import 'package:injectable/injectable.dart';
 import 'package:equatable/equatable.dart'; // Import Equatable
 
@@ -29,7 +30,9 @@ class UpdateAccount implements UseCase<Unit, UpdateAccountParams> {
         id: account.id,
         issuer: issuer,
         accountName: accountName,
-        secretKey: TotpValidator.normalizeSecret(account.secretKey),
+        secretKey: AccountPayloadValidator.normalizeSecretForStorage(
+          account.secretKey,
+        ),
         algorithm: TotpValidator.normalizeAlgorithm(account.algorithm),
         digits: account.digits,
         period: account.period,
@@ -37,6 +40,11 @@ class UpdateAccount implements UseCase<Unit, UpdateAccountParams> {
       TotpValidator.validateParameters(
         digits: normalizedAccount.digits,
         period: normalizedAccount.period,
+      );
+      AccountPayloadValidator.validateBounds(
+        issuer: normalizedAccount.issuer,
+        accountName: normalizedAccount.accountName,
+        secretKey: normalizedAccount.secretKey,
       );
       return repository.updateAccount(normalizedAccount);
     } on FormatException catch (error) {

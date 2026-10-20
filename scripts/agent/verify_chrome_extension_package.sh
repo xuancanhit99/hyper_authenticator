@@ -44,7 +44,7 @@ jq -e '
   .manifest_version == 3 and
   .minimum_chrome_version == "114" and
   .side_panel.default_path == "index.html" and
-  .permissions == ["sidePanel"] and
+  .permissions == ["sidePanel", "identity"] and
   .host_permissions == ["https://supabase-api.vnpay.dev/*"] and
   .action.default_icon == {
     "16": "icons/icon-16.png",
@@ -63,6 +63,7 @@ jq -e '
 test -f "$PACKAGE_DIR/index.html"
 test -f "$PACKAGE_DIR/service_worker.js"
 test -f "$PACKAGE_DIR/vault.js"
+test -f "$PACKAGE_DIR/oauth.js"
 test -f "$PACKAGE_DIR/main.dart.js"
 test -f "$PACKAGE_DIR/flutter_bootstrap.js"
 test -f "$PACKAGE_DIR/assets/FontManifest.json"

@@ -16,6 +16,28 @@ GitHub Releases là binary channel hiện tại; store rollout để sau.
 
 ## Release gate
 
+P1 storage rollout ngày 21-10-2026 theo ADR-0024 có migration local vault v3 và
+native auth preferences sang secure storage. Không downgrade về writer v2 sau
+upgrade. Giữ app/install identity; không clear-data/reinstall để sửa crypto error.
+Android phải giữ path dependency `third_party/flutter_secure_storage` đã patch.
+Build/runtime checks nằm trong task P1; sửa source chưa đồng nghĩa đã phát hành.
+
+Ngày 21-10-2026 đã deploy Web `1.1.4+18` từ working tree bằng image
+`hyper-authenticator-web:1.1.4-p1-20261021r2`. Public `main.dart.js` SHA256:
+`46a7668a2ae8189a62611a8b24a908dd5e5fe8da59b4bbc2b0458128041ba5c1`.
+Compose snapshot trước r2 giữ image r1 cũng hiểu vault v3; không dùng compose
+trước P1 để downgrade writer sau khi client đã ghi v3. Recovery/backend không
+đổi. APK signer khớp pin; cấu hình local đã chuyển từ keystore cũ sang khóa phát
+hành đúng, lưu dưới thư mục backup operator ngoài Git. Không phân phối key.
+Android physical đã update giữ data và launch; Windows/Linux/extension được
+đóng gói để bàn giao local, chưa publish GitHub/store. Linux Debian build ở Ubuntu
+24.04 không chứng minh tương thích distro có glibc cũ hơn.
+Xem [task triển khai](tasks/2026-10-21-deploy-runtime.md) cho evidence và giới hạn.
+
+Backup services cần cài `supabase/systemd/hyper-auth-backups.conf` vào tmpfiles.d
+và chạy `systemd-tmpfiles --create` trước enable timer để tránh 226/NAMESPACE.
+Xem runbook production cho off-host custody và drill.
+
 ```bash
 scripts/agent/check.sh full
 ```
@@ -141,6 +163,14 @@ Preview này bổ sung provider logo catalog local đã pin; Chrome Extension ZI
 
 ## Web
 
+Ngày 21-10-2026, production rollout Google dùng `1.1.5+19`, image
+`hyper-authenticator-web:1.1.5-google-20261021`. Compose trước rollout là private
+`compose.pre-google-20261021.json`; image trước `1.1.4-p1-20261021r2` hiểu vault v3.
+Auth chỉ recreate service `auth` sau private env/compose backup; Google secret
+không vào Docker build. Google callback là
+`https://supabase-api.vnpay.dev/auth/v1/callback`; Google Cloud Audience/Publishing
+quản lý bên ngoài app. Xem [task Google](tasks/2026-10-21-google-sign-in.md).
+
 Flutter Web dùng public runtime config và Nginx serving contract. Account sync
 được hỗ trợ nhưng browser profile/origin/XSS là trust boundary; release notes
 không được gọi là native-equivalent secure storage hoặc E2EE.
@@ -148,7 +178,7 @@ không được gọi là native-equivalent secure storage hoặc E2EE.
 ## Chrome Extension
 
 Chrome Extension foundation tạo ZIP qua `scripts/agent/build_chrome_extension.sh`.
-Manifest chỉ xin `sidePanel` và host permission Supabase production; không mở
+Manifest xin `sidePanel`, `identity` và host permission Supabase production; không mở
 page access/autofill. Package verifier bắt buộc MV3, local CanvasKit/WASM,
 extension CSP, không remote executable/ZXing CDN/PWA worker, không có path
 xung đột trên filesystem không phân biệt hoa/thường và encrypted vault bridge

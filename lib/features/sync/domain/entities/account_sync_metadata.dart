@@ -63,6 +63,31 @@ class AccountSyncMetadata {
 
   final Map<String, SyncedAccountMetadata> records;
 
+  Map<String, Object?> toJson() => {
+    'formatVersion': 1,
+    'records': {
+      for (final entry in records.entries) entry.key: entry.value.toJson(),
+    },
+  };
+
+  factory AccountSyncMetadata.fromJson(Object? value) {
+    if (value is! Map<String, dynamic> ||
+        value['formatVersion'] != 1 ||
+        value['records'] is! Map<String, dynamic>) {
+      throw const AccountSyncMetadataException();
+    }
+    final records = <String, SyncedAccountMetadata>{};
+    for (final entry in (value['records'] as Map<String, dynamic>).entries) {
+      if (entry.key.isEmpty || entry.value is! Map<String, dynamic>) {
+        throw const AccountSyncMetadataException();
+      }
+      records[entry.key] = SyncedAccountMetadata.fromJson(
+        entry.value as Map<String, dynamic>,
+      );
+    }
+    return AccountSyncMetadata(Map.unmodifiable(records));
+  }
+
   AccountSyncMetadata mutableCopy() =>
       AccountSyncMetadata(Map<String, SyncedAccountMetadata>.from(records));
 }

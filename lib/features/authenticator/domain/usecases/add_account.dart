@@ -5,6 +5,7 @@ import 'package:hyper_authenticator/core/usecases/usecase.dart';
 import 'package:hyper_authenticator/features/authenticator/domain/entities/authenticator_account.dart';
 import 'package:hyper_authenticator/features/authenticator/domain/repositories/authenticator_repository.dart';
 import 'package:hyper_authenticator/features/authenticator/domain/services/totp_validator.dart';
+import 'package:hyper_authenticator/features/authenticator/domain/services/account_payload_validator.dart';
 import 'package:injectable/injectable.dart'; // Add import
 
 @injectable // Register use case
@@ -28,7 +29,14 @@ class AddAccount implements UseCase<AuthenticatorAccount, AddAccountParams> {
     late final String secretKey;
     late final String algorithm;
     try {
-      secretKey = TotpValidator.normalizeSecret(params.secretKey);
+      secretKey = AccountPayloadValidator.normalizeSecretForStorage(
+        params.secretKey,
+      );
+      AccountPayloadValidator.validateBounds(
+        issuer: issuer,
+        accountName: accountName,
+        secretKey: secretKey,
+      );
       algorithm = TotpValidator.normalizeAlgorithm(params.algorithm);
       TotpValidator.validateParameters(
         digits: params.digits,

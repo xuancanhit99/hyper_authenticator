@@ -183,11 +183,14 @@ class _AccountSyncSection extends StatelessWidget {
               title: const Text('Đồng bộ'),
               subtitle: Semantics(
                 container: true,
-                liveRegion: state is SyncInProgress || state is SyncFailure,
+                liveRegion:
+                    state is SyncInProgress ||
+                    state is SyncFailure ||
+                    state is SyncPartial,
                 child: _status(context, state),
               ),
             ),
-            if (state is SyncFailure)
+            if (state is SyncFailure || state is SyncPartial)
               Padding(
                 padding: const EdgeInsetsDirectional.fromSTEB(56, 0, 24, 8),
                 child: OutlinedButton.icon(
@@ -232,6 +235,11 @@ class _AccountSyncSection extends StatelessWidget {
       ),
       SyncFailure(:final message) => Text(
         message,
+        style: TextStyle(color: Theme.of(context).colorScheme.error),
+      ),
+      SyncPartial(:final blockedAccountCount) => Text(
+        'Còn $blockedAccountCount mã chưa đồng bộ do định dạng hoặc giới hạn dữ liệu. '
+        'Hãy kiểm tra và sửa mã trên thiết bị đã tạo chúng. Các mã hợp lệ đã được đồng bộ.',
         style: TextStyle(color: Theme.of(context).colorScheme.error),
       ),
     };
