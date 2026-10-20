@@ -132,6 +132,15 @@ signing certificate của dự án; package Windows/Linux chưa code-sign.
 
 ## Điểm mới
 
+- Đăng nhập/đăng ký bằng Google qua Supabase PKCE trên Login/Register; Google
+  identity mới được tạo tài khoản theo chính sách Supabase. Production Web đã có
+  owner acceptance. Google Client Secret chỉ ở server, không có trong bộ cài.
+- Vault local v3 commit account, ownership và delete intent cùng nhau; generation
+  CAS/retry bảo toàn mutation khi sync, dừng nếu user session thay đổi.
+- Native session/PKCE chuyển sang secure storage, verify trước khi xóa bản cũ;
+  Android storage patch bảo toàn backup khi migration lỗi. Logout giữ mã local.
+- App lock fail closed khi biometric support mất; clipboard chờ xác nhận ghi,
+  TOTP/URI/Base32/bounds validation và isolated malformed-record handling được sửa.
 - Tài khoản TOTP của provider đã nhận diện tự hiển thị logo local: catalog có
   1.076 logo và 1.201 issuer/alias, gồm Google, Microsoft, GitHub, Vercel và
   nhiều dịch vụ phổ biến khác.
@@ -179,13 +188,20 @@ buộc public cloud config trong \`.env\` để không âm thầm tạo bản lo
 - Android APK đã ký nhưng vẫn là preview; biometric/camera trên thiết bị thật và
   store review chưa hoàn tất. iOS và macOS chưa được đính kèm.
 - Chrome Extension là **owner-waived runtime acceptance preview**: build/package,
-  checksum và static security contract đã pass, nhưng clean-profile/restart/
-  tamper/cross-device runtime acceptance vẫn chưa có evidence. Chỉ dùng với dữ
+  checksum và static security contract đã pass. Isolated extension-origin vault,
+  restart/tamper/sync và Google window/cancel đã có evidence; native Side Panel,
+  Google session end-to-end và cross-device dài hạn còn thiếu. Chỉ dùng với dữ
   liệu test hoặc bản sao có thể khôi phục; không phải Chrome Web Store release.
+- Google OAuth trên native/extension chưa có session acceptance hoàn chỉnh.
+  Unpacked extension chuyển đường dẫn/máy có thể đổi ID; operator cần allowlist
+  đúng callback https://<extension-id>.chromiumapp.org/auth/callback. Không wildcard
+  mọi extension. Google Cloud Audience/Test users/Publishing do owner quản lý.
+- Sau khi upgrade vault v3, không downgrade về app ghi vault v2 hoặc clear-data
+  để khắc phục lỗi storage. Giữ bản sao dữ liệu có thể khôi phục trước upgrade.
 - Catalog provider logo làm artifact lớn hơn khoảng 28,5 MB raw. Brand mark chỉ
   dùng để nhận diện dịch vụ; upstream có MIT License ở cấp repository nhưng
   không cung cấp provenance/license riêng cho từng brand mark.
-- SMTP production chưa được owner cấu hình; email khôi phục mật khẩu có thể chưa tới mailbox thật.
+- Email recovery delivery/SMTP end-to-end chưa được xác minh trong đợt release này.
 - Khi đăng nhập, mã được đồng bộ tự động qua Supabase Vault. Đây là mã hóa do
   server quản lý, không phải zero-knowledge E2EE.
 - Không gửi credential qua public issue. Báo cáo lỗ hổng riêng tư tại

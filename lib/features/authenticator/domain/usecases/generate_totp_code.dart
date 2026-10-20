@@ -2,6 +2,7 @@ import 'package:equatable/equatable.dart';
 import 'package:fpdart/fpdart.dart';
 import 'package:hyper_authenticator/core/error/failures.dart';
 import 'package:hyper_authenticator/core/usecases/usecase.dart';
+import 'package:hyper_authenticator/features/authenticator/domain/services/totp_validator.dart';
 import 'package:otp/otp.dart'; // Import the OTP library
 import 'package:injectable/injectable.dart'; // Add import
 
@@ -19,6 +20,7 @@ class GenerateTotpCode implements UseCase<String, GenerateTotpCodeParams> {
   @override
   Future<Either<Failure, String>> call(GenerateTotpCodeParams params) async {
     try {
+      final secretKey = TotpValidator.normalizeSecret(params.secretKey);
       // Map the algorithm string to the Algorithm enum required by the otp package
       Algorithm algorithmEnum;
       switch (params.algorithm.toUpperCase()) {
@@ -35,7 +37,7 @@ class GenerateTotpCode implements UseCase<String, GenerateTotpCodeParams> {
       }
 
       final code = OTP.generateTOTPCodeString(
-        params.secretKey,
+        secretKey,
         params.timestampMilliseconds ?? DateTime.now().millisecondsSinceEpoch,
         // Pass parameters explicitly
         interval: params.period,

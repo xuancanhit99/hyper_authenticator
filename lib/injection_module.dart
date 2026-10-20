@@ -5,11 +5,17 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:hyper_authenticator/core/storage/secure_key_value_store.dart';
 import 'package:hyper_authenticator/core/storage/secure_key_value_store_factory.dart';
 import 'package:uuid/uuid.dart';
+import 'package:hyper_authenticator/features/authenticator/data/datasources/authenticator_local_data_source.dart';
+import 'package:hyper_authenticator/features/sync/domain/repositories/local_vault_repository.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 @module
 abstract class RegisterModule {
+  @lazySingleton
+  LocalVaultRepository localVaultRepository(
+    AuthenticatorLocalDataSource source,
+  ) => source as LocalVaultRepository;
   @lazySingleton
   SupabaseClient supabaseClient(AppConfig config) {
     if (config.cloudEnabled) return Supabase.instance.client;
@@ -23,7 +29,9 @@ abstract class RegisterModule {
   LocalAuthentication get localAuthentication => LocalAuthentication();
 
   @lazySingleton
-  FlutterSecureStorage get flutterSecureStorage => const FlutterSecureStorage();
+  FlutterSecureStorage get flutterSecureStorage => const FlutterSecureStorage(
+    aOptions: AndroidOptions(resetOnError: false, migrateWithBackup: true),
+  );
 
   @lazySingleton
   SecureKeyValueStore secureKeyValueStore(FlutterSecureStorage storage) =>

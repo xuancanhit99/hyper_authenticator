@@ -15,6 +15,21 @@ void main() {
     debugDefaultTargetPlatformOverride = null;
   });
 
+  test('configured lock remains displayed when support disappears', () async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.linux;
+    SharedPreferences.setMockInitialValues({'biometric_enabled': true});
+    final bloc = SettingsBloc(
+      sharedPreferences: await SharedPreferences.getInstance(),
+      localAuthentication: _SupportedLocalAuthentication(),
+    );
+    addTearDown(bloc.close);
+    final loaded = bloc.stream.firstWhere((s) => s is SettingsLoaded);
+    bloc.add(LoadSettings());
+    final state = await loaded as SettingsLoaded;
+    expect(state.isBiometricEnabled, isTrue);
+    expect(state.canCheckBiometrics, isFalse);
+  });
+
   test('settings error không đưa dữ liệu preference sai kiểu ra UI', () async {
     SharedPreferences.setMockInitialValues({
       'biometric_enabled': 'TEST_ONLY invalid preference payload',

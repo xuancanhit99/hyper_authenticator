@@ -27,6 +27,31 @@ void main() {
       expect(account.accountName, 'user');
     });
 
+    test('issuer tùy chọn dùng fallback như Google migration', () {
+      for (final suffix in ['', '&issuer=']) {
+        final account = TotpUriParser.parse(
+          'otpauth://totp/demo%40example.invalid'
+          '?secret=JBSWY3DPEHPK3PXP$suffix',
+        );
+
+        expect(account.issuer, 'Không xác định');
+        expect(account.accountName, 'demo@example.invalid');
+        expect(account.algorithm, 'SHA1');
+        expect(account.digits, 6);
+        expect(account.period, 30);
+      }
+    });
+
+    test('issuer fallback không che label hoặc secret thiếu', () {
+      for (final value in [
+        'otpauth://totp/%20?secret=JBSWY3DPEHPK3PXP',
+        'otpauth://totp/demo%40example.invalid',
+        'otpauth://totp/demo%40example.invalid?secret=A',
+      ]) {
+        expect(() => TotpUriParser.parse(value), throwsFormatException);
+      }
+    });
+
     test(
       'issuer và account name chứa dấu hai chấm vẫn round-trip chính xác',
       () {

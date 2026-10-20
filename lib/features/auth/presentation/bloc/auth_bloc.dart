@@ -14,14 +14,25 @@ part 'auth_state.dart';
 class AuthBloc extends Bloc<AuthEvent, AuthState> {
   final AuthRepository _authRepository;
   StreamSubscription<UserEntity?>? _authEntitySubscription;
+  bool _googleSignInPending = false;
 
   AuthBloc(this._authRepository) : super(AuthInitial()) {
     _authEntitySubscription = _authRepository.authEntityChanges.listen(
       (userEntity) => add(_AuthUserChanged(userEntity)),
+      onError: (Object _, StackTrace _) => add(_AuthSessionError()),
     );
 
     on<AuthCheckRequested>(_onAuthCheckRequested);
     on<AuthSignInRequested>(_onSignInRequested);
+    on<AuthGoogleSignInRequested>(_onGoogleSignInRequested);
+    on<_AuthSessionError>((event, emit) {
+      final user = _authRepository.currentUserEntity;
+      emit(
+        user == null
+            ? const AuthFailure('Không thể hoàn tất đăng nhập. Hãy thử lại.')
+            : AuthAuthenticated(user),
+      );
+    });
     on<AuthSignUpRequested>(_onSignUpRequested);
     on<AuthSignOutRequested>(_onSignOutRequested);
     on<_AuthUserChanged>(_onAuthUserChanged);
@@ -86,6 +97,39 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       ),
       (user) => emit(AuthAuthenticated(user)),
     );
+  }
+
+  Future<void> _onGoogleSignInRequested(
+    AuthGoogleSignInRequested event,
+    Emitter<AuthState> emit,
+  ) async {
+    if (_googleSignInPending ||
+        state is AuthLoading ||
+        _authRepository.currentUserEntity != null) {
+      return;
+    }
+    _googleSignInPending = true;
+    emit(AuthLoading());
+    try {
+      final result = await _authRepository.signInWithGoogle();
+      if (emit.isDone) return;
+      // A callback can arrive before the browser-launch future completes.
+      final user = _authRepository.currentUserEntity;
+      if (user != null) {
+        emit(AuthAuthenticated(user));
+      } else {
+        result.fold(
+          (_) => emit(
+            const AuthFailure(
+              'Không thể đăng nhập bằng Google. Nếu đã đóng cửa sổ đăng nhập, hãy thử lại.',
+            ),
+          ),
+          (_) => emit(AuthGoogleRedirectStarted()),
+        );
+      }
+    } finally {
+      _googleSignInPending = false;
+    }
   }
 
   Future<void> _onSignUpRequested(

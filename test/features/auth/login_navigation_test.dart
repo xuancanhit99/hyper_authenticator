@@ -172,6 +172,10 @@ void main() {
     final submit = find.widgetWithText(ElevatedButton, 'Đăng nhập');
 
     await pressTab(tester);
+    expectPrimaryFocusWithin(
+      find.widgetWithText(OutlinedButton, 'Tiếp tục với Google'),
+    );
+    await pressTab(tester);
     expectPrimaryFocusWithin(emailField);
     await tester.enterText(emailField, 'test-only@example.invalid');
 
@@ -201,6 +205,10 @@ void main() {
     await pumpApp(tester, initialLocation: '/register');
 
     final registerFields = find.byType(TextFormField);
+    await pressTab(tester);
+    expectPrimaryFocusWithin(
+      find.widgetWithText(OutlinedButton, 'Tiếp tục với Google'),
+    );
     await pressTab(tester);
     expectPrimaryFocusWithin(registerFields.at(0));
     await pressTab(tester);
@@ -343,6 +351,9 @@ class _SuccessfulAuthRepository implements AuthRepository {
   @override
   Future<Either<Failure, void>> recoverPassword(String email) async =>
       const Right(null);
+
+  @override
+  Future<Either<Failure, void>> signInWithGoogle() async => const Right(null);
 
   @override
   Future<Either<Failure, void>> signOut() async => const Right(null);

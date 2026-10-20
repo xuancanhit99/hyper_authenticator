@@ -41,7 +41,7 @@ void main() {
 
     expect(find.text('Giới thiệu'), findsOneWidget);
     expect(
-      find.text('Hyper Authenticator · Phiên bản 1.1.3 (17)'),
+      find.text('Hyper Authenticator · Phiên bản 1.1.5 (19)'),
       findsOneWidget,
     );
 

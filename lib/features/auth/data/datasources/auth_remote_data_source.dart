@@ -3,10 +3,13 @@ import 'package:injectable/injectable.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:hyper_authenticator/core/config/app_config.dart';
 import 'package:hyper_authenticator/core/error/exceptions.dart';
+import 'package:hyper_authenticator/features/auth/data/oauth/google_oauth.dart';
 
 abstract class AuthRemoteDataSource {
   User? get currentUser;
   Stream<User?> get authStateChanges;
+
+  Future<void> signInWithGoogle();
 
   Future<User> signInWithPassword({
     required String email,
@@ -35,6 +38,14 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
 
   @override
   User? get currentUser => _supabaseClient.auth.currentUser;
+
+  @override
+  Future<void> signInWithGoogle() async {
+    if (!_appConfig.cloudEnabled) {
+      throw const AuthServerException('Google sign-in is not configured.');
+    }
+    await startGoogleSignIn(_supabaseClient);
+  }
 
   @override
   Stream<User?> get authStateChanges => _supabaseClient.auth.onAuthStateChange

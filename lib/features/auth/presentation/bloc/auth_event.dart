@@ -10,6 +10,10 @@ abstract class AuthEvent extends Equatable {
 
 class AuthCheckRequested extends AuthEvent {}
 
+class AuthGoogleSignInRequested extends AuthEvent {}
+
+class _AuthSessionError extends AuthEvent {}
+
 class AuthSignInRequested extends AuthEvent {
   final String email;
   final String password;

@@ -37,6 +37,13 @@ holder vì vậy nằm trong trust boundary; không gọi đây là E2EE.
 - Network/RPC fail: local + pending metadata giữ nguyên.
 - Metadata corrupt/write fail: dừng trước network.
 - Remote payload invalid: không mutate local.
+- Live remote payload lỗi với metadata hợp lệ được cô lập thành `isBlocked`,
+  không tải credential xuống vault, không bind ownership mới hoặc suy ra delete.
+  Local legacy không hợp lệ được giữ nguyên; các upload/delete hợp lệ vẫn chạy.
+  Count bị chặn tính mỗi ID một lần; Settings báo đồng bộ một phần và hướng dẫn
+  sửa trên thiết bị đã tạo mã. Record cloud chỉ được thay/xóa khi có dirty local
+  hợp lệ/delete intent tương ứng; vẫn giữ CAS và ownership hiện có.
+- Malformed metadata/tombstone hoặc network/auth failure dừng fail closed như cũ.
 - Rollback client: chạy local-only.
 - Rollback backend: restore full backup cùng version-matched Vault root/config.
 

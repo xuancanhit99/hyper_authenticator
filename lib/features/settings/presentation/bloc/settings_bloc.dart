@@ -39,8 +39,7 @@ class SettingsBloc extends Bloc<SettingsEvent, SettingsState> {
 
       emit(
         SettingsLoaded(
-          isBiometricEnabled:
-              isEnabled && canCheck, // Only enabled if supported
+          isBiometricEnabled: isEnabled,
           canCheckBiometrics: canCheck,
         ),
       );

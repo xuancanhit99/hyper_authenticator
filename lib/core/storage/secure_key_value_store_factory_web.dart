@@ -19,7 +19,18 @@ SecureKeyValueStore createSecureKeyValueStore(FlutterSecureStorage storage) {
 /// structured clone and stores only authenticated ciphertext for every value.
 /// This file is imported only by web builds; the factory returns it only for
 /// the explicit Chrome Extension compile-time entrypoint.
-class ChromeExtensionSecureKeyValueStore implements SecureKeyValueStore {
+class ChromeExtensionSecureKeyValueStore
+    implements SecureKeyValueStore, ExclusiveSecureKeyValueStore {
+  @override
+  Future<T> runExclusive<T>(Future<T> Function() operation) async {
+    final token = await _bridge.beginExclusive().toDart;
+    try {
+      return await operation();
+    } finally {
+      await _bridge.endExclusive(token).toDart;
+    }
+  }
+
   _ExtensionVaultBridge get _bridge {
     final bridge = globalContext['hyperExtensionVault'];
     if (bridge == null) {
@@ -59,6 +70,8 @@ class ChromeExtensionSecureKeyValueStore implements SecureKeyValueStore {
 }
 
 extension type _ExtensionVaultBridge(JSObject _) implements JSObject {
+  external JSPromise<JSString> beginExclusive();
+  external JSPromise<JSAny?> endExclusive(JSString token);
   external JSPromise<JSString?> read(JSString key);
   external JSPromise<JSString> readAllJson();
   external JSPromise<JSAny?> write(JSString key, JSString value);

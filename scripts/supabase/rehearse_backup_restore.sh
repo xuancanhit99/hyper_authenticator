@@ -48,6 +48,7 @@ docker exec -i "$DB_CONTAINER" pg_restore \
   -U supabase_admin \
   -d "$database_name" <"$BACKUP_DIR/database-full.dump"
 
+crypto_validation=''
 if [[ "$RESTORE_SCHEMA_MODE" == account-sync ||
   "$RESTORE_SCHEMA_MODE" == account-sync-pre-realtime ]]; then
   contract_ready=$(docker exec "$DB_CONTAINER" psql \
@@ -156,5 +157,20 @@ data_probe=$(docker exec "$DB_CONTAINER" psql \
   "select count(*) >= 0 from auth.users; select count(*) >= 0 from $data_table")
 [[ $(printf '%s\n' "$data_probe" | grep -c '^t$') -eq 2 ]]
 
+if [[ "$RESTORE_SCHEMA_MODE" == account-sync ||
+  "$RESTORE_SCHEMA_MODE" == account-sync-pre-realtime ]]; then
+  # Evaluate decryption itself; count(*) alone can skip the decrypted expression.
+  # Only booleans leave psql. The canary exists solely in the disposable DB.
+  crypto_probe=$(docker exec "$DB_CONTAINER" psql \
+    -X -v ON_ERROR_STOP=1 -U supabase_admin -d "$database_name" -Atqc \
+    "select coalesce(bool_and(decrypted_secret is not null), true)
+       from vault.decrypted_secrets;
+     select count(vault.create_secret('TEST_ONLY_RESTORE_CANARY', '$database_name')) = 1;
+     select decrypted_secret = 'TEST_ONLY_RESTORE_CANARY'
+       from vault.decrypted_secrets where name = '$database_name'")
+  [[ $(printf '%s\n' "$crypto_probe" | grep -c '^t$') -eq 3 ]]
+  crypto_validation='Vault decryption, '
+fi
+
 printf '%s\n' \
-  "Supabase restore rehearsal pass: checksum, catalog, full restore và $RESTORE_SCHEMA_MODE contract."
+  "Supabase restore rehearsal pass: checksum, catalog, full restore, ${crypto_validation}$RESTORE_SCHEMA_MODE contract."

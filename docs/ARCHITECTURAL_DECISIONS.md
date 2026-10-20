@@ -43,10 +43,15 @@ Tài liệu này lập chỉ mục quyết định bền vững. Quyết định
 | A-035 | Private Realtime Broadcast chỉ làm credential-free wake-up signal; RPC full sync vẫn là nguồn sự thật | Chấp nhận; source, production và iOS Simulator đã xác minh | [ADR-0021](adr/0021-private-realtime-sync-signal.md) |
 | A-036 | Chrome Extension dùng MV3 Side Panel, local-only executable package và encrypted IndexedDB vault; không page access/autofill trong MVP | Chấp nhận; GitHub Preview chỉ theo owner waiver với disclosure, Chrome Web Store vẫn bị chặn | [ADR-0022](adr/0022-chrome-extension-side-panel-vault.md) |
 | A-037 | Vendor Sentinel provider icon catalog đã pin, local-only, tự suy ra từ issuer và fallback avatar ký tự | Chấp nhận | [ADR-0023](adr/0023-vendor-sentinel-provider-icons.md) |
+| A-038 | Atomic local vault v3 payload/owner/delete intent, generation CAS, extension Web Locks và native credential preservation | Chấp nhận theo yêu cầu fix P1 ngày 21-10-2026 | [ADR-0024](adr/0024-atomic-local-vault-sync-and-preservation.md) |
 
 Đã áp dụng không đồng nghĩa production-ready; defect/risk nằm trong `PROJECT_STATUS.md`.
 
 ## Quyết định còn mở
+
+Google login/register dùng Supabase PKCE, desktop loopback và extension identity
+theo [ADR-0025](adr/0025-google-oauth-pkce.md), được owner yêu cầu triển khai ngày
+21-10-2026. Quyết định này bổ sung quyền `identity` cho ADR-0022.
 
 | ID đề xuất | Quyết định cần có | Lý do |
 |---|---|---|

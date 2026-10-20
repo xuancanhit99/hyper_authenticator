@@ -74,8 +74,24 @@ Mode `pre-minimal` chỉ dành cho backup lịch sử trước 2026-08-02. Rehea
 restore vào database tạm ngẫu nhiên, kiểm tra schema/data/ACL rồi drop database;
 không restore đè production.
 
+Mode account-sync còn buộc giải mã restored Vault rows và tạo/giải mã canary
+chỉ trong database tạm. Chỉ kiểm tra boolean, không output decrypted payload.
+Đây là rehearsal trên instance version-matched đang có đúng Vault config;
+không thay thế diễn tập dựng lại toàn bộ host từ đầu.
+
 Scheduled drill dùng `run_scheduled_restore_drill.sh`,
 `check_restore_drill_state.sh` và systemd templates trong `supabase/systemd`.
+
+Trước khi enable timer, provision đường dẫn writable của cả hai service:
+
+```bash
+sudo install -m 0644 supabase/systemd/hyper-auth-backups.conf /etc/tmpfiles.d/
+sudo systemd-tmpfiles --create /etc/tmpfiles.d/hyper-auth-backups.conf
+```
+
+Template production dùng owner `xuancanhit`; sửa đồng bộ owner/path khi đổi host.
+Thiếu thư mục này gây `226/NAMESPACE` trước cả `ExecStart`; không gỡ sandbox
+hay thêm dấu `-` bỏ qua đường dẫn. Tmpfiles tái tạo thư mục mode 0700 ở boot.
 
 ## Encrypted off-host copy
 
@@ -90,6 +106,29 @@ scripts/supabase/pull_encrypted_backup.sh
 Remote tar stream đi thẳng vào `age`; không tạo local plaintext archive. Phải
 verify checksum và decrypt-stream listing. Backup/move Supabase Vault bắt buộc
 giữ đúng Vault root key/stack config tương ứng.
+
+Recipient file hỗ trợ age X25519 hoặc SSH Ed25519. Khi dùng SSH recipient, giữ
+private identity tương ứng ở kho an toàn ngoài server; mất identity sẽ mất khả
+năng giải mã. Bản sao mã hóa một lần không thay thế lịch off-host và kiểm chứng
+khôi phục định kỳ.
+
+Windows dùng wrapper để giữ binary stream hoàn toàn trong Git Bash:
+
+```powershell
+./scripts/supabase/pull_encrypted_backup_windows.ps1 `
+  -OperatorFile C:/secure/operator.env `
+  -RecipientFile C:/secure/recipient.txt `
+  -IdentityFile C:/secure/identity `
+  -Destination C:/secure/off-host `
+  -AgeDirectory C:/tools/age
+```
+
+Config/key/archive phải nằm ngoài Git và được giới hạn NTFS ACL cho operator và
+SYSTEM. Task Scheduler cần gọi wrapper bằng absolute path; kiểm tra
+`Get-ScheduledTaskInfo` và `LastTaskResult=0` sau lần chạy đầu. Cấu hình hiện tại
+chạy hàng ngày 13:00 giờ máy operator, StartWhenAvailable, chỉ khi user đăng nhập.
+Máy tắt hoặc user đăng xuất làm trễ bản sao; external alert/off-host SLA vẫn là
+khoảng trống vận hành.
 
 ## Breaking rollout account-managed sync
 

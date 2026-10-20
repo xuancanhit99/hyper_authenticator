@@ -72,7 +72,9 @@ abstract final class TotpUriParser {
         : rawLabel.trim();
     final issuer = issuerFromQuery.isNotEmpty
         ? issuerFromQuery
-        : issuerFromLabel;
+        : issuerFromLabel.isNotEmpty
+        ? issuerFromLabel
+        : 'Không xác định';
     final secret = TotpValidator.normalizeSecret(
       _singleQueryParameter(uri, 'secret') ?? '',
     );
@@ -82,8 +84,8 @@ abstract final class TotpUriParser {
     final digits = int.tryParse(_singleQueryParameter(uri, 'digits') ?? '6');
     final period = int.tryParse(_singleQueryParameter(uri, 'period') ?? '30');
 
-    if (issuer.isEmpty || accountName.isEmpty) {
-      throw const FormatException('Mã QR thiếu issuer hoặc tên tài khoản.');
+    if (accountName.isEmpty) {
+      throw const FormatException('Mã QR thiếu tên tài khoản.');
     }
     if (digits == null || period == null) {
       throw const FormatException(

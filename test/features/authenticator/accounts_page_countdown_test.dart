@@ -130,6 +130,16 @@ void main() {
     testWidgets(
       'account row pass accessibility/contrast ${themeMode.name} ở text scale 200%',
       (tester) async {
+        tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+          SystemChannels.platform,
+          (_) async => null,
+        );
+        addTearDown(() {
+          tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+            SystemChannels.platform,
+            null,
+          );
+        });
         final semantics = tester.ensureSemantics();
         tester.view.devicePixelRatio = 1;
         tester.view.physicalSize = const Size(320, 640);

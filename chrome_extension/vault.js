@@ -36,27 +36,36 @@
     request.onerror = () => reject(request.error || new Error('Unable to open extension vault.'));
   });
 
-  let keyPromise;
   const vaultKey = async () => {
-    if (keyPromise) return keyPromise;
-    keyPromise = (async () => {
-      const db = await database;
-      const readTransaction = db.transaction(keysStore, 'readonly');
-      const existing = await requestResult(readTransaction.objectStore(keysStore).get(keyName));
-      await transactionDone(readTransaction);
-      if (existing instanceof CryptoKey) return existing;
-
+      // Generate outside IDB, then choose the winner inside a single transaction
+      // shared by every extension context. Never replace an existing key.
       const generated = await crypto.subtle.generateKey(
         { name: 'AES-GCM', length: 256 },
         false,
         ['encrypt', 'decrypt'],
       );
-      const writeTransaction = db.transaction(keysStore, 'readwrite');
-      writeTransaction.objectStore(keysStore).put(generated, keyName);
-      await transactionDone(writeTransaction);
+      const db = await database;
+      const transaction = db.transaction([keysStore, recordsStore], 'readwrite');
+      const done = transactionDone(transaction);
+      const keys = transaction.objectStore(keysStore);
+      const existing = await requestResult(keys.get(keyName));
+      if (existing !== undefined) {
+        await done;
+        if (!(existing instanceof CryptoKey) || existing.extractable ||
+            existing.algorithm.name !== 'AES-GCM' || existing.algorithm.length !== 256 ||
+            !existing.usages.includes('encrypt') || !existing.usages.includes('decrypt')) {
+          throw new Error('Extension vault key is invalid; data preserved.');
+        }
+        return existing;
+      }
+      const count = await requestResult(transaction.objectStore(recordsStore).count());
+      if (count !== 0) {
+        await done;
+        throw new Error('Extension vault key is missing; data preserved.');
+      }
+      keys.add(generated, keyName);
+      await done;
       return generated;
-    })();
-    return keyPromise;
   };
 
   const algorithmFor = (key, iv) => ({
@@ -69,8 +78,9 @@
   const readRecord = async (key) => {
     const db = await database;
     const transaction = db.transaction(recordsStore, 'readonly');
+    const done = transactionDone(transaction);
     const record = await requestResult(transaction.objectStore(recordsStore).get(key));
-    await transactionDone(transaction);
+    await done;
     if (record === undefined) return null;
     if (!(record.iv instanceof ArrayBuffer) || !(record.ciphertext instanceof ArrayBuffer)) {
       throw new Error('Chrome Extension vault record is invalid.');
@@ -92,24 +102,53 @@
     );
     const db = await database;
     const transaction = db.transaction(recordsStore, 'readwrite');
+    const done = transactionDone(transaction);
     transaction.objectStore(recordsStore).put({ iv: iv.buffer, ciphertext }, key);
-    await transactionDone(transaction);
+    await done;
   };
 
   const deleteRecord = async (key) => {
     const db = await database;
     const transaction = db.transaction(recordsStore, 'readwrite');
+    const done = transactionDone(transaction);
     transaction.objectStore(recordsStore).delete(key);
-    await transactionDone(transaction);
+    await done;
   };
 
   const readAllJson = async () => {
     const db = await database;
     const transaction = db.transaction(recordsStore, 'readonly');
-    const keys = await requestResult(transaction.objectStore(recordsStore).getAllKeys());
-    await transactionDone(transaction);
-    const values = await Promise.all(keys.map(async (key) => [key, await readRecord(key)]));
+    const done = transactionDone(transaction);
+    const store = transaction.objectStore(recordsStore);
+    const [keys, records] = await Promise.all([
+      requestResult(store.getAllKeys()), requestResult(store.getAll()),
+    ]);
+    await done;
+    const aesKey = await vaultKey();
+    const values = await Promise.all(keys.map(async (key, index) => {
+      const record = records[index];
+      const plain = await crypto.subtle.decrypt(
+        algorithmFor(key, new Uint8Array(record.iv)), aesKey, record.ciphertext,
+      );
+      return [key, textDecoder.decode(plain)];
+    }));
     return JSON.stringify(Object.fromEntries(values));
+  };
+
+  let nextLock = 0;
+  const heldLocks = new Map();
+  const beginExclusive = () => new Promise((resolve, reject) => {
+    if (!navigator.locks) { reject(new Error('Vault locking is unavailable.')); return; }
+    navigator.locks.request('hyper-authenticator-vault-mutation-v3', async () => {
+      const token = String(++nextLock);
+      await new Promise((release) => { heldLocks.set(token, release); resolve(token); });
+      heldLocks.delete(token);
+    }).catch(reject);
+  });
+  const endExclusive = async (token) => {
+    const release = heldLocks.get(token);
+    if (!release) throw new Error('Vault lock is not held.');
+    release();
   };
 
   globalThis.hyperExtensionVault = Object.freeze({
@@ -117,5 +156,7 @@
     readAllJson,
     write: writeRecord,
     delete: deleteRecord,
+    beginExclusive,
+    endExclusive,
   });
 })();

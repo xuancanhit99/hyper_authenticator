@@ -153,17 +153,23 @@ class SyncBloc extends Bloc<SyncEvent, SyncState> {
             :final uploadedCount,
             :final downloadedCount,
             :final deletedCount,
+            :final blockedAccountCount,
           ):
             if (downloadedCount > 0 || deletedCount > 0) {
               _accountsBloc.add(LoadAccounts());
             }
             emit(
-              SyncReady(
-                completedAt: completedAt,
-                uploadedCount: uploadedCount,
-                downloadedCount: downloadedCount,
-                deletedCount: deletedCount,
-              ),
+              blockedAccountCount > 0
+                  ? SyncPartial(
+                      completedAt: completedAt,
+                      blockedAccountCount: blockedAccountCount,
+                    )
+                  : SyncReady(
+                      completedAt: completedAt,
+                      uploadedCount: uploadedCount,
+                      downloadedCount: downloadedCount,
+                      deletedCount: deletedCount,
+                    ),
             );
         }
       },

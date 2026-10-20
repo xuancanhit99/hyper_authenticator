@@ -21,10 +21,74 @@ Hyper Authenticator là ứng dụng TOTP Flutter đa nền tảng, local-first:
 - GitHub Releases là kênh binary hiện tại; store release vẫn để sau.
 - Chrome Extension MV3 Side Panel đã có current-profile smoke: render, login,
   account sync và session còn sau đóng/mở Chrome. Owner đã cho phép đưa ZIP vào
-  GitHub Preview với disclosure runtime acceptance bị waiver; clean-profile/
-  tamper/cross-device Side Panel vẫn chưa có evidence và Chrome Web Store bị chặn.
+  GitHub Preview với disclosure runtime acceptance bị waiver. Ngày 21-10 có thêm
+  clean-profile extension-origin UI/session restart, cross-context vault/tamper
+  và sync sang Web; native Side Panel host/cross-device vẫn pending, chưa Chrome Store.
 
 ## Đã triển khai trong source
+
+### Google login/register ngày 21-10-2026
+
+Web production **1.1.5+19**, image `hyper-authenticator-web:1.1.5-google-20261021`,
+có **Tiếp tục với Google** trên Login/Register. Supabase Google provider enabled,
+signup enabled; owner xác nhận đăng nhập Google thành công trên Web. Không thay
+vault v3, remote schema hoặc tự merge TOTP. Client Secret chỉ ở server và private
+operator backup ngoài repo. Chi tiết [task Google](tasks/2026-10-21-google-sign-in.md)
+và [ADR-0025](adr/0025-google-oauth-pkce.md).
+
+Windows suite pass 328, skip 6; Linux suite pass 334; Linux analyzer không có issue.
+Web real browser mở được Google chooser. Extension real isolated Chromium mở
+Google identity window và hủy để thử lại được; chưa test Google session/consent
+hoàn chỉnh trên extension/native. Android signed APK 1.1.5 đã upgrade-install lên
+thiết bị physical, resolve đúng callback và launch; Windows release launch pass.
+Apple builds chưa chạy. Full gate Windows vẫn không pass do host/tooling; không
+dùng các bằng chứng này để tuyên bố exact-tag CI hoặc stable/store acceptance.
+
+### P2 review ngày 19-10-2026
+
+Nhánh `codex/fix-review-p2` sửa F08–F12: Base32 canonical trước sinh mã, URI
+thiếu issuer, bounds admission/cloud và cô lập record legacy lỗi để không chặn
+sync, password nguyên vẹn, clipboard chờ API xác nhận. Vault/metadata/SQL schema
+không đổi trong task P2. Web đã deploy cùng P1 ngày 21-10-2026. Bảy P1 của review vẫn ngoài phạm vi
+task P2; phần P1 được xử lý riêng bên dưới. Không dùng kết quả P2 để kết luận ứng dụng đã sẵn sàng phát hành.
+Chi tiết kiểm chứng và giới hạn môi trường trong
+[task P2](tasks/2026-10-19-review-p2.md).
+
+### P1 review ngày 21-10-2026
+
+Source sửa F01–F07 theo [ADR-0024](adr/0024-atomic-local-vault-sync-and-preservation.md):
+vault v3 commit payload/owner/delete intent cùng nhau, generation CAS và retry
+khi mutation chen giữa network; session đổi thì abort. Extension atomic key init,
+Web Locks và missing-key fail closed đã qua real Chrome isolated contexts, kể cả
+negative control với code cũ. Configured app lock không bypass khi support mất;
+native Supabase session/PKCE migration verify-before-remove và logout tombstone.
+Android plugin vendored tắt reset, bảo toàn corrupt backup và có restart-safe
+migration cleanup, đã chạy Robolectric; physical Keystore/upgrade vẫn cần acceptance.
+
+Server backup/restore-drill/health đã chạy thành công; encrypted off-host copy
+đã kiểm chứng tại máy operator và có Windows task hàng ngày (chỉ chạy khi user
+đăng nhập, chạy bù khi máy khả dụng). Không xem đó là off-host SLA độc lập với máy
+operator. App fixes hiện ở working tree; chưa có GitHub/store release mới.
+Chi tiết lệnh, evidence và giới hạn trong [task P1](tasks/2026-10-21-review-p1.md).
+
+### Build/deploy và runtime ngày 21-10-2026
+
+Web production đang chạy `1.1.4+18`, image
+`hyper-authenticator-web:1.1.4-p1-20261021r2`; shadow/public route, CSP,
+no-store, dotfile denial và JS checksum đều pass. Browser smoke xác nhận local
+TOTP persist, login, auto-sync, logout giữ mã và nhận account từ extension.
+Windows runtime trong namespace riêng và Linux WSL/Xvfb với private keyring đều
+pass local-vault và real Supabase sync (upload/new-device download/Realtime/delete).
+Android AVD riêng pass local-vault; APK cuối khớp signer pin và đã upgrade-install
+từ `1.1.2` lên `1.1.4` trên Android physical, launch/process còn sống.
+
+Đây là working-tree deployment, chưa phải exact-tag CI release. Windows portable
+và Linux bundle/Debian là unsigned Preview; Debian được build trên Ubuntu 24.04
+và yêu cầu glibc >=2.38. Apple toolchain không có trong phiên này. Camera,
+biometric, physical vault contents/migration và kiểm tra dài hạn vẫn chưa được
+chứng minh. Không dùng launch-only làm bằng chứng dữ liệu đã round-trip.
+Evidence/artifact/checksum và cleanup trong
+[task deploy/runtime](tasks/2026-10-21-deploy-runtime.md).
 
 ### TOTP và local vault
 
@@ -36,7 +100,7 @@ Hyper Authenticator là ứng dụng TOTP Flutter đa nền tảng, local-first:
 - Protected QR export yêu cầu fresh OS authentication, timeout/lifecycle cleanup
   và không persist raw QR payload.
 - Tìm kiếm, sửa, xóa, sao chép mã và countdown theo period.
-- `FlutterSecureStorage` giữ local vault v2 copy-on-write; logout không xóa mã.
+- `FlutterSecureStorage` giữ local vault v3 copy-on-write; logout không xóa mã.
 
 ### Account-managed automatic sync
 
@@ -45,8 +109,8 @@ Hyper Authenticator là ứng dụng TOTP Flutter đa nền tảng, local-first:
 - Mỗi remote account có stable UUID, revision CAS và deletion tombstone.
 - Thiết bị mới chỉ cần đăng nhập để tải mã; không cần recovery credential.
 - Local mutation commit trước; network lỗi không rollback local. Pending
-  create/update/delete được suy ra từ secure ownership/revision/fingerprint
-  metadata và retry ở lần sync sau.
+  create/update dựa trên secure ownership/revision/fingerprint; delete dùng intent
+  persist cùng account snapshot và retry ở lần sync sau.
 - Tombstone thắng update từ thiết bị offline, nên account đã xóa không tự sống
   lại.
 - Account chưa có owner được bind bền vững với user đăng nhập đầu tiên **trước
@@ -62,7 +126,7 @@ Hyper Authenticator là ứng dụng TOTP Flutter đa nền tảng, local-first:
 
 - Settings chỉ còn trạng thái “Đồng bộ với tài khoản”, login/logout và retry;
   không còn recovery/conflict/remove-cloud UI.
-- Auth còn email/password, đăng ký, session restore, quên/đổi mật khẩu.
+- Auth có email/password, Google login/register, session restore, quên/đổi mật khẩu.
 - Presentation error boundary chỉ hiển thị copy cố định theo thao tác; raw lỗi
   Supabase/storage/network không đi vào UI. Validation local đã kiểm soát vẫn
   giữ hướng dẫn cụ thể.
@@ -90,8 +154,9 @@ Hyper Authenticator là ứng dụng TOTP Flutter đa nền tảng, local-first:
 
 ## Data contract hiện tại
 
-- Local vault: v2, không đổi.
-- Secure sync metadata: `ha:cloud-sync:v1:metadata`.
+- Local vault: format v3, giữ key prefix `ha:v2:` và đọc/migrate v1/v2.
+- Sync metadata v1 embedded trong manifest; `ha:cloud-sync:v1:metadata` chỉ là
+  nguồn migration, không còn writer độc lập.
 - Remote migration mới:
   `supabase/migrations/20260804000000_create_account_managed_sync.sql`.
 - Realtime migration additive:
@@ -122,6 +187,7 @@ Hyper Authenticator là ứng dụng TOTP Flutter đa nền tảng, local-first:
 
 | Gate | Kết quả |
 |---|---|
+| P2 source verification 19-10-2026 | 288 Flutter test pass, 6 platform golden skip; scoped analyze 0 issue; Web release build, docs/platform/format pass; relative-output DI codegen hash khớp. Full gate chưa green do Windows tool/POSIX/output-path và Docker daemon; xem task P2. Không deploy production. |
 | `flutter analyze` | Pass, 0 issue ngày 05-08-2026 |
 | `flutter test` | Pass 242 test ngày 18-10-2026 |
 | `scripts/supabase/test_account_sync_migration.sh` | Pass trên đúng `supabase/postgres:17.6.1.136`: Vault/RPC/CAS/tombstone và authorization probe đúng Realtime 2.102.3 |

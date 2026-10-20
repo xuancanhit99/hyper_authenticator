@@ -51,3 +51,6 @@ android/app/upload-keystore.jks
 
 # Local AI assistant settings and vendored personal skills
 /.claude/
+
+# Local browser automation snapshots and profiles
+/.playwright-cli/

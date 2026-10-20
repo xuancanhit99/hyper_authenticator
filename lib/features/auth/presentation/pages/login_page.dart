@@ -5,6 +5,7 @@ import 'package:hyper_authenticator/core/router/app_routes.dart';
 import 'package:hyper_authenticator/core/widgets/responsive_content.dart';
 import 'package:hyper_authenticator/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:hyper_authenticator/features/auth/presentation/widgets/auth_header.dart';
+import 'package:hyper_authenticator/features/auth/presentation/widgets/google_sign_in_button.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -33,7 +34,7 @@ class _LoginPageState extends State<LoginPage> {
       context.read<AuthBloc>().add(
         AuthSignInRequested(
           email: _emailController.text.trim(),
-          password: _passwordController.text.trim(),
+          password: _passwordController.text,
         ),
       );
     }
@@ -94,6 +95,7 @@ class _LoginPageState extends State<LoginPage> {
                     title: 'Đồng bộ mã của bạn',
                     subtitle: 'Đăng nhập để dùng cùng mã trên các thiết bị.',
                   ),
+                  const GoogleSignInButton(),
                   TextFormField(
                     controller: _emailController,
                     decoration: const InputDecoration(
