@@ -29,6 +29,19 @@ review.
 
 `full = app + backend + release + infra`.
 
+## Security scanning
+
+`.github/workflows/security.yml` bổ sung CodeQL security-extended cho Actions,
+JavaScript/TypeScript và Python; OSV v2.7.0 scan 187 locked Pub packages ở baseline
+22-10-2026. Workflow chạy trên PR, master push, lịch hàng tuần và manual; SARIF
+được gửi vào GitHub Code scanning. OSV fail khi có vulnerability hoặc scanner
+không tạo kết quả. Không auto-dismiss hoặc auto-merge findings/dependency PRs.
+
+CodeQL chưa hỗ trợ Dart và các job này chưa phân tích native C/C++/Swift/Java.
+Giữ analyzer, Flutter tests, Gitleaks và runtime gates hiện có. Xem
+[task security](tasks/2026-10-22-security-alerts.md) cho lần chạy và incident status;
+không gọi cấu hình workflow là evidence đã chạy thành công.
+
 ## Unit/domain
 
 P1 regressions dùng real datasource: fault record/manifest/commit (kể cả exception
