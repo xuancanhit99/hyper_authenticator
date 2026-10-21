@@ -163,8 +163,9 @@ query/fragment và endpoint khác. Source test được phục vụ từ loopbac
 server; không gửi nội dung file trong CDP request. Không dùng profile thật.
 
 Dependabot alerts, malware alerts và tự tạo security-update PR được bật ngày
-22-10-2026. Không auto-merge dependency updates. Gitleaks history gate và GitHub
-Secret scanning/push protection vẫn hoạt động; false-positive chỉ đóng sau khi
+22-10-2026. Hai preset tự dismiss low-impact development alerts và package
+malware alerts đều disabled; dependency updates không auto-merge. Gitleaks
+history gate và GitHub Secret scanning/push protection vẫn hoạt động; false-positive chỉ đóng sau khi
 đối chiếu từng finding, không broad-ignore hoặc tắt scanner.
 
 **Khoảng trống đã biết:** CodeQL không hỗ trợ Dart; OSV dependency scan không

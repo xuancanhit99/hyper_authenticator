@@ -1,6 +1,6 @@
 # Task: Xử lý cảnh báo GitGuardian và bổ sung security scanning
 
-- Trạng thái: Đang triển khai
+- Trạng thái: Hoàn thành
 - Bắt đầu: 2026-10-22
 - Owner: Project owner / Codex
 - Issue hoặc ADR liên quan: PR #57 và task GitHub release 21-10-2026
@@ -17,11 +17,12 @@ alerts và đưa quét source/dependency vào GitHub Code scanning với phạm 
 
 ## Acceptance criteria
 
-- [x] Dependabot alerts, malware alerts và security-update PRs enabled.
+- [x] Dependabot alerts, malware alerts và security-update PRs enabled; cả hai
+  preset auto-dismiss disabled (low-impact development và package malware).
 - [x] Các incident GitGuardian test fixture được đánh dấu false positive.
 - [x] CodeQL và OSV chạy thành công, kiểm tra các finding nếu có.
-- [ ] Xử lý 8 findings baseline trên master và xác minh lại default branch.
-- [ ] Cập nhật tài liệu, merge source cấu hình và ghi evidence.
+- [x] Xử lý 8 findings baseline trên master và xác minh lại default branch.
+- [x] Cập nhật tài liệu, merge source cấu hình và ghi evidence.
 
 ## Bằng chứng hiện tại
 
@@ -42,7 +43,7 @@ alerts và đưa quét source/dependency vào GitHub Code scanning với phạm 
   Filter source name `hyper_authenticator` + Assigned/Triggered trả 0 incident mở.
 - Đã yêu cầu rerun check PR #57 qua GitHub UI. GitGuardian trả `neutral` với
   message `old checks cannot be re-run`; đây không phải một lần rescan pass.
-  Check GitGuardian của PR #58 pass. Không rewrite lịch sử/tag để đổi badge cũ.
+  Check GitGuardian của PR #58 và #59 pass. Không rewrite lịch sử/tag để đổi badge cũ.
 - [Security scan PR #58](https://github.com/xuancanhit99/hyper_authenticator/actions/runs/39658902219)
   pass 4/4 jobs. API Code scanning xác nhận 4 SARIF analyses không extraction
   error, 0 PR-diff results: CodeQL Actions, JS/TS, Python và OSV. PR-diff result
@@ -54,6 +55,18 @@ alerts và đưa quét source/dependency vào GitHub Code scanning với phạm 
   commit `1a44944`; harness tải script qua loopback asset server thay cho gửi
   nội dung file trong CDP, và validate ws protocol/host/port/page path trước connect.
   Không dismiss CodeQL rule hoặc thêm ignore để che findings.
+- [PR #59](https://github.com/xuancanhit99/hyper_authenticator/pull/59) chứa các
+  sửa baseline. Full-branch manual scan
+  [39661390608](https://github.com/xuancanhit99/hyper_authenticator/actions/runs/39661390608)
+  pass 4/4; Code scanning API xác nhận 4 analyses `results_count=0`, `error=""`
+  trên `refs/heads/codex/security-scanning-findings`, không chỉ PR-diff scan.
+
+- Master sau merge: cả 4 analyses tại commit `6499412` đều có 0 results và
+  không extraction error. Alert API và GitHub UI xác nhận 0 open, 8 fixed,
+  `dismissed_reason=null`; không dùng dismissal để đóng CodeQL findings.
+- Dependabot API kiểm tra lại sau tắt preset auto-dismiss trả 0 alerts.
+  Evidence screenshots lưu ở `build/security-alerts-20261022/` (ignored), gồm
+  GitGuardian repo 0 open, hai preset disabled và Code scanning master 0 open/8 closed.
 
 ## Đánh giá rủi ro
 
@@ -87,6 +100,9 @@ alerts và đưa quét source/dependency vào GitHub Code scanning với phạm 
 | Master security baseline 39660678978 | Scan success, 8 medium alerts cần xử lý, không gọi là clean pass | 22-10-2026 |
 | `node --test tool/agent/chrome_debug_endpoint_test.mjs` | 2 tests pass; chặn remote endpoint, port mismatch, credentials/query/fragment/path | 22-10-2026 |
 | `node tool/agent/extension_vault_concurrency_test.mjs` sau hardening | Real isolated Chrome cold key race/reopen/mutation/tamper/missing/invalid key pass | 22-10-2026 |
+| Full CI [39661284943](https://github.com/xuancanhit99/hyper_authenticator/actions/runs/39661284943) | 8/8 pass trên HEAD PR #59, GitGuardian pass | 22-10-2026 |
+| Master security [39663276861](https://github.com/xuancanhit99/hyper_authenticator/actions/runs/39663276861) | 4/4 pass, 4 analyses 0 results/error; 8 alerts fixed, 0 open | 22-10-2026 |
+| Full-branch security [39661390608](https://github.com/xuancanhit99/hyper_authenticator/actions/runs/39661390608) | 4/4 pass, 0 baseline findings và 0 extraction error | 22-10-2026 |
 
 [PR #58](https://github.com/xuancanhit99/hyper_authenticator/pull/58) đã squash
 merge thành `91e26e7` vào master sau khi CI 8/8 và security 4/4 pass. Merge dùng
@@ -94,12 +110,28 @@ merge thành `91e26e7` vào master sau khi CI 8/8 và security 4/4 pass. Merge d
 chứng; security workflow được dispatch riêng trên master. Không thay đổi tag
 hoặc artifact của release `v1.1.5-preview.1`.
 
+[PR #59](https://github.com/xuancanhit99/hyper_authenticator/pull/59) đã squash
+merge thành `6499412` vào master sau khi CI 8/8, security PR 4/4 và full-branch
+security 4/4 pass. Master security được dispatch riêng tại
+[39663276861](https://github.com/xuancanhit99/hyper_authenticator/actions/runs/39663276861).
+Không cần build/deploy bản app mới: chỉ thay đổi CI, test harness và tài liệu;
+app runtime, vault v3, cloud contract và release artifacts không đổi.
+
 ## Tác động tài liệu
 
-- [ ] `PROJECT_STATUS.md`
-- [ ] `SECURITY.md`
-- [ ] `TESTING_STRATEGY.md`
+- [x] `PROJECT_STATUS.md`
+- [x] `SECURITY.md`
+- [x] `TESTING_STRATEGY.md`
 
 ## Bàn giao
 
-Đang triển khai. Không có thay đổi ngoài phạm vi trong working tree lúc bắt đầu.
+Hoàn thành: PR #58/#59 đã merge master; 8 CodeQL findings được sửa trong
+source, 3 GitGuardian incidents xác minh là public test fixtures và đóng đúng
+false positive. Đã bật weekly/PR/push security scans và dependency alerts/update PRs.
+Các file thay đổi chính: `.github/workflows/security.yml`, `.github/workflows/ci.yml`,
+`tool/agent/chrome_debug_endpoint{,_test}.mjs`,
+`tool/agent/extension_vault_concurrency_test.mjs`, `scripts/agent/check.sh` và
+ba tài liệu canonical nêu trên. Không thay đổi data contract hoặc production.
+Coverage gaps và old PR check neutral được ghi rõ; không xem scanner pass là
+đảm bảo tuyệt đối không có lỗ hổng. Không có thay đổi ngoài phạm vi lúc bắt đầu;
+working tree được kiểm tra sạch và đồng bộ sau commit evidence.

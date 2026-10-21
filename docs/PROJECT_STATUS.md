@@ -29,16 +29,23 @@ Hyper Authenticator là ứng dụng TOTP Flutter đa nền tảng, local-first:
 
 ### Security scanning ngày 22-10-2026
 
-Dependabot alerts, malware alerts và tự tạo security-update PRs đã bật; lần kiểm
-tra API đầu trả 0 dependency alerts. OSV v2.7.0 local quét 187 locked Pub packages
-không có finding. [CodeQL/OSV PR run](https://github.com/xuancanhit99/hyper_authenticator/actions/runs/39658902219)
-pass 4/4 jobs, SARIF 0 PR-diff results/error; chưa có Dart source analysis từ CodeQL.
-GitGuardian đã ignore 3 incidents test fixtures bằng lý do false positive; repo
-filter 0 open. Check PR #57 cũ trả neutral khi yêu cầu rerun vì provider không
-rescan old checks; GitGuardian PR #58 pass. Cấu hình đã merge master qua PR #58.
-Master baseline sau merge phát hiện 8 medium alerts trong code hiện có: 7 mutable
-Flutter Action references và 1 file-to-CDP flow của test harness. Đang xác minh
-follow-up pin SHA và loopback harness hardening; không gọi scan success là zero findings.
+Dependabot alerts, malware alerts và tự tạo security-update PRs đã bật; cả hai
+preset auto-dismiss disabled, không auto-merge updates. OSV v2.7.0 local quét
+187 locked Pub packages không có finding. Cấu hình scanning đã merge qua
+[PR #58](https://github.com/xuancanhit99/hyper_authenticator/pull/58).
+Master baseline phát hiện 8 medium alerts: 7 mutable Flutter Action references
+và 1 file-to-CDP flow của test harness. Đã sửa trong source qua
+[PR #59](https://github.com/xuancanhit99/hyper_authenticator/pull/59), commit `6499412`:
+pin action SHA, giới hạn CDP endpoint và tải test script qua loopback asset server.
+[Full CI](https://github.com/xuancanhit99/hyper_authenticator/actions/runs/39661284943)
+pass 8/8; [master security](https://github.com/xuancanhit99/hyper_authenticator/actions/runs/39663276861)
+pass 4/4, cả 4 analyses có 0 results/error. GitHub xác nhận 8 alerts fixed,
+0 open, không dismiss CodeQL findings. Dependabot hiện 0 alerts.
+GitGuardian đã ignore 3 incidents public test fixtures bằng lý do false positive;
+repo filter 0 open, PR #58/#59 pass. Check PR #57 cũ trả neutral khi yêu cầu rerun
+vì provider không rescan old checks. CodeQL không hỗ trợ Dart; các job chưa
+phân tích native C/C++/Swift/Java. Không có alert không thay thế source audit.
+Không cần app release/deploy mới vì runtime/vault/cloud contract không đổi.
 Xem [task security](tasks/2026-10-22-security-alerts.md).
 
 ### Merge và GitHub Preview release ngày 21-10-2026
