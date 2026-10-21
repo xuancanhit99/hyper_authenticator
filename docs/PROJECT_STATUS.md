@@ -31,10 +31,15 @@ Hyper Authenticator là ứng dụng TOTP Flutter đa nền tảng, local-first:
 
 Dependabot alerts, malware alerts và tự tạo security-update PRs đã bật; lần kiểm
 tra API đầu trả 0 dependency alerts. OSV v2.7.0 local quét 187 locked Pub packages
-không có finding. CodeQL/OSV workflow đang được xác minh; chưa có Dart source
-analysis từ CodeQL. GitGuardian PR #57 còn 3 occurrences thuộc 2 incidents của
-public Base32 test fixtures; đã sửa source trước release nhưng cần đóng false
-positives trong dashboard. Xem [task security](tasks/2026-10-22-security-alerts.md).
+không có finding. [CodeQL/OSV PR run](https://github.com/xuancanhit99/hyper_authenticator/actions/runs/39658902219)
+pass 4/4 jobs, SARIF 0 PR-diff results/error; chưa có Dart source analysis từ CodeQL.
+GitGuardian đã ignore 3 incidents test fixtures bằng lý do false positive; repo
+filter 0 open. Check PR #57 cũ trả neutral khi yêu cầu rerun vì provider không
+rescan old checks; GitGuardian PR #58 pass. Cấu hình đã merge master qua PR #58.
+Master baseline sau merge phát hiện 8 medium alerts trong code hiện có: 7 mutable
+Flutter Action references và 1 file-to-CDP flow của test harness. Đang xác minh
+follow-up pin SHA và loopback harness hardening; không gọi scan success là zero findings.
+Xem [task security](tasks/2026-10-22-security-alerts.md).
 
 ### Merge và GitHub Preview release ngày 21-10-2026
 

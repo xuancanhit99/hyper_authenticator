@@ -156,6 +156,12 @@ Python (operator tooling), cùng OSV-Scanner quét đúng `pubspec.lock`. Action
 cần upload SARIF. Không truyền operator secrets, không chạy app/build scripts.
 Workflow chạy trên PR, push master, lịch hàng tuần và manual dispatch.
 
+CI Flutter Action được pin đúng upstream release commit để mutable tag không
+thay đổi code được chạy ngoài review. Isolated Chrome harness chỉ kết nối CDP
+WebSocket đúng `ws://127.0.0.1:<port>/devtools/page/<id>`, reject credentials,
+query/fragment và endpoint khác. Source test được phục vụ từ loopback HTTP asset
+server; không gửi nội dung file trong CDP request. Không dùng profile thật.
+
 Dependabot alerts, malware alerts và tự tạo security-update PR được bật ngày
 22-10-2026. Không auto-merge dependency updates. Gitleaks history gate và GitHub
 Secret scanning/push protection vẫn hoạt động; false-positive chỉ đóng sau khi
