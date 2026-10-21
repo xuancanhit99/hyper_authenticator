@@ -3,7 +3,7 @@
 Baseline được audit ngày **5 tháng 8 năm 2026** trên nhánh
 `codex/minimal-e2ee`. Tên nhánh là lịch sử; source đã chuyển sang
 account-managed automatic sync theo ADR-0020 và backend production đã được
-migrate cùng ngày. Evidence source/package được cập nhật ngày **11 tháng 8 năm
+migrate cùng ngày. Evidence source/package được cập nhật ngày **21 tháng 10 năm
 2026**.
 
 ## Kết luận
@@ -27,6 +27,24 @@ Hyper Authenticator là ứng dụng TOTP Flutter đa nền tảng, local-first:
 
 ## Đã triển khai trong source
 
+### Merge và GitHub Preview release ngày 21-10-2026
+
+P1/P2 và Google login đã squash merge qua
+[PR #57](https://github.com/xuancanhit99/hyper_authenticator/pull/57) vào `master`,
+commit `8bf680bf37212eba1d5f0c1bc87a584e29bf3c7d`, tag `v1.1.5-preview.1`.
+[PR CI](https://github.com/xuancanhit99/hyper_authenticator/actions/runs/39495522362)
+pass **8/8 jobs**, gồm full quality/backend/secret gates, Windows/Linux historical
+vault upgrade và installer/runtime, Web/extension, macOS/iOS Simulator compile.
+[Exact-tag CI](https://github.com/xuancanhit99/hyper_authenticator/actions/runs/39497379075)
+cũng pass **8/8 jobs**. [Publisher](https://github.com/xuancanhit99/hyper_authenticator/actions/runs/39526492707)
+đã phát hành [v1.1.5-preview.1](https://github.com/xuancanhit99/hyper_authenticator/releases/tag/v1.1.5-preview.1),
+app `1.1.5+19`, với APK Android đã ký, Windows installer, Debian và extension ZIP.
+Windows/Linux là unsigned Preview; iOS/macOS chỉ compile, không phân phối binary.
+[Public verifier](https://github.com/xuancanhit99/hyper_authenticator/actions/runs/39526579086)
+pass: anonymous download đủ 9 assets, checksum/digest, provenance và signer pin.
+Chi tiết xem
+[task GitHub release](tasks/2026-10-21-github-release.md).
+
 ### Google login/register ngày 21-10-2026
 
 Web production **1.1.5+19**, image `hyper-authenticator-web:1.1.5-google-20261021`,
@@ -41,8 +59,9 @@ Web real browser mở được Google chooser. Extension real isolated Chromium 
 Google identity window và hủy để thử lại được; chưa test Google session/consent
 hoàn chỉnh trên extension/native. Android signed APK 1.1.5 đã upgrade-install lên
 thiết bị physical, resolve đúng callback và launch; Windows release launch pass.
-Apple builds chưa chạy. Full gate Windows vẫn không pass do host/tooling; không
-dùng các bằng chứng này để tuyên bố exact-tag CI hoặc stable/store acceptance.
+Ở bước rollout local, Apple builds chưa chạy và full gate Windows bị giới hạn
+host/tooling. Exact-tag CI sau đó đã pass macOS release, iOS Simulator compile
+và full quality gate trên Ubuntu; stable/store và device acceptance vẫn còn thiếu.
 
 ### P2 review ngày 19-10-2026
 
@@ -68,12 +87,13 @@ migration cleanup, đã chạy Robolectric; physical Keystore/upgrade vẫn cầ
 Server backup/restore-drill/health đã chạy thành công; encrypted off-host copy
 đã kiểm chứng tại máy operator và có Windows task hàng ngày (chỉ chạy khi user
 đăng nhập, chạy bù khi máy khả dụng). Không xem đó là off-host SLA độc lập với máy
-operator. App fixes hiện ở working tree; chưa có GitHub/store release mới.
+operator. App fixes đã merge vào master trong task GitHub release; store rollout
+vẫn chưa thực hiện.
 Chi tiết lệnh, evidence và giới hạn trong [task P1](tasks/2026-10-21-review-p1.md).
 
 ### Build/deploy và runtime ngày 21-10-2026
 
-Web production đang chạy `1.1.4+18`, image
+Trước rollout Google `1.1.5+19`, Web production đã chạy `1.1.4+18`, image
 `hyper-authenticator-web:1.1.4-p1-20261021r2`; shadow/public route, CSP,
 no-store, dotfile denial và JS checksum đều pass. Browser smoke xác nhận local
 TOTP persist, login, auto-sync, logout giữ mã và nhận account từ extension.
@@ -82,7 +102,7 @@ pass local-vault và real Supabase sync (upload/new-device download/Realtime/del
 Android AVD riêng pass local-vault; APK cuối khớp signer pin và đã upgrade-install
 từ `1.1.2` lên `1.1.4` trên Android physical, launch/process còn sống.
 
-Đây là working-tree deployment, chưa phải exact-tag CI release. Windows portable
+Đây là bằng chứng working-tree deployment trước đợt exact-tag CI release bên trên. Windows portable
 và Linux bundle/Debian là unsigned Preview; Debian được build trên Ubuntu 24.04
 và yêu cầu glibc >=2.38. Apple toolchain không có trong phiên này. Camera,
 biometric, physical vault contents/migration và kiểm tra dài hạn vẫn chưa được

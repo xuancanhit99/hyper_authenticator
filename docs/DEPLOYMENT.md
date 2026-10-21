@@ -29,8 +29,9 @@ Compose snapshot trước r2 giữ image r1 cũng hiểu vault v3; không dùng 
 trước P1 để downgrade writer sau khi client đã ghi v3. Recovery/backend không
 đổi. APK signer khớp pin; cấu hình local đã chuyển từ keystore cũ sang khóa phát
 hành đúng, lưu dưới thư mục backup operator ngoài Git. Không phân phối key.
-Android physical đã update giữ data và launch; Windows/Linux/extension được
-đóng gói để bàn giao local, chưa publish GitHub/store. Linux Debian build ở Ubuntu
+Android physical đã update giữ data và launch; ở bước rollout này Windows/Linux/extension được
+đóng gói để bàn giao local. Sau đó GitHub Preview `v1.1.5-preview.1` đã publish
+từ exact-tag CI bên dưới; store rollout chưa thực hiện. Linux Debian build ở Ubuntu
 24.04 không chứng minh tương thích distro có glibc cũ hơn.
 Xem [task triển khai](tasks/2026-10-21-deploy-runtime.md) cho evidence và giới hạn.
 
@@ -143,6 +144,28 @@ Workflow phải xuất đúng asset/checksum/signature contract. Android chỉ g
 khi certificate fingerprint khớp pin. Windows/Linux unsigned phải ghi Preview.
 
 Release public đã xác minh hiện tại:
+
+- Public pre-release: [`v1.1.5-preview.1`](https://github.com/xuancanhit99/hyper_authenticator/releases/tag/v1.1.5-preview.1),
+  app `1.1.5+19`, source `8bf680bf37212eba1d5f0c1bc87a584e29bf3c7d`.
+- [PR #57](https://github.com/xuancanhit99/hyper_authenticator/pull/57) squash merge
+  P1/P2 và Google login/register vào `master`.
+- Exact-tag CI [`39497379075`](https://github.com/xuancanhit99/hyper_authenticator/actions/runs/39497379075)
+  pass 8/8 jobs, gồm full quality/backend/secret gates, Android signed APK,
+  Windows/Linux historical upgrade và runtime/installers, Web/extension,
+  macOS release và iOS Simulator compile.
+- Publisher [`39526492707`](https://github.com/xuancanhit99/hyper_authenticator/actions/runs/39526492707)
+  pass, tạo public non-draft pre-release từ đúng artifacts của tag.
+- Public verifier [`39526579086`](https://github.com/xuancanhit99/hyper_authenticator/actions/runs/39526579086)
+  pass ngày 21-10-2026: anonymous download đúng 9 assets, metadata/provenance,
+  GitHub digests, checksum/manifest, Android signer pin và package contracts.
+- Android APK đã ký đúng signer pin. Windows installer/Linux Debian là unsigned
+  Preview; không phân phối iOS/macOS binary. Extension runtime acceptance được
+  owner waiver và công bố trong release notes; chưa phải Chrome Store acceptance.
+- Vault v3 không downgrade về writer v2; Google session/consent hoàn chỉnh trên
+  native/extension, physical camera/biometric và kiểm tra dài hạn còn pending.
+  Chi tiết [task release](tasks/2026-10-21-github-release.md).
+
+Release lịch sử đã xác minh:
 
 - Public pre-release: [`v1.1.3-preview.1`](https://github.com/xuancanhit99/hyper_authenticator/releases/tag/v1.1.3-preview.1).
 - Package version `1.1.3+17`, source commit
