@@ -4,6 +4,7 @@ import { createServer } from 'node:http';
 import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { chromeDebugEndpoint } from './chrome_debug_endpoint.mjs';
 
 // Real isolated browser contexts sharing one origin/IDB, never the user's profile.
 const chrome = process.env.CHROME_PATH || 'C:/Program Files/Google/Chrome/Application/chrome.exe';
@@ -28,7 +29,7 @@ const connections = [];
 const delay = ms => new Promise(r => setTimeout(r, ms));
 async function connect(port) {
   const target = await (await fetch(`http://127.0.0.1:${port}/json/new?about:blank`, { method: 'PUT' })).json();
-  const ws = new WebSocket(target.webSocketDebuggerUrl);
+  const ws = new WebSocket(chromeDebugEndpoint(target.webSocketDebuggerUrl, port));
   await new Promise((resolve, reject) => { ws.onopen = resolve; ws.onerror = reject; });
   connections.push(ws);
   let id = 0;
@@ -59,7 +60,15 @@ async function connect(port) {
       const key = await generate(...args); await fetch('/barrier?' + crypto.randomUUID()); return key;
     };
   })()`);
-  await evaluate(source);
+  // Load the test asset from our loopback HTTP server instead of transmitting
+  // file contents in a debugging-protocol request to a discovered endpoint.
+  await evaluate(`new Promise((resolve, reject) => {
+    const script = document.createElement('script');
+    script.src = '/vault.js';
+    script.onload = () => resolve(true);
+    script.onerror = () => reject(new Error('Local test vault script failed to load'));
+    document.head.append(script);
+  })`);
   return evaluate;
 }
 try {

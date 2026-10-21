@@ -42,6 +42,11 @@ Giữ analyzer, Flutter tests, Gitleaks và runtime gates hiện có. Xem
 [task security](tasks/2026-10-22-security-alerts.md) cho lần chạy và incident status;
 không gọi cấu hình workflow là evidence đã chạy thành công.
 
+PR scans thường báo phần diff; phải chạy default-branch baseline trước kết luận
+0 findings. Harness endpoint regression nằm trong release gate qua
+`node --test tool/agent/chrome_debug_endpoint_test.mjs`; real isolated-browser
+vault smoke xác minh việc tải asset loopback vẫn giữ race/tamper tests hoạt động.
+
 ## Unit/domain
 
 P1 regressions dùng real datasource: fault record/manifest/commit (kể cả exception
