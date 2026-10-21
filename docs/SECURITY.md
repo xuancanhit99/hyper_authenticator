@@ -147,6 +147,26 @@ thể mở khóa trở lại. Physical-device acceptance vẫn tách khỏi unit
 - Hai mapping upstream chưa có asset (`bingotp`, `wppokta`) fail-safe về avatar
   ký tự thay vì fuzzy-match sang logo có thể sai.
 
+## Repository security scanning
+
+**Đã triển khai cấu hình:** `.github/workflows/security.yml` dùng CodeQL
+security-extended cho Actions, JavaScript/TypeScript (extension/recovery) và
+Python (operator tooling), cùng OSV-Scanner quét đúng `pubspec.lock`. Actions mới
+được pin commit; token chỉ có quyền đọc source và ghi security results trong job
+cần upload SARIF. Không truyền operator secrets, không chạy app/build scripts.
+Workflow chạy trên PR, push master, lịch hàng tuần và manual dispatch.
+
+Dependabot alerts, malware alerts và tự tạo security-update PR được bật ngày
+22-10-2026. Không auto-merge dependency updates. Gitleaks history gate và GitHub
+Secret scanning/push protection vẫn hoạt động; false-positive chỉ đóng sau khi
+đối chiếu từng finding, không broad-ignore hoặc tắt scanner.
+
+**Khoảng trống đã biết:** CodeQL không hỗ trợ Dart; OSV dependency scan không
+thay thế Dart source audit hoặc Flutter auth/storage/sync regressions. Native
+C/C++/Swift/Java và dependencies không có trong `pubspec.lock` chưa được các job
+này phân tích. Không có alert không chứng minh app không có lỗ hổng. Evidence
+runtime và trạng thái incident xem [task security](tasks/2026-10-22-security-alerts.md).
+
 ## Destructive semantics
 
 - Xóa account khi đang đăng nhập: local xóa trước, cloud tombstone retry tới khi

@@ -27,6 +27,15 @@ Hyper Authenticator là ứng dụng TOTP Flutter đa nền tảng, local-first:
 
 ## Đã triển khai trong source
 
+### Security scanning ngày 22-10-2026
+
+Dependabot alerts, malware alerts và tự tạo security-update PRs đã bật; lần kiểm
+tra API đầu trả 0 dependency alerts. OSV v2.7.0 local quét 187 locked Pub packages
+không có finding. CodeQL/OSV workflow đang được xác minh; chưa có Dart source
+analysis từ CodeQL. GitGuardian PR #57 còn 3 occurrences thuộc 2 incidents của
+public Base32 test fixtures; đã sửa source trước release nhưng cần đóng false
+positives trong dashboard. Xem [task security](tasks/2026-10-22-security-alerts.md).
+
 ### Merge và GitHub Preview release ngày 21-10-2026
 
 P1/P2 và Google login đã squash merge qua
