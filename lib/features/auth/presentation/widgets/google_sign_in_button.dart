@@ -18,9 +18,10 @@ class GoogleSignInButton extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Image.asset(
-                'assets/logos/authenticators/google.png',
+                'assets/logos/google-sign-in.png',
                 width: 20,
                 height: 20,
+                fit: BoxFit.contain,
                 excludeFromSemantics: true,
               ),
               const SizedBox(width: 8),

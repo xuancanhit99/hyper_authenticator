@@ -132,6 +132,13 @@ signing certificate của dự án; package Windows/Linux chưa code-sign.
 
 ## Điểm mới
 
+- Logo nút Tiếp tục với Google trên Đăng nhập/Đăng ký dùng ảnh chính thức nền
+  trong suốt, giữ màu/tỷ lệ và bundle offline cho cả nền sáng/tối.
+- Bổ sung CodeQL/OSV và dependency alerts; pin Flutter Action SHA và gia cố
+  CDP endpoint của isolated test harness. Không đổi vault hoặc cloud contract.
+
+## Các tính năng hiện có
+
 - Đăng nhập/đăng ký bằng Google qua Supabase PKCE trên Login/Register; Google
   identity mới được tạo tài khoản theo chính sách Supabase. Production Web đã có
   owner acceptance. Google Client Secret chỉ ở server, không có trong bộ cài.
