@@ -29,12 +29,23 @@ Hyper Authenticator là ứng dụng TOTP Flutter đa nền tảng, local-first:
 
 ### Icon Google sign-in ngày 24-10-2026
 
-Login/Register dùng logo Google chính thức nền trong suốt, bundle riêng tại
-`assets/logos/google-sign-in.png`, giữ tỷ lệ và màu gốc. Widget tests login/register
-pass 2/2, visual render nền sáng/tối và phân tích file widget pass. Chưa deploy
-thay đổi hình ảnh này lên production. Quick gate trên Windows chưa pass: thiếu
-`shasum`, build_runner không nhận output path có drive letter; toàn bộ analyze
-đã dừng sau khi chạy lâu không có kết quả. Docs gate và diff check pass.
+Web production đã deploy `1.1.6+20`, image
+`hyper-authenticator-web:1.1.6-logo-20261024`. Login/Register dùng logo Google
+chính thức nền trong suốt bundle offline, giữ màu/tỷ lệ. Shadow và public
+routes/headers/version/JS/logo checksum pass; real Chrome render cả hai form đúng.
+[PR #60](https://github.com/xuancanhit99/hyper_authenticator/pull/60) đã merge
+`90df288`; full CI 8/8, security 4/4 và GitGuardian pass. Master security tại
+source tag `500c4dc` có 4 analyses 0 findings/error. Không đổi vault/cloud/OAuth.
+[GitHub Preview v1.1.6-preview.1](https://github.com/xuancanhit99/hyper_authenticator/releases/tag/v1.1.6-preview.1)
+đã public ngày 24-10-2026, source `500c4dc`, đủ 9 assets. Exact-tag CI
+[39999551127](https://github.com/xuancanhit99/hyper_authenticator/actions/runs/39999551127)
+pass 8/8, publisher `40001618205` và independent public verifier `40001851396`
+đều pass. APK signer pin, anonymous downloads, checksums/provenance/package
+contracts được kiểm chứng; APK/extension chứa đúng logo mới. Windows/Linux vẫn
+unsigned Preview, Apple không phân phối binary. Local unpacked extension đã
+rebuild 1.1.6 và verify; owner cần Reload thủ công.
+Windows quick gate có baseline tooling gaps; full quality gate trên Ubuntu CI đã pass.
+Chi tiết [task release](tasks/2026-10-24-google-logo-release.md).
 
 ### Security scanning ngày 22-10-2026
 

@@ -145,6 +145,26 @@ khi certificate fingerprint khớp pin. Windows/Linux unsigned phải ghi Previe
 
 Release public đã xác minh hiện tại:
 
+- Public pre-release: [`v1.1.6-preview.1`](https://github.com/xuancanhit99/hyper_authenticator/releases/tag/v1.1.6-preview.1),
+  app `1.1.6+20`, source `500c4dc6af7b5db10c9384d5d307e0eb9420fe2b`.
+- PR #60 full CI 8/8, security 4/4 và GitGuardian pass. Exact-tag CI
+  [`39999551127`](https://github.com/xuancanhit99/hyper_authenticator/actions/runs/39999551127)
+  pass 8/8, gồm signed APK, Windows/Linux upgrade/vault/runtime/installers,
+  Web/extension và Apple compile. Master CodeQL/OSV có 0 findings/error.
+- Publisher [`40001618205`](https://github.com/xuancanhit99/hyper_authenticator/actions/runs/40001618205)
+  và independent public verifier
+  [`40001851396`](https://github.com/xuancanhit99/hyper_authenticator/actions/runs/40001851396)
+  pass ngày 24-10-2026: anonymous downloads đúng 9 assets, provenance/digests,
+  SHA256, Android signer pin và package contracts.
+- Logo Google nền trong suốt trên Login/Register được bundle offline; payload
+  trong APK/extension khớp checksum source. Không đổi auth/vault/cloud contract.
+- Windows/Linux unsigned Preview, Apple compile-only; giữ owner waiver và
+  disclosure extension/native/physical acceptance gaps. Local extension unpacked
+  đã rebuild và verify 1.1.6, owner cần Reload thủ công trong Chrome.
+  Chi tiết [task release](tasks/2026-10-24-google-logo-release.md).
+
+Release trước đã xác minh:
+
 - Public pre-release: [`v1.1.5-preview.1`](https://github.com/xuancanhit99/hyper_authenticator/releases/tag/v1.1.5-preview.1),
   app `1.1.5+19`, source `8bf680bf37212eba1d5f0c1bc87a584e29bf3c7d`.
 - [PR #57](https://github.com/xuancanhit99/hyper_authenticator/pull/57) squash merge
@@ -185,6 +205,14 @@ Preview này bổ sung provider logo catalog local đã pin; Chrome Extension ZI
 42.460.989 byte và Android APK có 100.997.481 byte sau khi bundle catalog.
 
 ## Web
+
+Ngày 24-10-2026, Web production đã chạy `1.1.6+20`, image
+`hyper-authenticator-web:1.1.6-logo-20261024`, logo Google sign-in nền trong suốt.
+JS SHA256 `712592a60b51bbdd4d5b3f048a9b0091ad05ee59fc8eea55fb02641024448bac`.
+Shadow rồi public serving/version/logo checksum và real Chrome Login/Register pass.
+Private rollback snapshot `/opt/stacks/hyper-authenticator/compose.pre-logo-20261024.json`
+giữ image `1.1.5-google-20261021` hiểu vault v3. Chỉ recreate Web, không đổi
+provider, backend hoặc dữ liệu. Xem [task release](tasks/2026-10-24-google-logo-release.md).
 
 Ngày 21-10-2026, production rollout Google dùng `1.1.5+19`, image
 `hyper-authenticator-web:1.1.5-google-20261021`. Compose trước rollout là private
