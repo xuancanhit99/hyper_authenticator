@@ -91,6 +91,13 @@ flutter test
 scripts/agent/check.sh quick
 ```
 
+Nút Google trên Login/Register dùng asset nền trong suốt riêng
+`assets/logos/google-sign-in.png`, lấy từ
+[Google Identity branding guidelines](https://developers.google.com/identity/branding-guidelines)
+(`https://developers.google.com/static/identity/images/g-logo.png`, tải ngày
+24-10-2026). Asset được bundle để hoạt động offline, giữ nguyên màu/tỷ lệ;
+không chỉnh catalog Sentinel khi chỉ thay icon đăng nhập.
+
 Provider logo catalog có gate riêng:
 
 ```bash

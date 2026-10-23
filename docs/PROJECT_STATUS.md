@@ -27,6 +27,15 @@ Hyper Authenticator là ứng dụng TOTP Flutter đa nền tảng, local-first:
 
 ## Đã triển khai trong source
 
+### Icon Google sign-in ngày 24-10-2026
+
+Login/Register dùng logo Google chính thức nền trong suốt, bundle riêng tại
+`assets/logos/google-sign-in.png`, giữ tỷ lệ và màu gốc. Widget tests login/register
+pass 2/2, visual render nền sáng/tối và phân tích file widget pass. Chưa deploy
+thay đổi hình ảnh này lên production. Quick gate trên Windows chưa pass: thiếu
+`shasum`, build_runner không nhận output path có drive letter; toàn bộ analyze
+đã dừng sau khi chạy lâu không có kết quả. Docs gate và diff check pass.
+
 ### Security scanning ngày 22-10-2026
 
 Dependabot alerts, malware alerts và tự tạo security-update PRs đã bật; cả hai
