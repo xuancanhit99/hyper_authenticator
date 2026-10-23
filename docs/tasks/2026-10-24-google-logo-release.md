@@ -16,7 +16,7 @@ Không thay OAuth provider, vault v3, database schema hoặc merge dependency PR
 
 ## Acceptance criteria
 
-- [ ] PR/full CI và security scan pass, merge master.
+- [x] PR/full CI và security scan pass, merge master.
 - [ ] Exact-tag CI và publisher pass; public assets/provenance verify.
 - [ ] Web configured build, shadow serving và production visual/hash smoke pass.
 - [ ] Cập nhật tài liệu và bàn giao.
@@ -36,7 +36,7 @@ Windows quick gate có baseline tooling gaps; full gate cần CI Ubuntu.
 
 ## Kế hoạch
 
-- [ ] Version metadata/release notes, PR/CI, merge/tag.
+- [x] Version metadata/release notes, PR/CI, merge/tag.
 - [ ] Build/deploy Web và verify; publish/verify artifacts đúng tag.
 
 ## Nhật ký xác minh
@@ -44,6 +44,16 @@ Windows quick gate có baseline tooling gaps; full gate cần CI Ubuntu.
 | Command hoặc test | Kết quả | Ngày |
 |---|---|---|
 | Google button login/register + visual render | 2/2 pass, sáng/tối hiển thị đúng | 24-10-2026 |
+
+[PR #60](https://github.com/xuancanhit99/hyper_authenticator/pull/60) đã merge
+master thành `90df288`.
+[PR CI](https://github.com/xuancanhit99/hyper_authenticator/actions/runs/39998008020)
+pass 8/8, [security](https://github.com/xuancanhit99/hyper_authenticator/actions/runs/39998008779)
+pass 4/4 và GitGuardian pass. Production-configured Web build từ source feature
+`cfb7d62` có cùng runtime tree với merge commit. Shadow serving/version/logo
+checksum pass; Chrome qua loopback SSH tunnel render Login và logo đúng.
+Headless probe trên server timeout `Runtime.evaluate` khi load cao; không gọi
+lần đó là pass. Real Chrome và Web CI runtime smoke pass riêng.
 
 ## Tác động tài liệu
 
